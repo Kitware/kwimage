@@ -90,3 +90,4 @@ ENV/
 .ropeproject
 
 .pytest_cache
+pip-wheel-metadata/
