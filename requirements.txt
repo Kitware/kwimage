@@ -2,3 +2,18 @@ pytest >= 3.3.1
 coverage >= 4.3.4
 xdoctest >= 0.3.0
 pytest-cov
+
+kwarray
+
+scipy >= 1.1.0
+numpy >= 1.15.2
+pandas >= 0.23.3
+torch >= 0.4.1
+
+Pillow >= 5.2.0
+opencv-python >= 3.4.1.15
+scikit-image >= 0.14
+scikit-learn >= 0.20.1
+
+six >= 1.11.0
+ubelt >= 0.5.0
