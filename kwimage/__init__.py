@@ -2,6 +2,8 @@
 mkinit ~/code/kwimage/kwimage/__init__.py
 """
 
+__version__ = '0.0.1'
+
 from kwimage import im_alphablend
 from kwimage import im_core
 from kwimage import im_cv2
