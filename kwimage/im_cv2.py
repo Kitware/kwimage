@@ -1,0 +1,403 @@
+# -*- coding: utf-8 -*-
+"""
+Wrappers around cv2 functions
+
+Note: all functions in kwil work with RGB input by default instead of BGR.
+"""
+from __future__ import absolute_import, division, print_function, unicode_literals
+import cv2
+import six
+import numpy as np
+import itertools as it
+from . import im_core
+
+
+_CV2_INTERPOLATION_TYPES = {
+    'nearest': cv2.INTER_NEAREST,
+    'linear':  cv2.INTER_LINEAR,
+    'area':    cv2.INTER_AREA,
+    'cubic':   cv2.INTER_CUBIC,
+    'lanczos': cv2.INTER_LANCZOS4
+}
+
+
+def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4):
+    """
+    Converts interpolation into flags suitable cv2 functions
+
+    Args:
+        interpolation (int or str): string or cv2-style interpolation type
+        default (int): cv2 flag to use if `interpolation` is None
+
+    Returns:
+        int: flag specifying interpolation type that can be passed to
+           functions like cv2.resize, cv2.warpAffine, etc...
+    """
+    if interpolation is None:
+        return default
+    elif isinstance(interpolation, six.text_type):
+        try:
+            return _CV2_INTERPOLATION_TYPES[interpolation]
+        except KeyError:
+            print('Valid values for interpolation are {}'.format(
+                list(_CV2_INTERPOLATION_TYPES.keys())))
+            raise
+    else:
+        return interpolation
+
+
+def imscale(img, scale, interpolation=None, return_scale=False):
+    """
+    Resizes an image by a scale factor.
+
+    Because the result image must have an integer number of pixels, the scale
+    factor is rounded, and the rounded scale factor is returnedG
+
+    Args:
+        dsize (ndarray): an image
+        scale (float or tuple): desired floating point scale factor
+    """
+    dsize = img.shape[0:2][::-1]
+    try:
+        sx, sy = scale
+    except TypeError:
+        sx = sy = scale
+    w, h = dsize
+    new_w = int(round(w * sx))
+    new_h = int(round(h * sy))
+    new_scale = new_w / w, new_h / h
+    new_dsize = (new_w, new_h)
+
+    interpolation = _rectify_interpolation(interpolation)
+    new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
+
+    if return_scale:
+        return new_img, new_scale
+    else:
+        return new_img
+
+
+def convert_colorspace(img, src_space, dst_space, copy=False,
+                       implicit=False, dst=None):
+    """
+    Converts colorspace of img.
+    Convinience function around cv2.cvtColor
+
+    Args:
+        img (ndarray[uint8_t, ndim=2]): image data
+
+        src_space (str): input image colorspace. (e.g. BGR, GRAY)
+
+        dst_space (str): desired output colorspace. (e.g. RGB, HSV, LAB)
+
+        implicit (bool):
+            if False, the user must correctly specify if the input/output
+                colorspaces contain alpha channels.
+            If True and the input image has an alpha channel, we modify
+                src_space and dst_space to ensure they both end with "A".
+
+        dst (ndarray[uint8_t, ndim=2], optional): inplace-output array.
+
+    Returns:
+        ndarray[uint8_t, ndim=2]: img -  image data
+
+    Note:
+        Note the LAB and HSV colorspaces in float do not go into the 0-1 range.
+
+        For HSV the floating point range is:
+            0:360, 0:1, 0:1
+        For LAB the floating point range is:
+            0:100, -86.1875:98.234375, -107.859375:94.46875
+            (Note, that some extreme combinations of a and b are not valid)
+
+    Example:
+        >>> import numpy as np
+        >>> convert_colorspace(np.array([[[0, 0, 1]]], dtype=np.float32), 'RGB', 'LAB')
+        >>> convert_colorspace(np.array([[[0, 1, 0]]], dtype=np.float32), 'RGB', 'LAB')
+        >>> convert_colorspace(np.array([[[1, 0, 0]]], dtype=np.float32), 'RGB', 'LAB')
+        >>> convert_colorspace(np.array([[[1, 1, 1]]], dtype=np.float32), 'RGB', 'LAB')
+        >>> convert_colorspace(np.array([[[0, 0, 1]]], dtype=np.float32), 'RGB', 'HSV')
+
+    Ignore:
+        # Check LAB output ranges
+        import itertools as it
+        s = 1
+        _iter = it.product(range(0, 256, s), range(0, 256, s), range(0, 256, s))
+        minvals = np.full(3, np.inf)
+        maxvals = np.full(3, -np.inf)
+        for r, g, b in ub.ProgIter(_iter, total=(256 // s) ** 3):
+            img255 = np.array([[[r, g, b]]], dtype=np.uint8)
+            img01 = (img255 / 255.0).astype(np.float32)
+            lab = convert_colorspace(img01, 'rgb', 'lab')
+            np.minimum(lab[0, 0], minvals, out=minvals)
+            np.maximum(lab[0, 0], maxvals, out=maxvals)
+        print('minvals = {}'.format(ub.repr2(minvals, nl=0)))
+        print('maxvals = {}'.format(ub.repr2(maxvals, nl=0)))
+    """
+    src_space = src_space.upper()
+    dst_space = dst_space.upper()
+
+    if implicit:
+        # Assume the user meant grayscale if there is only one channel
+        if im_core.num_channels(img) == 1:
+            src_space = 'gray'
+
+        # We give the caller some slack by assuming RGB means RGBA if the input
+        # image has an alpha channel.
+        if im_core.num_channels(img) == 4:
+            if src_space[-1] != 'A':
+                src_space = src_space + 'A'
+            if dst_space[-1] != 'A':
+                dst_space = dst_space + 'A'
+
+        if img.dtype.kind == 'f':
+            # opencv requires float32 input
+            if img.dtype.itemsize == 8:
+                img = img.astype(np.float32)
+
+    if src_space == dst_space:
+        img2 = img
+        if dst is not None:
+            dst[...] = img[...]
+            img2 = dst
+        elif copy:
+            img2 = img2.copy()
+    else:
+        code = _lookup_cv2_colorspace_conversion_code(src_space, dst_space)
+        # Note the conversion to colorspaces like LAB and HSV in float form
+        # do not go into the 0-1 range. Instead they go into
+        # (0-100, -111-111ish, -111-111ish) and (0-360, 0-1, 0-1) respectively
+        img2 = cv2.cvtColor(img, code, dst=dst)
+    return img2
+
+
+def _lookup_cv2_colorspace_conversion_code(src_space, dst_space):
+    src = src_space.upper()
+    dst = dst_space.upper()
+    convert_attr = 'COLOR_{}2{}'.format(src, dst)
+    if not hasattr(cv2, convert_attr):
+        prefix = 'COLOR_{}2'.format(src)
+        valid_dst_spaces = [
+            key.replace(prefix, '')
+            for key in cv2.__dict__.keys() if key.startswith(prefix)]
+        raise KeyError(
+            '{} does not exist, valid conversions from {} are to {}'.format(
+                convert_attr, src_space, valid_dst_spaces))
+    else:
+        code = getattr(cv2, convert_attr)
+    return code
+
+
+def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
+                        box_format=None, colorspace='rgb'):
+    """
+    Draws boxes on an image.
+
+    Args:
+        img (ndarray): image to copy and draw on
+        boxes (nh.util.Boxes): boxes to draw
+        colorspace (str): string code of the input image colorspace
+
+    Example:
+        >>> import kwil
+        >>> import numpy as np
+        >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
+        >>> color = 'dodgerblue'
+        >>> thickness = 1
+        >>> boxes = kwil.Boxes([[1, 1, 8, 8]], 'tlbr')
+        >>> img2 = draw_boxes_on_image(img, boxes, color, thickness)
+        >>> assert tuple(img2[1, 1]) == (30, 144, 255)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> kwil.autompl()  # xdoc: +SKIP
+        >>> kwil.figure(doclf=True, fnum=1)
+        >>> kwil.imshow(img2)
+    """
+    import kwil
+    if not isinstance(boxes, kwil.Boxes):
+        if box_format is None:
+            raise ValueError('specify box_format')
+        boxes = kwil.Boxes(boxes, box_format)
+
+    color = tuple(kwil.Color(color).as255(colorspace))
+    tlbr = boxes.to_tlbr().data
+    img2 = img.copy()
+    for x1, y1, x2, y2 in tlbr:
+        # pt1 = (int(round(x1)), int(round(y1)))
+        # pt2 = (int(round(x2)), int(round(y2)))
+        pt1 = (int(x1), int(y1))
+        pt2 = (int(x2), int(y2))
+        # Note cv2.rectangle does work inplace
+        img2 = cv2.rectangle(img2, pt1, pt2, color, thickness=thickness)
+    return img2
+
+
+def draw_text_on_image(img, text, org, **kwargs):
+    r"""
+    Draws multiline text on an image using opencv
+
+    Args:
+        img (ndarray): image to draw on
+        text (str): text to draw
+        org (tuple): x, y location of the text string in the image.
+            if bottomLeftOrigin=True this is the bottom-left corner of the text
+            otherwise it is the top-left corner (default).
+        **kwargs:
+            color (tuple): default blue
+            thickneess (int): defaults to 2
+            fontFace (int): defaults to cv2.FONT_HERSHEY_SIMPLEX
+            fontScale (float): defaults to 1.0
+            valign (str, default=bottom): either top, center, or bottom
+
+    References:
+        https://stackoverflow.com/questions/27647424/
+
+    Example:
+        >>> import kwil
+        >>> img = kwil.grab_test_image(space='rgb')
+        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR', org=(0, 0))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> kwil.autompl()
+        >>> kwil.imshow(img2, fontScale=10)
+        >>> kwil.show_if_requested()
+
+    Example:
+        >>> import kwil
+        >>> img = kwil.grab_test_image(space='rgb')
+        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
+        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(150, 0), valign='center', border=2)
+        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(300, 0), valign='bottom', border=2)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> kwil.autompl()
+        >>> kwil.imshow(img2, fontScale=10)
+        >>> kwil.show_if_requested()
+    """
+    import kwil
+
+    if 'color' not in kwargs:
+        kwargs['color'] = (255, 0, 0)
+
+    kwargs['color'] = kwil.Color(kwargs['color']).as255('rgb')
+
+    if 'thickness' not in kwargs:
+        kwargs['thickness'] = 2
+
+    if 'fontFace' not in kwargs:
+        kwargs['fontFace'] = cv2.FONT_HERSHEY_SIMPLEX
+
+    if 'fontScale' not in kwargs:
+        kwargs['fontScale'] = 1.0
+
+    if 'lineType' not in kwargs:
+        kwargs['lineType'] = cv2.LINE_AA
+
+    if 'bottomLeftOrigin' in kwargs:
+        raise ValueError('Do not use bottomLeftOrigin, use valign instead')
+
+    border = kwargs.pop('border', None)
+    if border:
+        # recursive call
+        subkw = kwargs.copy()
+        subkw['color'] = 'black'
+        basis = list(range(-border, border + 1))
+        for i, j in it.product(basis, basis):
+            if i == 0 and j == 0:
+                continue
+            org = np.array(org)
+            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
+
+    valign = kwargs.pop('valign', None)
+
+    getsize_kw = {
+        k: kwargs[k]
+        for k in ['fontFace', 'fontScale', 'thickness']
+        if k in kwargs
+    }
+    x0, y0 = list(map(int, org))
+    ypad = kwargs.get('thickness', 2) + 4
+
+    lines = text.split('\n')
+    line_sizes = np.array([cv2.getTextSize(line, **getsize_kw)[0] for line in lines])
+
+    line_org = []
+    y = y0
+    for w, h in line_sizes:
+        next_y = y + (h + ypad)
+        line_org.append((x0, y))
+        y = next_y
+    line_org = np.array(line_org)
+
+    # the absolute top and bottom position of text
+    all_top_y = line_org[0, 1]
+    all_bottom_y = (line_org[-1, 1] + line_sizes[-1, 1])
+
+    first_h = line_sizes[0, 1]
+    total_h = (all_bottom_y - all_top_y)
+
+    if valign is not None:
+        # TODO: halign
+        if valign == 'bottom':
+            # This is the default for the one-line case
+            # in the multiline case we need to subtract the total
+            # height of all lines but the first to ensure the last
+            # line is on the bottom.
+            line_org[:, 1] -= (total_h - first_h)
+        elif valign == 'center':
+            # Change from bottom to center
+            line_org[:, 1] += first_h - total_h // 2
+        elif valign == 'top':
+            # Because bottom is the default we just need to add height of the
+            # first line.
+            line_org[:, 1] += first_h
+        else:
+            raise KeyError(valign)
+
+    for i, line in enumerate(lines):
+        (x, y) = line_org[i]
+        img = cv2.putText(img, line, (x, y), **kwargs)
+    return img
+
+
+def gaussian_patch(shape=(7, 7), sigma=None):
+    """
+    Creates a 2D gaussian patch with a specific size and sigma
+
+    Args:
+        shape (Tuple[int, int]): patch height and width
+        sigma (float | Tuple[float, float]): gaussian standard deviation
+
+    References:
+        http://docs.opencv.org/modules/imgproc/doc/filtering.html#getgaussiankernel
+
+    TODO:
+        - [ ] Look into this C-implementation
+        https://kwgitlab.kitware.com/computer-vision/heatmap/blob/master/heatmap/heatmap.c
+
+    CommandLine:
+        xdoctest -m kwil.imutil.im_cv2 gaussian_patch --show
+
+    Example:
+        >>> import numpy as np
+        >>> shape = (88, 24)
+        >>> sigma = None  # 1.0
+        >>> gausspatch = gaussian_patch(shape, sigma)
+        >>> sum_ = gausspatch.sum()
+        >>> assert np.all(np.isclose(sum_, 1.0))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwil
+        >>> kwil.autompl()
+        >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
+        >>> kwil.imshow(norm)
+        >>> kwil.show_if_requested()
+    """
+    if sigma is None:
+        sigma1 = 0.3 * ((shape[0] - 1) * 0.5 - 1) + 0.8
+        sigma2 = 0.3 * ((shape[1] - 1) * 0.5 - 1) + 0.8
+    elif isinstance(sigma, float):
+        sigma1 = sigma2 = sigma
+    else:
+        sigma1, sigma2 = sigma
+    # see hesaff/src/helpers.cpp : computeCircularGaussMask
+    kernel_d0 = cv2.getGaussianKernel(shape[0], sigma1)
+    kernel_d1 = cv2.getGaussianKernel(shape[1], sigma2)
+    gausspatch = kernel_d0.dot(kernel_d1.T)
+    return gausspatch
