@@ -4,16 +4,16 @@ import numpy as np
 def benchmark_alphablend_impls():
     """
     Ignore:
-        from kwil.imutil.im_alphablend import *
+        from kwimage.imutil.im_alphablend import *
     """
-    from kwil.imutil import im_core
-    from kwil.imutil.im_alphablend import overlay_alpha_images
-    from kwil.imutil.im_alphablend import _prep_rgb_alpha
-    from kwil.imutil.im_alphablend import _alpha_blend_inplace
-    from kwil.imutil.im_alphablend import _alpha_blend_simple
-    from kwil.imutil.im_alphablend import _alpha_blend_numexpr1
-    from kwil.imutil.im_alphablend import _alpha_blend_numexpr2
-    import kwil
+    from kwimage.im_alphablend import overlay_alpha_images
+    from kwimage.im_alphablend import _prep_rgb_alpha
+    from kwimage.im_alphablend import _alpha_blend_inplace
+    from kwimage.im_alphablend import _alpha_blend_simple
+    from kwimage.im_alphablend import _alpha_blend_numexpr1
+    from kwimage.im_alphablend import _alpha_blend_numexpr2
+    import kwimage
+    import xdev
     import ubelt as ub
     H = W = 32
     rng = np.random.RandomState(0)
@@ -42,14 +42,14 @@ def benchmark_alphablend_impls():
     ub.Timerit(label='simple', unit='us').call(
         lambda: overlay_alpha_images(rgb1, rgb2, impl='simple'))
 
-    _ = kwil.profile_now(overlay_alpha_images)(rgb1, rgb2, impl='simple')
-    _ = kwil.profile_now(overlay_alpha_images)(rgb1, rgb2, impl='inplace')
+    _ = xdev.profile_now(overlay_alpha_images)(rgb1, rgb2, impl='simple')
+    _ = xdev.profile_now(overlay_alpha_images)(rgb1, rgb2, impl='inplace')
 
-    _ = kwil.profile_now(im_core.ensure_float01)(rgb1)
-    _ = kwil.profile_now(_prep_rgb_alpha)(rgb1)
-    _ = kwil.profile_now(_prep_rgb_alpha)(rgb2)
+    _ = xdev.profile_now(kwimage.ensure_float01)(rgb1)
+    _ = xdev.profile_now(_prep_rgb_alpha)(rgb1)
+    _ = xdev.profile_now(_prep_rgb_alpha)(rgb2)
 
-    _ = kwil.profile_now(_alpha_blend_simple)(rgb1, alpha1, rgb2, alpha2)
-    _ = kwil.profile_now(_alpha_blend_inplace)(rgb1, alpha1, rgb2, alpha2)
-    _ = kwil.profile_now(_alpha_blend_numexpr1)(rgb1, alpha1, rgb2, alpha2)
+    _ = xdev.profile_now(_alpha_blend_simple)(rgb1, alpha1, rgb2, alpha2)
+    _ = xdev.profile_now(_alpha_blend_inplace)(rgb1, alpha1, rgb2, alpha2)
+    _ = xdev.profile_now(_alpha_blend_numexpr1)(rgb1, alpha1, rgb2, alpha2)
     _  # NOQA

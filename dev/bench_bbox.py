@@ -1,4 +1,4 @@
-import kwil
+import kwimage
 import torch
 import ubelt as ub
 import numpy as np
@@ -10,7 +10,7 @@ def bench_bbox_iou_method():
     """
     On my system the torch impl was fastest (when the data was on the GPU).
     """
-    from kwil.structs.boxes import _box_ious_torch, _box_ious_py, _bbox_ious_c
+    from kwimage.structs.boxes import _box_ious_torch, _box_ious_py, _bbox_ious_c
 
     ydata = ub.ddict(list)
     xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 2000]
@@ -27,8 +27,8 @@ def bench_bbox_iou_method():
         ti = ub.Timerit(N, bestof=10)
 
         # Setup input dat
-        boxes1 = kwil.Boxes.random(num, scale=10.0, rng=0, format='tlbr')
-        boxes2 = kwil.Boxes.random(num + 1, scale=10.0, rng=1, format='tlbr')
+        boxes1 = kwimage.Boxes.random(num, scale=10.0, rng=0, format='tlbr')
+        boxes2 = kwimage.Boxes.random(num + 1, scale=10.0, rng=1, format='tlbr')
 
         tlbr1 = boxes1.tensor().data
         tlbr2 = boxes2.tensor().data
@@ -83,5 +83,5 @@ def bench_bbox_iou_method():
 
             raise AssertionError('different methods report different results')
 
-    kwil.autompl()
-    kwil.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
+    kwimage.autompl()
+    kwimage.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')

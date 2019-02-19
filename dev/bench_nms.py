@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-import kwil
-from kwil.algo._nms_backend.torch_nms import torch_nms
+import kwimage
+from kwimage.algo._nms_backend.torch_nms import torch_nms
 import ubelt as ub
 import itertools as it
 
@@ -89,7 +89,7 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 #         ti = ub.Timerit(N, bestof=bestof)
 
 #         # Build random test boxes and scores
-#         np_dets = kwil.Detections.random(num, scale=10.0, rng=0)
+#         np_dets = kwimage.Detections.random(num, scale=10.0, rng=0)
 #         # make all scores unique to ensure comparability
 #         np_dets.scores[:] = np.linspace(0, 1, np_dets.num_boxes())
 
@@ -150,7 +150,7 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 #             np_scores = np_dets.scores
 #             for timer in ti.reset('cython(gpu)'):
 #                 with timer:
-#                     keep = kwil.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='gpu')
+#                     keep = kwimage.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='gpu')
 #                     torch.cuda.synchronize()
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
@@ -160,13 +160,13 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 #             np_scores = np_dets.scores
 #             for timer in ti.reset('cython(cpu)'):
 #                 with timer:
-#                     keep = kwil.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='cpu')
+#                     keep = kwimage.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='cpu')
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
 #             for timer in ti.reset('numpy(cpu)'):
 #                 with timer:
-#                     keep = kwil.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='py')
+#                     keep = kwimage.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='py')
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
@@ -174,7 +174,7 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 
 #         # Check that all kept boxes do not have more than `threshold` ious
 #         for key, keep_idxs in outputs.items():
-#             kept = kwil.Boxes(np_tlbr[keep_idxs], 'tlbr')
+#             kept = kwimage.Boxes(np_tlbr[keep_idxs], 'tlbr')
 #             ious = kept.ious(kept)
 #             max_iou = (np.tril(ious) - np.eye(len(ious))).max()
 #             if max_iou > thresh:
@@ -197,11 +197,11 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 #         for k1, k2, jaccard in datas:
 #             print('    * {:<20}, {:<20}: {:0.4f}'.format(k1, k2, jaccard))
 
-#     kwil.autompl()
+#     kwimage.autompl()
 
 #     ydata = ub.dict_subset(ydata, ub.argsort(ub.map_vals(lambda x: x[-1], ydata)))
-#     kwil.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
-#     kwil.show_if_requested()
+#     kwimage.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
+#     kwimage.show_if_requested()
 
 
 def benchamrk_det_nms():
@@ -242,11 +242,11 @@ def benchamrk_det_nms():
 
         # Build random test boxes and scores
         import copy
-        np_dets1 = kwil.Detections.random(num // 2, scale=10.0, rng=0)
+        np_dets1 = kwimage.Detections.random(num // 2, scale=10.0, rng=0)
         np_dets2 = copy.deepcopy(np_dets1)
         np_dets2.boxes.translate(.1, inplace=True)
         # add boxes that will definately be removed
-        np_dets = kwil.Detections.concatenate([np_dets1, np_dets2])
+        np_dets = kwimage.Detections.concatenate([np_dets1, np_dets2])
 
         # make all scores unique to ensure comparability
         np_dets.scores[:] = np.linspace(0, 1, np_dets.num_boxes())
@@ -346,8 +346,8 @@ def benchamrk_det_nms():
         for k1, k2, jaccard in datas:
             print('    * {:<20}, {:<20}: {:0.4f}'.format(k1, k2, jaccard))
 
-    kwil.autompl()
+    kwimage.autompl()
 
     ydata = ub.dict_subset(ydata, ub.argsort(ub.map_vals(lambda x: x[-1], ydata)))
-    kwil.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
-    kwil.show_if_requested()
+    kwimage.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
+    kwimage.show_if_requested()

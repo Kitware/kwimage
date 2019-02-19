@@ -1,7 +1,7 @@
 def bench_argmax():
     """
     Ignore:
-        >>> from kwil.util.util_numpy import *
+        >>> from kwimage.util.util_numpy import *
         >>> arr = np.random.rand(1000)
         >>> num = 3
         >>> axis = None
