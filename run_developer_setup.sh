@@ -4,7 +4,7 @@
 pip install -r requirements.txt
 
 # Install irharn in developer mode
-#pip install -e .
+#pip install -e . --verbose
 
 # For some reason there is a bug with using pip and skbuild 
 # Calling setup.py directly seems to work though

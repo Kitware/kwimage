@@ -218,6 +218,11 @@ try:
     # Note: without this skbuild will fail with `pip install -e .`
     # however, it will still work with `./setup.py develop`.
     # Not sure why this is, could it be an skbuild bug?
+
+    # This should be something like:
+    # /home/joncrall/venv3.6/lib/python3.6/site-packages/numpy/core/include
+    # NOT:
+    # /tmp/pip-build-env-dt0w6ib0/overlay/lib/python3.6/site-packages/numpy/core/include
     compile_setup_kw['cmake_args'] = [
         '-DNumPy_INCLUDE_DIR:PATH=' + np.get_include()
     ]
