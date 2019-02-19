@@ -5,7 +5,7 @@
 # Written by Sergey Karayev
 # --------------------------------------------------------
 """
-CPATH=$CPATH:$(python -c "import numpy as np; print(np.get_include())") cythonize -a -i ~/code/kwil/kwil/structs/_boxes_backend/cython_boxes.pyx
+CPATH=$CPATH:$(python -c "import numpy as np; print(np.get_include())") cythonize -a -i ~/code/kwimage/kwimage/structs/_boxes_backend/cython_boxes.pyx
 
 Modified by Jon Crall to reduce python overhead
 """

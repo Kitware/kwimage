@@ -21,7 +21,6 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
 
     Example:
         >>> # DISABLE_DOCTEST
-        >>> from kwil.algo._nms_backend.torch_nms import *
         >>> import torch
         >>> import numpy as np
         >>> tlbr = torch.FloatTensor(np.array([
@@ -63,9 +62,9 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
     # Sort coordinates by descending score
     ordered_scores, order = scores.sort(0, descending=True)
 
-    import kwil
+    import kwimage
 
-    boxes = kwil.Boxes(tlbr[order], 'tlbr')
+    boxes = kwimage.Boxes(tlbr[order], 'tlbr')
     ious = boxes.ious(boxes, bias=bias)
 
     # if False:
@@ -146,13 +145,14 @@ def test_class_torch():
     import numpy as np
     import torch
     import ubelt as ub
-    import kwil
+    import kwarray
+    import kwimage
 
     thresh = .5
 
     num = 500
-    rng = kwil.ensure_rng(0)
-    cpu_boxes = kwil.Boxes.random(num, scale=400.0, rng=rng, format='tlbr', tensor=True)
+    rng = kwarray.ensure_rng(0)
+    cpu_boxes = kwimage.Boxes.random(num, scale=400.0, rng=rng, format='tlbr', tensor=True)
     cpu_tlbr = cpu_boxes.to_tlbr().data
     # cpu_scores = torch.Tensor(rng.rand(len(cpu_tlbr)))
     # make all scores unique to ensure comparability
@@ -176,9 +176,10 @@ def test_class_torch():
     keep_ = torch_nms(tlbr, scores, classes=classes, thresh=thresh, bias=0)
     keep2 = np.where(keep_.cpu().numpy())[0].tolist()
 
-    keep3 = kwil.non_max_supression(tlbr.cpu().numpy(), scores.cpu().numpy(),
-                                    classes=classes.cpu().numpy(),
-                                    thresh=thresh, bias=0, impl='gpu')
+    keep3 = kwimage.non_max_supression(tlbr.cpu().numpy(),
+                                       scores.cpu().numpy(),
+                                       classes=classes.cpu().numpy(),
+                                       thresh=thresh, bias=0, impl='gpu')
 
     print(len(keep1))
     print(len(keep2))

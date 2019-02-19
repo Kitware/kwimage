@@ -1,9 +1,9 @@
 """
-cythonize -a -i ~/code/kwil/kwil/algo/_nms_backend/cpu_soft_nms.pyx
+cythonize -a -i ~/code/kwimage/kwimage/algo/_nms_backend/cpu_soft_nms.pyx
 
 python -c "
 import numpy as np
-from kwil.algo._nms_backend import cpu_soft_nms
+from kwimage.algo._nms_backend import cpu_soft_nms
 tlbr = np.array([[0, 0, 100, 100], [100, 100, 10, 10]], dtype=np.float32)
 scores = np.array([.1, .2], dtype=np.float32)
 keep = cpu_soft_nms.soft_nms(tlbr, scores, thresh=.1)

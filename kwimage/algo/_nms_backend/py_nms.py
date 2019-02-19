@@ -13,11 +13,7 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
     """
     Pure Python NMS baseline.
 
-    CommandLine:
-        xdoctest -m kwil.algo._nms_backend.py_nms py_nms
-
     Example:
-        >>> from kwil.algo._nms_backend.py_nms import *
         >>> np_tlbr = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],

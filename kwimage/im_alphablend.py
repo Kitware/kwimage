@@ -19,15 +19,16 @@ def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
         https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
 
     Example:
-        >>> import kwil
+        >>> import kwimage
         >>> keys = ['astro', 'carl', 'stars']
-        >>> layers = [kwil.grab_test_image(k, dsize=(100, 100)) for k in keys]
-        >>> layers = [kwil.ensure_alpha_channel(g, alpha=.5) for g in layers]
+        >>> layers = [kwimage.grab_test_image(k, dsize=(100, 100)) for k in keys]
+        >>> layers = [kwimage.ensure_alpha_channel(g, alpha=.5) for g in layers]
         >>> stacked = overlay_alpha_layers(layers)
         >>> # xdoctest: +REQUIRES(--show)
-        >>> kwil.autompl()
-        >>> kwil.imshow(stacked)
-        >>> kwil.show_if_requested()
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(stacked)
+        >>> kwplot.show_if_requested()
     """
     layer_iter = iter(layers)
     raster = next(layer_iter)
@@ -59,15 +60,16 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
 
     Example:
-        >>> import kwil
-        >>> img1 = kwil.grab_test_image('astro', dsize=(100, 100))
-        >>> img2 = kwil.grab_test_image('carl', dsize=(100, 100))
-        >>> img1 = kwil.ensure_alpha_channel(img1, alpha=.5)
+        >>> import kwimage
+        >>> img1 = kwimage.grab_test_image('astro', dsize=(100, 100))
+        >>> img2 = kwimage.grab_test_image('carl', dsize=(100, 100))
+        >>> img1 = kwimage.ensure_alpha_channel(img1, alpha=.5)
         >>> img3 = overlay_alpha_images(img1, img2)
         >>> # xdoctest: +REQUIRES(--show)
-        >>> kwil.autompl()
-        >>> kwil.imshow(img3)
-        >>> kwil.show_if_requested()
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img3)
+        >>> kwplot.show_if_requested()
     """
     rgb1, alpha1 = _prep_rgb_alpha(img1, dtype=dtype)
     rgb2, alpha2 = _prep_rgb_alpha(img2, dtype=dtype)

@@ -1,8 +1,13 @@
-from kwil.structs.boxes import (Boxes,)
-from kwil.structs.dataframe_light import (DataFrameArray, DataFrameLight,
-                                          LocLight,)
-from kwil.structs.detections import (Detections,)
-from kwil.structs.heatmap import (Heatmap, smooth_prob,)
+"""
+mkinit ~/code/kwimage/kwimage/structs/__init__.py -w --relative
+"""
+from . import boxes
+from . import detections
+from . import heatmap
 
-__all__ = ['Boxes', 'DataFrameArray', 'DataFrameLight', 'Detections',
-           'Heatmap', 'LocLight', 'smooth_prob']
+from .boxes import (Boxes,)
+from .detections import (Detections,)
+from .heatmap import (Heatmap, smooth_prob,)
+
+__all__ = ['Boxes', 'Detections', 'Heatmap', 'boxes', 'detections', 'heatmap',
+           'smooth_prob']

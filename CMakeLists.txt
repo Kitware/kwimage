@@ -6,12 +6,12 @@
 # https://github.com/amueller/word_cloud/pull/42ci
 
 cmake_minimum_required(VERSION 3.11.0)
-project(kwil LANGUAGES C CXX CUDA)
+project(kwimage LANGUAGES C CXX CUDA)
 
 
 # Setup basic python stuff and ensure we have skbuild
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/CMake")
-#include( kwil-setup-python )
+#include( kwimage-setup-python )
 ###
 # Finds the python binaries, libs, include, and site-packages paths
 # Ensures that skbuild is installed and its utilities are findable
@@ -110,8 +110,8 @@ find_package(Cython REQUIRED)
 find_package(NumPy REQUIRED)
 
 
-add_subdirectory("kwil/structs/_boxes_backend")
-add_subdirectory("kwil/algo/_nms_backend")
+add_subdirectory("kwimage/structs/_boxes_backend")
+add_subdirectory("kwimage/algo/_nms_backend")
 
 
 set(KWIL_CONFIG_STATUS "

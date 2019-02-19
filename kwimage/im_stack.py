@@ -41,7 +41,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> print(imgB.shape)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
-        >>> import kwil
+        >>> import kwimage
         >>> kwplot.autompl()
         >>> kwplot.imshow(imgB, colorspace='rgb')
         >>> wh1 = np.multiply(img1.shape[0:2][::-1], transforms[0].scale)
@@ -50,8 +50,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> xoff2, yoff2 = transforms[1].translation
         >>> xywh1 = (xoff1, yoff1, wh1[0], wh1[1])
         >>> xywh2 = (xoff2, yoff2, wh2[0], wh2[1])
-        >>> kwplot.draw_boxes(kwil.Boxes([xywh1], 'xywh'), color=(1.0, 0, 0))
-        >>> kwplot.draw_boxes(kwil.Boxes([xywh2], 'xywh'), color=(1.0, 0, 0))
+        >>> kwplot.draw_boxes(kwimage.Boxes([xywh1], 'xywh'), color=(1.0, 0, 0))
+        >>> kwplot.draw_boxes(kwimage.Boxes([xywh2], 'xywh'), color=(1.0, 0, 0))
         >>> kwplot.show_if_requested()
         ((662, 512, 3), (0.0, 0.0), (0, 150))
     """

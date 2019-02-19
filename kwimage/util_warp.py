@@ -338,7 +338,7 @@ def subpixel_align(dst, src, index, interp_axes=None):
     """
     Returns an aligned version of the source tensor and destination index.
     """
-    import kwil
+    import kwarray
     if interp_axes is None:
         # Assume spatial dimensions are trailing
         interp_axes = len(dst.shape) + np.arange(-min(2, len(index)), 0)
@@ -351,7 +351,7 @@ def subpixel_align(dst, src, index, interp_axes=None):
 
     if not ub.iterable(src):
         # Broadcast scalars
-        impl = kwil.ArrayAPI.impl(dst)
+        impl = kwarray.ArrayAPI.impl(dst)
         shape = tuple(raw_extent.astype(np.int).tolist())
         src = impl.full(shape, dtype=dst.dtype, fill_value=src)
 
@@ -361,7 +361,7 @@ def subpixel_align(dst, src, index, interp_axes=None):
                 tuple(src.shape), tuple(raw_extent)))
     if True:
         # check that all non interp slices are integral
-        noninterp_axes = np.where(~kwil.boolmask(interp_axes, len(dst.shape)))[0]
+        noninterp_axes = np.where(~kwarray.boolmask(interp_axes, len(dst.shape)))[0]
         for i in noninterp_axes:
             assert raw_subpixel_starts[i] % 1 == 0
             assert raw_subpixel_stops[i] % 1 == 0
@@ -532,9 +532,9 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
                   [0.5 , 0.75, 1.  , 1.  , 0.5 ],
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.5 ]])
     """
-    import kwil
+    import kwarray
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
-    impl = kwil.ArrayAPI.impl(dst)
+    impl = kwarray.ArrayAPI.impl(dst)
     impl.maximum(dst[aligned_index], aligned_src, out=dst[aligned_index])
     return dst
 
@@ -570,9 +570,9 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.25],
                   [0.5 , 0.3 , 0.4 , 0.4 , 0.1 ]])
     """
-    import kwil
+    import kwarray
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
-    impl = kwil.ArrayAPI.impl(dst)
+    impl = kwarray.ArrayAPI.impl(dst)
     impl.minimum(dst[aligned_index], aligned_src, out=dst[aligned_index])
     return dst
 
@@ -682,8 +682,8 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         >>> subpixel_translate(inputs, shift, interp_axes, output_shape=(9, 9))
         >>> subpixel_translate(inputs, shift, interp_axes, output_shape=(3, 4))
     """
-    import kwil
-    impl = kwil.ArrayAPI.impl(inputs)
+    import kwarray
+    impl = kwarray.ArrayAPI.impl(inputs)
 
     if output_shape is None:
         output_shape = inputs.shape
@@ -754,7 +754,7 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         y, x = start
 
         # Get quantized pixel locations near subpixel pts
-        start0 = kwil.ArrayAPI.ifloor(start)
+        start0 = kwarray.ArrayAPI.ifloor(start)
         start1 = start0 + 1
         alpha = start1 - start
         beta  = start  - start0
@@ -867,7 +867,7 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         np.array([2, 3])
         [(2, 4)]
     """
-    import kwil
+    import kwarray
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 
@@ -893,7 +893,7 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         if len(data.shape) != len(extra_padding):
             extra_padding = extra_padding + [(0, 0)]
 
-        impl = kwil.ArrayAPI.impl(data_clipped)
+        impl = kwarray.ArrayAPI.impl(data_clipped)
         data_sliced = impl.pad(data_clipped, extra_padding, mode=pad_mode,
                                **padkw)
 
@@ -1002,9 +1002,9 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     On CPU: torch is faster for homog, but cv2 is faster for affine
 
     Benchmark:
-        >>> from kwil.util.util_warp import *
-        >>> from kwil.util.util_warp import _warp_tensor_cv2
-        >>> from kwil.util.util_warp import warp_tensor
+        >>> from kwimage.util.util_warp import *
+        >>> from kwimage.util.util_warp import _warp_tensor_cv2
+        >>> from kwimage.util.util_warp import warp_tensor
         >>> import numpy as np
         >>> ti = ub.Timerit(10, bestof=3, verbose=2, unit='ms')
         >>> mode = 'linear'
@@ -1030,27 +1030,29 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> results[ti.label] = outputs
         >>> import itertools as it
         >>> for k1, k2 in it.combinations(results, 2):
-        >>>     a = kwil.ArrayAPI.numpy(results[k1])
-        >>>     b = kwil.ArrayAPI.numpy(results[k2])
+        >>>     a = kwarray.ArrayAPI.numpy(results[k1])
+        >>>     b = kwarray.ArrayAPI.numpy(results[k2])
         >>>     diff = np.abs(a - b)
-        >>>     diff_stats = kwil.stats_dict(diff, n_extreme=1, extreme=1)
+        >>>     diff_stats = kwarray.stats_dict(diff, n_extreme=1, extreme=1)
         >>>     print('{} - {}: {}'.format(k1, k2, ub.repr2(diff_stats, nl=0, precision=4)))
         >>> # xdoctest: +REQUIRES(--show)
-        >>> kwil.autompl()
-        >>> kwil.imshow(results['warp_tensor(torch)'][0, 0], fnum=1, pnum=(1, 2, 1), title='torch')
-        >>> kwil.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(results['warp_tensor(torch)'][0, 0], fnum=1, pnum=(1, 2, 1), title='torch')
+        >>> kwplot.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
     """
     import cv2
-    import kwil
-    impl = kwil.ArrayAPI.impl(inputs)
+    import kwarray
+    import kwimage
+    impl = kwarray.ArrayAPI.impl(inputs)
 
     inputs = impl.numpy(inputs)
-    mat = kwil.ArrayAPI.numpy(mat)
+    mat = kwarray.ArrayAPI.numpy(mat)
     dsize = tuple(map(int, output_dims[::-1]))
 
     if mode == 'bilinear':
         mode = 'linear'
-    flags = kwil.imutil.im_cv2._rectify_interpolation(mode)
+    flags = kwimage.im_cv2._rectify_interpolation(mode)
     input_shape = inputs.shape
     if len(input_shape) < 2:
         raise ValueError('height x width must be last two dims')

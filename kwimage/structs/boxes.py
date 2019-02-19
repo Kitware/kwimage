@@ -2,7 +2,7 @@
 """
 Vectorized Bounding Boxes
 
-kwil.Boxes is a tool for efficiently transporting a set of bounding boxes
+kwimage.Boxes is a tool for efficiently transporting a set of bounding boxes
 within python as well as methods for operating on bounding boxes. It is a VERY
 thin wrapper around a pure numpy/torch array/tensor representation, and thus it
 is very fast.
@@ -20,7 +20,7 @@ There are 3 main bounding box formats:
 Here is some example usage
 
 Example:
-    >>> from kwil.structs.boxes import Boxes
+    >>> from kwimage.structs.boxes import Boxes
     >>> data = np.array([[ 0,  0, 10, 10],
     >>>                  [ 5,  5, 50, 50],
     >>>                  [10,  0, 20, 10],
@@ -164,7 +164,7 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
         bias (int): either 0 or 1, does tl=br have area of 0 or 1?
 
     Benchmark:
-        See ~/code/kwil/dev/bench_bbox.py
+        See ~/code/kwarray/dev/bench_bbox.py
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE
@@ -795,9 +795,10 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> import kwil
-            >>> rng = kwil.ensure_rng(0)
-            >>> boxes = kwil.Boxes.random(num=3, scale=10, rng=rng).astype(np.float64)
+            >>> import kwarray
+            >>> import kwimage
+            >>> rng = kwarray.ensure_rng(0)
+            >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng).astype(np.float64)
             >>> scale_xy = (10 * rng.rand(len(boxes), 2))
             >>> print(ub.repr2(boxes.scale(scale_xy).data, precision=2))
             np.array([[28.4 , 46.28,  5.68, 18.51],
@@ -868,9 +869,10 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> import kwil
-            >>> rng = kwil.ensure_rng(0)
-            >>> boxes = kwil.Boxes.random(num=3, scale=10, rng=rng)
+            >>> import kwarray
+            >>> import kwimage
+            >>> rng = kwarray.ensure_rng(0)
+            >>> boxes = kwarray.Boxes.random(num=3, scale=10, rng=rng)
             >>> dxdy = (10 * rng.randn(len(boxes), 2)).astype(np.int)
             >>> boxes.translate(dxdy)
             <Boxes(xywh,
@@ -980,30 +982,27 @@ class _BoxDrawMixins(object):
         """
         Draws boxes using matplotlib. Wraps around mplutil.draw_boxes
 
-        CommandLine:
-            xdoctest -m ~/code/kwil/kwil/structs/boxes.py _BoxDrawMixins.draw --show
-
         Example:
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
             >>> # xdoc: +REQUIRES(--show)
-            >>> import kwil
-            >>> kwil.autompl()
-            >>> fig = kwil.figure(fnum=1, doclf=True)
-            >>> kwil.imshow(image)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(image)
             >>> # xdoc: -REQUIRES(--show)
             >>> self.draw(color='blue')
             >>> # xdoc: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
-            >>> kwil.show_if_requested()
+            >>> kwplot.show_if_requested()
         """
-        import kwil
+        import kwplot
         boxes = self.to_xywh()
-        kwil.draw_boxes(boxes, color=color, labels=labels, alpha=alpha,
-                        centers=centers, fill=fill, lw=lw, ax=ax)
+        kwplot.draw_boxes(boxes, color=color, labels=labels, alpha=alpha,
+                          centers=centers, fill=fill, lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None):
         """
@@ -1012,9 +1011,6 @@ class _BoxDrawMixins(object):
         Args:
             image (ndarray): must be in uint8 format
 
-        CommandLine:
-            xdoctest -m ~/code/kwil/kwil/structs/boxes.py _BoxDrawMixins.draw_on --show
-
         Example:
             >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
             >>> self.data[0][:] = [3, 3, 253, 253]
@@ -1022,14 +1018,15 @@ class _BoxDrawMixins(object):
             >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color=color)
             >>> # xdoc: +REQUIRES(--show)
-            >>> import kwil
-            >>> kwil.figure(fnum=2000, doclf=True)
-            >>> kwil.autompl()
-            >>> kwil.imshow(image2)
-            >>> kwil.show_if_requested()
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
         """
         import cv2
-        import kwil
+        import kwplot
+        import kwimage
         def _coords(x, y):
             return tuple(map(int, map(round, (x, y))))
 
@@ -1037,11 +1034,11 @@ class _BoxDrawMixins(object):
         rectkw = {
             'thickness': int(2),
         }
-        rect_color = kwil.Color(color).as255('rgb')
+        rect_color = kwplot.Color(color).as255('rgb')
 
         # Parameters for drawing the label text
         fontkw = {
-            'color': kwil.Color(color).as255('rgb'),
+            'color': kwplot.Color(color).as255('rgb'),
             'thickness': int(2),
             'fontFace': cv2.FONT_HERSHEY_SIMPLEX,
             'fontScale': 0.75,
@@ -1056,7 +1053,7 @@ class _BoxDrawMixins(object):
         if labels is None or labels is False:
             labels = [None] * len(tlbr_list)
 
-        image = kwil.atleast_3channels(image, copy=True)
+        image = kwimage.atleast_3channels(image, copy=True)
 
         for tlbr, label, alpha_ in zip(tlbr_list, labels, alpha):
             x1, y1, x2, y2 = tlbr
@@ -1069,7 +1066,7 @@ class _BoxDrawMixins(object):
                 background = image.copy()
             image = cv2.rectangle(image, pt1, pt2, rect_color, **rectkw)
             if label:
-                image = kwil.draw_text_on_image(
+                image = kwimage.draw_text_on_image(
                     image, text=label, org=org, **fontkw)
             if alpha_ < 1.0:
                 # We could get away with only doing this to a slice of the
@@ -1241,8 +1238,8 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                        [32, 51, 32, 36],
                        [36, 28, 23, 26]]))>
         """
-        import kwil
-        rng = kwil.ensure_rng(rng)
+        import kwarray
+        rng = kwarray.ensure_rng(rng)
 
         if ub.iterable(scale):
             as_integer = all(isinstance(s, int) for s in scale)
@@ -1466,7 +1463,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                 exact result will vary by implementation, but they will always
                 be close.  Some implementations only accept certain data types
                 (e.g.  impl='c', only accepts float32 numpy arrays).  See
-                ~/code/kwil/dev/bench_bbox.py for benchmark details. On my
+                ~/code/kwimage/dev/bench_bbox.py for benchmark details. On my
                 system the torch impl was fastest (when the data was on the
                 GPU).
             mode : depricated, use impl
@@ -1736,7 +1733,7 @@ def _rectify_torch_dtype(dtype):
 if __name__ == '__main__':
     """
     CommandLine:
-        xdoctest -m kwil.structs.boxes
+        xdoctest -m kwimage.structs.boxes
     """
     import xdoctest
     xdoctest.doctest_module(__file__)

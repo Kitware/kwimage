@@ -42,9 +42,6 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
 
         space (str): which colorspace to return in (defaults to RGB)
 
-    CommandLine:
-        xdoctest -m kwil.imutil.im_demodata grab_test_image
-
     Example:
         >>> for key in grab_test_image.keys():
         ...     grab_test_image(key)
@@ -87,9 +84,9 @@ def grab_test_image_fpath(key='astro'):
 
     if 'sha1' in item:
         fpath = ub.grabdata(item['url'], hash_prefix=item['sha1'],
-                            appname='kwil/demodata', hasher='sha1')
+                            appname='kwimage/demodata', hasher='sha1')
     else:
-        fpath = ub.grabdata(item['url'], appname='kwil')
+        fpath = ub.grabdata(item['url'], appname='kwimage')
     return fpath
 
 grab_test_image.keys = lambda: _TEST_IMAGES.keys()

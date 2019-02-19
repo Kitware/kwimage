@@ -38,10 +38,10 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
         https://projet.liris.cnrs.fr/m2disco/pub/Congres/2006-ICPR/DATA/C03_0406.PDF
 
     Example:
-        >>> import kwil
+        >>> import kwimage
         >>> # Make a bunch of boxes with the same width and height
-        >>> #boxes = kwil.Boxes.random(230397, scale=1000, format='cxywh')
-        >>> boxes = kwil.Boxes.random(237, scale=1000, format='cxywh')
+        >>> #boxes = kwimage.Boxes.random(230397, scale=1000, format='cxywh')
+        >>> boxes = kwimage.Boxes.random(237, scale=1000, format='cxywh')
         >>> boxes.data.T[2] = 10
         >>> boxes.data.T[3] = 10
         >>> #
@@ -179,14 +179,14 @@ class _NMS_Impls():
         _impls['torch'] = torch_nms.torch_nms
         _automode = 'py'
         try:
-            from kwil.algo._nms_backend import cpu_nms
+            from kwimage.algo._nms_backend import cpu_nms
             _impls['cpu'] = cpu_nms.cpu_nms
             _automode = 'cpu'
         except Exception as ex:
             warnings.warn('cpu_nms is not available: {}'.format(str(ex)))
         try:
             if torch.cuda.is_available():
-                from kwil.algo._nms_backend import gpu_nms
+                from kwimage.algo._nms_backend import gpu_nms
                 _impls['gpu'] = gpu_nms.gpu_nms
                 _automode = 'gpu'
         except Exception as ex:
@@ -203,7 +203,7 @@ def available_nms_impls():
     List available values for the `impl` kwarg of `non_max_supression`
 
     CommandLine:
-        xdoctest -m kwil.algo.algo_nms available_nms_impls
+        xdoctest -m kwimage.algo.algo_nms available_nms_impls
 
     Example:
         >>> impls = available_nms_impls()
@@ -237,10 +237,10 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         https://github.com/bharatsingh430/soft-nms/blob/master/lib/nms/cpu_nms.pyx <- TODO
 
     CommandLine:
-        xdoctest -m kwil.algo.algo_nms non_max_supression:0
+        xdoctest -m kwimage.algo.algo_nms non_max_supression:0
 
     Example:
-        >>> from kwil.algo.algo_nms import *
+        >>> from kwimage.algo.algo_nms import *
         >>> dets = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
@@ -353,7 +353,7 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
 if __name__ == '__main__':
     """
     CommandLine:
-        xdoctest -m kwil.algo.algo_nms
+        xdoctest -m kwimage.algo.algo_nms
     """
     import xdoctest
     xdoctest.doctest_module(__file__)

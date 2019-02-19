@@ -2,7 +2,7 @@
 """
 Wrappers around cv2 functions
 
-Note: all functions in kwil work with RGB input by default instead of BGR.
+Note: all functions in kwimage work with RGB input by default instead of BGR.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
@@ -199,26 +199,28 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         colorspace (str): string code of the input image colorspace
 
     Example:
-        >>> import kwil
+        >>> import kwimage
         >>> import numpy as np
         >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
         >>> color = 'dodgerblue'
         >>> thickness = 1
-        >>> boxes = kwil.Boxes([[1, 1, 8, 8]], 'tlbr')
+        >>> boxes = kwimage.Boxes([[1, 1, 8, 8]], 'tlbr')
         >>> img2 = draw_boxes_on_image(img, boxes, color, thickness)
         >>> assert tuple(img2[1, 1]) == (30, 144, 255)
         >>> # xdoc: +REQUIRES(--show)
-        >>> kwil.autompl()  # xdoc: +SKIP
-        >>> kwil.figure(doclf=True, fnum=1)
-        >>> kwil.imshow(img2)
+        >>> import kwplot
+        >>> kwplot.autompl()  # xdoc: +SKIP
+        >>> kwplot.figure(doclf=True, fnum=1)
+        >>> kwplot.imshow(img2)
     """
-    import kwil
-    if not isinstance(boxes, kwil.Boxes):
+    import kwimage
+    import kwplot
+    if not isinstance(boxes, kwimage.Boxes):
         if box_format is None:
             raise ValueError('specify box_format')
-        boxes = kwil.Boxes(boxes, box_format)
+        boxes = kwimage.Boxes(boxes, box_format)
 
-    color = tuple(kwil.Color(color).as255(colorspace))
+    color = tuple(kwplot.Color(color).as255(colorspace))
     tlbr = boxes.to_tlbr().data
     img2 = img.copy()
     for x1, y1, x2, y2 in tlbr:
@@ -252,31 +254,33 @@ def draw_text_on_image(img, text, org, **kwargs):
         https://stackoverflow.com/questions/27647424/
 
     Example:
-        >>> import kwil
-        >>> img = kwil.grab_test_image(space='rgb')
-        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR', org=(0, 0))
+        >>> import kwimage
+        >>> img = kwimage.grab_test_image(space='rgb')
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR', org=(0, 0))
         >>> # xdoc: +REQUIRES(--show)
-        >>> kwil.autompl()
-        >>> kwil.imshow(img2, fontScale=10)
-        >>> kwil.show_if_requested()
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img2, fontScale=10)
+        >>> kwplot.show_if_requested()
 
     Example:
-        >>> import kwil
-        >>> img = kwil.grab_test_image(space='rgb')
-        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
-        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(150, 0), valign='center', border=2)
-        >>> img2 = kwil.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(300, 0), valign='bottom', border=2)
+        >>> import kwimage
+        >>> img = kwimage.grab_test_image(space='rgb')
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(150, 0), valign='center', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(300, 0), valign='bottom', border=2)
         >>> # xdoc: +REQUIRES(--show)
-        >>> kwil.autompl()
-        >>> kwil.imshow(img2, fontScale=10)
-        >>> kwil.show_if_requested()
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img2, fontScale=10)
+        >>> kwplot.show_if_requested()
     """
-    import kwil
+    import kwplot
 
     if 'color' not in kwargs:
         kwargs['color'] = (255, 0, 0)
 
-    kwargs['color'] = kwil.Color(kwargs['color']).as255('rgb')
+    kwargs['color'] = kwplot.Color(kwargs['color']).as255('rgb')
 
     if 'thickness' not in kwargs:
         kwargs['thickness'] = 2
@@ -373,7 +377,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         https://kwgitlab.kitware.com/computer-vision/heatmap/blob/master/heatmap/heatmap.c
 
     CommandLine:
-        xdoctest -m kwil.imutil.im_cv2 gaussian_patch --show
+        xdoctest -m kwimage.im_cv2 gaussian_patch --show
 
     Example:
         >>> import numpy as np
@@ -383,11 +387,11 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> sum_ = gausspatch.sum()
         >>> assert np.all(np.isclose(sum_, 1.0))
         >>> # xdoc: +REQUIRES(--show)
-        >>> import kwil
-        >>> kwil.autompl()
+        >>> import kwplot
+        >>> kwplot.autompl()
         >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
-        >>> kwil.imshow(norm)
-        >>> kwil.show_if_requested()
+        >>> kwplot.imshow(norm)
+        >>> kwplot.show_if_requested()
     """
     if sigma is None:
         sigma1 = 0.3 * ((shape[0] - 1) * 0.5 - 1) + 0.8

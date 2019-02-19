@@ -1,9 +1,10 @@
-from kwil.algo.algo_assignment import (maxvalue_assignment, mincost_assignment,
-                                       mindist_assignment,)
-from kwil.algo.algo_nms import (available_nms_impls, daq_spatial_nms,
-                                non_max_supression,)
-from kwil.algo.algo_setcover import (setcover,)
+"""
+mkinit ~/code/kwimage/kwimage/algo/__init__.py -w --relative
+"""
+from . import algo_nms
 
-__all__ = ['available_nms_impls', 'daq_spatial_nms', 'maxvalue_assignment',
-           'mincost_assignment', 'mindist_assignment', 'non_max_supression',
-           'setcover']
+from .algo_nms import (available_nms_impls, daq_spatial_nms,
+                       non_max_supression,)
+
+__all__ = ['algo_nms', 'available_nms_impls', 'daq_spatial_nms',
+           'non_max_supression']

@@ -38,7 +38,10 @@ Pypi:
      https://pypi.python.org/pypi?:action=display&name=kwimage
 
 """
-from setuptools import setup
+from os.path import exists
+from os.path import join
+from skbuild import setup
+from setuptools import find_packages
 import sys
 from os.path import dirname
 
@@ -177,30 +180,99 @@ def parse_requirements(fname='requirements.txt'):
     return []
 
 
+def clean():
+    """
+    __file__ = ub.truepath('~/code/kwimage/setup.py')
+    """
+    import ubelt as ub
+    import os
+    import glob
+
+    modname = 'kwimage'
+    repodir = dirname(os.path.realpath(__file__))
+
+    toremove = []
+    for root, dnames, fnames in os.walk(repodir):
+
+        if os.path.basename(root) == modname + '.egg-info':
+            toremove.append(root)
+            del dnames[:]
+
+        if os.path.basename(root) == '__pycache__':
+            toremove.append(root)
+            del dnames[:]
+
+        if os.path.basename(root) == '_ext':
+            # Remove torch extensions
+            toremove.append(root)
+            del dnames[:]
+
+        if os.path.basename(root) == 'build':
+            # Remove python c extensions
+            if len(dnames) == 1 and dnames[0].startswith('temp.'):
+                toremove.append(root)
+                del dnames[:]
+
+        # Remove simple pyx inplace extensions
+        for fname in fnames:
+            if fname.endswith(('.so', '.c', '.o')):
+                if fname.split('.')[0] + '.pyx' in fnames:
+                    toremove.append(join(root, fname))
+
+    def enqueue(d):
+        if exists(d) and d not in toremove:
+            toremove.append(d)
+
+    enqueue(join(repodir, 'htmlcov'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.c'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.c'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.cpp'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/gpu_nms.cpp'))
+    enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.c'))
+    enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.html'))
+    for d in glob.glob(join(repodir, 'kwimage/algo/_nms_backend/*_nms.*so')):
+        enqueue(d)
+
+    for d in glob.glob(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes*.*so')):
+        enqueue(d)
+
+    enqueue(join(repodir, '_skbuild'))
+    enqueue(join(repodir, '_cmake_test_compile'))
+    enqueue(join(repodir, 'kwimage.egg-info'))
+
+    for dpath in toremove:
+        ub.delete(dpath, verbose=1)
+
+
+# Scikit-build extension module logic
+compile_setup_kw = dict(
+    cmake_languages=('C', 'CXX', 'CUDA'),
+    cmake_source_dir='.',
+    # cmake_args=['-DSOME_FEATURE:BOOL=OFF'],
+    # cmake_source_dir='kwimage',
+)
+
+
 version = parse_version('kwimage')  # needs to be a global var for git tags
 
 if __name__ == '__main__':
+    if 'clean' in sys.argv:
+        # hack
+        clean()
+        sys.exit(0)
     setup(
         name='kwimage',
         version=version,
         author='Jon Crall',
-        description='A "utility belt" of commonly needed utility and helper functions',
         long_description=parse_description(),
         install_requires=parse_requirements('requirements.txt'),
-        extras_require={
-            'all': parse_requirements('optional-requirements.txt')
-        },
         author_email='erotemic@gmail.com',
-        url='https://github.com/Erotemic/kwimage',
-        license='Apache 2',
-        packages=['kwimage'],
+        url='https://kwgitlab.kitware.com/jon.crall/kwimage',
+        packages=find_packages(include='kwimage.*'),
         classifiers=[
             # List of classifiers available at:
             # https://pypi.python.org/pypi?%3Aaction=list_classifiers
             'Development Status :: 3 - Alpha',
-            #'Intended Audience :: <?TODO: Developers>',
-            #'Topic :: <?TODO: Software Development :: Libraries :: Python Modules>',
-            #'Topic :: <?TODO: Utilities>'',
             # This should be interpreted as Apache License v2.0
             'License :: OSI Approved :: Apache Software License',
             # Supported Python versions

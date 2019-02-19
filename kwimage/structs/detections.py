@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Structure for efficient access and modification of bounding boxes with
-associated scores and class labels. Builds on top of the `kwil.Boxes`
+associated scores and class labels. Builds on top of the `kwimage.Boxes`
 structure.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
@@ -9,7 +9,7 @@ import six
 import torch
 import numpy as np
 import ubelt as ub
-from kwil.structs import boxes as _boxes
+from kwimage.structs import boxes as _boxes
 
 
 class _DetDrawMixin:
@@ -21,25 +21,21 @@ class _DetDrawMixin:
         """
         Draws boxes using matplotlib
 
-        CommandLine:
-            xdoctest -m kwil.structs.detections Detections.draw --show
-
         Example:
-            >>> from kwil.structs.detections import *
             >>> self = Detections.random(num=10, scale=512.0, rng=0, classes=['a', 'b', 'c'])
             >>> self.boxes.translate((-128, -128), inplace=True)
             >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
             >>> # xdoc: +REQUIRES(--show)
-            >>> import kwil
-            >>> kwil.autompl()
-            >>> fig = kwil.figure(fnum=1, doclf=True)
-            >>> kwil.imshow(image)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(image)
             >>> # xdoc: -REQUIRES(--show)
             >>> self.draw(color='blue', alpha=None)
             >>> # xdoc: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
-            >>> kwil.show_if_requested()
+            >>> kwplot.show_if_requested()
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
@@ -56,20 +52,16 @@ class _DetDrawMixin:
         Returns:
             ndarray[uint8]: image with labeled boxes drawn on it
 
-        CommandLine:
-            xdoctest -m kwil.structs.detections Detections.draw_on --show
-
         Example:
-            >>> from kwil.structs.detections import *
-            >>> import kwil
+            >>> import kwplot
             >>> self = Detections.random(num=10, scale=512, rng=0)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color='blue')
             >>> # xdoc: +REQUIRES(--show)
-            >>> kwil.figure(fnum=2000, doclf=True)
-            >>> kwil.autompl()
-            >>> kwil.imshow(image2)
-            >>> kwil.show_if_requested()
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
@@ -139,12 +131,12 @@ class _DetAlgoMixin:
             impl (str): nms implementation to use
             daq (Bool | Dict): if False, uses reqgular nms, otherwise uses
                 divide and conquor algorithm. If `daq` is a Dict, then
-                it is used as the kwargs to `kwil.daq_spatial_nms`
+                it is used as the kwargs to `kwimage.daq_spatial_nms`
 
         Returns:
             ndarray[int]: indices of boxes to keep
         """
-        import kwil
+        import kwimage
         classes = self.class_idxs if perclass else None
         tlbr = self.boxes.to_tlbr().data
         scores = self.data.get('scores', None)
@@ -160,10 +152,10 @@ class _DetAlgoMixin:
                 daqkw['diameter'] = max(self.boxes.width.max(),
                                         self.boxes.height.max())
 
-            keep = kwil.daq_spatial_nms(tlbr, scores, **daqkw)
+            keep = kwimage.daq_spatial_nms(tlbr, scores, **daqkw)
         else:
-            keep = kwil.non_max_supression(tlbr, scores, thresh=thresh,
-                                           classes=classes, impl=impl)
+            keep = kwimage.non_max_supression(tlbr, scores, thresh=thresh,
+                                              classes=classes, impl=impl)
         return keep
 
     def non_max_supress(self, thresh=0.0, perclass=False, impl='auto',
@@ -187,7 +179,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             boxes, confidence scores, and class indices. Details of the most
             common keys and types are as follows:
 
-                boxes (kwil.Boxes[ArrayLike]): multiple bounding boxes
+                boxes (kwimage.Boxes[ArrayLike]): multiple bounding boxes
                 scores (ArrayLike): associated scores
                 class_idxs (ArrayLike): associated class indices
 
@@ -230,10 +222,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         and/or `metakeys` kwargs.
 
         Example:
-            >>> import kwil
-            >>> dets = kwil.Detections(
+            >>> import kwimage
+            >>> dets = kwimage.Detections(
             >>>     # there are expected keys that do not need registration
-            >>>     boxes=kwil.Boxes.random(3),
+            >>>     boxes=kwimage.Boxes.random(3),
             >>>     class_idxs=[0, 1, 1],
             >>>     classes=['a', 'b'],
             >>>     # custom data attrs must align with boxes
@@ -241,8 +233,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>>     myattr2=np.random.rand(3, 2, 8),
             >>>     # there are no restrictions on metadata
             >>>     mymeta='a custom metadata string',
-            >>>     # Note that any key not in kwil.Detections.__datakeys__ or
-            >>>     # kwil.Detections.__metakeys__ must be registered at the
+            >>>     # Note that any key not in kwimage.Detections.__datakeys__ or
+            >>>     # kwimage.Detections.__metakeys__ must be registered at the
             >>>     # time of construction.
             >>>     datakeys=['myattr1', 'myattr2'],
             >>>     metakeys=['mymeta'],
@@ -297,9 +289,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> cats = [{'id': 0, 'name': 'background'}, {'id': 2, 'name': 'class1'}]
             >>> Detections.from_coco_annots(anns, cats)
         """
-        import kwil
+        import kwimage
         true_xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
-        true_boxes = kwil.Boxes(true_xywh, 'xywh')
+        true_boxes = kwimage.Boxes(true_xywh, 'xywh')
         true_cids = [ann['category_id'] for ann in anns]
         cid_to_name = {c['id']: c['name'] for c in cats}  # Hack
         true_cnames = [cid_to_name[cid] for cid in true_cids]
@@ -425,7 +417,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Sorts detections by descending (or ascending) scores
 
         Returns:
-            kwil.structs.Detections: sorted copy of self
+            kwimage.structs.Detections: sorted copy of self
         """
         sortx = self.argsort(reverse=reverse)
         return self.take(sortx)
@@ -438,14 +430,14 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             flags (ndarray[bool]): mask marking selected items
 
         Returns:
-            kwil.structs.Detections: subset of self
+            kwimage.structs.Detections: subset of self
 
         CommandLine:
-            xdoctest -m kwil.structs.detections Detections.compress
+            xdoctest -m kwimage.structs.detections Detections.compress
 
         Example:
-            >>> import kwil
-            >>> dets = kwil.Detections(boxes=kwil.Boxes.random(10))
+            >>> import kwimage
+            >>> dets = kwimage.Detections(boxes=kwimage.Boxes.random(10))
             >>> flags = np.random.rand(len(dets)) > 0.5
             >>> subset = dets.compress(flags)
             >>> assert len(subset) == flags.sum()
@@ -471,11 +463,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             indices (ndarray[int]): indices to select
 
         Returns:
-            kwil.structs.Detections: subset of self
+            kwimage.structs.Detections: subset of self
 
         Example:
-            >>> import kwil
-            >>> dets = kwil.Detections(boxes=kwil.Boxes.random(10))
+            >>> import kwimage
+            >>> dets = kwimage.Detections(boxes=kwimage.Boxes.random(10))
             >>> subset = dets.take([2, 3, 5, 7])
             >>> assert len(subset) == 4
             >>> subset = dets.tensor().take([2, 3, 5, 7])
@@ -493,17 +485,18 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Note: scalar indices are always coerced into index lists of length 1.
 
         Example:
-            >>> import kwil
-            >>> dets = kwil.Detections(boxes=kwil.Boxes.random(10))
+            >>> import kwimage
+            >>> import kwarray
+            >>> dets = kwimage.Detections(boxes=kwimage.Boxes.random(10))
             >>> indices = [2, 3, 5, 7]
-            >>> flags = kwil.boolmask(indices, len(dets))
+            >>> flags = kwarray.boolmask(indices, len(dets))
             >>> assert dets[flags].data == dets[indices].data
         """
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
         if ub.iterable(index):
-            import kwil
-            impl = kwil.ArrayAPI.coerce('numpy')
+            import kwarray
+            impl = kwarray.ArrayAPI.coerce('numpy')
             indices = impl.asarray(index)
         else:
             indices = np.array([index])
@@ -560,7 +553,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Converts numpy to tensors. Does not change memory if possible.
 
         Example:
-            >>> from kwil.structs.detections import *
+            >>> from kwimage.structs.detections import *
             >>> self = Detections.random(3)
             >>> newself = self.tensor()
             >>> self.scores[0] = 0
@@ -600,9 +593,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             tensor (bool, default=False): determines backend
             rng (np.random.RandomState): random state
         """
-        import kwil
-        rng = kwil.ensure_rng(rng)
-        boxes = kwil.Boxes.random(num=num, scale=scale, rng=rng, tensor=tensor)
+        import kwimage
+        import kwarray
+        rng = kwarray.ensure_rng(rng)
+        boxes = kwimage.Boxes.random(num=num, scale=scale, rng=rng, tensor=tensor)
         if isinstance(classes, int):
             num_classes = classes
             classes = ['class_{}'.format(c) for c in range(classes)]
@@ -639,7 +633,7 @@ def _safe_compress(v, flags, axis):
 if __name__ == '__main__':
     """
     CommandLine:
-        xdoctest -m kwil.structs.detections
+        xdoctest -m kwimage.structs.detections
     """
     import xdoctest
     xdoctest.doctest_module(__file__)

@@ -34,20 +34,20 @@ class _HeatmapDrawMixin(object):
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> colormask2 = self.colorize(0, imgspace=True)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
-            >>> kwil.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
+            >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
 
         Example:
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize('diameter', imgspace=False)
             >>> colormask2 = self.colorize('diameter', imgspace=True)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
-            >>> kwil.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
+            >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
         """
-        import kwil
+        import kwplot
         if isinstance(channel, six.string_types):
             # TODO: this is a bit hacky / inefficient, probably needs minor cleanup
             if imgspace:
@@ -69,7 +69,7 @@ class _HeatmapDrawMixin(object):
 
             if invert:
                 mask = 1 - mask
-        colormask = kwil.make_heatmask(mask, with_alpha=with_alpha)
+        colormask = kwplot.make_heatmask(mask, with_alpha=with_alpha)
         return colormask
 
     def draw_stacked(self, image=None, dsize=(224, 224), ignore_class_idxs={},
@@ -79,10 +79,12 @@ class _HeatmapDrawMixin(object):
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> stacked = self.draw_stacked()
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(stacked)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(stacked)
         """
-        import kwil
+        import kwimage
+        import kwarray
         import matplotlib as mpl
         tf = self.tf_data_to_img
         mat = np.linalg.inv(tf.params)
@@ -96,7 +98,7 @@ class _HeatmapDrawMixin(object):
                 cx_to_score = self.class_probs.mean(2).mean(1)
                 for cx in ignore_class_idxs:
                     cx_to_score[cx] = -np.inf
-                chosen_cxs = kwil.ArrayAPI.numpy(cx_to_score).argsort()[::-1][:top]
+                chosen_cxs = kwarray.ArrayAPI.numpy(cx_to_score).argsort()[::-1][:top]
             else:
                 chosen_cxs = np.arange(self.class_probs.shape[0])
 
@@ -118,10 +120,10 @@ class _HeatmapDrawMixin(object):
             c = cmap(c)
             c = (c[..., 0:3] * 255.0).astype(np.uint8)
             c = cv2.resize(c, dsize)
-            c = kwil.draw_text_on_image(c, '{}'.format(node), (0, 20), fontScale=.5)
-            # kwil.imshow(c, title=str(i), fnum=2)
+            c = kwimage.draw_text_on_image(c, '{}'.format(node), (0, 20), fontScale=.5)
+            # kwplot.imshow(c, title=str(i), fnum=2)
             colorized.append(c)
-        stacked = kwil.stack_images(colorized, overlap=-3, axis=1)
+        stacked = kwimage.stack_images(colorized, overlap=-3, axis=1)
         return stacked
 
     def draw_on(self, image, channel, invert=False, with_alpha=1.0,
@@ -140,49 +142,53 @@ class _HeatmapDrawMixin(object):
                   either individually or all at the same time
 
         Example:
-            >>> import kwil
-            >>> image = kwil.grab_test_image('astro')
-            >>> probs = kwil.gaussian_patch(image.shape[0:2])[None, :]
+            >>> import kwarray
+            >>> import kwimage
+            >>> image = kwimage.grab_test_image('astro')
+            >>> probs = kwimage.gaussian_patch(image.shape[0:2])[None, :]
             >>> probs = probs / probs.max()
-            >>> class_probs = kwil.ArrayAPI.cat([probs, 1 - probs], axis=0)
-            >>> self = kwil.Heatmap(class_probs=class_probs, offset=5 * np.random.randn(2, *probs.shape[1:]))
+            >>> class_probs = kwarray.ArrayAPI.cat([probs, 1 - probs], axis=0)
+            >>> self = kwimage.Heatmap(class_probs=class_probs, offset=5 * np.random.randn(2, *probs.shape[1:]))
             >>> toshow = self.draw_on(image, 0, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(toshow)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(toshow)
 
         Example:
-            >>> import kwil
+            >>> import kwimage
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> import ndsampler
             >>> sampler = ndsampler.CocoSampler.demo('photos')
             >>> bg_idxs = sampler.catgraph.index('background')
             >>> iminfo, anns = sampler.load_image_with_annots(1)
             >>> image = iminfo['imdata']
-            >>> dets = kwil.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'])
-            >>> image = kwil.grab_test_image('astro')
-            >>> self = kwil.Heatmap.random(dims=(200, 200), dets=dets, img_dims=image.shape[:2])
+            >>> dets = kwimage.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'])
+            >>> image = kwimage.grab_test_image('astro')
+            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets=dets, img_dims=image.shape[:2])
             >>> toshow = self.draw_on(image, 0, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(toshow)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(toshow)
         """
-        import kwil
+        import kwimage
+        import kwarray
+        import kwplot
         colormask = self.colorize(channel, invert=invert,
                                   with_alpha=with_alpha,
                                   interpolation=interpolation,
                                   imgspace=imgspace)
-        overlaid = kwil.overlay_alpha_images(colormask, image)
+        overlaid = kwimage.overlay_alpha_images(colormask, image)
 
         if vecs:
             if self.data.get('offset', None) is not None:
                 #Hack
-                dy, dx = kwil.ArrayAPI.numpy(self.data['offset'])
-                vecmask = kwil.make_vector_field(dx, dy, stride=4, scale=1.0, alpha=with_alpha * .6)
+                dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])
+                vecmask = kwplot.make_vector_field(dx, dy, stride=4, scale=1.0, alpha=with_alpha * .6)
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
-                overlaid = kwil.overlay_alpha_images(vecalign, overlaid)
+                overlaid = kwimage.overlay_alpha_images(vecalign, overlaid)
         return overlaid
 
 
@@ -201,11 +207,11 @@ class _HeatmapWarpMixin(object):
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(self.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 1))
-            >>> kwil.imshow(self.colorize(1, imgspace=False), fnum=1, pnum=(3, 2, 2))
-            >>> kwil.imshow(other.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 3))
-            >>> kwil.imshow(other.colorize(1, imgspace=False), fnum=1, pnum=(3, 2, 4))
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(self.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 1))
+            >>> kwplot.imshow(self.colorize(1, imgspace=False), fnum=1, pnum=(3, 2, 2))
+            >>> kwplot.imshow(other.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 3))
+            >>> kwplot.imshow(other.colorize(1, imgspace=False), fnum=1, pnum=(3, 2, 4))
         """
         if self is other:
             return other
@@ -228,24 +234,24 @@ class _HeatmapWarpMixin(object):
         """
         Align a linear combination of heatmap channels with the original image
         """
-        import kwil
+        import kwimage
         M = self.tf_data_to_img.params[0:3]
         dsize = tuple(map(int, self.img_dims[::-1]))
-        # flags = kwil.imutil.im_cv2._rectify_interpolation('lanczos')
-        # flags = kwil.imutil.im_cv2._rectify_interpolation('nearest')
-        flags = kwil.imutil.im_cv2._rectify_interpolation(interpolation)
+        # flags = kwimage.im_cv2._rectify_interpolation('lanczos')
+        # flags = kwimage.im_cv2._rectify_interpolation('nearest')
+        flags = kwimage.im_cv2._rectify_interpolation(interpolation)
         aligned = cv2.warpAffine(mask, M[0:2], dsize=tuple(dsize), flags=flags)
         aligned = np.clip(aligned, 0, 1)
         return aligned
 
     def _warp_imgspace(self, chw, interpolation='linear'):
-        import kwil
+        import kwimage
         if self.tf_data_to_img is None and self.img_dims is None:
             aligned = chw.cpu().numpy()
         else:
             output_dims = self.img_dims
             mat = torch.Tensor(self.tf_data_to_img.params[0:3])
-            outputs = kwil.warp_tensor(
+            outputs = kwimage.warp_tensor(
                 chw[None, :], mat, output_dims=output_dims, mode=interpolation
             )
             aligned = outputs[0].cpu().numpy()
@@ -276,7 +282,7 @@ class _HeatmapWarpMixin(object):
         Args:
             mat (ArrayLike): transformation matrix
             output_dims (tuple): size of the output heatmap
-            interpolation (str): see `kwil.warp_tensor`
+            interpolation (str): see `kwimage.warp_tensor`
 
         Returns:
             Heatmap: this heatmap warped into a new spatial dimension
@@ -293,7 +299,8 @@ class _HeatmapWarpMixin(object):
             >>> f2 = newself.diameter.max() / self.diameter.max()
             >>> assert f2 == S
         """
-        import kwil
+        import kwarray
+        import kwimage
 
         if mat is None:
             mat = self.tf_data_to_img.params
@@ -306,7 +313,7 @@ class _HeatmapWarpMixin(object):
 
         mat = torch.Tensor(mat)
         spatial_keys = ['offset', 'diameter']
-        impl = kwil.ArrayAPI.coerce('tensor')
+        impl = kwarray.ArrayAPI.coerce('tensor')
 
         tf = skimage.transform.AffineTransform(matrix=mat)
         # hack: need to get a version of the matrix without any translation
@@ -319,7 +326,7 @@ class _HeatmapWarpMixin(object):
         newmeta['tf_data_to_img'] = self.tf_data_to_img + inv_tf
 
         for k, v in self.data.items():
-            v = kwil.ArrayAPI.tensor(v)
+            v = kwarray.ArrayAPI.tensor(v)
             # For spatial keys we need to transform the underlying values as well
             if modify_spatial_coords:
                 if k in spatial_keys:
@@ -332,7 +339,7 @@ class _HeatmapWarpMixin(object):
                     coords = coords[0:2] / coords[2]
                     coords = coords.view(2, *v.shape[1:])
                     v = coords
-            newdata[k] = kwil.warp_tensor(
+            newdata[k] = kwimage.warp_tensor(
                 v[None, :].float(), mat, output_dims=output_dims, mode=interpolation
             )[0]
 
@@ -351,32 +358,32 @@ class _HeatmapAlgoMixin(object):
         Combine multiple heatmaps
 
         Example:
-            >>> from kwil.structs.heatmap import *
             >>> a = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> b = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> c = Heatmap.random((40, 30), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> heatmaps = [a, b, c]
             >>> newself = Heatmap.combine(heatmaps, root_index=2)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(a.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 1))
-            >>> kwil.imshow(a.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 2))
-            >>> kwil.imshow(b.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 3))
-            >>> kwil.imshow(b.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 4))
-            >>> kwil.imshow(c.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 5))
-            >>> kwil.imshow(c.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 6))
-            >>> kwil.imshow(newself.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 7))
-            >>> kwil.imshow(newself.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 8))
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(a.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 1))
+            >>> kwplot.imshow(a.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 2))
+            >>> kwplot.imshow(b.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 3))
+            >>> kwplot.imshow(b.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 4))
+            >>> kwplot.imshow(c.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 5))
+            >>> kwplot.imshow(c.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 6))
+            >>> kwplot.imshow(newself.colorize(0, imgspace=1), fnum=1, pnum=(4, 2, 7))
+            >>> kwplot.imshow(newself.colorize(1, imgspace=1), fnum=1, pnum=(4, 2, 8))
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.imshow(a.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 1))
-            >>> kwil.imshow(b.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 2))
-            >>> kwil.imshow(c.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 3))
-            >>> kwil.imshow(newself.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 4))
+            >>> kwplot.imshow(a.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 1))
+            >>> kwplot.imshow(b.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 2))
+            >>> kwplot.imshow(c.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 3))
+            >>> kwplot.imshow(newself.colorize('offset', imgspace=1), fnum=2, pnum=(4, 1, 4))
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.imshow(a.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 1))
-            >>> kwil.imshow(b.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 2))
-            >>> kwil.imshow(c.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 3))
-            >>> kwil.imshow(newself.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 4))
+            >>> kwplot.imshow(a.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 1))
+            >>> kwplot.imshow(b.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 2))
+            >>> kwplot.imshow(c.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 3))
+            >>> kwplot.imshow(newself.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 4))
         """
         # define arithmetic and geometric mean
         from scipy.stats.mstats import gmean
@@ -429,7 +436,7 @@ class _HeatmapAlgoMixin(object):
                 even if they aren't above the `min_score` threshold.
 
         Returns:
-            kwil.Detections: raw detections.
+            kwimage.Detections: raw detections.
 
                 Note that these detections will not have class_idx populated
 
@@ -437,27 +444,24 @@ class _HeatmapAlgoMixin(object):
                 these results to remove duplicate detections.
 
         Example:
-            >>> from kwil.structs.heatmap import *
-            >>> import kwil
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> import ndsampler
             >>> self = Heatmap.random(rng=2, dims=(32, 32), diameter=10, offset=0)
             >>> dets = self.detect(channel=0)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
+            >>> import kwplot
+            >>> kwplot.autompl()
             >>> dets1 = dets.sort().take(range(10))
             >>> colormask1 = self.colorize(0, imgspace=False)
-            >>> kwil.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
+            >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
             >>> dets1.draw()
             >>> # Transform heatmap and detections into image space.
             >>> colormask2 = self.colorize(0, imgspace=True)
             >>> dets2 = dets1.warp(self.tf_data_to_img)
-            >>> kwil.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
+            >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
             >>> dets2.draw()
 
         Example:
-            >>> from kwil.structs.heatmap import *
-            >>> import kwil
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> import ndsampler
             >>> catgraph = ndsampler.CategoryTree.demo()
@@ -471,15 +475,16 @@ class _HeatmapAlgoMixin(object):
             >>> dets.data['class_idxs'] = class_idxs
             >>> dets.data['scores'] = scores
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
+            >>> import kwplot
+            >>> kwplot.autompl()
             >>> dets1 = dets.sort().take(range(10))
             >>> colormask1 = self.colorize(0, imgspace=False)
-            >>> kwil.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
+            >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
             >>> dets1.draw()
             >>> # Transform heatmap and detections into image space.
             >>> colormask2 = self.colorize(0, imgspace=True)
             >>> dets2 = dets1.warp(self.tf_data_to_img)
-            >>> kwil.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
+            >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
             >>> dets2.draw()
         """
         if isinstance(channel, int):
@@ -539,17 +544,17 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             be properly placed in the appropriate internal dictionary.
 
     Example:
-        >>> from kwil.structs.heatmap import *
-        >>> import kwil
-        >>> class_probs = kwil.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
+        >>> import kwimage
+        >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
         >>> img_dims = (220, 220)
         >>> tf_data_to_img = skimage.transform.AffineTransform(translation=(-18, -18), scale=(8, 8))
         >>> self = Heatmap(class_probs=class_probs, img_dims=img_dims,
         >>>                tf_data_to_img=tf_data_to_img)
         >>> aligned = self.upscale()
         >>> # xdoctest: +REQUIRES(--show)
-        >>> kwil.autompl()
-        >>> kwil.imshow(aligned[0])
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(aligned[0])
     """
     # Valid keys for the data dictionary
     __datakeys__ = ['class_probs', 'offset', 'diameter']
@@ -614,34 +619,36 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         Example:
             >>> self = Heatmap.random((128, 128), img_dims=(200, 200), classes=3, nblips=10, rng=0, noise=0.1)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(self.colorize(0, imgspace=0), fnum=1, pnum=(1, 4, 1), doclf=1)
-            >>> kwil.imshow(self.colorize(1, imgspace=0), fnum=1, pnum=(1, 4, 2))
-            >>> kwil.imshow(self.colorize(2, imgspace=0), fnum=1, pnum=(1, 4, 3))
-            >>> kwil.imshow(self.colorize(3, imgspace=0), fnum=1, pnum=(1, 4, 4))
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(self.colorize(0, imgspace=0), fnum=1, pnum=(1, 4, 1), doclf=1)
+            >>> kwplot.imshow(self.colorize(1, imgspace=0), fnum=1, pnum=(1, 4, 2))
+            >>> kwplot.imshow(self.colorize(2, imgspace=0), fnum=1, pnum=(1, 4, 3))
+            >>> kwplot.imshow(self.colorize(3, imgspace=0), fnum=1, pnum=(1, 4, 4))
 
         Ignore:
             self.detect(0).sort().non_max_supress()[-np.arange(1, 4)].draw()
 
         Example:
-            >>> import kwil
+            >>> import kwimage
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> import ndsampler
             >>> sampler = ndsampler.CocoSampler.demo('photos')
             >>> bg_idxs = sampler.catgraph.index('background')
             >>> iminfo, anns = sampler.load_image_with_annots(1)
             >>> image = iminfo['imdata']
-            >>> dets = kwil.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'])
-            >>> import kwil
-            >>> image = kwil.grab_test_image('astro')
-            >>> self = kwil.Heatmap.random(dims=(200, 200), dets=dets, img_dims=image.shape[:2])
+            >>> dets = kwimage.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'])
+            >>> image = kwimage.grab_test_image('astro')
+            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets=dets, img_dims=image.shape[:2])
             >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.imshow(toshow)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(toshow)
         """
-        import kwil
-        rng = kwil.ensure_rng(rng)
+        import kwimage
+        import kwarray
+        rng = kwarray.ensure_rng(rng)
 
         if isinstance(classes, int):
             num_classes = classes
@@ -676,10 +683,10 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
                 subshape = np.ceil(((np.abs(rng.randn(2)) + 1) ** 2) * (dims / 4)).astype(np.int)
                 loc = rng.rand(2) * (dims - subshape)
                 index = tuple([slice(x, x + d) for x, d in zip(loc, subshape)])
-                patch = kwil.gaussian_patch(subshape)
+                patch = kwimage.gaussian_patch(subshape)
                 patch = (patch / patch.max())
                 cx = i % num_classes
-                kwil.subpixel_accum(class_probs[cx], patch, index)
+                kwimage.subpixel_accum(class_probs[cx], patch, index)
             class_probs = torch.softmax(torch.Tensor(class_probs), dim=0).numpy()
 
             if offset is True:
@@ -691,8 +698,8 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             # TODO: clean up method of making heatmap from detections
             if dets is None:
                 # We are either given detections, or we make random ones
-                dets = kwil.Detections.random(num=nblips, scale=img_dims,
-                                              classes=classes, rng=rng)
+                dets = kwimage.Detections.random(num=nblips, scale=img_dims,
+                                                 classes=classes, rng=rng)
                 if 'background' not in dets.classes:
                     dets.classes.append('background')
                 classes = dets.classes
@@ -762,13 +769,13 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         """
         Converts underlying data to numpy arrays
         """
-        import kwil
+        import kwarray
         newdata = {}
         for key, val in self.data.items():
             if val is None:
                 newval = val
             else:
-                newval = kwil.ArrayAPI.numpy(val)
+                newval = kwarray.ArrayAPI.numpy(val)
             newdata[key] = newval
         newself = self.__class__(newdata, self.meta)
         return newself
@@ -777,13 +784,13 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         """
         Converts underlying data to torch tensors
         """
-        import kwil
+        import kwarray
         newdata = {}
         for key, val in self.data.items():
             if val is None:
                 newval = val
             else:
-                newval = kwil.ArrayAPI.tensor(val, device=device)
+                newval = kwarray.ArrayAPI.tensor(val, device=device)
             newdata[key] = newval
         newself = self.__class__(newdata, self.meta)
         return newself
@@ -823,8 +830,9 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             even if they aren't above the `min_score` threshold.
 
     Returns:
-        kwil.Detections: raw detections. It is the users responsbility to run
-            non-max suppression on these results to remove duplicate detections.
+        kwimage.Detections: raw detections. It is the users responsbility to
+            run non-max suppression on these results to remove duplicate
+            detections.
 
     Example:
         >>> rng = np.random.RandomState(0)
@@ -839,10 +847,10 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> assert len(dets) == 9
 
     Example:
-        >>> import kwil
-        >>> from kwil.structs.heatmap import *
-        >>> from kwil.structs.heatmap import _prob_to_dets
-        >>> heatmap = kwil.Heatmap.random(rng=0, dims=(3, 3))
+        >>> import kwimage
+        >>> from kwimage.structs.heatmap import *
+        >>> from kwimage.structs.heatmap import _prob_to_dets
+        >>> heatmap = kwimage.Heatmap.random(rng=0, dims=(3, 3))
         >>> # Try with numpy
         >>> min_score = .5
         >>> dets = _prob_to_dets(heatmap.class_probs[0], heatmap.diameter,
@@ -870,8 +878,8 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> min_score = 0.5
         >>> dets = _prob_to_dets(probs, diameter, offset, class_probs, min_score)
     """
-    import kwil
-    impl = kwil.ArrayAPI.impl(probs)
+    import kwarray
+    impl = kwarray.ArrayAPI.impl(probs)
 
     if diameter is None:
         diameter = 1
@@ -900,7 +908,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             topxs = probs.view(-1).argsort()[max(0, numel - num_min):numel]
             flags.view(-1)[topxs] = 1
         else:
-            idxs = kwil.argmaxima(probs, num=num_min, ordered=False)
+            idxs = kwarray.argmaxima(probs, num=num_min, ordered=False)
             # idxs = probs.argsort(axis=None)[-num_min:]
             flags.ravel()[idxs] = True
 
@@ -915,9 +923,10 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         w = impl.astype(diameter[1][flags], np.float32)
     cxywh = impl.cat([xc_[:, None], yc_[:, None], w[:, None], h[:, None]], axis=1)
 
-    tlbr = kwil.Boxes(cxywh, 'cxywh').toformat('tlbr')
+    import kwimage
+    tlbr = kwimage.Boxes(cxywh, 'cxywh').toformat('tlbr')
     scores = probs[flags]
-    dets = kwil.Detections(boxes=tlbr, scores=scores)
+    dets = kwimage.Detections(boxes=tlbr, scores=scores)
 
     # Get per-class probs for each detection
     if class_probs is not None:
@@ -962,20 +971,21 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         globals().update(xdev.get_func_kwargs(_dets_to_masks))
 
     Example:
-        >>> import kwil
+        >>> import kwimage
         >>> # xdoctest: +REQUIRES(--module:ndsampler)
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo('photos')
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> iminfo, anns = sampler.load_image_with_annots(1)
         >>> image = iminfo['imdata']
-        >>> dets = kwil.Detections.from_coco_annots(
+        >>> dets = kwimage.Detections.from_coco_annots(
         >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph)
         >>> input_dims = image.shape[0:2]
         >>> bg_size = [100, 100]
         >>> fcn_target = _dets_to_masks(dets, bg_size, input_dims, bg_idxs)
         >>> # xdoctest: +REQUIRES(--show)
-        >>> kwil.autompl()
+        >>> import kwplot
+        >>> kwplot.autompl()
         >>> size_mask = fcn_target['size']
         >>> dxdy_mask = fcn_target['dxdy']
         >>> cidx_mask = fcn_target['cidx']
@@ -985,16 +995,16 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> mag = 1 - fcn_target['class_probs'][0]
         >>> mask = (cidx_mask != 0).astype(np.float32)
         >>> angle = np.arctan2(dy, dx)
-        >>> orimask = kwil.make_orimask(angle, mask, alpha=mag)
-        >>> vecmask = kwil.make_vector_field(
+        >>> orimask = kwplot.make_orimask(angle, mask, alpha=mag)
+        >>> vecmask = kwplot.make_vector_field(
         >>>     dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
         >>>     line_type=16)
-        >>> raster = kwil.overlay_alpha_layers(
+        >>> raster = kwplot.overlay_alpha_layers(
         >>>     [vecmask, orimask, image], keepalpha=False)
         >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
         >>>                       labels=False, alpha=None)
-        >>> kwil.imshow(raster)
-        >>> kwil.show_if_requested()
+        >>> kwplot.imshow(raster)
+        >>> kwplot.show_if_requested()
     """
     import cv2
     # In soft mode we made a one-channel segmentation target mask
@@ -1050,12 +1060,12 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         # class index
         cidx_mask[mask] = int(cidx)
         if soft:
-            import kwil
-            blip = kwil.gaussian_patch((half_h * 2, half_w * 2))
+            import kwimage
+            blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
             blip = blip / blip.max()
             subindex = (slice(cy - half_h, cy + half_h),
                         slice(cx - half_w, cx + half_w))
-            kwil.subpixel_maximum(cidx_probs[cidx], blip, subindex)
+            kwimage.subpixel_maximum(cidx_probs[cidx], blip, subindex)
 
         # object size
         size_mask[0][mask] = float(w)
