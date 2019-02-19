@@ -91,3 +91,5 @@ ENV/
 
 .pytest_cache
 pip-wheel-metadata/
+
+algo/_nms_backend/gpu_nms.cpp
