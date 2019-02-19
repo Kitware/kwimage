@@ -872,7 +872,7 @@ class _BoxTransformMixins(object):
             >>> import kwarray
             >>> import kwimage
             >>> rng = kwarray.ensure_rng(0)
-            >>> boxes = kwarray.Boxes.random(num=3, scale=10, rng=rng)
+            >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng)
             >>> dxdy = (10 * rng.randn(len(boxes), 2)).astype(np.int)
             >>> boxes.translate(dxdy)
             <Boxes(xywh,
