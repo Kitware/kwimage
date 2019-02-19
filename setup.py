@@ -225,7 +225,6 @@ def clean():
 
     enqueue(join(repodir, 'htmlcov'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.c'))
-    enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.c'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.cpp'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/gpu_nms.cpp'))
     enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.c'))
@@ -239,6 +238,7 @@ def clean():
     enqueue(join(repodir, '_skbuild'))
     enqueue(join(repodir, '_cmake_test_compile'))
     enqueue(join(repodir, 'kwimage.egg-info'))
+    enqueue(join(repodir, 'pip-wheel-metadata'))
 
     for dpath in toremove:
         ub.delete(dpath, verbose=1)
@@ -282,4 +282,5 @@ if __name__ == '__main__':
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
         ],
+        **compile_setup_kw,
     )
