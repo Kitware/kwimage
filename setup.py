@@ -1,43 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Installation:
-    pip install git+https://github.com/Erotemic/kwimage.git
-
-Developing:
-    git clone https://github.com/Erotemic/kwimage.git
-    pip install -e kwimage
-
-Pypi:
-     # Presetup
-     pip install twine
-
-     # First tag the source-code
-     VERSION=$(python -c "import setup; print(setup.version)")
-     echo $VERSION
-     git tag $VERSION -m "tarball tag $VERSION"
-     git push --tags origin master
-
-     # NEW API TO UPLOAD TO PYPI
-     # https://packaging.python.org/tutorials/distributing-packages/
-
-     # Build wheel or source distribution
-     python setup.py bdist_wheel --universal
-
-     # Use twine to upload. This will prompt for username and password
-     # If you get an error:
-     #   403 Client Error: Invalid or non-existent authentication information.
-     # simply try typing your password slower.
-     twine upload --username erotemic --skip-existing dist/*
-
-     # Check the url to make sure everything worked
-     https://pypi.org/project/kwimage/
-
-     # ---------- OLD ----------------
-     # Check the url to make sure everything worked
-     https://pypi.python.org/pypi?:action=display&name=kwimage
-
-"""
 from os.path import exists
 from os.path import join
 from skbuild import setup
@@ -248,9 +210,19 @@ def clean():
 compile_setup_kw = dict(
     cmake_languages=('C', 'CXX', 'CUDA'),
     cmake_source_dir='.',
-    # cmake_args=['-DSOME_FEATURE:BOOL=OFF'],
     # cmake_source_dir='kwimage',
 )
+
+try:
+    import numpy as np
+    # Note: without this skbuild will fail with `pip install -e .`
+    # however, it will still work with `./setup.py develop`.
+    # Not sure why this is, could it be an skbuild bug?
+    compile_setup_kw['cmake_args'] = [
+        '-DNumPy_INCLUDE_DIR:PATH=' + np.get_include()
+    ]
+except ImportError:
+    pass
 
 
 version = parse_version('kwimage')  # needs to be a global var for git tags

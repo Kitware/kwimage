@@ -90,6 +90,7 @@ ENV/
 .ropeproject
 
 .pytest_cache
+profile_output.*
 pip-wheel-metadata/
 
 algo/_nms_backend/gpu_nms.cpp
@@ -99,3 +100,5 @@ kwimage/algo/_nms_backend/cpu_nms.cpp
 kwimage/algo/_nms_backend/gpu_nms.cpp
 kwimage/structs/_boxes_backend/cython_boxes.c
 kwimage/structs/_boxes_backend/cython_boxes.html
+
+_skbuild
