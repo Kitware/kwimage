@@ -80,6 +80,7 @@ def decode_run_length(runlen, shape, binary=False):
         ndarray: the image
 
     Example:
+        >>> from kwimage.im_misc import *  # NOQA
         >>> binary = True
         >>> img = np.array([[1, 0, 1, 1, 1, 0, 0, 1, 0]])
         >>> shape, runlen = encode_run_length(img, binary=True)

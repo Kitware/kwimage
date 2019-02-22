@@ -213,13 +213,26 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # Valid keys for the meta dictionary
     __metakeys__ = ['classes']
 
-    def __init__(self, data=None, meta=None, **kwargs):
+    def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
+                 checks=True, **kwargs):
         """
         Construct a Detections object by either explicitly specifying the
         internal data and meta dictionary structures or by passing expected
         attribute names as kwargs. Note that custom data and metadata can be
         specified as long as you pass the names of these keys in the `datakeys`
         and/or `metakeys` kwargs.
+
+        Args:
+            data (Dict[str, ArrayLike]): explicitly specify the data dictionary
+            meta (Dict[str, object]): explicitly specify the meta dictionary
+            datakeys (List[str]): a list of custom attributes that should be
+               considered as data (i.e. must be an array aligned with boxes).
+            metakeys (List[str]): a list of custom attributes that should be
+               considered as metadata (i.e. can be arbitrary).
+            checks (bool, default=True): if True and arguments are passed by
+                kwargs, then check / ensure that all types are compatible
+            **kwargs:
+                specify any key for the data or meta dictionaries.
 
         Example:
             >>> import kwimage
@@ -238,7 +251,32 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>>     # time of construction.
             >>>     datakeys=['myattr1', 'myattr2'],
             >>>     metakeys=['mymeta'],
+            >>>     checks=True,
             >>> )
+
+        Doctest:
+            >>> # TODO: move to external unit test
+            >>> # Coerce to numpy
+            >>> dets = Detections(
+            >>>     boxes=kwimage.Boxes.random(3).numpy(),
+            >>>     class_idxs=[0, 1, 1],
+            >>>     checks=True,
+            >>> )
+            >>> # Coerce to tensor
+            >>> dets = Detections(
+            >>>     boxes=kwimage.Boxes.random(3).tensor(),
+            >>>     class_idxs=[0, 1, 1],
+            >>>     checks=True,
+            >>> )
+            >>> # Error on incompatible types
+            >>> import pytest
+            >>> with pytest.raises(TypeError):
+            >>>     dets = Detections(
+            >>>         boxes=kwimage.Boxes.random(3).tensor(),
+            >>>         scores=np.random.rand(3),
+            >>>         class_idxs=[0, 1, 1],
+            >>>         checks=True,
+            >>>     )
         """
         # Standardize input format
         if kwargs:
@@ -247,16 +285,47 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             _datakeys = self.__datakeys__
             _metakeys = self.__metakeys__
             # Allow the user to specify custom data and meta keys
-            if 'datakeys' in kwargs:
-                _datakeys = _datakeys + list(kwargs.pop('datakeys'))
-            if 'metakeys' in kwargs:
-                _metakeys = _metakeys + list(kwargs.pop('metakeys'))
+            if datakeys is not None:
+                _datakeys = _datakeys + list(datakeys)
+            if metakeys is not None:
+                _metakeys = _metakeys + list(metakeys)
             # Perform input checks whenever kwargs is given
             data = {key: kwargs.pop(key) for key in _datakeys if key in kwargs}
             meta = {key: kwargs.pop(key) for key in _metakeys if key in kwargs}
             if kwargs:
                 raise ValueError(
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
+
+            if checks:
+                import kwarray
+                # Check to make sure all types in `data` are compatible
+                ndarrays = []
+                tensors = []
+                other = []
+                for k, v in data.items():
+                    if isinstance(v, _boxes.Boxes):
+                        if v.is_numpy():
+                            ndarrays.append(k)
+                        else:
+                            tensors.append(k)
+                    elif isinstance(v, np.ndarray):
+                        ndarrays.append(k)
+                    elif isinstance(v, torch.Tensor):
+                        tensors.append(k)
+                    else:
+                        other.append(k)
+
+                if bool(ndarrays) and bool(tensors):
+                    raise TypeError(
+                        'Detections can hold numpy.ndarrays or torch.Tensors, '
+                        'but not both')
+                if tensors:
+                    impl = kwarray.ArrayAPI.coerce('tensor')
+                else:
+                    impl = kwarray.ArrayAPI.coerce('numpy')
+                for k in other:
+                    data[k] = impl.asarray(data[k])
+
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data and meta are explicitly specified

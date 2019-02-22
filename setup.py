@@ -224,7 +224,9 @@ try:
     # NOT:
     # /tmp/pip-build-env-dt0w6ib0/overlay/lib/python3.6/site-packages/numpy/core/include
     compile_setup_kw['cmake_args'] = [
-        '-DNumPy_INCLUDE_DIR:PATH=' + np.get_include()
+        '-D NumPy_INCLUDE_DIR:PATH=' + np.get_include(),
+        # '-D NPY_NO_DEPRECATED_API=TRUE',  # can cmake #define these?
+        # '-D NPY_1_7_API_VERSION=TRUE',
     ]
 except ImportError:
     pass
@@ -233,10 +235,10 @@ except ImportError:
 version = parse_version('kwimage')  # needs to be a global var for git tags
 
 if __name__ == '__main__':
-    if 'clean' in sys.argv:
-        # hack
-        clean()
-        sys.exit(0)
+    # if 'clean' in sys.argv:
+    #     # hack
+    #     clean()
+    #     sys.exit(0)
     setup(
         name='kwimage',
         version=version,
@@ -259,5 +261,5 @@ if __name__ == '__main__':
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
         ],
-        **compile_setup_kw,
+        **compile_setup_kw
     )

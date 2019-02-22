@@ -1,0 +1,7 @@
+Version 0.3.0
+=============
+* Add checks to detection types
+
+Version 0.0.1
+=============
+* Port from kwil
