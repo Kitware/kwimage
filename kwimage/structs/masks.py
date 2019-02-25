@@ -10,7 +10,21 @@ References:
     https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.c
     https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.h
 
+
+Goals:
+    The goal of this file is to create a datastructure that lets the developer
+    seemlessly convert between:
+        (1) raw binary uint8 masks
+        (2) memory-efficient comprsssed run-length-encodings of binary
+        segmentation masks.
+        (3) convex polygons
+        (4) convex hull polygons
+        (5) bounding box
+
+    It is not there yet, and the API is subject to change in order to better
+    accomplish these goals.
 """
+import six
 import numpy as np
 import ubelt as ub
 
@@ -18,7 +32,7 @@ __ignore__ = True  # currently this file is a WIP
 
 
 class Mask(ub.NiceRepr):
-    """ Manages a single segmentation """
+    """ Manages a single segmentation mask """
     def __init__(self, data=None, format=None):
         self.data = data
         self.format = format
@@ -95,13 +109,69 @@ class Mask(ub.NiceRepr):
         self = Mask.from_mask(mask)
         return self
 
+    @classmethod
+    def coerce(Masks, data):
+        """
+        Attempts to auto-inspect the format of the data
+        """
+        from kwimage.structs._mask_backend import cython_mask
+        if isinstance(data, np.ndarray):
+            if data.flags['F_CONTIGUOUS']:
+                self = Mask(data, 'fortran_mask')
+            else:
+                self = Mask(data, 'mask')
+            self = self.to_compressed_rle()
+        elif isinstance(data, dict):
+            # Handle COCO RLE dictionaries
+            if isinstance(data['counts'], six.string_types):
+                self = Mask(data, 'compressed_rle')
+            else:
+                w, h = data['size']
+                newdata = cython_mask.frUncompressedRLE([data], h, w)[0]
+                self = Mask(newdata, 'compressed_rle')
+        elif isinstance(data, list):
+            # Polygon
+            if len(data) and isinstance(data, (np.ndarray, list)):
+                flat_polys = data
+            else:
+                flat_polys = [data]
+            flat_polys = [np.array(p).ravel() for p in flat_polys]
+            newdatas = cython_mask.frPoly(flat_polys, h, w)
+            newdata = cython_mask.merge(newdatas, intersect=0)
+            self = Masks(newdata, 'compressed_rle')
+        return self
 
-class Masks(ub.NiceRepr):
+    def to_compressed_rle(self):
+        return Masks([self.data], self.format).to_compressed_rle()
+
+
+class _MaskConversionMixins(object):
+
+    def to_compressed_rle(self):
+        if self.format == 'compressed_rle':
+            return self
+        elif self.format == 'fortran_mask':
+            from kwimage.structs._mask_backend import cython_mask
+            fortran_masks = self.fortran_masks
+            encoded = cython_mask.encode(fortran_masks)
+            self = Masks(encoded, format='compressed_rle')
+        elif self.format == 'mask':
+            from kwimage.structs._mask_backend import cython_mask
+            masks = np.array(self.data)
+            fortran_masks = np.asfortranarray(np.transpose(masks, [1, 2, 0]))
+            encoded = cython_mask.encode(fortran_masks)
+            self = Masks(encoded, format='compressed_rle')
+        else:
+            raise NotImplementedError(self.format)
+        return self
+
+
+class Masks(ub.NiceRepr, _MaskConversionMixins):
     """
+    Manages segmentation multiple masks within the same image
+
     Python object interface to the C++ backend for encoding binary segmentation
     masks
-
-    Manages multiple masks within the same image
 
     WIP:
         >>> from kwimage.structs.masks import *  # NOQA
@@ -120,9 +190,31 @@ class Masks(ub.NiceRepr):
         self.data = data
         self.format = format
 
+    @classmethod
+    def coerce(Masks, data):
+        """
+        Attempts to auto-inspect the format of the data
+        """
+        if len(data) == 0:
+            raise ValueError('cannot coerce empty data')
+
+        newdatas = []
+        for item in data:
+            newitem = Mask.coerce(item).to_compressed_rle().data
+            newdatas.append(newitem)
+        self = Masks(newdatas, 'compressed_rle')
+        return self
+
     @property
     def shape(self):
-        return self.data[0]['size'][::-1]
+        if self.format == 'compressed_rle':
+            return self.data[0]['size'][::-1]
+        elif self.format == 'uncompressed_rle':
+            return self.data[0]['size'][::-1]
+        elif self.format == 'mask':
+            return self.data[0].shape
+        else:
+            self.to_compressed_rle().shape
 
     def __getitem__(self, index):
         return Mask(self.data[index], self.format)
@@ -135,30 +227,29 @@ class Masks(ub.NiceRepr):
 
     def union(self):
         from kwimage.structs._mask_backend import cython_mask
-        if self.format == 'coco_rle':
-            return Mask(cython_mask.merge(self.data), self.format)
-        else:
-            raise NotImplementedError
+        self = self.to_compressed_rle()
+        return Mask(cython_mask.merge(self.data, intersect=0), self.format)
 
     def intersection(self):
         from kwimage.structs._mask_backend import cython_mask
-        if self.format == 'coco_rle':
-            return Mask(cython_mask.merge(self.data, intersect=1), self.format)
-        else:
-            raise NotImplementedError
+        self = self.to_compressed_rle()
+        return Mask(cython_mask.merge(self.data, intersect=1), self.format)
 
     @property
     def area(self):
         from kwimage.structs._mask_backend import cython_mask
-        if self.format == 'coco_rle':
-            return cython_mask.area(self.data)
-        else:
-            raise NotImplementedError
+        self = self.to_compressed_rle()
+        return cython_mask.area(self.data)
 
     def to_polygons(self):
         """
         References:
             https://github.com/jsbroks/imantics/blob/master/imantics/annotation.py
+
+        Returns:
+            List[List[ndarray]]: the outer list loops over every mask.
+                The inner list is a polygon around each connected component of
+                the mask.
         """
         import cv2
         polygons = []
@@ -172,33 +263,28 @@ class Masks(ub.NiceRepr):
             polygons.append(contours)
         return polygons
 
-    def to_boxes(self):
+    @property
+    def boxes(self):
         from kwimage.structs._mask_backend import cython_mask
         import kwimage
-        if self.format == 'coco_rle':
-            xywh = cython_mask.toBbox(self.data)
-            boxes = kwimage.Boxes(xywh, 'xywh')
-            return boxes
-        else:
-            raise NotImplementedError
+        self = self.to_compressed_rle()
+        xywh = cython_mask.toBbox(self.data)
+        boxes = kwimage.Boxes(xywh, 'xywh')
+        return boxes
 
     @property
     def mask(self):
         from kwimage.structs._mask_backend import cython_mask
-        if self.format == 'coco_rle':
-            fortran_masks = cython_mask.decode(self.data)
-            masks = np.transpose(fortran_masks, [2, 0, 1])
-        else:
-            raise NotImplementedError
+        self = self.to_compressed_rle()
+        fortran_masks = cython_mask.decode(self.data)
+        masks = np.transpose(fortran_masks, [2, 0, 1])
         return masks
 
     @property
     def fortran_mask(self):
         from kwimage.structs._mask_backend import cython_mask
-        if self.format == 'coco_rle':
-            fortran_masks = cython_mask.decode(self.data)
-        else:
-            raise NotImplementedError
+        self = self.to_compressed_rle()
+        fortran_masks = cython_mask.decode(self.data)
         return fortran_masks
 
     @classmethod
@@ -214,11 +300,7 @@ class Masks(ub.NiceRepr):
             >>> self = Masks.from_masks(masks)
             >>> assert np.all(masks == self.mask)
         """
-        from kwimage.structs._mask_backend import cython_mask
-        masks = np.array(masks)
-        fortran_masks = np.asfortranarray(np.transpose(masks, [1, 2, 0]))
-        encoded = cython_mask.encode(fortran_masks)
-        self = Masks(encoded, format='coco_rle')
+        self = Masks(masks, 'mask')
         return self
 
     @classmethod
@@ -229,7 +311,6 @@ class Masks(ub.NiceRepr):
             >>>                  {'size': [5, 9], 'counts': ';23000c0'},
             >>>                  {'size': [5, 9], 'counts': ';>3C072'}]
         """
-        import six
         from kwimage.structs._mask_backend import cython_mask
         encoded = []
         for item in segmentations:
@@ -239,7 +320,7 @@ class Masks(ub.NiceRepr):
                 w, h = item['size']
                 newitem = cython_mask.frUncompressedRLE([item], h, w)[0]
                 encoded.append(newitem)
-        self = Masks(encoded, 'coco_rle')
+        self = Masks(encoded, 'compressed_rle')
         return self
 
     @classmethod
@@ -257,7 +338,7 @@ class Masks(ub.NiceRepr):
         h, w = shape
         flat_polys = [ps[0].ravel() for ps in polygons]
         encoded = cython_mask.frPoly(flat_polys, h, w)
-        self = Masks(encoded, 'coco_rle')
+        self = Masks(encoded, 'compressed_rle')
         return self
 
     @classmethod
@@ -293,5 +374,5 @@ class Masks(ub.NiceRepr):
         # shape [H, W, N], where N is an index over multiple instances.
         fortran_masks = np.asfortranarray(np.transpose(masks, [1, 2, 0]))
         encoded = cython_mask.encode(fortran_masks)
-        self = Masks(encoded, format='coco_rle')
+        self = Masks(encoded, format='compressed_rle')
         return self
