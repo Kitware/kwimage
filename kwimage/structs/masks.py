@@ -28,15 +28,11 @@ class Mask(ub.NiceRepr):
 
     @classmethod
     def from_mask(Mask, mask):
-        from kwimage.structs._mask_backend import cython_mask
-        masks = np.asfortranarray(mask[..., None])
-        encoded = cython_mask.encode(masks)
-        return Mask(encoded[0], format='coco_rle')
+        return Masks.from_masks([mask])[0]
 
     @classmethod
     def from_coco_segmentation(Mask, segmentation):
-        data = segmentation
-        self = Mask(data, 'coco_rle')
+        self = Masks.from_coco_segmentations([segmentation])[0]
         return self
 
     @classmethod
@@ -46,15 +42,58 @@ class Mask(ub.NiceRepr):
 
     @classmethod
     def union(cls, *others):
-        pass
+        raise NotImplementedError
 
     @classmethod
     def intersection(cls, *others):
-        pass
+        raise NotImplementedError
 
     @property
     def mask(self):
         return Masks([self.data], self.format).mask[0]
+
+    def to_polygons(self):
+        """
+        Returns a list of (x,y)-coordinate lists. The length of the outer list
+        is equal to the number of disjoint regions in the mask.
+        """
+        return Masks([self.data], self.format).to_polygons()[0]
+
+    def draw_on(self, image, color='blue', alpha=0.5):
+        """
+        Draws the mask on an image
+
+        Example:
+            >>> from kwimage.structs.masks import *  # NOQA
+            >>> import kwimage
+            >>> image = kwimage.grab_test_image()
+            >>> self = Mask.demo(shape=image.shape[0:2])
+            >>> toshow = self.draw_on(image)
+            >>> # xdoc: +REQUIRE(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(toshow)
+            >>> kwplot.show_if_requested()
+        """
+        import kwplot
+        import kwimage
+
+        mask = self.mask
+        rgb01 = list(kwplot.Color(color).as01())
+        rgba01 = np.array(rgb01 + [1])[None, None, :]
+        alpha_mask = rgba01 * mask[:, :, None]
+        alpha_mask[..., 3] = mask * alpha
+
+        toshow = kwimage.overlay_alpha_images(alpha_mask, image)
+        return toshow
+
+    @classmethod
+    def demo(Mask, rng=0, shape=(32, 32)):
+        import kwarray
+        rng = kwarray.ensure_rng(rng)
+        mask = (rng.rand(*shape) > .5).astype(np.uint8)
+        self = Mask.from_mask(mask)
+        return self
 
 
 class Masks(ub.NiceRepr):
@@ -65,7 +104,7 @@ class Masks(ub.NiceRepr):
     Manages multiple masks within the same image
 
     WIP:
-        >>> from kwimage.structs.mask import *  # NOQA
+        >>> from kwimage.structs.masks import *  # NOQA
         >>> self = Masks.demo()
         >>> print(self.data)
         >>> self.union().mask
@@ -73,7 +112,7 @@ class Masks(ub.NiceRepr):
         >>> polys = self.to_polygons()
         >>> shape = self.shape
         >>> polygon = polys[0][0]
-        >>> Mask.from_polygon(polygon, shape)
+        >>> #Mask.from_polygon(polygon, shape)
 
     """
 
@@ -163,6 +202,26 @@ class Masks(ub.NiceRepr):
         return fortran_masks
 
     @classmethod
+    def from_masks(Masks, masks):
+        """
+        Args:
+            masks (ndarray): [NxHxW] uint8 binary masks
+
+        Example:
+            >>> # create 32 random binary masks
+            >>> rng = np.random.RandomState(0)
+            >>> masks = (rng.rand(10, 32, 32) > .5).astype(np.uint8)
+            >>> self = Masks.from_masks(masks)
+            >>> assert np.all(masks == self.mask)
+        """
+        from kwimage.structs._mask_backend import cython_mask
+        masks = np.array(masks)
+        fortran_masks = np.asfortranarray(np.transpose(masks, [1, 2, 0]))
+        encoded = cython_mask.encode(fortran_masks)
+        self = Masks(encoded, format='coco_rle')
+        return self
+
+    @classmethod
     def from_coco_segmentations(Masks, segmentations):
         """
         Example:
@@ -170,7 +229,16 @@ class Masks(ub.NiceRepr):
             >>>                  {'size': [5, 9], 'counts': ';23000c0'},
             >>>                  {'size': [5, 9], 'counts': ';>3C072'}]
         """
-        encoded = segmentations
+        import six
+        from kwimage.structs._mask_backend import cython_mask
+        encoded = []
+        for item in segmentations:
+            if isinstance(item['counts'], six.string_types):
+                encoded.append(item)
+            else:
+                w, h = item['size']
+                newitem = cython_mask.frUncompressedRLE([item], h, w)[0]
+                encoded.append(newitem)
         self = Masks(encoded, 'coco_rle')
         return self
 
@@ -184,6 +252,7 @@ class Masks(ub.NiceRepr):
             >>> ]
             >>> shape = (9, 5)
         """
+        raise NotImplementedError('todo handle disjoint cases')
         from kwimage.structs._mask_backend import cython_mask
         h, w = shape
         flat_polys = [ps[0].ravel() for ps in polygons]
