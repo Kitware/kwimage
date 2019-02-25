@@ -11,32 +11,196 @@ References:
     https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.h
 
 """
+import numpy as np
+import ubelt as ub
 
 __ignore__ = True  # currently this file is a WIP
 
 
-class Mask(object):
+class Mask(ub.NiceRepr):
+    """ Manages a single segmentation """
+    def __init__(self, data=None, format=None):
+        self.data = data
+        self.format = format
+
+    def __nice__(self):
+        return '{}, format={}'.format(self.data, self.format)
+
+    @classmethod
+    def from_mask(Mask, mask):
+        from kwimage.structs._mask_backend import cython_mask
+        masks = np.asfortranarray(mask[..., None])
+        encoded = cython_mask.encode(masks)
+        return Mask(encoded[0], format='coco_rle')
+
+    @classmethod
+    def from_coco_segmentation(Mask, segmentation):
+        data = segmentation
+        self = Mask(data, 'coco_rle')
+        return self
+
+    @classmethod
+    def from_polygon(Mask, polygon, shape):
+        self = Masks.from_polygons([polygon], shape)[0]
+        return self
+
+    @classmethod
+    def union(cls, *others):
+        pass
+
+    @classmethod
+    def intersection(cls, *others):
+        pass
+
+    @property
+    def mask(self):
+        return Masks([self.data], self.format).mask[0]
+
+
+class Masks(ub.NiceRepr):
     """
     Python object interface to the C++ backend for encoding binary segmentation
     masks
 
-    mask = cython_mask.Masks(10, 10, 1)
+    Manages multiple masks within the same image
+
+    WIP:
+        >>> from kwimage.structs.mask import *  # NOQA
+        >>> self = Masks.demo()
+        >>> print(self.data)
+        >>> self.union().mask
+        >>> self.intersection().mask
+        >>> polys = self.to_polygons()
+        >>> shape = self.shape
+        >>> polygon = polys[0][0]
+        >>> Mask.from_polygon(polygon, shape)
+
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, data=None, format=None):
+        self.data = data
+        self.format = format
+
+    @property
+    def shape(self):
+        return self.data[0]['size'][::-1]
+
+    def __getitem__(self, index):
+        return Mask(self.data[index], self.format)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __nice__(self):
+        return 'n={}, format={}'.format(len(self.data), self.format)
+
+    def union(self):
+        from kwimage.structs._mask_backend import cython_mask
+        if self.format == 'coco_rle':
+            return Mask(cython_mask.merge(self.data), self.format)
+        else:
+            raise NotImplementedError
+
+    def intersection(self):
+        from kwimage.structs._mask_backend import cython_mask
+        if self.format == 'coco_rle':
+            return Mask(cython_mask.merge(self.data, intersect=1), self.format)
+        else:
+            raise NotImplementedError
+
+    @property
+    def area(self):
+        from kwimage.structs._mask_backend import cython_mask
+        if self.format == 'coco_rle':
+            return cython_mask.area(self.data)
+        else:
+            raise NotImplementedError
+
+    def to_polygons(self):
+        """
+        References:
+            https://github.com/jsbroks/imantics/blob/master/imantics/annotation.py
+        """
+        import cv2
+        polygons = []
+        for mask in self.mask:
+            padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1,
+                                             cv2.BORDER_CONSTANT, value=0)
+            contours_, hierarchy_ = cv2.findContours(
+                padded_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE,
+                offset=(-1, -1))
+            contours = [c[:, 0, :] for c in contours_]
+            polygons.append(contours)
+        return polygons
+
+    def to_boxes(self):
+        from kwimage.structs._mask_backend import cython_mask
+        import kwimage
+        if self.format == 'coco_rle':
+            xywh = cython_mask.toBbox(self.data)
+            boxes = kwimage.Boxes(xywh, 'xywh')
+            return boxes
+        else:
+            raise NotImplementedError
+
+    @property
+    def mask(self):
+        from kwimage.structs._mask_backend import cython_mask
+        if self.format == 'coco_rle':
+            fortran_masks = cython_mask.decode(self.data)
+            masks = np.transpose(fortran_masks, [2, 0, 1])
+        else:
+            raise NotImplementedError
+        return masks
+
+    @property
+    def fortran_mask(self):
+        from kwimage.structs._mask_backend import cython_mask
+        if self.format == 'coco_rle':
+            fortran_masks = cython_mask.decode(self.data)
+        else:
+            raise NotImplementedError
+        return fortran_masks
 
     @classmethod
-    def demo(cls):
+    def from_coco_segmentations(Masks, segmentations):
+        """
+        Example:
+            >>> segmentations = [{'size': [5, 9], 'counts': ';?1B10O30O4'},
+            >>>                  {'size': [5, 9], 'counts': ';23000c0'},
+            >>>                  {'size': [5, 9], 'counts': ';>3C072'}]
+        """
+        encoded = segmentations
+        self = Masks(encoded, 'coco_rle')
+        return self
+
+    @classmethod
+    def from_polygons(Mask, polygons, shape):
+        """
+        Example:
+            >>> polygons = [
+            >>>     [np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]])],
+            >>>     [np.array([[2, 1],[2, 2],[4, 2],[4, 1]])],
+            >>> ]
+            >>> shape = (9, 5)
+        """
+        from kwimage.structs._mask_backend import cython_mask
+        h, w = shape
+        flat_polys = [ps[0].ravel() for ps in polygons]
+        encoded = cython_mask.frPoly(flat_polys, h, w)
+        self = Masks(encoded, 'coco_rle')
+        return self
+
+    @classmethod
+    def demo(Masks):
         from kwimage.structs._mask_backend import cython_mask
         # import kwimage
-        import numpy as np
 
         # From string
         mask1 = np.array([
-            [0, 0, 0, 1, 1, 0, 0, 1, 0],
+            [0, 0, 0, 1, 1, 1, 1, 1, 0],
             [0, 0, 1, 1, 1, 0, 0, 0, 0],
-            [0, 0, 1, 1, 1, 0, 1, 1, 0],
+            [0, 0, 1, 1, 1, 1, 1, 1, 0],
             [0, 0, 1, 1, 1, 0, 1, 1, 0],
             [0, 0, 1, 1, 1, 0, 1, 1, 0],
         ], dtype=np.uint8)
@@ -49,43 +213,16 @@ class Mask(object):
         ], dtype=np.uint8)
         mask3 = np.array([
             [0, 0, 0, 1, 1, 0, 0, 1, 0],
-            [0, 0, 1, 1, 1, 0, 0, 0, 0],
+            [0, 0, 1, 1, 1, 0, 0, 1, 0],
             [0, 0, 1, 1, 1, 0, 1, 1, 0],
-            [0, 0, 1, 1, 1, 0, 1, 1, 0],
+            [0, 0, 1, 1, 1, 1, 1, 1, 0],
             [0, 0, 1, 1, 1, 0, 1, 1, 0],
         ], dtype=np.uint8)
+        masks = np.array([mask1, mask2, mask3])
 
         # The cython utility expects multiple masks in fortran order with the
         # shape [H, W, N], where N is an index over multiple instances.
-        masks = np.asfortranarray(mask[..., None])
-        encoded = cython_mask.encode(masks)
-        decoded = cython_mask.decode(encoded)
-        decoded_mask1 = decoded[..., 0]
-
-        cython_mask.toBbox(encoded)
-
-        assert np.all(mask1 == decoded_mask1)
-
-        iscrowd = [0 for _ in encoded]
-        cython_mask.iou(encoded, encoded, iscrowd)
-
-        print('rle_objs = {!r}'.format(rle_objs))
-
-        encoded1 = [{'counts': b'ga0:f8=dGC\\7\\1VMj20000M30000000000000000001O0000000000001O0000000O100001O00000000000000000000000000000000000000000000000001O000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000O11O00000NaKWK_4i4200000000001O1O0000000000000O1000000000000nKcKU3]4gLhKX3X4bLQL[3W5I5K3[MeIS2]6eMiI[2d60000000000000000000000000000000000O10000000000000000000000001O1O00000O100000000000000000000000000000000000000lM`M\\M`2d2dMXM\\2h2gMUMY2k2jMRMV2n2nMmLS2S3QNbLAjN^2d4bNcKS2]4nM^KW2a4Z100000000000000000000001O000000000000000000O1000000000000000000000000000000000000000000O0100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000O100000000000000000000000001N10000000000000000000000000000000000000000000000O1000O10000000000000000000000000000000000000000000000000000000000000000N2000000H;Gd0]L^JX2g6TN^>', 'size': [300, 416]}]
-        decoded1 = cython_mask.decode(encoded1)
-
-        # Looks like you can't have multiple different sizes
-        encoded3 = [
-            {'size': [10, 10], 'counts': b';>7FJO4'},
-            {'size': [5, 9], 'counts': b';>7FJO4'},
-        ]
-        decoded3 = cython_mask.decode(encoded3)
-
-        # shape, runlen = kwimage.encode_run_length(img, binary=True)
-        # rle_str = ' '.join(map(str, runlen))
-        # cython_mask._frString([rle_str])
-
-        # From bounding boxes
-        # rle_objs = cython_mask.frPyObjects(
-        #     np.array([[0, 0, 10, 10.]]), h=10, w=10)
-        # Rs = cython_mask._frString(rle_objs)
+        fortran_masks = np.asfortranarray(np.transpose(masks, [1, 2, 0]))
+        encoded = cython_mask.encode(fortran_masks)
+        self = Masks(encoded, format='coco_rle')
+        return self
