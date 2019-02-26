@@ -3,22 +3,24 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import numpy as np
 
 
-def encode_run_length(img, binary=False):
+def encode_run_length(img, binary=False, order='C'):
     """
-    Run length encoding.
+    Construct the run length encoding (RLE) of an image.
 
     Args:
         img (ndarray): 2D image
         binary (bool, default=True): set to True for compatibility with COCO
+        order ({'C', 'F'}, default='C'): row-major (C) or column-major (F)
 
     Returns:
-        Tuple[Tuple[int, int], ndarray]: size and encoding
+        Dict[str, object]: encoding: dictionary items are:
+            counts (ndarray): the run length encoding
+            shape (Tuple): the original image shape
+            binary (bool): if the counts encoding is binary or multiple values are ok
+            order ({'C', 'F'}, default='C'): encoding order
 
-    TODO:
-        - [ ]
-        Fast cython implementation.
-        Make RLE a data structure.
-        See https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/_mask.pyx
+    SeeAlso:
+        * kwimage.Mask - a cython-backed data structure to handle coco-style RLEs
 
     Example:
         >>> import ubelt as ub
@@ -33,17 +35,17 @@ def encode_run_length(img, binary=False):
         >>>     ..2.......
         >>>     ''').replace('.', '0').splitlines()
         >>> img = np.array([list(map(int, line)) for line in lines])
-        >>> (h, w), runlen = encode_run_length(img)
+        >>> encoding = encode_run_length(img)
         >>> target = np.array([0,16,1,3,0,3,2,1,0,3,1,3,0,2,2,3,0,2,1,3,0,1,2,5,0,6,2,3,0,8,2,1,0,7])
-        >>> assert np.all(target == runlen)
+        >>> assert np.all(target == encoding['counts'])
 
     Example:
         >>> binary = True
         >>> img = np.array([[1, 0, 1, 1, 1, 0, 0, 1, 0]])
-        >>> (h, w), runlen = encode_run_length(img, binary=True)
-        >>> assert runlen.tolist() == [0, 1, 1, 3, 2, 1, 1]
+        >>> encoding = encode_run_length(img, binary=True)
+        >>> assert encoding['counts'].tolist() == [0, 1, 1, 3, 2, 1, 1]
     """
-    flat = img.ravel()
+    flat = img.ravel(order=order)
     diff_idxs = np.flatnonzero(np.abs(np.diff(flat)) > 0)
     pos = np.hstack([[0], diff_idxs + 1])
 
@@ -62,29 +64,35 @@ def encode_run_length(img, binary=False):
             runlen = lengths
     else:
         runlen = np.hstack([values[:, None], lengths[:, None]]).ravel()
-    shape = img.shape
-    return shape, runlen
+    encoding = {
+        'shape': img.shape,
+        'counts': runlen,
+        'binary': binary,
+        'order': order,
+    }
+    return encoding
 
 
-def decode_run_length(runlen, shape, binary=False):
+def decode_run_length(counts, shape, binary=False, dtype=np.uint8, order='C'):
     """
     Decode run length encoding back into an image.
 
     Args:
-        runlen (ndarray): the encoding
+        counts (ndarray): the run-length encoding
         shape (Tuple[int, int]), the height / width of the mask
         binary (bool): if the RLU is binary or non-binary.
             Set to True for compatibility with COCO.
+        dtype (dtype, default=np.uint8): data type for decoded image
+        order ({'C', 'F'}, default='C'): row-major (C) or column-major (F)
 
     Returns:
         ndarray: the image
 
     Example:
         >>> from kwimage.im_misc import *  # NOQA
-        >>> binary = True
         >>> img = np.array([[1, 0, 1, 1, 1, 0, 0, 1, 0]])
-        >>> shape, runlen = encode_run_length(img, binary=True)
-        >>> recon = decode_run_length(runlen, shape, binary=True)
+        >>> encoded = encode_run_length(img, binary=True)
+        >>> recon = decode_run_length(**encoded)
         >>> assert np.all(recon == img)
 
         >>> import ubelt as ub
@@ -99,24 +107,32 @@ def decode_run_length(runlen, shape, binary=False):
         >>>     ..2.......
         >>>     ''').replace('.', '0').splitlines()
         >>> img = np.array([list(map(int, line)) for line in lines])
-        >>> shape, runlen = encode_run_length(img)
-        >>> recon = decode_run_length(runlen, shape, binary=False)
+        >>> encoded = encode_run_length(img)
+        >>> recon = decode_run_length(**encoded)
         >>> assert np.all(recon == img)
     """
-    recon = np.zeros(shape, dtype=np.uint8)
+    recon = np.zeros(shape, dtype=dtype, order=order)
     flat = recon.ravel()
     if binary:
         value = 0
         start = 0
-        for num in runlen:
+        for num in counts:
             stop = start + num
             flat[start:stop] = value
             start = stop
             value = 1 - value
     else:
         start = 0
-        for value, num in zip(runlen[::2], runlen[1::2]):
+        for value, num in zip(counts[::2], counts[1::2]):
             stop = start + num
             flat[start:stop] = value
             start = stop
     return recon
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        xdoctest -m kwimage.im_misc
+    """
+    import xdoctest
+    xdoctest.doctest_module(__file__)

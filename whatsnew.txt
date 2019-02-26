@@ -1,5 +1,7 @@
 Version 0.3.0
 =============
+* Changed `encode_run_length` to return a dictionary
+* Add `Mask` data structure
 * Add checks to detection types
 
 Version 0.0.1

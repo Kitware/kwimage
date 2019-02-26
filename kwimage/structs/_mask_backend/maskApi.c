@@ -4,6 +4,14 @@
 * Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
 * Licensed under the Simplified BSD License [see coco/license.txt]
 **************************************************************************/
+
+/*
+
+    astyle --style=ansi --indent=spaces  --indent-classes  --indent-switches \
+    --indent-col1-comments --pad-oper --unpad-paren --delete-empty-lines \
+    --add-brackets ~/code/kwimage/kwimage/structs/_mask_backend/maskApi.c
+
+ */
 #include "maskApi.h"
 #include <math.h>
 #include <stdlib.h>

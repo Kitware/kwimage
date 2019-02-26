@@ -257,6 +257,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Doctest:
             >>> # TODO: move to external unit test
             >>> # Coerce to numpy
+            >>> import kwimage
             >>> dets = Detections(
             >>>     boxes=kwimage.Boxes.random(3).numpy(),
             >>>     class_idxs=[0, 1, 1],
