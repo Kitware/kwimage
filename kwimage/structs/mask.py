@@ -49,10 +49,10 @@ class MaskFormat:
         cannonical.append(k)
         return k
 
-    STRING_RLE   = _register('string_rle')    # cython compressed RLE
-    ARRAY_RLE    = _register('array_rle')     # numpy uncompreesed RLE
-    C_MASK       = _register('c_mask')        # row-major raw binary mask
-    FORTRAN_MASK = _register('fortran_mask')  # column-major raw binary mask
+    BYTES_RLE = _register('bytes_rle')  # cython compressed RLE
+    ARRAY_RLE = _register('array_rle')  # numpy uncompreesed RLE
+    C_MASK    = _register('c_mask')     # row-major raw binary mask
+    F_MASK    = _register('f_mask')     # column-major raw binary mask
 
     aliases = {
     }
@@ -109,37 +109,37 @@ class _MaskConversionMixin(object):
         except KeyError:
             raise KeyError('Cannot convert {} to {}'.format(self.format, format))
 
-    @_register_convertor(MaskFormat.STRING_RLE)
-    def to_string_rle(self, copy=False):
+    @_register_convertor(MaskFormat.BYTES_RLE)
+    def to_bytes_rle(self, copy=False):
         """
         Example:
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> mask = Mask.random(shape=(8, 8), rng=0)
-            >>> print(mask.to_string_rle().data['counts'])
+            >>> print(mask.to_bytes_rle().data['counts'])
             ...'135000k0NWO0L'
             >>> print(mask.to_array_rle().data['counts'].tolist())
             [1, 3, 5, 3, 5, 3, 32, 1, 7, 1, 3]
-            >>> print(mask.to_array_rle().to_string_rle().data['counts'])
+            >>> print(mask.to_array_rle().to_bytes_rle().data['counts'])
             ...'135000k0NWO0L'
         """
-        if self.format == MaskFormat.STRING_RLE:
+        if self.format == MaskFormat.BYTES_RLE:
             return self.copy() if copy else self
         if self.format == MaskFormat.ARRAY_RLE:
             w, h = self.data['size']
             if self.data.get('order', 'F') != 'F':
                 raise ValueError('Expected column-major array RLE')
             newdata = cython_mask.frUncompressedRLE([self.data], h, w)[0]
-            self = Mask(newdata, MaskFormat.STRING_RLE)
+            self = Mask(newdata, MaskFormat.BYTES_RLE)
 
-        elif self.format == MaskFormat.FORTRAN_MASK:
-            fortran_masks = self.data[:, :, None]
-            encoded = cython_mask.encode(fortran_masks)[0]
-            self = Mask(encoded, format=MaskFormat.STRING_RLE)
+        elif self.format == MaskFormat.F_MASK:
+            f_masks = self.data[:, :, None]
+            encoded = cython_mask.encode(f_masks)[0]
+            self = Mask(encoded, format=MaskFormat.BYTES_RLE)
         elif self.format == MaskFormat.C_MASK:
             c_mask = self.data
-            fortran_masks = np.asfortranarray(c_mask)[:, :, None]
-            encoded = cython_mask.encode(fortran_masks)[0]
-            self = Mask(encoded, format=MaskFormat.STRING_RLE)
+            f_masks = np.asfortranarray(c_mask)[:, :, None]
+            encoded = cython_mask.encode(f_masks)[0]
+            self = Mask(encoded, format=MaskFormat.BYTES_RLE)
         else:
             raise NotImplementedError(self.format)
         return self
@@ -151,39 +151,41 @@ class _MaskConversionMixin(object):
         else:
             # NOTE: inefficient, could be improved
             import kwimage
-            fortran_mask = self.to_fortran_mask().data
-            encoded = kwimage.encode_run_length(
-                fortran_mask, binary=True, order='F')
+            f_mask = self.to_fortran_mask().data
+            encoded = kwimage.encode_run_length(f_mask, binary=True, order='F')
             encoded['size'] = encoded['shape'][0:2][::-1]  # hack in size
             self = Mask(encoded, format=MaskFormat.ARRAY_RLE)
         return self
 
-    @_register_convertor(MaskFormat.FORTRAN_MASK)
+    @_register_convertor(MaskFormat.F_MASK)
     def to_fortran_mask(self, copy=False):
-        if self.format == MaskFormat.FORTRAN_MASK:
+        if self.format == MaskFormat.F_MASK:
             return self.copy() if copy else self
         elif self.format == MaskFormat.C_MASK:
             c_mask = self.data.copy() if copy else self.data
-            fortran_mask = np.asfortranarray(c_mask)
-        # elif self.format == MaskFormat.ARRAY_RLE:
-        #     pass
+            f_mask = np.asfortranarray(c_mask)
+        elif self.format == MaskFormat.ARRAY_RLE:
+            import kwimage
+            encoded = dict(self.data)
+            encoded.pop('size')
+            f_mask = kwimage.decode_run_length(**encoded)
         else:
             # NOTE: inefficient, could be improved
-            self = self.to_string_rle(copy=False)
-            fortran_mask = cython_mask.decode([self.data])[:, :, 0]
-        self = Mask(fortran_mask, MaskFormat.FORTRAN_MASK)
+            self = self.to_bytes_rle(copy=False)
+            f_mask = cython_mask.decode([self.data])[:, :, 0]
+        self = Mask(f_mask, MaskFormat.F_MASK)
         return self
 
     @_register_convertor(MaskFormat.C_MASK)
     def to_c_mask(self, copy=False):
         if self.format == MaskFormat.C_MASK:
             return self.copy() if copy else self
-        elif self.format == MaskFormat.FORTRAN_MASK:
-            fortran_mask = self.data.copy() if copy else self.data
-            c_mask = np.ascontiguousarray(fortran_mask)
+        elif self.format == MaskFormat.F_MASK:
+            f_mask = self.data.copy() if copy else self.data
+            c_mask = np.ascontiguousarray(f_mask)
         else:
-            fortran_mask = self.to_fortran_mask(copy=False).data
-            c_mask = np.ascontiguousarray(fortran_mask)
+            f_mask = self.to_fortran_mask(copy=False).data
+            c_mask = np.ascontiguousarray(f_mask)
         self = Mask(c_mask, MaskFormat.C_MASK)
         return self
 
@@ -210,10 +212,10 @@ class _MaskConstructorMixin(object):
             >>> shape = (9, 5)
             >>> self = Mask.from_polygons(polygons, shape)
             >>> print(self)
-            <Mask({'counts': b'724;MG2MN16', 'size': [9, 5]}, format=string_rle)>
+            <Mask({'counts': b'724;MG2MN16', 'size': [9, 5]}, format=bytes_rle)>
             >>> polygon = polygons[0]
             >>> print(Mask.from_polygons(polygon, shape))
-            <Mask({'counts': b'b04500N2', 'size': [9, 5]}, format=string_rle)>
+            <Mask({'counts': b'b04500N2', 'size': [9, 5]}, format=bytes_rle)>
         """
         h, w = shape
         # TODO: holes? geojson?
@@ -221,7 +223,7 @@ class _MaskConstructorMixin(object):
             polygons = [polygons]
         flat_polys = [ps.ravel() for ps in polygons]
         encoded = cython_mask.frPoly(flat_polys, h, w)
-        ccs = [Mask(e, MaskFormat.STRING_RLE) for e in encoded]
+        ccs = [Mask(e, MaskFormat.BYTES_RLE) for e in encoded]
         self = Mask.union(*ccs)
         return self
 
@@ -244,7 +246,7 @@ class _MaskConstructorMixin(object):
             >>> mask = Mask.random(shape=(32, 32), rng=0).data
             >>> offset = (30, 100)
             >>> shape = (501, 502)
-            >>> self = Mask.from_mask(mask, offset=offset, shape=shape, method='naive')
+            >>> self = Mask.from_mask(mask, offset=offset, shape=shape, method='faster')
 
 
         Ignore:
@@ -481,15 +483,15 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     Manages a single segmentation mask and can convert to and from
     multiple formats including:
 
-        * string_rle
+        * bytes_rle
         * array_rle
         * c_mask
-        * fortran_mask
+        * f_mask
 
     Example:
-        >>> # a ms-coco style compressed string rle segmentation
+        >>> # a ms-coco style compressed bytes rle segmentation
         >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
-        >>> mask = Mask(segmentation, 'string_rle')
+        >>> mask = Mask(segmentation, 'bytes_rle')
         >>> # convert to binary numpy representation
         >>> binary_mask = mask.to_c_mask().data
         >>> print(ub.repr2(binary_mask.tolist(), nl=1, nobr=1))
@@ -541,8 +543,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             33
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
-        rle_datas = [item.to_string_rle().data for item in it.chain([self], others)]
-        return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.STRING_RLE)
+        rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
+        return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.BYTES_RLE)
 
     def intersection(self, *others):
         """
@@ -555,17 +557,17 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             9
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
-        rle_datas = [item.to_string_rle().data for item in it.chain([self], others)]
-        return cls(cython_mask.merge(rle_datas, intersect=1), MaskFormat.STRING_RLE)
+        rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
+        return cls(cython_mask.merge(rle_datas, intersect=1), MaskFormat.BYTES_RLE)
 
     @property
     def shape(self):
-        if self.format in {MaskFormat.STRING_RLE, MaskFormat.ARRAY_RLE}:
+        if self.format in {MaskFormat.BYTES_RLE, MaskFormat.ARRAY_RLE}:
             if 'shape' in self.data:
                 return self.data['shape']
             else:
                 return self.data['size'][::-1]
-        if self.format in {MaskFormat.C_MASK, MaskFormat.FORTRAN_MASK}:
+        if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
             return self.data.shape
 
     @property
@@ -578,7 +580,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self.area
             11
         """
-        self = self.to_string_rle()
+        self = self.to_bytes_rle()
         return cython_mask.area([self.data])[0]
 
     def get_xywh(self):
@@ -595,7 +597,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             [0.0, 1.0, 8.0, 4.0]
         """
         # import kwimage
-        self = self.to_string_rle()
+        self = self.to_bytes_rle()
         xywh = cython_mask.toBbox([self.data])[0]
         # boxes = kwimage.Boxes(xywh, 'xywh')
         # return boxes
@@ -624,7 +626,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             ]
             >>> polygons = self.get_polygon()
             >>> other = Mask.from_polygons(polygons, self.shape)
-            >>> self = self.to_string_rle()
+            >>> self = self.to_bytes_rle()
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -640,8 +642,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # mode = cv2.RETR_EXTERNAL
 
         # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
-        # method = cv2.CHAIN_APPROX_SIMPLE
-        method = cv2.CHAIN_APPROX_NONE
+        method = cv2.CHAIN_APPROX_SIMPLE
+        # method = cv2.CHAIN_APPROX_NONE
         # method = cv2.CHAIN_APPROX_TC89_KCOS
         contours_, hierarchy_ = cv2.findContours(padded_mask, mode, method,
                                                  offset=(-1, -1))
@@ -697,8 +699,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> print('iou = {:.4f}'.format(iou))
             iou = 0.0542
         """
-        item1 = self.to_string_rle(copy=False).data
-        item2 = other.to_string_rle(copy=False).data
+        item1 = self.to_bytes_rle(copy=False).data
+        item2 = other.to_bytes_rle(copy=False).data
         # I'm not sure what passing `pyiscrowd` actually does here
         # TODO: determine what `pyiscrowd` does, and document it.
         pyiscrowd = np.array([0], dtype=np.uint8)
