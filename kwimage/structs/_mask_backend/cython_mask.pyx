@@ -1,5 +1,5 @@
 # distutils: language = c
-# distutils: sources = ../common/maskApi.c
+# distutils: sources = maskApi.c
 
 #**************************************************************************
 # Microsoft COCO Toolbox.      version 2.0
@@ -8,15 +8,22 @@
 # Licensed under the Simplified BSD License [see coco/license.txt]
 #**************************************************************************
 
+"""
+cd ~/code/kwimage/kwimage/structs/_mask_backend/
+CPATH=$CPATH:$(python -c "import numpy as np; print(np.get_include())") cythonize -a -i ~/code/kwimage/kwimage/structs/_mask_backend/cython_mask.pyx
+"""
+
 __author__ = 'tsungyi'
 
 import sys
-PYTHON_VERSION = sys.version_info[0]
+# PYTHON_VERSION = sys.version_info[0]
+cdef int PYTHON_VERSION = sys.version_info[0]
 
 # import both Python-level and C-level symbols of Numpy
 # the API uses Numpy to interface C and Python
 import numpy as np
 cimport numpy as np
+cimport cython
 from libc.stdlib cimport malloc, free
 
 # intialized Numpy. must do.
@@ -306,3 +313,55 @@ def frPyObjects(pyobj, h, w):
     else:
         raise Exception('input type is not supported.')
     return objs
+
+
+@cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.wraparound(False)
+def _rle_bytes_to_array(counts_str):
+    """
+    Converts from the compressed counts string into an uncompressed array
+    """
+
+    cdef siz num_chars = len(counts_str)
+
+    cdef bytes py_string
+    if PYTHON_VERSION == 2:
+        py_string = str(counts_str).encode('utf8')
+    elif PYTHON_VERSION == 3:
+        py_string = str.encode(counts_str) if type(counts_str) == str else counts_str
+    else:
+        raise Exception('Python version must be 2 or 3')
+
+    cdef char* s = py_string
+
+    cdef np.ndarray[uint, ndim=1] new_counts = np.empty(num_chars, dtype=np.uint32)
+    # create pure-c view
+    cdef uint[:] cnts = new_counts
+
+    cdef long x
+    cdef int more
+    cdef siz p = 0
+    cdef siz m = 0
+    cdef siz k
+    cdef char c
+
+    # with nogil:
+    while p < num_chars and s[p]:
+        x = 0
+        k = 0
+        more = 1
+        while more != 0:
+            c = s[p] - 48
+            x |= (c & 0x1f) << 5 * k
+            more = c & 0x20
+            p += 1
+            k += 1
+            if more == 0 and (c & 0x10):
+                x |= (-1 << 5 * k)
+        if m > 2:
+            x += cnts[m - 2]
+        cnts[m] = x
+        m += 1
+    new_counts = new_counts[:m]
+    return new_counts

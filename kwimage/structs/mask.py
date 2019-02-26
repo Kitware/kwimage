@@ -148,8 +148,18 @@ class _MaskConversionMixin(object):
     def to_array_rle(self, copy=False):
         if self.format == MaskFormat.ARRAY_RLE:
             return self.copy() if copy else self
-        else:
+        elif self.format == MaskFormat.BYTES_RLE:
             # NOTE: inefficient, could be improved
+            arr_counts = cython_mask._rle_bytes_to_array(self.data['counts'])
+            encoded = {
+                'size': self.data['size'],
+                'binary': self.data.get('binary', True),
+                'counts': arr_counts,
+                'order': self.data.get('order', 'F'),
+            }
+            encoded['shape'] = self.data.get('shape', encoded['size'][::-1])
+            self = Mask(encoded, format=MaskFormat.ARRAY_RLE)
+        else:
             import kwimage
             f_mask = self.to_fortran_mask().data
             encoded = kwimage.encode_run_length(f_mask, binary=True, order='F')
@@ -706,6 +716,50 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         pyiscrowd = np.array([0], dtype=np.uint8)
         iou = cython_mask.iou([item1], [item2], pyiscrowd)[0, 0]
         return iou
+
+
+def _rle_bytes_to_array(s):
+    """
+
+    Ignore:
+        from kwimage.structs.mask import _rle_bytes_to_array, cv2, copy, np, ub, it, cython_mask
+        s = b';?1B10O30O4'
+
+        import ubelt as ub
+        ti = ub.Timerit(1000, bestof=50, verbose=2)
+        for timer in ti.reset('python'):
+            with timer:
+                _rle_bytes_to_array(s)
+
+        for timer in ti.reset('cython'):
+            with timer:
+                cython_mask._rle_bytes_to_array(s)
+    """
+    # verbatim inefficient impl: TODO: cythonize
+    import numpy as np
+    cnts = np.empty(len(s), dtype=np.int64)
+    p = 0
+    m = 0
+    for m in range(len(s)):
+        if p >= len(s):
+            break
+        x = 0
+        k = 0
+        more = 1
+        while more:
+            c = s[p] - 48
+            x |= (c & 0x1f) << 5 * k
+            more = c & 0x20
+            p += 1
+            k += 1
+            if more == 0 and (c & 0x10):
+                x |= (-1 << 5 * k)
+        if m > 2:
+            x += cnts[m - 2]
+        cnts[m] = x
+    cnts = cnts[:m]
+    return cnts
+
 
 if __name__ == '__main__':
     """
