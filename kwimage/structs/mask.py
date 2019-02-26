@@ -63,6 +63,9 @@ class MaskFormat:
 class _MaskConversionMixin(object):
     """
     Mixin class registering conversion functions
+
+    For conversion speeds look into:
+        ~/code/kwimage/dev/bench_rle.py
     """
     convert_funcs = {}
 
@@ -223,11 +226,203 @@ class _MaskConstructorMixin(object):
         return self
 
     @classmethod
-    def from_mask(Mask, mask, offset=None, shape=None):
+    def from_mask(Mask, mask, offset=None, shape=None, method='naive'):
         """
         Creates an RLE encoded mask from a raw binary mask, but you may
         optionally specify an offset if the mask is part of a larger image.
+
+        Args:
+            mask (ndarray):
+                a binary submask which belongs to a larger image
+
+            offset (Tuple[int, int]):
+                top-left xy location of the mask in the larger image
+
+            shape (Tuple[int, int]): shape of the larger image
+
+        Example:
+            >>> mask = Mask.random(shape=(32, 32), rng=0).data
+            >>> offset = (30, 100)
+            >>> shape = (501, 502)
+            >>> self = Mask.from_mask(mask, offset=offset, shape=shape, method='naive')
+
+
+        Ignore:
+            from kwimage.structs.mask import *  # NOQA
+            from kwimage.structs.mask import cv2, copy, np, ub, it, cython_mask
+            from kwimage.structs.mask import MaskFormat  # NOQA
+            # Ensure this works on possible 4x4 masks
+            N, M = 3, 5
+            choices = [[0, 1]] * (N * M)
+            iter_ = it.product(*choices)
+            iter_ = ub.ProgIter(iter_, total=np.prod(list(map(len, choices))))
+            for choice in iter_:
+                mask = np.array(choice, dtype=np.uint8).reshape(N, M)
+                offset = (1, 2)
+                shape = (6, 6)
+                self1 = Mask.from_mask(mask, offset, shape, 'naive')
+                self2 = Mask.from_mask(mask, offset, shape, 'faster')
+
+                m1 = self1.to_c_mask().data
+                m2 = self2.to_c_mask().data
+
+                assert np.all(m1 == m2)
         """
+        if shape is None:
+            shape = mask.shape
+        if offset is None:
+            offset = (0, 0)
+        if method == 'naive':
+            # inefficent but used to test correctness of algorithms
+            # import kwimage
+            larger = np.zeros(shape, dtype=mask.dtype)
+            mask_rc = offset[::-1]
+            mask_dims = mask.shape[0:2]
+            index = tuple(slice(s, s + d) for s, d in zip(mask_rc, mask_dims))
+            larger[index] = mask
+            self = Mask(larger, MaskFormat.C_MASK).to_array_rle()
+        elif method == 'faster':
+            import kwimage
+            encoded = kwimage.encode_run_length(mask, binary=True, order='F')
+            encoded['size'] = encoded['shape']
+            self = Mask(encoded, MaskFormat.ARRAY_RLE)
+            self = self.translate(offset, shape)
+        else:
+            raise KeyError(method)
+        return self
+
+
+class _MaskTransformMixin(object):
+    def warp(self):
+        raise NotImplementedError
+
+    def translate(self, offset, shape):
+        """
+        Efficiently translate an array_rle in the encoding space
+
+        Args:
+            offset (Tuple): x,y offset
+            shape (Tuple): h,w of transformed mask
+
+        Example:
+            >>> self = Mask.random(shape=(8, 8), rng=0)
+            >>> self.data[6, 0] = 1
+            >>> self.data[7, 0] = 1
+            >>> self.data[0, 1] = 1
+
+            >>> self.data[7, 3] = 1
+            >>> self.data[0, 4] = 1
+            >>> self.data[7, 4] = 1
+
+            >>> self.data[4, 6] = 0
+            >>> self.data[4, 7] = 0
+            >>> print(self.data)
+
+            img = np.array([
+                [1, 1, 1, 1],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [1, 1, 1, 1],], dtype=np.uint8)
+            self = Mask(img, 'c_mask')
+
+            rle = kwimage.encode_run_length(img, binary=True)
+            shape = (10, 10)
+            offset = (1, 1)
+            self.translate(offset, shape).to_c_mask().data
+        """
+        rle = self.to_array_rle(copy=False).data
+
+        if not rle['binary']:
+            raise ValueError('rle must be binary')
+
+        # These are the flat indices where the value changes:
+        #  * even locs are stop-indices for zeros and start indices for ones
+        #  * odd locs are stop-indices for ones and start indices for zeros
+        indices = rle['counts'].cumsum()
+
+        if len(indices) % 2 == 1:
+            indices = indices[:-1]
+
+        # Transform indices to be start-stop inclusive indices for ones
+        indices[1::2] -= 1
+
+        # Find yx points where the binary mask changes value
+        old_shape = rle['shape']
+        new_shape = shape
+        rc_offset = np.array(offset[::-1])
+
+        if np.any(rc_offset < 0):
+            raise NotImplementedError('negative offset')
+
+        if np.any(np.array(old_shape) + rc_offset > np.array(new_shape)):
+            raise NotImplementedError('shape overflow')
+
+        pts = np.unravel_index(indices, old_shape, order=rle['order'])
+        major_axis = 1 if rle['order'] == 'F' else 0
+        major_idxs = pts[major_axis]
+
+        # Find locations in the major axis points where a non-zero count
+        # crosses into the next minor dimension.
+        pair_major_index = major_idxs.reshape(-1, 2)
+        num_major_crossings = pair_major_index.T[1] - pair_major_index.T[0]
+        flat_cross_idxs = np.where(num_major_crossings > 0)[0] * 2
+
+        # Insert breaks in locations that cross the major-axis
+        broken_pts = [x.tolist() for x in pts]
+        for idx in flat_cross_idxs[::-1]:
+            prev_pt = [x[idx] for x in broken_pts]
+            next_pt = [x[idx + 1] for x in broken_pts]
+            for break_d in reversed(range(prev_pt[major_axis], next_pt[major_axis])):
+                # Insert a breakpoint over every major axis crossing
+                if major_axis == 1:
+                    new_stop = [old_shape[0] - 1, break_d]
+                    new_start = [0, break_d + 1]
+                elif major_axis == 0:
+                    new_stop = [break_d, old_shape[1] - 1]
+                    new_start = [break_d + 1, 0]
+                else:
+                    raise AssertionError(major_axis)
+                broken_pts[0].insert(idx + 1, new_start[0])
+                broken_pts[1].insert(idx + 1, new_start[1])
+                broken_pts[0].insert(idx + 1, new_stop[0])
+                broken_pts[1].insert(idx + 1, new_stop[1])
+
+        # Now that new start-stop locations have been added,
+        # translate the points that indices where non-zero data should go.
+        new_pts = np.array(broken_pts, dtype=np.int) + rc_offset[:, None]
+
+        # Now we have translated flat-indices in the new canvas shape
+        new_indices = np.ravel_multi_index(new_pts, new_shape, order=rle['order'])
+        new_indices[1::2] += 1
+
+        total = np.prod(new_shape)
+        if len(new_indices) == 0:
+            trailing_counts = [total]
+            leading_counts = []
+        else:
+            leading_counts = [new_indices[0]]
+            trailing_counts = [total - new_indices[-1]]
+
+        body_counts = np.diff(new_indices)
+        new_counts = np.hstack([leading_counts, body_counts, trailing_counts])
+
+        new_rle = {
+            'shape': new_shape,
+            'size': new_shape[::-1],
+            'order': rle['order'],
+            'counts': new_counts,
+            'binary': rle['binary'],
+        }
+        if False:
+            # minor_axis = 1 - major_axis
+            # np.vstack(pts[::-1]).T
+            # major_d = shape[major_axis]
+            import kwimage
+            decoded = kwimage.decode_run_length(**new_rle)
+            print(decoded)
+
+        new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
+        return new_self
 
 
 class _MaskDrawMixin(object):
@@ -281,7 +476,7 @@ class _MaskDrawMixin(object):
 
 
 class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
-           _MaskDrawMixin):
+           _MaskTransformMixin, _MaskDrawMixin):
     """
     Manages a single segmentation mask and can convert to and from
     multiple formats including:
@@ -427,10 +622,12 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 np.array([[6, 4],[7, 4]], dtype=np.int32),
                 np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
             ]
+            >>> polygons = self.get_polygon()
             >>> other = Mask.from_polygons(polygons, self.shape)
             >>> self = self.to_string_rle()
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
+            >>> kwplot.autompl()
             >>> image = np.ones(self.shape)
             >>> image = self.draw_on(image, color='blue')
             >>> image = other.draw_on(image, color='red')
@@ -439,12 +636,29 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         mask = self.to_c_mask().data
         padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1,
                                          cv2.BORDER_CONSTANT, value=0)
-        contours_, hierarchy_ = cv2.findContours(
-            padded_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE,
-            offset=(-1, -1))
+        mode = cv2.RETR_LIST
+        # mode = cv2.RETR_EXTERNAL
+
+        # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+        # method = cv2.CHAIN_APPROX_SIMPLE
+        method = cv2.CHAIN_APPROX_NONE
+        # method = cv2.CHAIN_APPROX_TC89_KCOS
+        contours_, hierarchy_ = cv2.findContours(padded_mask, mode, method,
+                                                 offset=(-1, -1))
         polygon = [c[:, 0, :] for c in contours_]
 
         # TODO: a kwimage structure for polygons
+
+        if False:
+            import kwil
+            kwil.autompl()
+            # Note that cv2 draw contours doesnt have the 1-pixel thick problem
+            # it seems to just be the way the coco implementation is
+            # interpreting polygons.
+            image = kwil.atleast_3channels(mask)
+            toshow = np.zeros(image.shape, dtype="uint8")
+            cv2.drawContours(toshow, contours_, -1, (255, 0, 0), 1)
+            kwil.imshow(toshow)
 
         return polygon
 

@@ -432,79 +432,119 @@ int uintCompare(const void *a, const void *b)
 
 void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
 {
-    /* upsample and get discrete points densely along entire boundary */
-    siz j, m = 0;
-    double scale = 5;
-    int *x, *y, *u, *v;
+    /* ======================================================= *
+
+    Create an RLE mask from a closed polygon without any holes
+
+    Args:
+         *R : a single of RLE object to populate
+         *xy: a list of xy-points in the polygon
+         k: number of points in the polygon
+         h: height of the image
+         w: width of the image
+
+     * ======================================================= */
+
+    double scale = 5;  // hard coded scale factor
+
+    siz j = 0;  // reusable index variable
+    siz m = 0;  // reusable, encodes number of uv points we will need
+
+    int *x, *y;  // destination for upsampled points
+    int *u, *v;  // evenly-spaced sampled points along the boundary
     uint *a, *b;
+
+    /* ---- PART 1 --- */
+    /* upsample and get discrete points densely along entire boundary */
+
+    // Pack upsampled points into the x and y arrays
     x = malloc(sizeof(int) * (k + 1));
     y = malloc(sizeof(int) * (k + 1));
     for(j = 0; j < k; j++)
     {
         x[j] = (int)(scale * xy[j * 2 + 0] + .5);
     }
-    x[k] = x[0];
     for(j = 0; j < k; j++)
     {
         y[j] = (int)(scale * xy[j * 2 + 1] + .5);
     }
+    // duplicate the final point to close the poly
+    x[k] = x[0];
     y[k] = y[0];
+
+    // Determine now many uv points we need, which is the number of polygon
+    // points plus the maximum axis-aligned distances between consecutive pairs
+    // of points (not sure why though).
     for(j = 0; j < k; j++)
     {
         m += umax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1;
     }
+    // I THINK: u and v will hold a set of evenly spaced interpolated points
+    // along the boundary of the upsampled input polygon
     u = malloc(sizeof(int) * m);
     v = malloc(sizeof(int) * m);
-    m = 0;
+
+    m = 0;  // reset m, whic will now index into the u,v array
     for(j = 0; j < k; j++)
     {
-        int xs = x[j], xe = x[j + 1], ys = y[j], ye = y[j + 1], dx, dy, t, d;
+        // for every pair of consecutive points, choose the larger of the
+        // distance between in the x (flip=False) or y (flip=True) direction.
+        int xs = x[j], xe = x[j + 1];
+        int ys = y[j], ye = y[j + 1];
+        int dx, dy;  // distance in x and y
+        int tmp;
+        int d;  // index variable
         int flip;
-        double s;
+        double s;  // a fraction of the minor distance over the major distance
         dx = abs(xe - xs);
         dy = abs(ys - ye);
+
+        // flip the order of the xy1, xy2 pair to make the signed major-distance positive
         flip = (dx >= dy && xs > xe) || (dx < dy && ys > ye);
         if(flip)
         {
-            t = xs;
-            xs = xe;
-            xe = t;
-            t = ys;
-            ys = ye;
-            ye = t;
+            tmp = xs; xs = xe; xe = tmp;  // swap xs and xe
+            tmp = ys; ys = ye; ye = tmp;  // swap ys and ye
         }
-        s = dx >= dy ? (double)(ye - ys) / dx : (double)(xe - xs) / dy;
         if(dx >= dy)
         {
+            // The x-distance is major and y-distance is minor
+            s = (double)(ye - ys) / dx;  // Get the signed fraction of the distance
             for(d = 0; d <= dx; d++)
             {
-                t = flip ? dx - d : d;
-                u[m] = t + xs;
-                v[m] = (int)(ys + s * t + .5);
+                //
+                tmp = flip ? dx - d : d;
+                u[m] = tmp + xs;
+                v[m] = (int)(ys + s * tmp + .5);
                 m++;
             }
         }
         else
         {
+            // The y-distance is major and x-distance is minor
+            s = (double)(xe - xs) / dy;
             for(d = 0; d <= dy; d++)
             {
-                t = flip ? dy - d : d;
-                v[m] = t + ys;
-                u[m] = (int)(xs + s * t + .5);
+                tmp = flip ? dy - d : d;
+                v[m] = tmp + ys;
+                u[m] = (int)(xs + s * tmp + .5);
                 m++;
             }
         }
     }
+
+    /* ---- PART 2 --- */
     /* get points along y-boundary and downsample */
     free(x);
     free(y);
-    k = m;
-    m = 0;
+    k = m;  // reset k, now encodes number of sampled points
+    m = 0;  // reset m
     double xd, yd;
     x = malloc(sizeof(int) * k);
     y = malloc(sizeof(int) * k);
     for(j = 1; j < k; j++)
     {
+        // for conscutive pairs of uv points, if the x-coordinate changes
         if(u[j] != u[j - 1])
         {
             xd = (double)(u[j] < u[j - 1] ? u[j] : u[j] - 1);
@@ -529,6 +569,8 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
             m++;
         }
     }
+
+    /* ---- PART 3 --- */
     /* compute rle encoding given y-boundary points */
     k = m;
     a = malloc(sizeof(uint) * (k + 1));
@@ -549,6 +591,7 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
         a[j] -= p;
         p = t;
     }
+    // b will contain the RLE counts
     b = malloc(sizeof(uint) * k);
     j = m = 0;
     b[m++] = a[j++];

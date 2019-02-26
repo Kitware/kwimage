@@ -29,13 +29,13 @@ from .im_demodata import (grab_test_image, grab_test_image_fpath,)
 from .im_io import (imread, imwrite,)
 from .im_misc import (decode_run_length, encode_run_length,)
 from .im_stack import (stack_images, stack_images_grid,)
-from .structs import (Boxes, Detections, Heatmap, boxes, detections, heatmap,
-                      smooth_prob,)
+from .structs import (Boxes, Detections, Heatmap, Mask, boxes, detections,
+                      heatmap, mask, smooth_prob,)
 from .util_warp import (subpixel_accum, subpixel_align, subpixel_maximum,
                         subpixel_minimum, subpixel_slice, subpixel_translate,
                         warp_tensor,)
 
-__all__ = ['Boxes', 'Detections', 'Heatmap', 'algo', 'algo_nms',
+__all__ = ['Boxes', 'Detections', 'Heatmap', 'Mask', 'algo', 'algo_nms',
            'atleast_3channels', 'available_nms_impls', 'boxes',
            'convert_colorspace', 'daq_spatial_nms', 'decode_run_length',
            'detections', 'draw_boxes_on_image', 'draw_text_on_image',
@@ -43,7 +43,7 @@ __all__ = ['Boxes', 'Detections', 'Heatmap', 'algo', 'algo_nms',
            'ensure_uint255', 'gaussian_patch', 'grab_test_image',
            'grab_test_image_fpath', 'heatmap', 'im_alphablend', 'im_core',
            'im_cv2', 'im_demodata', 'im_io', 'im_misc', 'im_stack', 'imread',
-           'imscale', 'imwrite', 'make_channels_comparable',
+           'imscale', 'imwrite', 'make_channels_comparable', 'mask',
            'non_max_supression', 'num_channels', 'overlay_alpha_images',
            'overlay_alpha_layers', 'smooth_prob', 'stack_images',
            'stack_images_grid', 'structs', 'subpixel_accum', 'subpixel_align',

@@ -112,13 +112,14 @@ def decode_run_length(counts, shape, binary=False, dtype=np.uint8, order='C'):
         >>> assert np.all(recon == img)
     """
     recon = np.zeros(shape, dtype=dtype, order=order)
-    flat = recon.ravel()
+    flat = recon.ravel(order)
     if binary:
         value = 0
         start = 0
         for num in counts:
             stop = start + num
             flat[start:stop] = value
+            # print('value, start, start = {}, {}, {}'.format(value, start, stop))
             start = stop
             value = 1 - value
     else:
