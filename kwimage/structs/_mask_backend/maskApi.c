@@ -32,10 +32,13 @@ void rleInit(RLE *R, siz h, siz w, siz m, uint *cnts)
     R->m = m;
     R->cnts = (m == 0) ? 0 : malloc(sizeof(uint) * m);
     siz j;
-    if(cnts) for(j = 0; j < m; j++)
+    if(cnts)
+    {
+        for(j = 0; j < m; j++)
         {
             R->cnts[j] = cnts[j];
         }
+    }
 }
 
 void rleFree(RLE *R)
@@ -212,7 +215,11 @@ void rleIou(RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o)
     bbIou(db, gb, m, n, iscrowd, o);
     free(db);
     free(gb);
-    for(g = 0; g < n; g++) for(d = 0; d < m; d++) if(o[g * m + d] > 0)
+    for(g = 0; g < n; g++)
+    {
+        for(d = 0; d < m; d++)
+        {
+            if(o[g * m + d] > 0)
             {
                 crowd = iscrowd != NULL && iscrowd[g];
                 if(dt[d].h != gt[g].h || dt[d].w != gt[g].w)
@@ -268,6 +275,8 @@ void rleIou(RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o)
                 }
                 o[g * m + d] = (double)i / (double)u;
             }
+        }
+    }
 }
 
 void rleNms(RLE *dt, siz n, uint *keep, double thr)
@@ -278,9 +287,13 @@ void rleNms(RLE *dt, siz n, uint *keep, double thr)
     {
         keep[i] = 1;
     }
-    for(i = 0; i < n; i++) if(keep[i])
+    for(i = 0; i < n; i++)
+    {
+        if(keep[i])
         {
-            for(j = i + 1; j < n; j++) if(keep[j])
+            for(j = i + 1; j < n; j++)
+            {
+                if(keep[j])
                 {
                     rleIou(dt + i, dt + j, 1, 1, 0, &u);
                     if(u > thr)
@@ -288,7 +301,9 @@ void rleNms(RLE *dt, siz n, uint *keep, double thr)
                         keep[j] = 0;
                     }
                 }
+            }
         }
+    }
 }
 
 void bbIou(BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o)
@@ -331,9 +346,13 @@ void bbNms(BB dt, siz n, uint *keep, double thr)
     {
         keep[i] = 1;
     }
-    for(i = 0; i < n; i++) if(keep[i])
+    for(i = 0; i < n; i++)
+    {
+        if(keep[i])
         {
-            for(j = i + 1; j < n; j++) if(keep[j])
+            for(j = i + 1; j < n; j++)
+            {
+                if(keep[j])
                 {
                     bbIou(dt + i * 4, dt + j * 4, 1, 1, 0, &u);
                     if(u > thr)
@@ -341,7 +360,9 @@ void bbNms(BB dt, siz n, uint *keep, double thr)
                         keep[j] = 0;
                     }
                 }
+            }
         }
+    }
 }
 
 void rleToBbox(const RLE *R, BB bb, siz n)
@@ -453,20 +474,26 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
             ye = t;
         }
         s = dx >= dy ? (double)(ye - ys) / dx : (double)(xe - xs) / dy;
-        if(dx >= dy) for(d = 0; d <= dx; d++)
+        if(dx >= dy)
+        {
+            for(d = 0; d <= dx; d++)
             {
                 t = flip ? dx - d : d;
                 u[m] = t + xs;
                 v[m] = (int)(ys + s * t + .5);
                 m++;
             }
-        else for(d = 0; d <= dy; d++)
+        }
+        else
+        {
+            for(d = 0; d <= dy; d++)
             {
                 t = flip ? dy - d : d;
                 v[m] = t + ys;
                 u[m] = (int)(xs + s * t + .5);
                 m++;
             }
+        }
     }
     /* get points along y-boundary and downsample */
     free(x);
@@ -476,7 +503,9 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
     double xd, yd;
     x = malloc(sizeof(int) * k);
     y = malloc(sizeof(int) * k);
-    for(j = 1; j < k; j++) if(u[j] != u[j - 1])
+    for(j = 1; j < k; j++)
+    {
+        if(u[j] != u[j - 1])
         {
             xd = (double)(u[j] < u[j - 1] ? u[j] : u[j] - 1);
             xd = (xd + .5) / scale - .5;
@@ -499,6 +528,7 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
             y[m] = (int) yd;
             m++;
         }
+    }
     /* compute rle encoding given y-boundary points */
     k = m;
     a = malloc(sizeof(uint) * (k + 1));
@@ -522,7 +552,9 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
     b = malloc(sizeof(uint) * k);
     j = m = 0;
     b[m++] = a[j++];
-    while(j < k) if(a[j] > 0)
+    while(j < k)
+    {
+        if(a[j] > 0)
         {
             b[m++] = a[j++];
         }
@@ -534,6 +566,7 @@ void rleFrPoly(RLE *R, const double *xy, siz k, siz h, siz w)
                 b[m - 1] += a[j++];
             }
         }
+    }
     rleInit(R, h, w, m, b);
     free(a);
     free(b);
