@@ -226,7 +226,7 @@ class _MaskConstructorMixin(object):
         return self
 
     @classmethod
-    def from_mask(Mask, mask, offset=None, shape=None, method='naive'):
+    def from_mask(Mask, mask, offset=None, shape=None, method='faster'):
         """
         Creates an RLE encoded mask from a raw binary mask, but you may
         optionally specify an offset if the mask is part of a larger image.
