@@ -24,6 +24,12 @@ Goals:
 
     It is not there yet, and the API is subject to change in order to better
     accomplish these goals.
+
+Notes:
+    IN THIS FILE ONLY: size corresponds to a h/w tuple to be compatible with
+    the coco semantics. Everywhere else in this repo, size uses opencv
+    semantics which are w/h.
+
 """
 import cv2
 import copy
@@ -125,7 +131,7 @@ class _MaskConversionMixin(object):
         if self.format == MaskFormat.BYTES_RLE:
             return self.copy() if copy else self
         if self.format == MaskFormat.ARRAY_RLE:
-            w, h = self.data['size']
+            h, w = self.data['size']
             if self.data.get('order', 'F') != 'F':
                 raise ValueError('Expected column-major array RLE')
             newdata = cython_mask.frUncompressedRLE([self.data], h, w)[0]
@@ -149,21 +155,21 @@ class _MaskConversionMixin(object):
         if self.format == MaskFormat.ARRAY_RLE:
             return self.copy() if copy else self
         elif self.format == MaskFormat.BYTES_RLE:
-            # NOTE: inefficient, could be improved
-            arr_counts = cython_mask._rle_bytes_to_array(self.data['counts'])
+            from kwimage.im_runlen import _rle_bytes_to_array
+            arr_counts = _rle_bytes_to_array(self.data['counts'])
             encoded = {
                 'size': self.data['size'],
                 'binary': self.data.get('binary', True),
                 'counts': arr_counts,
                 'order': self.data.get('order', 'F'),
             }
-            encoded['shape'] = self.data.get('shape', encoded['size'][::-1])
+            encoded['shape'] = self.data.get('shape', encoded['size'])
             self = Mask(encoded, format=MaskFormat.ARRAY_RLE)
         else:
             import kwimage
             f_mask = self.to_fortran_mask().data
             encoded = kwimage.encode_run_length(f_mask, binary=True, order='F')
-            encoded['size'] = encoded['shape'][0:2][::-1]  # hack in size
+            encoded['size'] = encoded['shape']  # hack in size
             self = Mask(encoded, format=MaskFormat.ARRAY_RLE)
         return self
 
@@ -292,13 +298,13 @@ class _MaskTransformMixin(object):
     def warp(self):
         raise NotImplementedError
 
-    def translate(self, offset, shape=None):
+    def translate(self, offset, output_shape=None):
         """
         Efficiently translate an array_rle in the encoding space
 
         Args:
             offset (Tuple): x,y offset
-            shape (Tuple, optional): h,w of transformed mask.
+            output_shape (Tuple, optional): h,w of transformed mask.
                 If unspecified the parent shape is used.
 
         Example:
@@ -310,8 +316,8 @@ class _MaskTransformMixin(object):
         """
         import kwimage
         rle = self.to_array_rle(copy=False).data
-        new_rle = kwimage.rle_translate(rle, offset, shape)
-        new_rle['size'] = new_rle['shape'][::-1]
+        new_rle = kwimage.rle_translate(rle, offset, output_shape)
+        new_rle['size'] = new_rle['shape']
         new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
         return new_self
 
@@ -455,7 +461,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             if 'shape' in self.data:
                 return self.data['shape']
             else:
-                return self.data['size'][::-1]
+                return self.data['size']
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
             return self.data.shape
 
@@ -472,6 +478,25 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         self = self.to_bytes_rle()
         return cython_mask.area([self.data])[0]
 
+    def get_patch(self):
+        """
+        Extract the patch with non-zero data
+
+        Example:
+            >>> self = Mask.random(shape=(8, 8), rng=0)
+            >>> self.get_patch()
+            array([[1, 1, 1, 0, 0, 0, 0, 0],
+                   [1, 1, 1, 0, 0, 0, 0, 0],
+                   [1, 1, 1, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 0, 1, 1]], dtype=uint8)
+        """
+        x, y, w, h = self.get_xywh().astype(np.int).tolist()
+        output_shape = (h, w)
+        xy_offset = (-x, -y)
+        temp = self.translate(xy_offset, output_shape)
+        patch = temp.to_c_mask().data
+        return patch
+
     def get_xywh(self):
         """
         Gets the bounding xywh box coordinates of this mask
@@ -485,7 +510,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self.get_xywh().tolist()
             [0.0, 1.0, 8.0, 4.0]
             >>> self = Mask.random(rng=0).translate((10, 10))
-            random(shape=(8, 8), rng=0)
             >>> self.get_xywh().tolist()
         """
         # import kwimage
@@ -600,52 +624,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         pyiscrowd = np.array([0], dtype=np.uint8)
         iou = cython_mask.iou([item1], [item2], pyiscrowd)[0, 0]
         return iou
-
-
-def _rle_bytes_to_array(s):
-    """
-    python version of an optimized cython implementation
-
-    Ignore:
-        from kwimage.structs.mask import _rle_bytes_to_array, cv2, copy, np, ub, it, cython_mask
-        s = b';?1B10O30O4'
-
-        import ubelt as ub
-        ti = ub.Timerit(1000, bestof=50, verbose=2)
-        for timer in ti.reset('python'):
-            with timer:
-                _rle_bytes_to_array(s)
-
-        for timer in ti.reset('cython'):
-            with timer:
-                cython_mask._rle_bytes_to_array(s)
-    """
-    # verbatim inefficient impl.
-    # It would be nice if this (un/)compression algo could get a better
-    # description.
-    import numpy as np
-    cnts = np.empty(len(s), dtype=np.int64)
-    p = 0
-    m = 0
-    for m in range(len(s)):
-        if p >= len(s):
-            break
-        x = 0
-        k = 0
-        more = 1
-        while more:
-            c = s[p] - 48
-            x |= (c & 0x1f) << 5 * k
-            more = c & 0x20
-            p += 1
-            k += 1
-            if more == 0 and (c & 0x10):
-                x |= (-1 << 5 * k)
-        if m > 2:
-            x += cnts[m - 2]
-        cnts[m] = x
-    cnts = cnts[:m]
-    return cnts
 
 
 if __name__ == '__main__':

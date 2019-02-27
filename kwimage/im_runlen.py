@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+"""
+Logic pertaining to run-length encodings
+
+SeeAlso:
+    kwimage.structs.mask - stores binary segmentation masks, using RLEs as a
+        backend representation. Also contains cython logic for handling
+        the coco-rle format.
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 
@@ -294,6 +302,113 @@ def rle_translate(rle, offset, output_shape=None):
         'binary': rle['binary'],
     }
     return new_rle
+
+
+def _rle_bytes_to_array(s, impl='auto'):
+    """
+    Uncompresses a coco-bytes RLE into an array representation.
+
+    Args:
+        s (bytes): compressed coco bytes rle
+        impl (str): which implementation to use (defaults to cython is possible)
+
+    Benchmark:
+        >>> import ubelt as ub
+        >>> from kwimage.im_runlen import _rle_bytes_to_array
+        >>> s = b';?1B10O30O4'
+        >>> ti = ub.Timerit(1000, bestof=50, verbose=2)
+        >>> # --- time python impl ---
+        >>> for timer in ti.reset('python'):
+        >>>     with timer:
+        >>>         _rle_bytes_to_array(s, impl='python')
+        >>> # --- time cython impl ---
+        >>> for timer in ti.reset('cython'):
+        >>>     with timer:
+        >>>         _rle_bytes_to_array(s, impl='cython')
+    """
+    # verbatim inefficient impl.
+    # It would be nice if this (un/)compression algo could get a better
+    # description.
+    try:
+        if impl == 'python':
+            raise ImportError
+        from kwimage.structs._mask_backend import cython_mask
+        return cython_mask._rle_bytes_to_array(s)
+    except ImportError:
+        if impl == 'cython':
+            raise
+
+    import numpy as np
+    cnts = np.empty(len(s), dtype=np.int64)
+    p = 0
+    m = 0
+    for m in range(len(s)):
+        if p >= len(s):
+            break
+        x = 0
+        k = 0
+        more = 1
+        while more:
+            c = s[p] - 48
+            x |= (c & 0x1f) << 5 * k
+            more = c & 0x20
+            p += 1
+            k += 1
+            if more == 0 and (c & 0x10):
+                x |= (-1 << 5 * k)
+        if m > 2:
+            x += cnts[m - 2]
+        cnts[m] = x
+    cnts = cnts[:m]
+    return cnts
+
+
+def _rle_array_to_bytes(counts, impl='auto'):
+    """
+    Compresses an array RLE into a coco-bytes RLE.
+
+    Args:
+        counts (ndarray): uncompressed array rle
+        impl (str): which implementation to use (defaults to cython is possible)
+
+    Example:
+        >>> from kwimage.im_runlen import _rle_array_to_bytes
+        >>> from kwimage.im_runlen import _rle_bytes_to_array
+        >>> arr_counts = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        >>> str_counts = _rle_array_to_bytes(arr_counts)
+        >>> arr_counts2 = _rle_bytes_to_array(str_counts)
+        >>> assert np.all(arr_counts2 == arr_counts)
+
+    Benchmark:
+        >>> import ubelt as ub
+        >>> from kwimage.im_runlen import _rle_array_to_bytes
+        >>> from kwimage.im_runlen import _rle_bytes_to_array
+        >>> counts = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        >>> ti = ub.Timerit(1000, bestof=50, verbose=2)
+        >>> # --- time python impl ---
+        >>> #for timer in ti.reset('python'):
+        >>> #    with timer:
+        >>> #        _rle_array_to_bytes(s, impl='python')
+        >>> # --- time cython impl ---
+        >>> for timer in ti.reset('cython'):
+        >>>     with timer:
+        >>>         _rle_array_to_bytes(s, impl='cython')
+    """
+    # verbatim inefficient impl.
+    # It would be nice if this (un/)compression algo could get a better
+    # description.
+    if impl == 'python':
+        raise NotImplementedError
+    try:
+        if impl == 'python':
+            raise ImportError
+        from kwimage.structs._mask_backend import cython_mask
+        counts = counts.astype(np.uint32)
+        counts_str = cython_mask._rle_array_to_bytes(counts)
+        return counts_str
+    except ImportError:
+        if impl == 'cython':
+            raise
 
 
 if __name__ == '__main__':

@@ -365,3 +365,29 @@ def _rle_bytes_to_array(counts_str):
         m += 1
     new_counts = new_counts[:m]
     return new_counts
+
+
+@cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.wraparound(False)
+def _rle_array_to_bytes(np.ndarray[np.uint32_t, ndim=1] counts_arr):
+    """ 
+    modification of frUncompressedRLE for a single object
+    """
+    cdef int m = len(counts_arr)
+    cdef uint[:] cnts = counts_arr
+    cdef RLE R
+    cdef uint *data
+    # time for malloc can be saved here but it's fine
+    data = <uint*> malloc(m* sizeof(uint))
+    for j in range(m):
+        data[j] = <uint> cnts[j] 
+
+    cdef int h = 10  # we dont actually use h/w they are dummy values
+    cdef int w = 10
+    R = RLE(h, w, m, <uint*> data)
+    Rs = RLEs(1)
+    Rs._R[0] = R
+    obj = _toString(Rs)[0]
+    counts_str = obj['counts']
+    return counts_str
