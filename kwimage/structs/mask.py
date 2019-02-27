@@ -392,7 +392,6 @@ class _MaskDrawMixin(object):
         import kwplot
         if ax is None:
             from matplotlib import pyplot as plt
-
             ax = plt.gca()
 
         mask = self.to_c_mask().data
