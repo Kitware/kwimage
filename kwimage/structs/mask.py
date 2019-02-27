@@ -177,7 +177,7 @@ class _MaskConversionMixin(object):
         elif self.format == MaskFormat.ARRAY_RLE:
             import kwimage
             encoded = dict(self.data)
-            encoded.pop('size')
+            encoded.pop('size', None)
             f_mask = kwimage.decode_run_length(**encoded)
         else:
             # NOTE: inefficient, could be improved
@@ -252,33 +252,14 @@ class _MaskConstructorMixin(object):
 
             shape (Tuple[int, int]): shape of the larger image
 
+        SeeAlso:
+            ../../test/test_rle.py
+
         Example:
             >>> mask = Mask.random(shape=(32, 32), rng=0).data
             >>> offset = (30, 100)
             >>> shape = (501, 502)
             >>> self = Mask.from_mask(mask, offset=offset, shape=shape, method='faster')
-
-
-        Ignore:
-            from kwimage.structs.mask import *  # NOQA
-            from kwimage.structs.mask import cv2, copy, np, ub, it, cython_mask
-            from kwimage.structs.mask import MaskFormat  # NOQA
-            # Ensure this works on possible 4x4 masks
-            N, M = 3, 5
-            choices = [[0, 1]] * (N * M)
-            iter_ = it.product(*choices)
-            iter_ = ub.ProgIter(iter_, total=np.prod(list(map(len, choices))))
-            for choice in iter_:
-                mask = np.array(choice, dtype=np.uint8).reshape(N, M)
-                offset = (1, 2)
-                shape = (6, 6)
-                self1 = Mask.from_mask(mask, offset, shape, 'naive')
-                self2 = Mask.from_mask(mask, offset, shape, 'faster')
-
-                m1 = self1.to_c_mask().data
-                m2 = self2.to_c_mask().data
-
-                assert np.all(m1 == m2)
         """
         if shape is None:
             shape = mask.shape
@@ -286,12 +267,15 @@ class _MaskConstructorMixin(object):
             offset = (0, 0)
         if method == 'naive':
             # inefficent but used to test correctness of algorithms
-            # import kwimage
-            larger = np.zeros(shape, dtype=mask.dtype)
-            mask_rc = offset[::-1]
-            mask_dims = mask.shape[0:2]
-            index = tuple(slice(s, s + d) for s, d in zip(mask_rc, mask_dims))
-            larger[index] = mask
+            import kwimage
+            rc_offset = offset[::-1]
+            larger = kwimage.subpixel_translate(mask, rc_offset,
+                                                output_shape=shape)
+            # larger = np.zeros(shape, dtype=mask.dtype)
+            # larger_rc = offset[::-1]
+            # mask_dims = mask.shape[0:2]
+            # index = tuple(slice(s, s + d) for s, d in zip(larger_rc, mask_dims))
+            # larger[index] = mask
             self = Mask(larger, MaskFormat.C_MASK).to_array_rle()
         elif method == 'faster':
             import kwimage
@@ -316,6 +300,12 @@ class _MaskTransformMixin(object):
             offset (Tuple): x,y offset
             shape (Tuple): h,w of transformed mask
 
+        Doctest:
+            >>> # test that translate works on all zero images
+            >>> self = Mask(np.zeros((7, 8), dtype=np.uint8), 'c_mask')
+            >>> result = self.translate((1, 2), (6, 9))
+            >>> assert np.all(result.data['counts'] == [54])
+
         Example:
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.data[6, 0] = 1
@@ -329,6 +319,9 @@ class _MaskTransformMixin(object):
             >>> self.data[4, 6] = 0
             >>> self.data[4, 7] = 0
             >>> print(self.data)
+            >>> shape = (10, 10)
+            >>> offset = (1, 1)
+            >>> self.translate(offset, shape).to_c_mask().data
 
             img = np.array([
                 [1, 1, 1, 1],
@@ -338,8 +331,8 @@ class _MaskTransformMixin(object):
             self = Mask(img, 'c_mask')
 
             rle = kwimage.encode_run_length(img, binary=True)
-            shape = (10, 10)
-            offset = (1, 1)
+            shape = (7, 7)
+            offset = (-2, -2)
             self.translate(offset, shape).to_c_mask().data
         """
         rle = self.to_array_rle(copy=False).data
@@ -359,18 +352,14 @@ class _MaskTransformMixin(object):
         indices[1::2] -= 1
 
         # Find yx points where the binary mask changes value
-        old_shape = rle['shape']
-        new_shape = shape
+        old_shape = np.array(rle['shape'])
+        new_shape = np.array(shape)
         rc_offset = np.array(offset[::-1])
-
-        if np.any(rc_offset < 0):
-            raise NotImplementedError('negative offset')
-
-        if np.any(np.array(old_shape) + rc_offset > np.array(new_shape)):
-            raise NotImplementedError('shape overflow')
 
         pts = np.unravel_index(indices, old_shape, order=rle['order'])
         major_axis = 1 if rle['order'] == 'F' else 0
+        minor_axis = 1 - major_axis
+
         major_idxs = pts[major_axis]
 
         # Find locations in the major axis points where a non-zero count
@@ -379,7 +368,8 @@ class _MaskTransformMixin(object):
         num_major_crossings = pair_major_index.T[1] - pair_major_index.T[0]
         flat_cross_idxs = np.where(num_major_crossings > 0)[0] * 2
 
-        # Insert breaks in locations that cross the major-axis
+        # Insert breaks to runs in locations that cross the major-axis.
+        # This will force all runs to exist only within a single major-axis.
         broken_pts = [x.tolist() for x in pts]
         for idx in flat_cross_idxs[::-1]:
             prev_pt = [x[idx] for x in broken_pts]
@@ -403,21 +393,64 @@ class _MaskTransformMixin(object):
         # translate the points that indices where non-zero data should go.
         new_pts = np.array(broken_pts, dtype=np.int) + rc_offset[:, None]
 
+        # <handle_out_of_bounds>
+        # Note: all of the following logic relies on the fact that each run can
+        # only span one major axis. This condition is true because we inserted
+        # breakpoints whenever a run spanned more than one major axis.
+
+        new_major_dim = new_shape[major_axis]
+        new_minor_dim = new_shape[minor_axis]
+
+        # Only keep points where the major axis is in bounds
+        _new_major_pts = new_pts[major_axis]
+        is_major_ib = ((_new_major_pts >= 0) &
+                       (_new_major_pts < new_major_dim))
+        # assert np.all(is_major_ib[0::2] == is_major_ib[1::2]), (
+        #     'all pairs should be both in-bounds or both out-of-bounds')
+        new_pts = new_pts.T[is_major_ib].T
+        new_pts = np.ascontiguousarray(new_pts)
+
+        # Now remove any points where the minor axis is OOB in the same
+        # direction. (i.e. remove pairs of points that are both left-oob or
+        # both right-oob, but dont remove pairs where only one is left-oob or
+        # right-oob, because these still create structure in our new image.)
+        _new_minor_pts = new_pts[minor_axis]
+        is_left_oob = (_new_minor_pts < 0)
+        is_right_oob = (_new_minor_pts >= new_minor_dim)
+        is_pair_left_oob = (is_left_oob[0::2] & is_left_oob[1::2])
+        is_pair_right_oob = (is_right_oob[0::2] & is_right_oob[1::2])
+        is_pair_removable = (is_pair_left_oob | is_pair_right_oob)
+        new_pts_pairs = new_pts.T.reshape(-1, 2, 2)
+        new_pts = new_pts_pairs[~is_pair_removable].reshape(-1, 2).T
+        new_pts = np.ascontiguousarray(new_pts)
+
+        # Finally, all new points are strictly within the existing major dims
+        # and we have removed any point pair where both pairs were oob in the
+        # same direction, we can simply clip any regions along the minor axis
+        # that go out of bounds.
+        _new_minor_pts = new_pts[minor_axis]
+        _new_minor_pts.clip(0, new_minor_dim - 1, out=_new_minor_pts)
+        # </handle_out_of_bounds>
+
         # Now we have translated flat-indices in the new canvas shape
         new_indices = np.ravel_multi_index(new_pts, new_shape, order=rle['order'])
         new_indices[1::2] += 1
 
-        total = np.prod(new_shape)
+        count_dtype = np.int  # use in to eventually support non-binary RLE
+        new_indices = new_indices.astype(count_dtype)
+
+        total = int(np.prod(new_shape))
         if len(new_indices) == 0:
-            trailing_counts = [total]
-            leading_counts = []
+            trailing_counts = np.array([total], dtype=count_dtype)
+            leading_counts = np.array([], dtype=count_dtype)
         else:
-            leading_counts = [new_indices[0]]
-            trailing_counts = [total - new_indices[-1]]
+            leading_counts = np.array([new_indices[0]], dtype=count_dtype)
+            trailing_counts = np.array([total - new_indices[-1]], dtype=count_dtype)
 
         body_counts = np.diff(new_indices)
         new_counts = np.hstack([leading_counts, body_counts, trailing_counts])
 
+        new_shape = tuple(new_shape.tolist())
         new_rle = {
             'shape': new_shape,
             'size': new_shape[::-1],
@@ -425,13 +458,16 @@ class _MaskTransformMixin(object):
             'counts': new_counts,
             'binary': rle['binary'],
         }
-        if False:
-            # minor_axis = 1 - major_axis
-            # np.vstack(pts[::-1]).T
-            # major_d = shape[major_axis]
-            import kwimage
-            decoded = kwimage.decode_run_length(**new_rle)
-            print(decoded)
+        # if False:
+        #     offset
+        #     print(self.data)
+        #     # minor_axis = 1 - major_axis
+        #     np.vstack(pts[::-1]).T
+        #     # major_d = shape[major_axis]
+        #     import kwimage
+        #     decoded = kwimage.decode_run_length(
+        #         **ub.dict_isect(new_rle, set(new_rle) - {'size'}))
+        #     print(decoded)
 
         new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
         return new_self
@@ -651,7 +687,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         mode = cv2.RETR_LIST
         # mode = cv2.RETR_EXTERNAL
 
-        # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+        # https://docs.opencv.org/3.1.0/d3/dc0/
+        # group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+
         method = cv2.CHAIN_APPROX_SIMPLE
         # method = cv2.CHAIN_APPROX_NONE
         # method = cv2.CHAIN_APPROX_TC89_KCOS
@@ -720,6 +758,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
 def _rle_bytes_to_array(s):
     """
+    python version of an optimized cython implementation
 
     Ignore:
         from kwimage.structs.mask import _rle_bytes_to_array, cv2, copy, np, ub, it, cython_mask
@@ -735,7 +774,9 @@ def _rle_bytes_to_array(s):
             with timer:
                 cython_mask._rle_bytes_to_array(s)
     """
-    # verbatim inefficient impl: TODO: cythonize
+    # verbatim inefficient impl.
+    # It would be nice if this (un/)compression algo could get a better
+    # description.
     import numpy as np
     cnts = np.empty(len(s), dtype=np.int64)
     p = 0

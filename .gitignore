@@ -101,4 +101,7 @@ kwimage/algo/_nms_backend/gpu_nms.cpp
 kwimage/structs/_boxes_backend/cython_boxes.c
 kwimage/structs/_boxes_backend/cython_boxes.html
 
+kwimage/structs/_mask_backend/cython_mask.c
+kwimage/structs/_mask_backend/cython_mask.html
+
 _skbuild

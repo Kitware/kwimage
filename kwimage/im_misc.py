@@ -59,14 +59,15 @@ def encode_run_length(img, binary=False, order='C'):
 
         if len(values) and values[0] != 0:
             # the binary RLE always starts with zero
-            runlen = np.hstack([[0], lengths])
+            counts = np.hstack([[0], lengths])
         else:
-            runlen = lengths
+            counts = lengths
     else:
-        runlen = np.hstack([values[:, None], lengths[:, None]]).ravel()
+        counts = np.hstack([values[:, None], lengths[:, None]]).ravel()
+
     encoding = {
         'shape': img.shape,
-        'counts': runlen,
+        'counts': counts,
         'binary': binary,
         'order': order,
     }
