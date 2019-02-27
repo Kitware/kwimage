@@ -766,7 +766,7 @@ class _BoxTransformMixins(object):
 
     def scale(self, factor, inplace=False):
         """
-        works with tlbr, cxywh, xywh, xy, or wh formats
+        Scale a bounding boxes by a factor.
 
         Args:
             factor (float or Tuple[float, float]):
@@ -775,6 +775,8 @@ class _BoxTransformMixins(object):
         TODO:
             it might be useful to have an argument `origin`, so everything
             is scaled about that origin.
+
+            works natively with tlbr, cxywh, xywh, xy, or wh formats
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
