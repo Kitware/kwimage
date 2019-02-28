@@ -563,9 +563,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         method = cv2.CHAIN_APPROX_SIMPLE
         # method = cv2.CHAIN_APPROX_NONE
         # method = cv2.CHAIN_APPROX_TC89_KCOS
-        contours_, hierarchy_ = cv2.findContours(padded_mask, mode, method,
-                                                 offset=(-1, -1))
-        polygon = [c[:, 0, :] for c in contours_]
+        # Different versions of cv2 have different return types
+        _ret = cv2.findContours(padded_mask, mode, method, offset=(-1, -1))
+        if len(_ret) == 2:
+            _contours, _hierarchy = _ret
+        else:
+            _img, _contours, _hierarchy = _ret
+
+        polygon = [c[:, 0, :] for c in _contours]
 
         # TODO: a kwimage structure for polygons
 
