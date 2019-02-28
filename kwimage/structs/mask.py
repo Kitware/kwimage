@@ -582,7 +582,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             # interpreting polygons.
             image = kwil.atleast_3channels(mask)
             toshow = np.zeros(image.shape, dtype="uint8")
-            cv2.drawContours(toshow, contours_, -1, (255, 0, 0), 1)
+            cv2.drawContours(toshow, _contours, -1, (255, 0, 0), 1)
             kwil.imshow(toshow)
 
         return polygon
