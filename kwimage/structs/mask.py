@@ -38,7 +38,7 @@ import ubelt as ub
 import itertools as it
 from kwimage.structs._mask_backend import cython_mask
 
-__all__ = ['Mask']
+__all__ = ['Mask', 'Masks']
 
 
 class MaskFormat:
@@ -237,7 +237,7 @@ class _MaskConstructorMixin(object):
         # TODO: holes? geojson?
         if isinstance(polygons, np.ndarray):
             polygons = [polygons]
-        flat_polys = [ps.ravel() for ps in polygons]
+        flat_polys = [np.array(ps).ravel() for ps in polygons]
         encoded = cython_mask.frPoly(flat_polys, h, w)
         ccs = [Mask(e, MaskFormat.BYTES_RLE) for e in encoded]
         self = Mask.union(*ccs)
@@ -629,6 +629,86 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         pyiscrowd = np.array([0], dtype=np.uint8)
         iou = cython_mask.iou([item1], [item2], pyiscrowd)[0, 0]
         return iou
+
+    @classmethod
+    def coerce(Mask, data, shape=None):
+        """
+        Attempts to auto-inspect the format of the data
+
+        Args:
+            data : the data to coerce
+            shape (Tuple): required for certain formats like polygons
+
+        Example:
+            >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
+            >>> polygon = [
+            >>>     [np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]])],
+            >>>     [np.array([[2, 1],[2, 2],[4, 2],[4, 1]])],
+            >>> ]
+            >>> shape = (9, 5)
+            >>> mask = (np.random.rand(32, 32) > .5).astype(np.uint8)
+            >>> Mask.coerce(polygon, shape).to_bytes_rle()
+            >>> Mask.coerce(segmentation).to_bytes_rle()
+            >>> Mask.coerce(mask).to_bytes_rle()
+        """
+        if isinstance(data, np.ndarray):
+            if shape is not None:
+                assert shape == data.shape[0:2]
+            if data.flags['F_CONTIGUOUS']:
+                self = Mask(data, MaskFormat.F_MASK)
+            else:
+                self = Mask(data, MaskFormat.C_MASK)
+        elif isinstance(data, dict):
+            import six
+            # Handle COCO RLE dictionaries
+            if shape is not None:
+                data_shape = data.get('shape', data.get('size', None))
+                if data_shape is None:
+                    data['shape'] = data_shape
+                else:
+                    assert tuple(map(int, shape)) == tuple(map(int, data_shape)), (
+                        '{} {}'.format(shape, data_shape))
+            if isinstance(data['counts'], (six.text_type, six.binary_type)):
+                self = Mask(data, MaskFormat.BYTES_RLE)
+            else:
+                self = Mask(data, MaskFormat.ARRAY_RLE)
+        elif isinstance(data, list):
+            self = Mask.from_polygons(data, shape)
+        return self
+
+
+class Masks(ub.NiceRepr):
+    """
+    Store and manipulate multiple masks, usually within the same image
+    """
+
+    def __init__(self, data, format=None):
+        self.data = data
+        self.format = format
+
+    def __len__(self):
+        return len(self.data)
+
+    def __nice__(self):
+        return 'n={}, format={}'.format(len(self.data), self.format)
+
+    def translate(self, offset, output_shape=None):
+        newdata = [
+            None if item is None else item.translate(offset, output_shape)
+            for item in self.data
+        ]
+        return Masks(newdata, self.format)
+
+    def draw(self):
+        for item in self.data:
+            if item is not None:
+                item.draw()
+
+    def draw_on(self, image):
+        for item in self.data:
+            if item is not None:
+                image = item.draw(image=image)
+        return image
 
 
 if __name__ == '__main__':
