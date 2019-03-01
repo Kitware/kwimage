@@ -38,7 +38,7 @@ import ubelt as ub
 import itertools as it
 from kwimage.structs._mask_backend import cython_mask
 
-__all__ = ['Mask', 'Masks']
+__all__ = ['Mask', 'Masks', 'MaskList']
 
 
 class MaskFormat:
@@ -677,7 +677,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return self
 
 
-class Masks(ub.NiceRepr):
+class MaskList(ub.NiceRepr):
     """
     Store and manipulate multiple masks, usually within the same image
     """
@@ -697,7 +697,7 @@ class Masks(ub.NiceRepr):
             None if item is None else item.translate(offset, output_shape)
             for item in self.data
         ]
-        return Masks(newdata, self.format)
+        return MaskList(newdata, self.format)
 
     def draw(self):
         for item in self.data:
@@ -709,6 +709,9 @@ class Masks(ub.NiceRepr):
             if item is not None:
                 image = item.draw(image=image)
         return image
+
+
+Masks = MaskList  # backwards compat, but will be depricated
 
 
 if __name__ == '__main__':
