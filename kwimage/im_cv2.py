@@ -141,10 +141,9 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
         # Assume the user meant grayscale if there is only one channel
         if im_core.num_channels(img) == 1:
             src_space = 'gray'
-
         # We give the caller some slack by assuming RGB means RGBA if the input
         # image has an alpha channel.
-        if im_core.num_channels(img) == 4:
+        elif im_core.num_channels(img) == 4:
             if src_space[-1] != 'A':
                 src_space = src_space + 'A'
             if dst_space[-1] != 'A':

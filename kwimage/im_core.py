@@ -7,20 +7,38 @@ import numpy as np
 
 
 def num_channels(img):
-    """ Returns the number of color channels """
-    ndims = len(img.shape)
+    """
+    Returns the number of color channels in an image
+
+    Args:
+        img (ndarray): an image with 2 or 3 dimensions.
+
+    Returns:
+        int : the number of color channels (1, 3, or 4)
+
+    Example:
+        >>> H = W = 3
+        >>> assert num_channels(np.empty((W, H))) == 1
+        >>> assert num_channels(np.empty((W, H, 1))) == 1
+        >>> assert num_channels(np.empty((W, H, 3))) == 3
+        >>> assert num_channels(np.empty((W, H, 4))) == 4
+        >>> import pytest
+        >>> with pytest.raises(ValueError):
+        ...     num_channels(np.empty((W, H, 2)))
+    """
+    ndims = img.ndim
     if ndims == 2:
-        nChannels = 1
+        n_channels = 1
     elif ndims == 3 and img.shape[2] == 3:
-        nChannels = 3
+        n_channels = 3
     elif ndims == 3 and img.shape[2] == 4:
-        nChannels = 4
+        n_channels = 4
     elif ndims == 3 and img.shape[2] == 1:
-        nChannels = 1
+        n_channels = 1
     else:
         raise ValueError('Cannot determine number of channels '
                          'for img.shape={}'.format(img.shape))
-    return nChannels
+    return n_channels
 
 
 def ensure_float01(img, dtype=np.float32, copy=True):
