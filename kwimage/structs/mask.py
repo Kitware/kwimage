@@ -38,7 +38,7 @@ import ubelt as ub
 import itertools as it
 from kwimage.structs._mask_backend import cython_mask
 
-__all__ = ['Mask', 'Masks', 'MaskList']
+__all__ = ['Mask', 'MaskList']
 
 
 class MaskFormat:
@@ -709,9 +709,6 @@ class MaskList(ub.NiceRepr):
             if item is not None:
                 image = item.draw(image=image)
         return image
-
-
-Masks = MaskList  # backwards compat, but will be depricated
 
 
 if __name__ == '__main__':

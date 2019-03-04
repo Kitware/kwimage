@@ -1137,3 +1137,47 @@ def _remove_translation(tf):
     else:
         raise TypeError(tf)
     return tf_notrans
+
+
+def _gmean(a, axis=0, dtype=None, clobber=False):
+    """
+    Compute the geometric mean along the specified axis.
+
+    Modification of the scikit-learn method to be more memory efficient
+
+    Example
+        >>> rng = np.random.RandomState(0)
+        >>> C, H, W = 8, 32, 32
+        >>> axis = 0
+        >>> a = [rng.rand(C, H, W).astype(np.float16), rng.rand(C, H, W).astype(np.float16)]
+
+    """
+    if isinstance(a, np.ndarray):
+        if clobber:
+            # NOTE: we reuse (a), we clobber the input array!
+            log_a = np.log(a, out=a)
+        else:
+            log_a = np.log(a)
+    else:
+        if dtype is None:
+            # if not an ndarray object attempt to convert it
+            log_a = np.log(np.array(a, dtype=dtype))
+        else:
+            # Must change the default dtype allowing array type
+            # Note: that this will use memory, but there isn't anything we can
+            # do here.
+            if isinstance(a, np.ma.MaskedArray):
+                a_ = np.ma.asarray(a, dtype=dtype)
+            else:
+                a_ = np.asarray(a, dtype=dtype)
+            # We can reuse `a_` because it was a temp var
+            log_a = np.log(a_, out=a_)
+
+    # attempt to reuse memory when computing mean
+    mem = log_a[axis]
+    mean_log_a = log_a.mean(axis=axis, out=mem)
+
+    # And reuse memory again when computing the final result
+    result = np.exp(mean_log_a, out=mean_log_a)
+
+    return result
