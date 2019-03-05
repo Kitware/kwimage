@@ -1,13 +1,12 @@
 """
-mkinit ~/code/kwimage/kwimage/algo/__init__.py --relative -w
-mkinit ~/code/kwimage/kwimage/structs/__init__.py --relative -w
-mkinit ~/code/kwimage/kwimage/__init__.py --relative -w
+mkinit ~/code/kwimage/kwimage/algo/__init__.py --relative -w --nomod
+mkinit ~/code/kwimage/kwimage/structs/__init__.py --relative -w --nomod
+mkinit ~/code/kwimage/kwimage/__init__.py --relative -w --nomod
 """
 
 __version__ = '0.3.0.dev0'
 
-from .algo import (algo_nms, available_nms_impls, daq_spatial_nms,
-                   non_max_supression,)
+from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
                             overlay_alpha_layers,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
@@ -18,20 +17,22 @@ from .im_demodata import (grab_test_image, grab_test_image_fpath,)
 from .im_io import (imread, imwrite,)
 from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
 from .im_stack import (stack_images, stack_images_grid,)
-from .structs import (Boxes, Detections, Heatmap, Mask, Masks, smooth_prob,)
+from .structs import (Boxes, Detections, Heatmap, Mask, MaskList, Points,
+                      PointsList, smooth_prob,)
 from .util_warp import (subpixel_accum, subpixel_align, subpixel_maximum,
                         subpixel_minimum, subpixel_slice, subpixel_translate,
-                        warp_tensor,)
+                        warp_points, warp_tensor,)
 
-__all__ = ['Boxes', 'Detections', 'Heatmap', 'Mask', 'Masks', 'algo_nms',
-           'atleast_3channels', 'available_nms_impls', 'convert_colorspace',
-           'daq_spatial_nms', 'decode_run_length', 'draw_boxes_on_image',
-           'draw_text_on_image', 'encode_run_length', 'ensure_alpha_channel',
-           'ensure_float01', 'ensure_uint255', 'gaussian_patch',
-           'grab_test_image', 'grab_test_image_fpath', 'imread', 'imscale',
-           'imwrite', 'make_channels_comparable', 'non_max_supression',
-           'num_channels', 'overlay_alpha_images', 'overlay_alpha_layers',
-           'rle_translate', 'smooth_prob', 'stack_images', 'stack_images_grid',
-           'subpixel_accum', 'subpixel_align', 'subpixel_maximum',
-           'subpixel_minimum', 'subpixel_slice', 'subpixel_translate',
+__all__ = ['Boxes', 'Detections', 'Heatmap', 'Mask', 'MaskList', 'Points',
+           'PointsList', 'atleast_3channels', 'available_nms_impls',
+           'convert_colorspace', 'daq_spatial_nms', 'decode_run_length',
+           'draw_boxes_on_image', 'draw_text_on_image', 'encode_run_length',
+           'ensure_alpha_channel', 'ensure_float01', 'ensure_uint255',
+           'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
+           'imread', 'imscale', 'imwrite', 'make_channels_comparable',
+           'non_max_supression', 'num_channels', 'overlay_alpha_images',
+           'overlay_alpha_layers', 'rle_translate', 'smooth_prob',
+           'stack_images', 'stack_images_grid', 'subpixel_accum',
+           'subpixel_align', 'subpixel_maximum', 'subpixel_minimum',
+           'subpixel_slice', 'subpixel_translate', 'warp_points',
            'warp_tensor']

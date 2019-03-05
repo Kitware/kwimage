@@ -8,11 +8,6 @@ from . import im_cv2
 from . import im_core
 
 
-IMREAD_SPACES = {
-    'auto', 'rgb',
-}
-
-
 def imread(fpath, space='auto'):
     """
     Reads image data in a specified format using some backend implementation.

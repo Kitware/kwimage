@@ -955,7 +955,7 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         into a heatmap so we can have prettier visualizations in our tests.
 
     Args:
-        annots (dict):
+        dets (Detections):
         input_dims (tuple): window H, W
         bg_size (tuple): size (W, H) to predict for backgrounds
         catgraph : category heirarchy
@@ -971,6 +971,8 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         globals().update(xdev.get_func_kwargs(_dets_to_masks))
 
     Example:
+        >>> from kwimage.structs.heatmap import *  # NOQA
+        >>> from kwimage.structs.heatmap import _prob_to_dets, _dets_to_masks, _remove_translation
         >>> import kwimage
         >>> # xdoctest: +REQUIRES(--module:ndsampler)
         >>> import ndsampler
@@ -978,8 +980,11 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> iminfo, anns = sampler.load_image_with_annots(1)
         >>> image = iminfo['imdata']
+        >>> mask0 = kwimage.Mask.from_polygons(anns[0]['segmentation'], shape=iminfo['imdata'].shape[0:2])
+        >>> masks = kwimage.MaskList([mask0, None])
         >>> dets = kwimage.Detections.from_coco_annots(
         >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph)
+        >>> dets.data['masks'] = masks
         >>> input_dims = image.shape[0:2]
         >>> bg_size = [100, 100]
         >>> fcn_target = _dets_to_masks(dets, bg_size, input_dims, bg_idxs)
@@ -992,17 +997,17 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> dx, dy = dxdy_mask
         >>> mag = np.sqrt(dx ** 2 + dy ** 2)
         >>> mag /= (mag.max() + 1e-9)
-        >>> mag = 1 - fcn_target['class_probs'][0]
+        >>> #mag = 1 - fcn_target['class_probs'][0]
         >>> mask = (cidx_mask != 0).astype(np.float32)
         >>> angle = np.arctan2(dy, dx)
         >>> orimask = kwplot.make_orimask(angle, mask, alpha=mag)
         >>> vecmask = kwplot.make_vector_field(
         >>>     dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
         >>>     line_type=16)
-        >>> raster = kwplot.overlay_alpha_layers(
+        >>> raster = kwimage.overlay_alpha_layers(
         >>>     [vecmask, orimask, image], keepalpha=False)
         >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
-        >>>                       labels=False, alpha=None)
+        >>>                       labels=True, alpha=None)
         >>> kwplot.imshow(raster)
         >>> kwplot.show_if_requested()
     """
@@ -1018,12 +1023,25 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
     size_mask[:] = np.array(bg_size)[:, None, None]
 
+    # kpts_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
+    # ktps_mask[:] = np.array(bg_size)[:, None, None]
+
     dxdy_mask = np.zeros((2,) + tuple(input_dims), dtype=np.float32)
 
     dets = dets.numpy()
 
     cxywh = dets.boxes.to_cxywh().data
     class_idxs = dets.class_idxs
+
+    masks = dets.data.get('masks', [None] * len(dets))
+
+    if 'kpts' in dets.data:
+        kpts = dets.data['kpts']
+        for pts in kpts:
+            if pts is not None:
+                pass
+    else:
+        kpts = [None] * len(dets)
 
     # Overlay smaller classes on top of larger ones
     if len(cxywh):
@@ -1040,7 +1058,7 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     H, W = input_dims
     xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
 
-    for (cx, cy, w, h), cidx in zip(cxywh, class_idxs):
+    for (cx, cy, w, h), cidx, sseg_mask in zip(cxywh, class_idxs, masks):
         center = (iround(cx), iround(cy))
         # Adjust so smaller objects get more pixels
         wf = min(1, (w / 64))
@@ -1053,10 +1071,15 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         half_h = iround(hf * h / 2 + 1)
         axes = (half_w, half_h)
 
-        mask = np.zeros_like(cidx_mask, dtype=np.uint8)
-        mask = cv2.ellipse(mask, center, axes, angle=0.0,
-                           startAngle=0.0, endAngle=360.0, color=1,
-                           thickness=-1).astype(np.bool)
+        sseg_mask = None
+
+        if sseg_mask is None:
+            mask = np.zeros_like(cidx_mask, dtype=np.uint8)
+            mask = cv2.ellipse(mask, center, axes, angle=0.0,
+                               startAngle=0.0, endAngle=360.0, color=1,
+                               thickness=-1).astype(np.bool)
+        else:
+            mask = sseg_mask.to_c_mask().data.astype(np.bool)
         # class index
         cidx_mask[mask] = int(cidx)
         if soft:

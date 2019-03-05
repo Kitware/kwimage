@@ -25,6 +25,10 @@ _TEST_IMAGES = {
     'airport': {
         'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
         'sha1': '52f15b9cccf2cc95a82ccacd96f1f15dc76a8544',
+    },
+    'parrot': {
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png',
+        'sha1': '6f97b8f9095031aa26152aaa16cbd4e7e7ea16d9',
     }
 }
 

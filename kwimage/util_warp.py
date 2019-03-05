@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import ubelt as ub
 import torch
 import numpy as np
+import kwarray
 
 
 def _coordinate_grid(dims):
@@ -338,7 +339,6 @@ def subpixel_align(dst, src, index, interp_axes=None):
     """
     Returns an aligned version of the source tensor and destination index.
     """
-    import kwarray
     if interp_axes is None:
         # Assume spatial dimensions are trailing
         interp_axes = len(dst.shape) + np.arange(-min(2, len(index)), 0)
@@ -532,7 +532,6 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
                   [0.5 , 0.75, 1.  , 1.  , 0.5 ],
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.5 ]])
     """
-    import kwarray
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
     impl = kwarray.ArrayAPI.impl(dst)
     impl.maximum(dst[aligned_index], aligned_src, out=dst[aligned_index])
@@ -570,7 +569,6 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.25],
                   [0.5 , 0.3 , 0.4 , 0.4 , 0.1 ]])
     """
-    import kwarray
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
     impl = kwarray.ArrayAPI.impl(dst)
     impl.minimum(dst[aligned_index], aligned_src, out=dst[aligned_index])
@@ -682,7 +680,6 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         >>> subpixel_translate(inputs, shift, interp_axes, output_shape=(9, 9))
         >>> subpixel_translate(inputs, shift, interp_axes, output_shape=(3, 4))
     """
-    import kwarray
     impl = kwarray.ArrayAPI.impl(inputs)
 
     if output_shape is None:
@@ -867,7 +864,6 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         np.array([2, 3])
         [(2, 4)]
     """
-    import kwarray
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 
@@ -1042,7 +1038,6 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> kwplot.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
     """
     import cv2
-    import kwarray
     import kwimage
     impl = kwarray.ArrayAPI.impl(inputs)
 
@@ -1082,3 +1077,100 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
 
     outputs = impl.ensure(outputs)
     return outputs
+
+
+def warp_points(matrix, pts):
+    """
+    Warp ND points / coordinates using a transformation matrix.
+
+    Homogoenous coordinates are added on the fly if needed. Works with both
+    numpy and torch.
+
+    Args:
+        matrix (ArrayLike): [D1 x D2] transformation matrix.
+            if using homogenous coordinates D2=D + 1, otherwise D2=D.
+            if using homogenous coordinates and the matrix represents an Affine
+            transformation, then either D1=D or D1=D2, i.e. the last row of
+            zeros and a one is optional.
+
+        pts (ArrayLike): [N1 x ... x D] points (usually x, y).
+            If points are already in homogenous space, then the output will be
+            returned in homogenous space. D is the dimensionality of the
+            points.  The leading axis may take any shape, but usually, shape
+            will be [N x D] where N is the number of points.
+
+    Retrns:
+        new_pts (ArrayLike): the points after being transformed by the matrix
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> # --- with numpy
+        >>> rng = np.random.RandomState(0)
+        >>> pts = rng.rand(10, 2)
+        >>> matrix = rng.rand(2, 2)
+        >>> warp_points(matrix, pts)
+        >>> # --- with torch
+        >>> pts = torch.Tensor(pts)
+        >>> matrix = torch.Tensor(matrix)
+        >>> warp_points(matrix, pts)
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> # --- with numpy
+        >>> pts = np.ones((10, 2))
+        >>> matrix = np.diag([2, 3, 1])
+        >>> ra = warp_points(matrix, pts)
+        >>> rb = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
+        >>> assert np.allclose(ra, rb.numpy())
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> # test different cases
+        >>> rng = np.random.RandomState(0)
+        >>> # Test 3x3 style projective matrices
+        >>> pts = rng.rand(1000, 2)
+        >>> matrix = rng.rand(3, 3)
+        >>> ra33 = warp_points(matrix, pts)
+        >>> rb33 = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
+        >>> assert np.allclose(ra33, rb33.numpy())
+        >>> # Test opencv style affine matrices
+        >>> pts = rng.rand(10, 2)
+        >>> matrix = rng.rand(2, 3)
+        >>> ra23 = warp_points(matrix, pts)
+        >>> rb23 = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
+        >>> assert np.allclose(ra33, rb33.numpy())
+    """
+    impl = kwarray.ArrayAPI.coerce(pts)
+
+    if len(matrix.shape) != 2:
+        raise ValueError('matrix must have 2 dimensions')
+
+    D = pts.shape[-1]  # the trailing axis is the point dimensionality
+    D1, D2 = matrix.shape
+
+    # Reshape points into a NxD, and transpose into a
+    pts_T = impl.T(impl.view(pts, (-1, D)))
+
+    if D != D2:
+        assert D + 1 == D2, 'only can have one homog coord'
+        # Add homogenous coordinate
+        new_pts_T = impl.cat([pts_T, impl.ones_like(pts_T[0:1])], axis=0)
+    else:
+        # new_pts_T = impl.contiguous(pts_T)
+        new_pts_T = pts_T
+
+    # TODO: we could be more memory efficient (and possibly faster) by using
+    # the `out` kwarg and resuing memory in `new_pts_T`, we just need to ensure
+    # it doesn't share memory with `pts`, which is probably doable by just
+    # using imp.contiguous, but this needs testing.
+    new_pts_T = impl.matmul(matrix, new_pts_T)
+
+    if D != D1:
+        # remove homogenous coordinates (unless the matrix was affine with the
+        # last row was ommitted)
+        new_pts_T = new_pts_T[0:D] / new_pts_T[-1:]
+
+    # Return the warped points with the same shape as the input
+    new_pts = impl.T(new_pts_T)
+    new_pts = impl.view(new_pts, pts.shape)
+    return new_pts

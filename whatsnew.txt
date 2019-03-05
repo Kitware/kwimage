@@ -2,7 +2,13 @@ Version 0.3.0
 =============
 * Changed `encode_run_length` to return a dictionary
 * Add `Mask` data structure
+* Add `Points` data structure
+* Add `_generic.ObjectList` data structure for `MaskList` and `PointsList`.
+* Add `output_shape` and `input_shape` as generally accepted kwargs for warp (even if they are unused)
+* Spatial data structure `warp` methods can now accept imgaug augmenters
+* Add `util_warp.warp_points`
 * Add checks to detection types
+
 
 Version 0.0.1
 =============
