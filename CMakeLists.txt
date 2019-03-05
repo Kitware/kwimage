@@ -5,32 +5,28 @@
 # https://github.com/Erotemic/netharn/issues/7
 # https://github.com/amueller/word_cloud/pull/42ci
 
-cmake_minimum_required(VERSION 3.11.0)
+cmake_minimum_required(VERSION 3.13.0)
 
-project(kwimage LANGUAGES C CXX CUDA)
+project(kwimage LANGUAGES C CXX)
+
+option(USE_CUDA "Build with CUDA" TRUE)
+option(KWIMAGE_VERBOSE "Print extra info" FALSE)
+
+
+if (USE_CUDA)
+    include(CheckLanguage)
+    check_language(CUDA)
+    if(CMAKE_CUDA_COMPILER)
+        enable_language(CUDA)
+    elseif()
+        message(STATUS "CUDA not found, CUDA library will not be built")
+        set(USE_CUDA OFF)
+    endif()
+endif()
 
 # Setup basic python stuff and ensure we have skbuild
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/CMake")
 include( kwimage-setup-python )
-
-option(USE_CUDA "Build with CUDA" "True")
-if (USE_CUDA)
-    find_package(CUDA)
-    if (CUDA_FOUND)
-        message(STATUS "CUDA found (include: ${CUDA_INCLUDE_DIRS}, lib: ${CUDA_LIBRARIES})")
-        include_directories(${CUDA_INCLUDE_DIRS})
-    else(CUDA_FOUND)
-        message(STATUS "CUDA not found, CUDA library will not be built")
-        set(USE_CUDA OFF)
-    endif(CUDA_FOUND)
-endif(USE_CUDA)
-
-
-#if (USE_CUDA)
-#  project(kwimage LANGUAGES C CXX CUDA)
-#else()
-#  project(kwimage LANGUAGES C CXX)
-#endif()
 
 
 ###
@@ -49,9 +45,6 @@ set(PYTHON_SETUP_STATUS "
 
 
 
-
-option(KWIMAGE_VERBOSE "Print extra info" False)
-
 find_package(Cython REQUIRED)
 find_package(NumPy REQUIRED)
 
@@ -66,7 +59,7 @@ PYTHON_CONFIG_STATUS
 ====================
 
 Include Dirs:
-  * CUDA_INCLUDE_DIRS = \"${CUDA_INCLUDE_DIRS}\"
+  * CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES = \"${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}\"
   * NumPy_INCLUDE_DIRS = \"${NumPy_INCLUDE_DIRS}\"
   * PYTHON_INCLUDE_DIRS = \"${PYTHON_INCLUDE_DIRS}\"
 
@@ -97,4 +90,3 @@ ${PYTHON_SETUP_STATUS}
 if (KWIMAGE_VERBOSE)
   message(STATUS ${KWIMAGE_CONFIG_STATUS})
 endif ()
-

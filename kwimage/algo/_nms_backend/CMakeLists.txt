@@ -60,7 +60,7 @@ if (USE_CUDA AND BUILD_GPU_NMS)
   target_include_directories(${module_name} PUBLIC
     ${NumPy_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIRS}
-    ${CUDA_INCLUDE_DIRS}
+    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${module_name} ${CUDA_LIBRARIES} ${PYTHON_LIBRARIES})
