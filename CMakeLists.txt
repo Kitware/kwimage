@@ -6,12 +6,31 @@
 # https://github.com/amueller/word_cloud/pull/42ci
 
 cmake_minimum_required(VERSION 3.11.0)
-project(kwimage LANGUAGES C CXX CUDA)
 
+project(kwimage LANGUAGES C CXX CUDA)
 
 # Setup basic python stuff and ensure we have skbuild
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/CMake")
 include( kwimage-setup-python )
+
+option(USE_CUDA "Build with CUDA" "True")
+if (USE_CUDA)
+    find_package(CUDA)
+    if (CUDA_FOUND)
+        message(STATUS "CUDA found (include: ${CUDA_INCLUDE_DIRS}, lib: ${CUDA_LIBRARIES})")
+        include_directories(${CUDA_INCLUDE_DIRS})
+    else(CUDA_FOUND)
+        message(STATUS "CUDA not found, CUDA library will not be built")
+        set(USE_CUDA OFF)
+    endif(CUDA_FOUND)
+endif(USE_CUDA)
+
+
+#if (USE_CUDA)
+#  project(kwimage LANGUAGES C CXX CUDA)
+#else()
+#  project(kwimage LANGUAGES C CXX)
+#endif()
 
 
 ###
@@ -29,17 +48,6 @@ set(PYTHON_SETUP_STATUS "
 ")
 
 
-option(BUILD_CUDA_LIB "Build with CUDA" "True")
-if (BUILD_CUDA_LIB)
-    find_package(CUDA)
-    if (CUDA_FOUND)
-        message(STATUS "CUDA found (include: ${CUDA_INCLUDE_DIRS}, lib: ${CUDA_LIBRARIES})")
-        include_directories(${CUDA_INCLUDE_DIRS})
-    else(CUDA_FOUND)
-        message(STATUS "CUDA not found, CUDA library will not be built")
-        set(BUILD_CUDA_LIB OFF)
-    endif(CUDA_FOUND)
-endif(BUILD_CUDA_LIB)
 
 
 option(KWIMAGE_VERBOSE "Print extra info" False)

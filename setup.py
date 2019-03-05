@@ -208,28 +208,28 @@ def clean():
 
 # Scikit-build extension module logic
 compile_setup_kw = dict(
-    cmake_languages=('C', 'CXX', 'CUDA'),
+    # cmake_languages=('C', 'CXX', 'CUDA'),
     cmake_source_dir='.',
     # cmake_source_dir='kwimage',
 )
 
-try:
-    import numpy as np
-    # Note: without this skbuild will fail with `pip install -e .`
-    # however, it will still work with `./setup.py develop`.
-    # Not sure why this is, could it be an skbuild bug?
+# try:
+#     import numpy as np
+#     # Note: without this skbuild will fail with `pip install -e .`
+#     # however, it will still work with `./setup.py develop`.
+#     # Not sure why this is, could it be an skbuild bug?
 
-    # This should be something like:
-    # /home/joncrall/venv3.6/lib/python3.6/site-packages/numpy/core/include
-    # NOT:
-    # /tmp/pip-build-env-dt0w6ib0/overlay/lib/python3.6/site-packages/numpy/core/include
-    compile_setup_kw['cmake_args'] = [
-        '-D NumPy_INCLUDE_DIR:PATH=' + np.get_include(),
-        # '-D NPY_NO_DEPRECATED_API=TRUE',  # can cmake #define these?
-        # '-D NPY_1_7_API_VERSION=TRUE',
-    ]
-except ImportError:
-    pass
+#     # This should be something like:
+#     # /home/joncrall/venv3.6/lib/python3.6/site-packages/numpy/core/include
+#     # NOT:
+#     # /tmp/pip-build-env-dt0w6ib0/overlay/lib/python3.6/site-packages/numpy/core/include
+#     compile_setup_kw['cmake_args'] = [
+#         '-D NumPy_INCLUDE_DIR:PATH=' + np.get_include(),
+#         # '-D NPY_NO_DEPRECATED_API=TRUE',  # can cmake #define these?
+#         # '-D NPY_1_7_API_VERSION=TRUE',
+#     ]
+# except ImportError:
+#     pass
 
 
 version = parse_version('kwimage')  # needs to be a global var for git tags
