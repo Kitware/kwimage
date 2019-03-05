@@ -1,4 +1,5 @@
 import ubelt as ub
+import functools
 
 
 class ObjectList(ub.NiceRepr):
@@ -71,3 +72,48 @@ class ObjectList(ub.NiceRepr):
 
     def numpy(self):
         return self.apply(lambda item: item.numpy())
+
+
+def memoize_property(fget):
+    """
+    TEMPORARY LOCATION UNTIL UBELT 0.7.0 LANDS IN MASTER
+
+    Return a property attribute for new-style classes that only calls its
+    getter on the first access. The result is stored and on subsequent accesses
+    is returned, preventing the need to call the getter any more.
+
+    Notes:
+        implementation taken directly from [1].
+
+    References:
+        ..[1] https://github.com/estebistec/python-memoized-property
+
+    Example:
+        >>> class C(object):
+        ...     load_name_count = 0
+        ...     @memoize_property
+        ...     def name(self):
+        ...         "name's docstring"
+        ...         self.load_name_count += 1
+        ...         return "the name"
+        >>> c = C()
+        >>> c.load_name_count
+        0
+        >>> c.name
+        'the name'
+        >>> c.load_name_count
+        1
+        >>> c.name
+        'the name'
+        >>> c.load_name_count
+        1
+    """
+    attr_name = '_' + fget.__name__
+
+    @functools.wraps(fget)
+    def fget_memoized(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fget(self))
+        return getattr(self, attr_name)
+
+    return property(fget_memoized)

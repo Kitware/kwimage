@@ -245,7 +245,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     def is_tensor(self):
         return kwarray.ArrayAPI.coerce(self.xy).is_tensor
 
-    @ub.memoize_property
+    @_generic.memoize_property
     def _impl(self):
         return kwarray.ArrayAPI.coerce(self.xy)
 
