@@ -59,6 +59,7 @@ import torch
 import ubelt as ub
 import warnings
 import skimage
+import kwarray
 from distutils.version import LooseVersion
 
 __all__ = ['Boxes']
@@ -682,7 +683,34 @@ class _BoxTransformMixins(object):
     methods for transforming bounding boxes
     """
 
-    def warp(self, transform, inplace=False):
+    def _warp_imgaug(self, augmenter, input_shape, inplace=False):
+        """
+        Args:
+            augmenter (imgaug.augmenters.Augmenter):
+            input_shape (Tuple): h/w of the input image
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Example:
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> import imgaug
+            >>> self = Boxes.random(10)
+            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
+            >>> input_shape = (10, 10)
+            >>> new = self._warp_imgaug(augmenter, input_shape)
+        """
+        new = self if inplace else self.__class__(self.data, self.format)
+        bboi = self.to_imgaug(shape=input_shape)
+        bboi = augmenter.augment_bounding_boxes([bboi])[0]
+        tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
+                         for bb in bboi.bounding_boxes])
+        tlbr = tlbr.reshape(-1, 4)
+        new.data = tlbr
+        new.format = BoxFormat.TLBR
+        if self._impl.is_tensor:
+            new = new.tensor()
+        return new
+
+    def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
         not axis-aligned will lose information (and also may not be
@@ -691,6 +719,14 @@ class _BoxTransformMixins(object):
         Args:
             transform (skimage.transform._geometric.GeometricTransform | ArrayLike):
                 scikit-image tranform or a 3x3 transformation matrix
+
+            input_shape (Tuple): shape of the image these objects correspond to
+                (only needed / used when transform is an imgaug augmenter)
+
+            output_shape (Tuple): unused in non-raster spatial structures
+
+            inplace (bool, default=False): if True, modifies data inplace
+
 
         TODO:
             - [ ] Generalize so the transform can be an arbitrary matrix
@@ -739,7 +775,11 @@ class _BoxTransformMixins(object):
             elif isinstance(transform, (np.ndarray, torch.Tensor)):
                 matrix = transform
             else:
-                raise TypeError(type(transform))
+                import imgaug
+                if isinstance(transform, imgaug.augmenters.Augmenter):
+                    return new._warp_imgaug(transform, input_shape, inplace=True)
+                else:
+                    raise TypeError(type(transform))
 
             if matrix is not None:
                 # See if we can extract simple params from the matrix
@@ -764,13 +804,14 @@ class _BoxTransformMixins(object):
 
         return new
 
-    def scale(self, factor, inplace=False):
+    def scale(self, factor, output_shape=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+            output_shape (Tuple): unused in non-raster spatial structures
 
         TODO:
             it might be useful to have an argument `origin`, so everything
@@ -797,7 +838,6 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> import kwarray
             >>> import kwimage
             >>> rng = kwarray.ensure_rng(0)
             >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng).astype(np.float64)
@@ -843,13 +883,14 @@ class _BoxTransformMixins(object):
                 raise NotImplementedError('Cannot scale: {}'.format(self.format))
         return new
 
-    def translate(self, amount, inplace=False):
+    def translate(self, amount, output_shape=None, inplace=False):
         """
         Shift the boxes up/down left/right
 
         Args:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
+            output_shape (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -871,7 +912,6 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> import kwarray
             >>> import kwimage
             >>> rng = kwarray.ensure_rng(0)
             >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng)
@@ -893,6 +933,8 @@ class _BoxTransformMixins(object):
         else:
             tx = amount[..., 0]
             ty = amount[..., 1]
+
+        kwarray.ArrayAPI.impl(self.data)
 
         if inplace:
             new = self
@@ -1128,7 +1170,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         >>>             back = box2.toformat(format1)
         >>>             assert box1 == back
     """
-    __slots__ = ('data', 'format',)
+    # __slots__ = ('data', 'format',)
 
     def __init__(self, data, format=None, check=True):
         """
@@ -1240,7 +1282,6 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                        [32, 51, 32, 36],
                        [36, 28, 23, 26]]))>
         """
-        import kwarray
         rng = kwarray.ensure_rng(rng)
 
         if ub.iterable(scale):
@@ -1378,6 +1419,17 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
     def is_numpy(self):
         """ is the backend fueled by numpy? """
         return isinstance(self.data, np.ndarray)
+
+    @ub.memoize_property
+    def _impl(self):
+        """
+        returns the kwarray.ArrayAPI implementation for the data
+
+        Example:
+            >>> assert Boxes.random().numpy()._impl.is_numpy
+            >>> assert Boxes.random().tensor()._impl.is_tensor
+        """
+        return kwarray.ArrayAPI.coerce(self.data)
 
     @property
     def device(self):

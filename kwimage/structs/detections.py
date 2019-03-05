@@ -10,6 +10,7 @@ import torch
 import numpy as np
 import ubelt as ub
 from kwimage.structs import boxes as _boxes
+from kwimage.structs import _generic
 
 
 class _DetDrawMixin:
@@ -199,7 +200,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         >>> assert other.data == self.data
         >>> assert other.data is self.data, 'try not to copy unless necessary'
     """
-    __slots__ = ('data', 'meta',)
+    # __slots__ = ('data', 'meta',)
 
     # Valid keys for the data dictionary
     # NOTE: I'm not sure its productive to restrict to a set of specified
@@ -303,8 +304,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 ndarrays = []
                 tensors = []
                 other = []
+                objlist = []
                 for k, v in data.items():
-                    if isinstance(v, _boxes.Boxes):
+                    if isinstance(v, _generic.ObjectList):
+                        objlist.append(v)
+                    elif isinstance(v, _boxes.Boxes):
                         if v.is_numpy():
                             ndarrays.append(k)
                         else:

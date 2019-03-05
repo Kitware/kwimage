@@ -36,6 +36,7 @@ import copy
 import numpy as np
 import ubelt as ub
 import itertools as it
+from . import _generic
 from kwimage.structs._mask_backend import cython_mask
 
 __all__ = ['Mask', 'MaskList']
@@ -315,6 +316,8 @@ class _MaskTransformMixin(object):
             >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
         """
         import kwimage
+        if output_shape is None:
+            output_shape = self.shape
         rle = self.to_array_rle(copy=False).data
         new_rle = kwimage.rle_translate(rle, offset, output_shape)
         new_rle['size'] = new_rle['shape']
@@ -677,38 +680,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return self
 
 
-class MaskList(ub.NiceRepr):
+class MaskList(_generic.ObjectList):
     """
     Store and manipulate multiple masks, usually within the same image
     """
-
-    def __init__(self, data, format=None):
-        self.data = data
-        self.format = format
-
-    def __len__(self):
-        return len(self.data)
-
-    def __nice__(self):
-        return 'n={}, format={}'.format(len(self.data), self.format)
-
-    def translate(self, offset, output_shape=None):
-        newdata = [
-            None if item is None else item.translate(offset, output_shape)
-            for item in self.data
-        ]
-        return MaskList(newdata, self.format)
-
-    def draw(self):
-        for item in self.data:
-            if item is not None:
-                item.draw()
-
-    def draw_on(self, image):
-        for item in self.data:
-            if item is not None:
-                image = item.draw(image=image)
-        return image
 
 
 if __name__ == '__main__':

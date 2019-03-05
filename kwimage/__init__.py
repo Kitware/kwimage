@@ -21,7 +21,7 @@ from .structs import (Boxes, Detections, Heatmap, Mask, MaskList, Points,
                       PointsList, smooth_prob,)
 from .util_warp import (subpixel_accum, subpixel_align, subpixel_maximum,
                         subpixel_minimum, subpixel_slice, subpixel_translate,
-                        warp_tensor,)
+                        warp_points, warp_tensor,)
 
 __all__ = ['Boxes', 'Detections', 'Heatmap', 'Mask', 'MaskList', 'Points',
            'PointsList', 'atleast_3channels', 'available_nms_impls',
@@ -34,4 +34,5 @@ __all__ = ['Boxes', 'Detections', 'Heatmap', 'Mask', 'MaskList', 'Points',
            'overlay_alpha_layers', 'rle_translate', 'smooth_prob',
            'stack_images', 'stack_images_grid', 'subpixel_accum',
            'subpixel_align', 'subpixel_maximum', 'subpixel_minimum',
-           'subpixel_slice', 'subpixel_translate', 'warp_tensor']
+           'subpixel_slice', 'subpixel_translate', 'warp_points',
+           'warp_tensor']
