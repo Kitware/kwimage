@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Update Requirments:
+    # Requirements are broken down by type in the `requirements` folder, and
+    # `requirments.txt` lists them all. Thus we autogenerate via:
+
+    cat requirements/*.txt | sort -u | grep -o '^[^#]*' >  requirements.txt
+"""
 from os.path import exists
 from os.path import join
 from skbuild import setup
