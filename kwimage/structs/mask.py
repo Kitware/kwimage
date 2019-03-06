@@ -578,16 +578,13 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
+            >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_polygon()
             >>> print('polygons = ' + ub.repr2(polygons))
-            polygons = [
-                np.array([[6, 4],[7, 4]], dtype=np.int32),
-                np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
-            ]
             >>> polygons = self.get_polygon()
-            >>> other = Mask.from_polygons(polygons, self.shape)
             >>> self = self.to_bytes_rle()
+            >>> other = Mask.from_polygons(polygons, self.shape)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -595,10 +592,38 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> image = self.draw_on(image, color='blue')
             >>> image = other.draw_on(image, color='red')
             >>> kwplot.imshow(image)
+
+            polygons = [
+                np.array([[6, 4],[7, 4]], dtype=np.int32),
+                np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
+            ]
         """
-        mask = self.to_c_mask().data
-        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1,
+        p = 2
+
+        if 0:
+            mask = self.to_c_mask().data
+            offset = (-p, -p)
+        else:
+            # It should be faster to only exact the patch of non-zero values
+            x, y, w, h = self.get_xywh().astype(np.int).tolist()
+            output_shape = (h, w)
+            xy_offset = (-x, -y)
+            temp = self.translate(xy_offset, output_shape)
+            mask = temp.to_c_mask().data
+            offset = (x - p, y - p)
+
+        padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
                                          cv2.BORDER_CONSTANT, value=0)
+
+        # print('src =\n{!r}'.format(padded_mask))
+        kernel = np.array([
+            [1, 1, 0],
+            [1, 1, 0],
+            [0, 0, 0],
+        ], dtype=np.uint8)
+        padded_mask = cv2.dilate(padded_mask, kernel, dst=padded_mask)
+        # print('dst =\n{!r}'.format(padded_mask))
+
         mode = cv2.RETR_LIST
         # mode = cv2.RETR_EXTERNAL
 
@@ -609,7 +634,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # method = cv2.CHAIN_APPROX_NONE
         # method = cv2.CHAIN_APPROX_TC89_KCOS
         # Different versions of cv2 have different return types
-        _ret = cv2.findContours(padded_mask, mode, method, offset=(-1, -1))
+        _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
         if len(_ret) == 2:
             _contours, _hierarchy = _ret
         else:
