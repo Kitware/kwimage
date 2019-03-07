@@ -396,6 +396,49 @@ def subpixel_align(dst, src, index, interp_axes=None):
     return aligned_src, aligned_index
 
 
+def subpixel_set(dst, src, index, interp_axes=None):
+    """
+    Add the source values array into the destination array at a particular
+    subpixel index.
+
+    Args:
+        dst (ArrayLike): destination accumulation array
+        src (ArrayLike): source array containing values to add
+        index (Tuple[slice]): subpixel slice into dst that corresponds with src
+        interp_axes (tuple): specify which axes should be spatially interpolated
+
+    Example:
+        >>> import kwimage
+        >>> dst = np.zeros(5) + .1
+        >>> src = np.ones(2)
+        >>> index = [slice(1.5, 3.5)]
+        >>> kwimage.util_warp.subpixel_set(dst, src, index)
+        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        np.array([0.1, 0.5, 1. , 0.5, 0.1])
+    """
+    aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
+    # accumulate the newly aligned source array
+    try:
+        dst[aligned_index] = aligned_src
+    except RuntimeError:
+        try:
+            print('dst.shape = {!r}'.format(dst.shape))
+            print('dst.dtype = {!r}'.format(dst.dtype))
+            print('dst.device = {!r}'.format(dst.device))
+
+            print('aligned_src.shape = {!r}'.format(aligned_src.shape))
+            print('aligned_src.dtype = {!r}'.format(aligned_src.dtype))
+            print('aligned_src.device = {!r}'.format(aligned_src.device))
+
+            print('src.shape = {!r}'.format(src.shape))
+            print('src.dtype = {!r}'.format(src.dtype))
+            print('src.device = {!r}'.format(src.device))
+        except Exception:
+            print('unexpected numpy')
+        raise
+    return dst
+
+
 def subpixel_accum(dst, src, index, interp_axes=None):
     """
     Add the source values array into the destination array at a particular
@@ -1174,3 +1217,49 @@ def warp_points(matrix, pts):
     new_pts = impl.T(new_pts_T)
     new_pts = impl.view(new_pts, pts.shape)
     return new_pts
+
+
+def subpixel_values(img, pts):
+    """
+    References:
+        stackoverflow.com/uestions/12729228/simple-efficient-binlinear-interpolation-of-images-in-numpy-and-python
+
+    SeeAlso:
+        cv2.getRectSubPix(image, patchSize, center[, patch[, patchType]])
+    """
+    # Image info
+    import kwimage
+    nChannels = kwimage.num_channels(img)
+    height, width = img.shape[0:2]
+    # Subpixel locations to sample
+    ptsT = pts.T
+    x = ptsT[0]
+    y = ptsT[1]
+    # Get quantized pixel locations near subpixel pts
+    x0 = np.floor(x).astype(int)
+    x1 = x0 + 1
+    y0 = np.floor(y).astype(int)
+    y1 = y0 + 1
+    # Make sure the values do not go past the boundary
+    x0 = np.clip(x0, 0, width - 1)
+    x1 = np.clip(x1, 0, width - 1)
+    y0 = np.clip(y0, 0, height - 1)
+    y1 = np.clip(y1, 0, height - 1)
+    # Find bilinear weights
+    wa = (x1 - x) * (y1 - y)
+    wb = (x1 - x) * (y - y0)
+    wc = (x - x0) * (y1 - y)
+    wd = (x - x0) * (y - y0)
+    if  nChannels != 1:
+        wa = np.array([wa] *  nChannels).T
+        wb = np.array([wb] *  nChannels).T
+        wc = np.array([wc] *  nChannels).T
+        wd = np.array([wd] *  nChannels).T
+    # Sample values
+    Ia = img[y0, x0]
+    Ib = img[y1, x0]
+    Ic = img[y0, x1]
+    Id = img[y1, x1]
+    # Perform the bilinear interpolation
+    subpxl_vals = (wa * Ia) + (wb * Ib) + (wc * Ic) + (wd * Id)
+    return subpxl_vals
