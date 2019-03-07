@@ -7,8 +7,11 @@ class ObjectList(ub.NiceRepr):
     Stores a list of potentially heterogenous structures, each item usually
     corresponds to a different object.
     """
-    def __init__(self, data):
+    def __init__(self, data, meta=None):
+        if meta is None:
+            meta = {}
         self.data = data
+        self.meta = meta
 
     def __len__(self):
         return len(self.data)
@@ -27,34 +30,34 @@ class ObjectList(ub.NiceRepr):
         newdata = [None if item is None else
                    item.translate(offset, output_shape=output_shape)
                    for item in self.data]
-        return ObjectList(newdata)
+        return ObjectList(newdata, self.meta)
 
     def scale(self, factor, output_shape=None):
         newdata = [None if item is None else
                    item.scale(factor, output_shape=output_shape)
                    for item in self.data]
-        return ObjectList(newdata)
+        return ObjectList(newdata, self.meta)
 
     def warp(self, transform, input_shape=None, output_shape=None):
         newdata = [None if item is None else
                    item.warp(transform, input_shape=input_shape,
                              output_shape=output_shape)
                    for item in self.data]
-        return ObjectList(newdata)
+        return ObjectList(newdata, self.meta)
 
     def apply(self, func):
         newdata = [None if item is None else func(item) for item in self.data]
-        return ObjectList(newdata)
+        return ObjectList(newdata, self.meta)
 
     def compress(self, flags, axis=0):
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))
-        return ObjectList(newdata)
+        return ObjectList(newdata, self.meta)
 
     def take(self, indices, axis=0):
         assert axis == 0
         newdata = list(ub.take(self.data, indices))
-        return ObjectList(newdata)
+        return ObjectList(newdata, self.meta)
 
     def draw(self, **kwargs):
         for item in self.data:

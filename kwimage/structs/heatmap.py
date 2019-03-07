@@ -1027,12 +1027,11 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> iminfo, anns = sampler.load_image_with_annots(1)
         >>> image = iminfo['imdata']
-        >>> mask0 = kwimage.Mask.from_polygons(anns[0]['segmentation'], shape=iminfo['imdata'].shape[0:2])
-        >>> masks = kwimage.MaskList([mask0, None])
-        >>> dets = kwimage.Detections.from_coco_annots(
-        >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph)
-        >>> dets.data['masks'] = masks
         >>> input_dims = image.shape[0:2]
+        >>> kpclasses = sampler.dset.keypoint_categories()
+        >>> dets = kwimage.Detections.from_coco_annots(
+        >>>     anns, sampler.dset.dataset['categories'],
+        >>>     sampler.catgraph, kpclasses, shape=input_dims)
         >>> bg_size = [100, 100]
         >>> fcn_target = _dets_to_masks(dets, bg_size, input_dims, bg_idxs)
         >>> # xdoctest: +REQUIRES(--show)
@@ -1041,10 +1040,10 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> size_mask = fcn_target['size']
         >>> dxdy_mask = fcn_target['dxdy']
         >>> cidx_mask = fcn_target['cidx']
+        >>> kpts_mask = fcn_target['kpts']
         >>> dx, dy = dxdy_mask
         >>> mag = np.sqrt(dx ** 2 + dy ** 2)
         >>> mag /= (mag.max() + 1e-9)
-        >>> #mag = 1 - fcn_target['class_probs'][0]
         >>> mask = (cidx_mask != 0).astype(np.float32)
         >>> angle = np.arctan2(dy, dx)
         >>> orimask = kwplot.make_orimask(angle, mask, alpha=mag)
@@ -1057,14 +1056,41 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>>                       labels=True, alpha=None)
         >>> kwplot.imshow(raster)
         >>> kwplot.show_if_requested()
+
+        def _vizmask(dxdy_mask):
+            dx, dy = dxdy_mask
+            mag = np.sqrt(dx ** 2 + dy ** 2)
+            mag /= (mag.max() + 1e-9)
+            mask = (cidx_mask != 0).astype(np.float32)
+            angle = np.arctan2(dy, dx)
+            orimask = kwplot.make_orimask(angle, mask, alpha=mag)
+            vecmask = kwplot.make_vector_field(
+                dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
+                line_type=16)
+            return [vecmask, orimask]
+
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[5]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 2), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[6]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 3), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(dxdy_mask) + [image], keepalpha=False) * 255).astype(np.uint8)
+        raster = dets.draw_on(raster, labels=True, alpha=None)
+        kwplot.imshow(raster, pnum=(1, 3, 1), fnum=1)
+
+        >>> raster = kwimage.overlay_alpha_layers(
+        >>>     [vecmask, orimask, image], keepalpha=False)
+        >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
+        >>>                       labels=True, alpha=None)
+        >>> kwplot.imshow(raster)
+        >>> kwplot.show_if_requested()
     """
     import cv2
     # In soft mode we made a one-channel segmentation target mask
     cidx_mask = np.full(input_dims, dtype=np.int32, fill_value=bg_idx)
     if soft:
         # In soft mode we add per-class channel probability blips
-        num_classes = len(dets.classes)
-        cidx_probs = np.full((num_classes,) + tuple(input_dims),
+        num_obj_classes = len(dets.classes)
+        cidx_probs = np.full((num_obj_classes,) + tuple(input_dims),
                              dtype=np.float32, fill_value=0)
 
     size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
@@ -1082,8 +1108,13 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     masks = dets.data.get('masks', [None] * len(dets))
 
+    kpts_mask = None
     if 'kpts' in dets.data:
-        kpts = dets.data['kpts']
+        if 'classes' in dets.data['kpts'].meta:
+            num_kp_classes = len(dets.data['kpts'].meta['classes'])
+            kpts_mask = np.zeros((num_kp_classes, 2,) + tuple(input_dims), dtype=np.float32)
+
+        kpts = dets.data['kpts'].data
         for pts in kpts:
             if pts is not None:
                 pass
@@ -1105,7 +1136,7 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     H, W = input_dims
     xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
 
-    for (cx, cy, w, h), cidx, sseg_mask in zip(cxywh, class_idxs, masks):
+    for (cx, cy, w, h), cidx, sseg_mask, pts in zip(cxywh, class_idxs, masks, kpts):
         center = (iround(cx), iround(cy))
         # Adjust so smaller objects get more pixels
         wf = min(1, (w / 64))
@@ -1117,8 +1148,6 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         half_w = iround(wf * w / 2 + 1)
         half_h = iround(hf * h / 2 + 1)
         axes = (half_w, half_h)
-
-        sseg_mask = None
 
         if sseg_mask is None:
             mask = np.zeros_like(cidx_mask, dtype=np.uint8)
@@ -1144,10 +1173,19 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         assert np.all(size_mask[0][mask] == float(w))
 
         # object offset
-        dy = cy - ycoord
-        dx = cx - xcoord
-        dxdy_mask[0][mask] = dx[mask]
-        dxdy_mask[1][mask] = dy[mask]
+        dy = cy - ycoord[mask]
+        dx = cx - xcoord[mask]
+        dxdy_mask[0][mask] = dx
+        dxdy_mask[1][mask] = dy
+
+        if pts is not None:
+            # Keypoint offsets
+            for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
+                kp_x, kp_y = xy
+                kp_dx = kp_x - xcoord[mask]
+                kp_dy = kp_y - ycoord[mask]
+                kpts_mask[kp_cidx][0][mask] = kp_dx
+                kpts_mask[kp_cidx][1][mask] = kp_dy
 
     fcn_target = {
         'size': size_mask,
@@ -1155,9 +1193,13 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         'cidx': cidx_mask,
     }
     if soft:
-        nonbg_idxs = sorted(set(range(num_classes)) - {bg_idx})
+        nonbg_idxs = sorted(set(range(num_obj_classes)) - {bg_idx})
         cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
         fcn_target['class_probs'] = cidx_probs
+
+    if 'kpts' in dets.data:
+        fcn_target['kpts'] = kpts_mask
+
     return fcn_target
 
 

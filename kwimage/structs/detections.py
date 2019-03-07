@@ -356,27 +356,101 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return copy.deepcopy(self)
 
     @classmethod
-    def from_coco_annots(cls, anns, cats, classes=None):
+    def from_coco_annots(cls, anns, cats, classes=None, kpclasses=None,
+                         shape=None):
         """
         Example:
-            >>> anns = [{'bbox': [0, 0, 10, 10], 'id': 0, 'category_id': 2, 'image_id': 1}]
-            >>> cats = [{'id': 0, 'name': 'background'}, {'id': 2, 'name': 'class1'}]
-            >>> Detections.from_coco_annots(anns, cats)
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> anns = [{
+            >>>     'id': 0,
+            >>>     'image_id': 1,
+            >>>     'category_id': 2,
+            >>>     'bbox': [2, 3, 10, 10],
+            >>>     'keypoints': [4.5, 4.5, 2],
+            >>>     'segmentation': {
+            >>>         'counts': '_11a04M2O0O20N101N3L_5',
+            >>>         'size': [20, 20],
+            >>>     },
+            >>> }]
+            >>> cats = [
+            >>>     {'id': 0, 'name': 'background'},
+            >>>     {'id': 2, 'name': 'class1', 'keypoints': ['spot']}
+            >>> ]
+            >>> dets = Detections.from_coco_annots(anns, cats)
+
+        Example:
+            >>> import kwimage
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> import ndsampler
+            >>> sampler = ndsampler.CocoSampler.demo('photos')
+            >>> iminfo, anns = sampler.load_image_with_annots(1)
+            >>> shape = iminfo['imdata'].shape[0:2]
+            >>> kpclasses = sampler.dset.keypoint_categories()
+            >>> dets = kwimage.Detections.from_coco_annots(
+            >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph,
+            >>>     kpclasses, shape=shape)
+
+        Ignore:
+            import skimage
+            m = skimage.morphology.disk(4)
+            mask = kwimage.Mask.from_mask(m, offset=(2, 3), shape=(20, 20))
+            print(mask.to_bytes_rle().data)
         """
         import kwimage
-        true_xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
-        true_boxes = kwimage.Boxes(true_xywh, 'xywh')
-        true_cids = [ann['category_id'] for ann in anns]
-        cid_to_name = {c['id']: c['name'] for c in cats}  # Hack
-        true_cnames = [cid_to_name[cid] for cid in true_cids]
+        xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
+        boxes = kwimage.Boxes(xywh, 'xywh')
+        cids = [ann['category_id'] for ann in anns]
+        cid_to_cat = {c['id']: c for c in cats}  # Hack
+        cnames = [cid_to_cat[cid]['name'] for cid in cids]
         if classes is None:
-            classes = list(cid_to_name.values())
-        true_class_idxs = [classes.index(cname) for cname in true_cnames]
+            classes = list([cat['name'] for cat in cid_to_cat.values()])
+        class_idxs = [classes.index(cname) for cname in cnames]
         dets = Detections(
-            boxes=true_boxes,
-            class_idxs=np.array(true_class_idxs),
+            boxes=boxes,
+            class_idxs=np.array(class_idxs),
             classes=classes,
         )
+        if True:
+            ss = [ann.get('segmentation', None) for ann in anns]
+            masks = [
+                None if s is None else kwimage.Mask.coerce(s, shape=shape)
+                for s in ss
+            ]
+            dets.data['masks'] = kwimage.MaskList(masks)
+
+        if True:
+            name_to_cat = {c['name']: c for c in cats}
+            def _lookup_kp_class_idxs(cid):
+                kpnames = None
+                while kpnames is None:
+                    cat = cid_to_cat[cid]
+                    parent = cat.get('supercategory', None)
+                    if 'keypoints' in cat:
+                        kpnames = cat['keypoints']
+                    elif parent is not None:
+                        cid = name_to_cat[cat['supercategory']]['id']
+                    else:
+                        raise KeyError(cid)
+                kpcidxs = [kpclasses.index(n) for n in kpnames]
+                return kpcidxs
+            kpts = []
+            for ann in anns:
+                k = ann.get('keypoints', None)
+                if k is None:
+                    kpts.append(k)
+                else:
+                    kpcidxs = None
+                    if kpclasses is not None:
+                        kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
+                    pts = kwimage.Points(
+                        xy=np.array(k).reshape(-1, 3)[:, 0:2],
+                        class_idxs=kpcidxs,
+                    )
+                    kpts.append(pts)
+            dets.data['kpts'] = kwimage.PointsList(kpts)
+
+            if kpclasses is not None:
+                dets.data['kpts'].meta['classes'] = kpclasses
         return dets
 
     # --- Data Properties ---
