@@ -13,15 +13,24 @@ class _WarpMixin:
 
         Args:
             transform (GeometricTransform | ArrayLike | Augmenter):
-                scikit-image tranform, a 3x3 transformation matrix, or
+                scikit-image tranform, a transformation matrix, or
                 an imgaug Augmenter.
 
             input_shape (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
-            output_shape (Tuple): unused, only exists for compatibility
+            output_shape (Tuple): unused in non-raster structures, only exists
+                for compatibility.
 
             inplace (bool, default=False): if True, modifies data inplace
+
+        Notes:
+            Let D = self.dims
+
+            transformation matrices can be either:
+                * (D + 1) x (D + 1)  # for homog
+                * D x D  # for scale / rotate
+                * D x (D + 1)  # for affine
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
