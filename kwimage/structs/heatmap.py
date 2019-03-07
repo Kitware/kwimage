@@ -353,7 +353,7 @@ class _HeatmapAlgoMixin(object):
     """
 
     @classmethod
-    def combine(cls, heatmaps, root_index=None):
+    def combine(cls, heatmaps, root_index=None, precision=np.float32):
         """
         Combine multiple heatmaps
 
@@ -402,7 +402,7 @@ class _HeatmapAlgoMixin(object):
             import warnings
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', 'divide by zero')
-                tmp = np.array([h.class_probs for h in aligned_heatmaps], dtype=np.float16)
+                tmp = np.array([h.class_probs.astype(precision) for h in aligned_heatmaps], dtype=precision)
                 newdata['class_probs'] = cls._gmean(tmp, clobber=True)
                 tmp = None
         if 'offset' in aligned_root.data:
