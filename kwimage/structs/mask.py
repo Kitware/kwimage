@@ -375,11 +375,11 @@ class _MaskDrawMixin(object):
         toshow = kwimage.overlay_alpha_images(alpha_mask, image)
 
         if show_border:
-            contours = self.rebuild_contours(self.get_polygon())
-            toshow = cv2.drawContours((toshow*255.).astype(np.uint8), contours, -1,
+            contours = self._rebuild_contours(self.get_polygon())
+            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8), contours, -1,
                              kwplot.Color(border_color).as255(),
                              border_thick, cv2.LINE_AA)
-            toshow = toshow.astype(np.float)/255.
+            toshow = toshow.astype(np.float) / 255.
 
         return toshow
 
@@ -404,19 +404,19 @@ class _MaskDrawMixin(object):
             # Add alpha channel to color
             border_color_tup = kwplot.Color(border_color).as255()
             border_color_tup = (border_color_tup[0], border_color_tup[1],
-                                border_color_tup[2], 255*alpha)
+                                border_color_tup[2], 255 * alpha)
 
-            contours = self.rebuild_contours(self.get_polygon())
-            alpha_mask = cv2.drawContours((alpha_mask*255.).astype(np.uint8), contours, -1,
+            contours = self._rebuild_contours(self.get_polygon())
+            alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
                                           border_color_tup, border_thick, cv2.LINE_AA)
 
-            alpha_mask = alpha_mask.astype(np.float)/255.
+            alpha_mask = alpha_mask.astype(np.float) / 255.
 
         ax.imshow(alpha_mask)
 
     # return shape of contours to openCV contours
     @staticmethod
-    def rebuild_contours(contours):
+    def _rebuild_contours(contours):
         return [np.expand_dims(c, axis=1) for c in contours]
 
 

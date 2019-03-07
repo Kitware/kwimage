@@ -402,13 +402,79 @@ class _HeatmapAlgoMixin(object):
             import warnings
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', 'divide by zero')
-                newdata['class_probs'] = gmean([h.class_probs for h in aligned_heatmaps])
+                # for it, h in enumerate(aligned_heatmaps):
+                #     h.class_probs = np.log(h.class_probs, out=h.class_probs)
+                #     if it != 0:
+                #         numpy.add(aligned_heatmaps[0].class_probs,h.class_probs, out=aligned_heatmaps[0].class_probs)
+                #
+                # np.divide(aligned_heatmaps[0].class_probs,len(aligned_heatmaps),out = aligned_heatmaps[0].class_probs)
+                # newdata['class_probs'] = np.exp(aligned_heatmaps[0].class_probs,out = aligned_heatmaps[0].class_probs)
+                # for h in aligned_heatmaps:
+                #     h.class_probs = None
+
+                # tmp = np.zeros((len(aligned_heatmaps),
+                #                                    aligned_heatmaps[0].class_probs.shape[0],
+                #                                    aligned_heatmaps[0].class_probs.shape[1],
+                #                                    aligned_heatmaps[0].class_probs.shape[2]),
+                #                                   dtype = np.float16)
+                # for it, h in enumerate(aligned_heatmaps):
+                #     tmp[it,...] = h.class_probs
+                    # h.class_probs
+
+                tmp = np.array([h.class_probs for h in aligned_heatmaps], dtype=np.float16)
+                newdata['class_probs'] = cls._gmean(tmp, clobber=True)
+                tmp = None
         if 'offset' in aligned_root.data:
             newdata['offset'] = amean([h.offset for h in aligned_heatmaps])
         if 'diameter' in aligned_root.data:
             newdata['diameter'] = amean([h.diameter for h in aligned_heatmaps])
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself
+
+    @staticmethod
+    def _gmean(a, axis=0, dtype=None, clobber=False):
+        """
+        Compute the geometric mean along the specified axis.
+
+        Modification of the scikit-learn method to be more memory efficient
+
+        Example
+            >>> rng = np.random.RandomState(0)
+            >>> C, H, W = 8, 32, 32
+            >>> axis = 0
+            >>> a = [rng.rand(C, H, W).astype(np.float16), rng.rand(C, H, W).astype(np.float16)]
+
+        """
+        if isinstance(a, np.ndarray):
+            if clobber:
+                # NOTE: we reuse (a), we clobber the input array!
+                log_a = np.log(a, out=a)
+            else:
+                log_a = np.log(a)
+        else:
+            if dtype is None:
+                # if not an ndarray object attempt to convert it
+                log_a = np.log(np.array(a, dtype=dtype))
+            else:
+                # Must change the default dtype allowing array type
+                # Note: that this will use memory, but there isn't anything we can
+                # do here.
+                if isinstance(a, np.ma.MaskedArray):
+                    a_ = np.ma.asarray(a, dtype=dtype)
+                else:
+                    a_ = np.asarray(a, dtype=dtype)
+                # We can reuse `a_` because it was a temp var
+                log_a = np.log(a_, out=a_)
+
+        # attempt to reuse memory when computing mean
+        mem = log_a[axis]
+        mean_log_a = log_a.mean(axis=axis, out=mem)
+
+        # And reuse memory again when computing the final result
+        result = np.exp(mean_log_a, out=mean_log_a)
+
+        return result
+
 
     def detect(self, channel, invert=False, min_score=0.01, num_min=10):
         """
