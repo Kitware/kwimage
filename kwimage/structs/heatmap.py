@@ -402,25 +402,6 @@ class _HeatmapAlgoMixin(object):
             import warnings
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', 'divide by zero')
-                # for it, h in enumerate(aligned_heatmaps):
-                #     h.class_probs = np.log(h.class_probs, out=h.class_probs)
-                #     if it != 0:
-                #         numpy.add(aligned_heatmaps[0].class_probs,h.class_probs, out=aligned_heatmaps[0].class_probs)
-                #
-                # np.divide(aligned_heatmaps[0].class_probs,len(aligned_heatmaps),out = aligned_heatmaps[0].class_probs)
-                # newdata['class_probs'] = np.exp(aligned_heatmaps[0].class_probs,out = aligned_heatmaps[0].class_probs)
-                # for h in aligned_heatmaps:
-                #     h.class_probs = None
-
-                # tmp = np.zeros((len(aligned_heatmaps),
-                #                                    aligned_heatmaps[0].class_probs.shape[0],
-                #                                    aligned_heatmaps[0].class_probs.shape[1],
-                #                                    aligned_heatmaps[0].class_probs.shape[2]),
-                #                                   dtype = np.float16)
-                # for it, h in enumerate(aligned_heatmaps):
-                #     tmp[it,...] = h.class_probs
-                    # h.class_probs
-
                 tmp = np.array([h.class_probs for h in aligned_heatmaps], dtype=np.float16)
                 newdata['class_probs'] = cls._gmean(tmp, clobber=True)
                 tmp = None
