@@ -29,8 +29,8 @@ class _PointsWarpMixin:
         kpoi = new.to_imgaug(shape=input_shape)
         kpoi = augmenter.augment_keypoints(kpoi)
         xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints],
-                      dtype=new.xy.dtype)
-        new.data['xy'] = xy
+                      dtype=new.data['xy'].data.dtype)
+        new.data['xy'].data = xy
         return new
 
     def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
@@ -61,19 +61,15 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(3)).xy == self.xy)
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
-        import kwimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if isinstance(transform, np.ndarray):
-            matrix = transform
-        elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
-            matrix = transform.params
-        else:
+        if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
             import imgaug
             if isinstance(transform, imgaug.augmenters.Augmenter):
                 return new._warp_imgaug(transform, input_shape, inplace=True)
             else:
                 raise TypeError(type(transform))
-        new.data['xy'] = kwimage.warp_points(matrix, new.data['xy'])
+        new.data['xy'] = new.data['xy'].warp(transform, input_shape,
+                                             output_shape, inplace)
         return new
 
     def scale(self, factor, output_shape=None, inplace=False):
@@ -92,23 +88,10 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 10
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if not ub.iterable(factor):
-            sx = sy = factor
-        elif isinstance(factor, (list, tuple)):
-            sx, sy = factor
-        else:
-            sx = factor[..., 0]
-            sy = factor[..., 1]
-        xy = new.data['xy']
-        impl = kwarray.ArrayAPI.coerce(xy)
-        if not inplace:
-            xy = new.data['xy'] = impl.copy(xy)
-        if impl.numel(xy) > 0:
-            xy[..., 0] *= sx
-            xy[..., 1] *= sy
+        new.data['xy'] = new.data['xy'].scale(factor, output_shape, inplace)
         return new
 
-    def translate(self, amount, output_shape=None, inplace=False):
+    def translate(self, offset, output_shape=None, inplace=False):
         """
         Shift the points up/down left/right
 
@@ -125,20 +108,7 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 11
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if not ub.iterable(amount):
-            tx = ty = amount
-        elif isinstance(amount, (list, tuple)):
-            tx, ty = amount
-        else:
-            tx = amount[..., 0]
-            ty = amount[..., 1]
-        xy = new.data['xy']
-        impl = kwarray.ArrayAPI.coerce(xy)
-        if not inplace:
-            xy = new.data['xy'] = impl.copy(xy)
-        if impl.numel(xy) > 0:
-            xy[..., 0] += tx
-            xy[..., 1] += ty
+        new.data['xy'] = new.data['xy'].translate(offset, output_shape, inplace)
         return new
 
 
@@ -185,6 +155,12 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             if kwargs:
                 raise ValueError(
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
+
+            if 'xy' in data:
+                if isinstance(data['xy'], np.ndarray):
+                    import kwimage
+                    data['xy'] = kwimage.Coords(data['xy'])
+
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data and meta are explicitly specified
@@ -208,7 +184,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
 
     @property
     def xy(self):
-        return self.data['xy']
+        return self.data['xy'].data
 
     def to_imgaug(self, shape):
         """
@@ -219,7 +195,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             >>> kpoi = pts.to_imgaug(shape)
         """
         import imgaug
-        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy']]
+        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
         kpoi = imgaug.KeypointsOnImage(kps, shape=shape)
         return kpoi
 
@@ -262,7 +238,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         return new
 
     def draw_on(self, image):
-        raise NotImplementedError
+        return self.xy.draw_on(image)
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
         """
@@ -276,7 +252,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         from matplotlib import pyplot as plt
         if ax is None:
             ax = plt.gca()
-        xy = self.data['xy']
+        xy = self.data['xy'].data
 
         # More grouped patches == more efficient runtime
         if alpha is None:

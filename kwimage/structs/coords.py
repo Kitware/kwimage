@@ -5,7 +5,88 @@ import kwarray
 from . import _generic
 
 
-class _WarpMixin:
+class Coords(ub.NiceRepr):
+    """
+    This stores arbitrary sparse coordinate geometry.
+
+    You can specify data, but you don't have to.
+    We dont care what it is, we just warp it.
+
+    CommandLine:
+        xdoctest -m kwimage.structs.coords Coords
+
+    Example:
+        >>> from kwimage.structs.coords import *  # NOQA
+        >>> import kwarray
+        >>> rng = kwarray.ensure_rng(0)
+        >>> self = Coords.random(num=4, dim=3, rng=0)
+        >>> matrix = rng.rand(4, 4)
+        >>> self.warp(matrix)
+        >>> self.translate(3, inplace=True)
+        >>> self.translate(3, inplace=True)
+        >>> self.scale(2)
+        >>> self.tensor()
+        >>> # self.tensor(device=0)
+        >>> self.tensor().tensor().numpy().numpy()
+        >>> self.numpy()
+        >>> self.draw_on()
+    """
+    # __slots__ = ('data', 'meta',)  # turn on when no longer developing
+
+    def __init__(self, data=None, meta=None):
+        if isinstance(data, self.__class__):
+            # Avoid runtime checks and assume the user is doing the right thing
+            # if data and meta are explicitly specified
+            meta = data.meta
+            data = data.data
+        if meta is None:
+            meta = {}
+        self.data = data
+        self.meta = meta
+
+    def __nice__(self):
+        data_repr = repr(self.data)
+        if '\n' in data_repr:
+            data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
+        return 'data={}'.format(data_repr)
+
+    __repr__ = ub.NiceRepr.__str__
+
+    def __len__(self):
+        return len(self.data)
+
+    @property
+    def ndims(self):
+        return self.data.shape[-1]
+
+    @classmethod
+    def random(Coords, num=1, dim=2, rng=None, meta=None):
+        """
+        Makes random coordinates; typically for testing purposes
+        """
+        rng = kwarray.ensure_rng(rng)
+        self = Coords(data=rng.rand(num, dim), meta=meta)
+        return self
+
+    def is_numpy(self):
+        return self._impl.is_numpy
+
+    def is_tensor(self):
+        return self._impl.is_tensor
+
+    @_generic.memoize_property
+    def _impl(self):
+        return kwarray.ArrayAPI.coerce(self.data)
+
+    def tensor(self, device=ub.NoParam):
+        newdata = self._impl.tensor(self.data, device)
+        new = self.__class__(newdata, self.meta)
+        return new
+
+    def numpy(self):
+        newdata = self._impl.numpy(self.data)
+        new = self.__class__(newdata, self.meta)
+        return new
 
     def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
         """
@@ -120,91 +201,6 @@ class _WarpMixin:
                 offset_ = offset
             assert offset_.shape == (ndims,)
             data += offset_
-        return new
-
-
-class Coords(ub.NiceRepr, _WarpMixin):
-    """
-    This stores arbitrary sparse coordinate geometry.
-
-    You can specify data, but you don't have to.
-    We dont care what it is, we just warp it.
-    The `fill` call lets you
-
-    CommandLine:
-        xdoctest -m kwimage.structs.coords Coords
-
-    Example:
-        >>> from kwimage.structs.coords import *  # NOQA
-        >>> import kwarray
-        >>> rng = kwarray.ensure_rng(0)
-        >>> self = Coords.random(num=4, dim=3, rng=0)
-        >>> matrix = rng.rand(4, 4)
-        >>> self.warp(matrix)
-        >>> self.translate(3, inplace=True)
-        >>> self.translate(3, inplace=True)
-        >>> self.scale(2)
-        >>> self.tensor()
-        >>> # self.tensor(device=0)
-        >>> self.tensor().tensor().numpy().numpy()
-        >>> self.numpy()
-        >>> self.draw_on()
-    """
-    # __slots__ = ('data', 'meta',)  # turn on when no longer developing
-
-    def __init__(self, data=None, meta=None):
-        if isinstance(data, self.__class__):
-            # Avoid runtime checks and assume the user is doing the right thing
-            # if data and meta are explicitly specified
-            meta = data.meta
-            data = data.data
-        if meta is None:
-            meta = {}
-        self.data = data
-        self.meta = meta
-
-    def __nice__(self):
-        data_repr = repr(self.data)
-        if '\n' in data_repr:
-            data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
-        return 'data={}'.format(data_repr)
-
-    __repr__ = ub.NiceRepr.__str__
-
-    def __len__(self):
-        return len(self.data)
-
-    @property
-    def ndims(self):
-        return self.data.shape[-1]
-
-    @classmethod
-    def random(Coords, num=1, dim=2, rng=None, meta=None):
-        """
-        Makes random coordinates; typically for testing purposes
-        """
-        rng = kwarray.ensure_rng(rng)
-        self = Coords(data=rng.rand(num, dim), meta=meta)
-        return self
-
-    def is_numpy(self):
-        return self._impl.is_numpy
-
-    def is_tensor(self):
-        return self._impl.is_tensor
-
-    @_generic.memoize_property
-    def _impl(self):
-        return kwarray.ArrayAPI.coerce(self.data)
-
-    def tensor(self, device=ub.NoParam):
-        newdata = self._impl.tensor(self.data, device)
-        new = self.__class__(newdata, self.meta)
-        return new
-
-    def numpy(self):
-        newdata = self._impl.numpy(self.data)
-        new = self.__class__(newdata, self.meta)
         return new
 
     def draw_on(self, image=None, fill_value=1):
