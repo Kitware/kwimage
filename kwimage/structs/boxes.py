@@ -1372,6 +1372,11 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         """
         Filters boxes based on a boolean criterion
 
+        Args:
+            flags (ArrayLike[bool]): true for items to be kept
+            axis (int): you usually want this to be 0
+            inplace (bool): if True, modifies this object
+
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
             >>> self.compress([True])
@@ -1392,7 +1397,12 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
 
     def take(self, idxs, axis=0, inplace=False):
         """
-        Filters boxes based on a boolean criterion
+        Takes a subset of items at specific indices
+
+        Args:
+            indices (ArrayLike[int]): indexes of items to take
+            axis (int): you usually want this to be 0
+            inplace (bool): if True, modifies this object
 
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')

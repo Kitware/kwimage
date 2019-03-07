@@ -216,14 +216,14 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         return self
 
     def is_numpy(self):
-        return kwarray.ArrayAPI.coerce(self.xy).is_numpy
+        return self.data['xy'].is_numpy()
 
     def is_tensor(self):
-        return kwarray.ArrayAPI.coerce(self.xy).is_tensor
+        return self.data['xy'].is_tensor()
 
     @_generic.memoize_property
     def _impl(self):
-        return kwarray.ArrayAPI.coerce(self.xy)
+        return self.data['xy']._impl
 
     def tensor(self, device=ub.NoParam):
         impl = self._impl

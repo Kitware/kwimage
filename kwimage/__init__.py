@@ -19,9 +19,10 @@ from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
 from .im_stack import (stack_images, stack_images_grid,)
 from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                       Points, PointsList, smooth_prob,)
-from .util_warp import (subpixel_accum, subpixel_align, subpixel_maximum,
-                        subpixel_minimum, subpixel_set, subpixel_slice,
-                        subpixel_translate, warp_points, warp_tensor,)
+from .util_warp import (subpixel_accum, subpixel_align, subpixel_getvalue,
+                        subpixel_maximum, subpixel_minimum, subpixel_set,
+                        subpixel_setvalue, subpixel_slice, subpixel_translate,
+                        warp_points, warp_tensor,)
 
 __all__ = ['Boxes', 'Coords', 'Detections', 'Heatmap', 'Mask', 'MaskList',
            'Points', 'PointsList', 'atleast_3channels', 'available_nms_impls',
@@ -33,6 +34,7 @@ __all__ = ['Boxes', 'Coords', 'Detections', 'Heatmap', 'Mask', 'MaskList',
            'non_max_supression', 'num_channels', 'overlay_alpha_images',
            'overlay_alpha_layers', 'rle_translate', 'smooth_prob',
            'stack_images', 'stack_images_grid', 'subpixel_accum',
-           'subpixel_align', 'subpixel_maximum', 'subpixel_minimum',
-           'subpixel_set', 'subpixel_slice', 'subpixel_translate',
-           'warp_points', 'warp_tensor']
+           'subpixel_align', 'subpixel_getvalue', 'subpixel_maximum',
+           'subpixel_minimum', 'subpixel_set', 'subpixel_setvalue',
+           'subpixel_slice', 'subpixel_translate', 'warp_points',
+           'warp_tensor']

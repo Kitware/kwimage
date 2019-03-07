@@ -19,7 +19,7 @@ class Coords(ub.NiceRepr):
         >>> from kwimage.structs.coords import *  # NOQA
         >>> import kwarray
         >>> rng = kwarray.ensure_rng(0)
-        >>> self = Coords.random(num=4, dim=3, rng=0)
+        >>> self = Coords.random(num=4, dim=3, rng=rng)
         >>> matrix = rng.rand(4, 4)
         >>> self.warp(matrix)
         >>> self.translate(3, inplace=True)
@@ -29,7 +29,7 @@ class Coords(ub.NiceRepr):
         >>> # self.tensor(device=0)
         >>> self.tensor().tensor().numpy().numpy()
         >>> self.numpy()
-        >>> self.draw_on()
+        >>> #self.draw_on()
     """
     # __slots__ = ('data', 'meta',)  # turn on when no longer developing
 
@@ -56,8 +56,18 @@ class Coords(ub.NiceRepr):
         return len(self.data)
 
     @property
-    def ndims(self):
+    def dim(self):
         return self.data.shape[-1]
+
+    @property
+    def shape(self):
+        return self.data.shape
+
+    def copy(self):
+        newdata = self._impl.copy(self.data)
+        newmeta = self.meta.copy()
+        new = self.__class__(newdata, newmeta)
+        return new
 
     @classmethod
     def random(Coords, num=1, dim=2, rng=None, meta=None):
@@ -74,21 +84,134 @@ class Coords(ub.NiceRepr):
     def is_tensor(self):
         return self._impl.is_tensor
 
+    def compress(self, flags, axis=0, inplace=False):
+        """
+        Filters items based on a boolean criterion
+
+        Args:
+            flags (ArrayLike[bool]): true for items to be kept
+            axis (int): you usually want this to be 0
+            inplace (bool, default=False): if True, modifies this object
+
+        Returns:
+            Coords: filtered coords
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, rng=0)
+            >>> self.compress([True] * len(self))
+            >>> self.compress([False] * len(self))
+            <Coords(data=array([], shape=(0, 2), dtype=float64))>
+            >>> self = self.tensor()
+            >>> self.compress([True] * len(self))
+            >>> self.compress([False] * len(self))
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data = self._impl.compress(new.data, flags, axis=axis)
+        return new
+
+    def take(self, indices, axis=0, inplace=False):
+        """
+        Takes a subset of items at specific indices
+
+        Args:
+            indices (ArrayLike[int]): indexes of items to take
+            axis (int): you usually want this to be 0
+            inplace (bool, default=False): if True, modifies this object
+
+        Returns:
+            Coords: filtered coords
+
+        Example:
+            >>> self = Coords(np.array([[25, 30, 15, 10]]))
+            >>> self.take([0])
+            <Coords(data=array([[25, 30, 15, 10]]))>
+            >>> self.take([])
+            <Coords(data=array([], shape=(0, 4), dtype=int64))>
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data = self._impl.take(new.data, indices, axis=axis)
+        return new
+
+    def astype(self, dtype, inplace=False):
+        """
+        Changes the data type
+
+        Args:
+            dtype : new type
+            inplace (bool, default=False): if True, modifies this object
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data = self._impl.astype(new.data, dtype, copy=not inplace)
+        return new
+
+    def view(self, *shape):
+        """
+        Passthrough method to view or reshape
+
+        Args:
+            *shape : new shape of the data
+
+        Example:
+            >>> self = Coords.random(6, dim=4).tensor()
+            >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
+            >>> self = Coords.random(6, dim=4).numpy()
+            >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
+        """
+        data_ = self._impl.view(self.data, *shape)
+        return self.__class__(data_, self.meta)
+
+    @property
+    def device(self):
+        """
+        If the backend is torch returns the data device, otherwise None
+        """
+        try:
+            return self.data.device
+        except AttributeError:
+            return None
+
     @_generic.memoize_property
     def _impl(self):
+        """
+        Returns the internal tensor/numpy ArrayAPI implementation
+        """
         return kwarray.ArrayAPI.coerce(self.data)
 
     def tensor(self, device=ub.NoParam):
+        """
+        Converts numpy to tensors. Does not change memory if possible.
+
+        Example:
+            >>> self = Coords.random(3).numpy()
+            >>> newself = self.tensor()
+            >>> self.data[0, 0] = 0
+            >>> assert newself.data[0, 0] == 0
+            >>> self.data[0, 0] = 1
+            >>> assert self.data[0, 0] == 1
+        """
         newdata = self._impl.tensor(self.data, device)
         new = self.__class__(newdata, self.meta)
         return new
 
     def numpy(self):
+        """
+        Converts tensors to numpy. Does not change memory if possible.
+
+        Example:
+            >>> self = Coords.random(3).tensor()
+            >>> newself = self.numpy()
+            >>> self.data[0, 0] = 0
+            >>> assert newself.data[0, 0] == 0
+            >>> self.data[0, 0] = 1
+            >>> assert self.data[0, 0] == 1
+        """
         newdata = self._impl.numpy(self.data)
         new = self.__class__(newdata, self.meta)
         return new
 
-    def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
+    def warp(self, transform, input_shape=None, output_shape=None,
+             inplace=False):
         """
         Generalized coordinate transform.
 
@@ -157,14 +280,14 @@ class Coords(ub.NiceRepr):
         if not inplace:
             data = new.data = impl.copy(data)
         if impl.numel(data) > 0:
-            ndims = self.ndims
+            dim = self.dim
             if not ub.iterable(factor):
-                factor_ = impl.asarray([factor] * ndims)
+                factor_ = impl.asarray([factor] * dim)
             elif isinstance(factor, (list, tuple)):
                 factor_ = np.array(factor)
             else:
                 factor_ = factor
-            assert factor_.shape == (ndims,)
+            assert factor_.shape == (dim,)
             data *= factor_
         return new
 
@@ -174,7 +297,7 @@ class Coords(ub.NiceRepr):
 
         Args:
             offset (float or Tuple[float]):
-                transation offset as either a scalar or a (t_x, t_y) tuple.
+                transation offset as either a scalar or a per-dimension tuple.
             output_shape (Tuple): unused in non-raster spatial structures
 
         Example:
@@ -192,16 +315,25 @@ class Coords(ub.NiceRepr):
         if not inplace:
             data = new.data = impl.copy(data)
         if impl.numel(data) > 0:
-            ndims = self.ndims
+            dim = self.dim
             if not ub.iterable(offset):
-                offset_ = impl.asarray([offset] * ndims)
+                offset_ = impl.asarray([offset] * dim)
             elif isinstance(offset, (list, tuple)):
                 offset_ = np.array(offset)
             else:
                 offset_ = offset
-            assert offset_.shape == (ndims,)
+            assert offset_.shape == (dim,)
             data += offset_
         return new
+
+    def fill(self, image, value, interp='bilinear'):
+        """
+        Sets sub-coordinate locations in a grid to a particular value
+        """
+        import kwimage
+        index = self.data
+        image = kwimage.subpixel_setvalue(image, index, value)
+        return image
 
     def draw_on(self, image=None, fill_value=1):
         """
@@ -209,6 +341,8 @@ class Coords(ub.NiceRepr):
             >>> from kwimage.structs.coords import *  # NOQA
             >>> s = 256
             >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
+            >>> self.data[0] = [10, 10]
+            >>> self.data[1] = [20, 30]
             >>> image = np.zeros((s, s))
             >>> fill_value = 1
             >>> image = self.draw_on(image, fill_value)
@@ -217,21 +351,14 @@ class Coords(ub.NiceRepr):
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
-            >>> self.draw(radius=3)
+            >>> self.draw(radius=3, alpha=.5)
         """
         # import kwimage
         if image is None:
-            shape = tuple((self._impl.max(self.data, axis=0).astype(int) + 1).tolist())
+            shape_ = self._impl.max(self.data, axis=0).astype(int)
+            shape = tuple((shape_ + 1).tolist())
             image = self._impl.zeros(self.meta.get('shape', shape))
-
-        # TODO: do a better fill job
-        maxdim = min(image.shape)
-        index = tuple(self.data.astype(int).clip(0, maxdim - 1).T)
-        flat_index = np.ravel_multi_index(index, image.shape)
-        image.ravel()[flat_index] = fill_value
-
-        # kwimage.subpixel_set(image, fill_value, index, interp_axes=None)
-        # image[self.data] = fill_value
+        image = self.fill(image, fill_value)
         return image
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
@@ -252,7 +379,7 @@ class Coords(ub.NiceRepr):
             ax = plt.gca()
         data = self.data
 
-        if self.ndims != 2:
+        if self.dim != 2:
             raise NotImplementedError('need 2d for mpl')
 
         # More grouped patches == more efficient runtime
@@ -272,7 +399,7 @@ class Coords(ub.NiceRepr):
         for pcolor, idxs in color_groups.items():
             patches = [
                 mpl.patches.Circle((x, y), ec=None, fc=pcolor, **centerkw)
-                for x, y in data[idxs]
+                for y, x in data[idxs]
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
             ax.add_collection(col)
