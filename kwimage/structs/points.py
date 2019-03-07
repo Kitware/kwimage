@@ -237,8 +237,23 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image):
-        return self.xy.draw_on(image)
+    def draw_on(self, image, value=1):
+        """
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> s = 128
+            >>> image = np.zeros((s, s))
+            >>> self = Points.random(10).scale(s)
+            >>> image = self.draw_on(image)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> self.draw(radius=3, alpha=.5)
+        """
+        return self.data['xy'].fill(
+            image, value, coord_axes=[1, 0], interp='bilinear')
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
         """

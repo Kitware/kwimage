@@ -558,6 +558,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
         src (ArrayLike): source array that agrees with the index
         index (Tuple[slice]): subpixel slice into dst that corresponds with src
         interp_axes (tuple): specify which axes should be spatially interpolated
+
     Example:
         >>> dst = np.array([0, 1.0, 1.0, 1.0, 0])
         >>> src = np.array([2.0, 2.0])
@@ -806,16 +807,6 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         wb = alpha[1] *  beta[0]
         wc =  beta[1] * alpha[0]
         wd  = beta[1] *  beta[0]
-
-        # y0 = int(np.floor(y))
-        # x0 = int(np.floor(x))
-        # y1 = y0 + 1
-        # x1 = x0 + 1
-        # # Find bilinear weights
-        # wa = (x1 - x) * (y1 - y)
-        # wb = (x1 - x) * (y - y0)
-        # wc = (x - x0) * (y1 - y)
-        # wd = (x - x0) * (y - y0)
 
         # Create a (potentially negative) slice containing the relvant area
         relevant_slice = [slice(None)] * ndims
@@ -1222,13 +1213,19 @@ def warp_points(matrix, pts):
     return new_pts
 
 
-def subpixel_getvalue(img, pts, interp='bilinear', bordermode='edge'):
+def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
+                      bordermode='edge'):
     """
     Get values at subpixel locations
 
     Args:
         img (ArrayLike): image to sample from
         pts (ArrayLike): subpixel rc-coordinates to sample
+        coord_axes (Sequence, default=None):
+            axes to perform interpolation on, if not specified the first `d`
+            axes are interpolated, where `d=pts.shape[-1]`.
+            IE: this indicates which axes each coordinate dimension corresponds to.
+        interp (str): interpolation mode
         bordermode (str): how locations outside the image are handled
 
     Example:
@@ -1237,12 +1234,16 @@ def subpixel_getvalue(img, pts, interp='bilinear', bordermode='edge'):
         >>> pts = np.array([[1, 1], [1.5, 1.5], [1.9, 1.1]])
         >>> subpixel_getvalue(img, pts)
         array([4. , 6. , 6.8])
+        >>> subpixel_getvalue(img, pts, coord_axes=(1, 0))
+        array([4. , 6. , 5.2])
         >>> img = torch.Tensor(img)
         >>> pts = torch.Tensor(pts)
         >>> subpixel_getvalue(img, pts)
         tensor([4.0000, 6.0000, 6.8000])
         >>> subpixel_getvalue(img.numpy(), pts.numpy(), interp='nearest')
         array([4., 8., 7.], dtype=float32)
+        >>> subpixel_getvalue(img.numpy(), pts.numpy(), interp='nearest', coord_axes=[1, 0])
+        array([4., 8., 5.], dtype=float32)
         >>> subpixel_getvalue(img, pts, interp='nearest')
         tensor([4., 8., 7.])
 
@@ -1257,30 +1258,29 @@ def subpixel_getvalue(img, pts, interp='bilinear', bordermode='edge'):
     ptsT = impl.T(pts)
     assert bordermode == 'edge'
 
+    if coord_axes is None:
+        coord_axes = list(range(len(ptsT)))
+
     if interp == 'nearest':
         r, c = impl.iround(ptsT, dtype=np.int)
-        subpxl_vals = img[r, c]
+        ndims = len(img.shape)
+        index_a = [slice(None)] * ndims
+        i, j = coord_axes
+        index_a[i] = r
+        index_a[j] = c
+        subpxl_vals = img[tuple(index_a)]
     elif interp == 'bilinear':
         # Subpixel locations to sample
-        r0, r1, c0, c1, wa, wb, wc, wd = _bilinear_coords(ptsT, impl, img)
-
-        nChannels = 1 if len(img.shape) == 2 else img.shape[2]
-        if nChannels != 1:
-            wa = impl.T(impl.asarray([wa] *  nChannels))
-            wb = impl.T(impl.asarray([wb] *  nChannels))
-            wc = impl.T(impl.asarray([wc] *  nChannels))
-            wd = impl.T(impl.asarray([wd] *  nChannels))
-
-        r0 = impl.astype(r0, int)
-        r1 = impl.astype(r1, int)
-        c0 = impl.astype(c0, int)
-        c1 = impl.astype(c1, int)
+        indices, weights = _bilinear_coords(ptsT, impl, img, coord_axes)
+        index_a, index_b, index_c, index_d = indices
+        wa, wb, wc, wd = weights
 
         # Sample values
-        Ia = img[r0, c0]
-        Ib = img[r1, c0]
-        Ic = img[r0, c1]
-        Id = img[r1, c1]
+        Ia = img[index_a]
+        Ib = img[index_b]
+        Ic = img[index_c]
+        Id = img[index_d]
+
         Iwa = wa * Ia
         Iwb = wb * Ib
         Iwc = wc * Ic
@@ -1297,8 +1297,90 @@ def subpixel_getvalue(img, pts, interp='bilinear', bordermode='edge'):
     return subpxl_vals
 
 
-def _bilinear_coords(ptsT, impl, img):
+def subpixel_setvalue(img, pts, value, coord_axes=None,
+                      interp='bilinear', bordermode='edge'):
+    """
+    Set values at subpixel locations
+
+    Args:
+        img (ArrayLike): image to set values in
+        pts (ArrayLike): subpixel rc-coordinates to set
+        value (ArrayLike): value to place in the image
+        coord_axes (Sequence, default=None):
+            axes to perform interpolation on, if not specified the first `d`
+            axes are interpolated, where `d=pts.shape[-1]`.
+            IE: this indicates which axes each coordinate dimension corresponds to.
+        interp (str): interpolation mode
+        bordermode (str): how locations outside the image are handled
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> img = np.arange(3 * 3).reshape(3, 3).astype(np.float)
+        >>> pts = np.array([[1, 1], [1.5, 1.5], [1.9, 1.1]])
+        >>> interp = 'bilinear'
+        >>> value = 0
+        >>> print('img = {!r}'.format(img))
+        >>> pts = np.array([[1.5, 1.5]])
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
+        >>> print('img2 = {!r}'.format(img2))
+        >>> pts = np.array([[1.0, 1.0]])
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
+        >>> print('img2 = {!r}'.format(img2))
+        >>> pts = np.array([[1.1, 1.9]])
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
+        >>> print('img2 = {!r}'.format(img2))
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value, coord_axes=[1, 0])
+        >>> print('img2 = {!r}'.format(img2))
+    """
+    assert bordermode == 'edge'
+    # Image info
+    impl = kwarray.ArrayAPI.coerce(img)
+    ptsT = impl.T(pts)
+    ndims = len(img.shape)
+
+    if len(pts) == 0:
+        return img
+
+    if coord_axes is None:
+        # TODO: cleanup
+        coord_axes = list(range(len(ptsT)))
+
+    if interp == 'nearest':
+        r, c = impl.iround(ptsT, dtype=np.int)
+        index_a = [slice(None)] * ndims
+        i, j = coord_axes
+        index_a[i] = r
+        index_a[j] = c
+        img[tuple(index_a)] = value
+    elif interp == 'bilinear':
+        # Get quantized pixel locations near subpixel pts
+        # TODO: Figure out an efficient way to do this.
+        indices, weights = _bilinear_coords(ptsT, impl, img, coord_axes)
+        index_a, index_b, index_c, index_d = indices
+        wa, wb, wc, wd = weights
+
+        # set values (blend old values with new values at subpixel locs)
+        # when location is an integer, the value is exactly overwritten.
+        # I'm unsure if this is correct
+        Ia = (1 - wa) * img[index_a] + (wa * value)
+        Ib = (1 - wb) * img[index_b] + (wb * value)
+        Ic = (1 - wc) * img[index_c] + (wc * value)
+        Id = (1 - wd) * img[index_d] + (wd * value)
+
+        img[index_a] = Ia
+        img[index_b] = Ib
+        img[index_c] = Ic
+        img[index_d] = Id
+    else:
+        raise KeyError(interp)
+    return img
+
+
+def _bilinear_coords(ptsT, impl, img, coord_axes):
+    i, j = coord_axes
     height, width = img.shape[0:2]
+    ndims = len(img.shape)
+
     r, c = ptsT
     # Get quantized pixel locations near subpixel pts
     r0, c0 = impl.floor(ptsT)
@@ -1322,77 +1404,38 @@ def _bilinear_coords(ptsT, impl, img):
     wc = alpha0 * beta1
     wd = alpha0 * beta0
 
+    nChannels = 1 if len(img.shape) == 2 else img.shape[2]
+    if nChannels != 1:
+        wa = impl.T(impl.asarray([wa] *  nChannels))
+        wb = impl.T(impl.asarray([wb] *  nChannels))
+        wc = impl.T(impl.asarray([wc] *  nChannels))
+        wd = impl.T(impl.asarray([wd] *  nChannels))
+
     r0 = impl.astype(r0, int)
     r1 = impl.astype(r1, int)
     c0 = impl.astype(c0, int)
     c1 = impl.astype(c1, int)
 
-    return r0, r1, c0, c1, wa, wb, wc, wd
+    index_a = [slice(None)] * ndims
+    index_b = [slice(None)] * ndims
+    index_c = [slice(None)] * ndims
+    index_d = [slice(None)] * ndims
 
+    index_a[i] = r0
+    index_b[i] = r1
+    index_c[i] = r0
+    index_d[i] = r1
 
-def subpixel_setvalue(img, pts, value, interp='bilinear', bordermode='edge'):
-    """
-    Set values at subpixel locations
+    index_a[j] = c0
+    index_b[j] = c0
+    index_c[j] = c1
+    index_d[j] = c1
 
-    Args:
-        img (ArrayLike): image to set values in
-        pts (ArrayLike): subpixel rc-coordinates to set
-        value (ArrayLike): value to place in the image
-        bordermode (str): how locations outside the image are handled
-
-    Example:
-        >>> from kwimage.util_warp import *  # NOQA
-        >>> img = np.arange(3 * 3).reshape(3, 3).astype(np.float)
-        >>> pts = np.array([[1, 1], [1.5, 1.5], [1.9, 1.1]])
-        >>> interp = 'bilinear'
-        >>> value = 0
-        >>> print('img = {!r}'.format(img))
-        >>> pts = np.array([[1.5, 1.5]])
-        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
-        >>> print('img2 = {!r}'.format(img2))
-        >>> pts = np.array([[1.0, 1.0]])
-        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
-        >>> print('img2 = {!r}'.format(img2))
-        >>> pts = np.array([[1.1, 1.9]])
-        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
-        >>> print('img2 = {!r}'.format(img2))
-    """
-    assert bordermode == 'edge'
-    # Image info
-    impl = kwarray.ArrayAPI.coerce(img)
-    ptsT = impl.T(pts)
-
-    if len(pts) == 0:
-        return img
-
-    if interp == 'nearest':
-        r, c = impl.iround(ptsT, dtype=np.int)
-        img[r, c] = value
-    elif interp == 'bilinear':
-        # Get quantized pixel locations near subpixel pts
-        # TODO: Figure out an efficient way to do this.
-        r0, r1, c0, c1, wa, wb, wc, wd = _bilinear_coords(ptsT, impl, img)
-
-        nChannels = 1 if len(img.shape) == 2 else img.shape[2]
-        if nChannels != 1:
-            wa = impl.T(impl.asarray([wa] *  nChannels))
-            wb = impl.T(impl.asarray([wb] *  nChannels))
-            wc = impl.T(impl.asarray([wc] *  nChannels))
-            wd = impl.T(impl.asarray([wd] *  nChannels))
-
-        # set values (blend old values with new values at subpixel locs)
-        # when location is an integer, the value is exactly overwritten.
-        # I'm unsure if this is correct
-        Ia = (1 - wa) * img[r0, c0] + (wa * value)
-        Ib = (1 - wb) * img[r1, c0] + (wb * value)
-        Ic = (1 - wc) * img[r0, c1] + (wc * value)
-        Id = (1 - wd) * img[r1, c1] + (wd * value)
-
-        img[r0, c0] = Ia
-        img[r1, c0] = Ib
-        img[r0, c1] = Ic
-        img[r1, c1] = Id
-    else:
-        raise KeyError(interp)
-
-    return img
+    indices = (
+        tuple(index_a),
+        tuple(index_b),
+        tuple(index_c),
+        tuple(index_d),
+    )
+    weights = (wa, wb, wc, wd)
+    return indices, weights

@@ -326,16 +326,22 @@ class Coords(ub.NiceRepr):
             data += offset_
         return new
 
-    def fill(self, image, value, interp='bilinear'):
+    def fill(self, image, value, coord_axes=None, interp='bilinear'):
         """
         Sets sub-coordinate locations in a grid to a particular value
+
+        Args:
+            coord_axes (Tuple): specify which image axes each coordinate dim
+                corresponds to.
         """
         import kwimage
         index = self.data
-        image = kwimage.subpixel_setvalue(image, index, value)
+        image = kwimage.subpixel_setvalue(image, index, value,
+                                          coord_axes=coord_axes, interp=interp)
         return image
 
-    def draw_on(self, image=None, fill_value=1):
+    def draw_on(self, image=None, fill_value=1, coord_axes=None,
+                interp='bilinear'):
         """
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -345,7 +351,10 @@ class Coords(ub.NiceRepr):
             >>> self.data[1] = [20, 30]
             >>> image = np.zeros((s, s))
             >>> fill_value = 1
-            >>> image = self.draw_on(image, fill_value)
+            >>> image = self.draw_on(image, fill_value, coord_axes=[0, 1], interp='bilinear')
+            >>> # image = self.draw_on(image, fill_value, coord_axes=[0, 1], interp='nearest')
+            >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='bilinear')
+            >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='nearest')
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -358,7 +367,8 @@ class Coords(ub.NiceRepr):
             shape_ = self._impl.max(self.data, axis=0).astype(int)
             shape = tuple((shape_ + 1).tolist())
             image = self._impl.zeros(self.meta.get('shape', shape))
-        image = self.fill(image, fill_value)
+        image = self.fill(image, fill_value, coord_axes=coord_axes,
+                          interp=interp)
         return image
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
