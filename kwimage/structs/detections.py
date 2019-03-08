@@ -775,9 +775,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self = cls(boxes=boxes, scores=scores, class_idxs=class_idxs,
                    classes=classes)
 
-        if tensor:
-            self = self.tensor()
-
         if keypoints is True:
             kpclasses = [1, 2, 3, 4]
             kpts_list = kwimage.PointsList([
@@ -789,6 +786,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             ])
             kpts_list.meta['classes'] = kpclasses
             self.data['keypoints'] = kpts_list
+
+        if tensor:
+            self = self.tensor()
 
         return self
 

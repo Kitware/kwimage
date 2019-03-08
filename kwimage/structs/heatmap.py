@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import ubelt as ub
 import skimage
+import kwarray
 import six
 import functools
 
@@ -203,9 +204,18 @@ class _HeatmapWarpMixin(object):
         space as this heatmap. This lets us perform elementwise operations on
         the two heatmaps (like geometric mean).
 
+        Args:
+            other (Heatmap): the heatmap to align with `self`
+
+        Returns:
+            Heatmap: warped version of `other` that aligns with `self`.
+
         Example:
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
+            >>> other2 = self._align_other(other)
+            >>> assert self.shape != other.shape
+            >>> assert self.shape == other2.shape
             >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.imshow(self.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 1))
@@ -227,7 +237,7 @@ class _HeatmapWarpMixin(object):
         output_dims = self.class_probs.shape[1:]
 
         # other now exists in the same space as self
-        new_other = other.warp(mat, output_dims)
+        new_other = other.warp(mat, output_dims=output_dims)
         return new_other
 
     def _align(self, mask, interpolation='linear'):
@@ -314,10 +324,10 @@ class _HeatmapWarpMixin(object):
         newdata = {}
         newmeta = self.meta.copy()
 
-        mat = torch.Tensor(mat)
         spatial_keys = ['offset', 'diameter', 'keypoints']
         impl = kwarray.ArrayAPI.coerce('tensor')
 
+        mat = impl.asarray(mat)
         tf = skimage.transform.AffineTransform(matrix=mat)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
@@ -333,23 +343,14 @@ class _HeatmapWarpMixin(object):
             # For spatial keys we need to transform the underlying values as well
             if modify_spatial_coords:
                 if k in spatial_keys:
-                    if 1:
-                        pts = impl.contiguous(impl.T(v))
-                        pts = kwimage.warp_points(mat_notrans, pts)
-                        v = impl.contiguous(impl.T(pts))
-                    # else:
-                    #     # Add homogenous coordinate
-                    #     coords = impl.cat([v, torch.ones(v.shape[1:])[None, :]], axis=0)
-                    #     coords = coords.view(3, -1)
-                    #     # coords = coords.permute(1, 2, 0).view(-1, 3)
-                    #     coords = mat_notrans.matmul(coords)
-                    #     coords = coords[0:2] / coords[2]
-                    #     coords = coords.view(2, *v.shape[1:])
-                    #     v = coords
+                    pts = impl.contiguous(impl.T(v))
+                    pts = kwimage.warp_points(mat_notrans, pts)
+                    v = impl.contiguous(impl.T(pts))
 
-            newdata[k] = kwimage.warp_tensor(
-                v[None, :].float(), mat, output_dims=output_dims, mode=interpolation
-            )[0]
+            new_v = kwimage.warp_tensor(
+                v[None, :].float(), mat, output_dims=output_dims,
+                mode=interpolation)[0]
+            newdata[k] = impl.asarray(new_v)
 
         newself = self.__class__(newdata, newmeta)
         return newself
@@ -366,6 +367,7 @@ class _HeatmapAlgoMixin(object):
         Combine multiple heatmaps
 
         Example:
+            >>> from kwimage.structs.heatmap import *  # NOQA
             >>> a = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> b = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> c = Heatmap.random((40, 30), img_dims=(200, 210), classes=2, nblips=10, rng=1)
@@ -416,6 +418,8 @@ class _HeatmapAlgoMixin(object):
             newdata['offset'] = amean([h.offset for h in aligned_heatmaps])
         if 'diameter' in aligned_root.data:
             newdata['diameter'] = amean([h.diameter for h in aligned_heatmaps])
+        if 'keypoints' in aligned_root.data:
+            newdata['keypoints'] = amean([h.data['keypoints'] for h in aligned_heatmaps])
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself
 
@@ -653,6 +657,25 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         """ space-time dimensions of this heatmap """
         return self.class_probs.shape[1:]
 
+    def is_numpy(self):
+        return self._impl.is_numpy
+
+    def is_tensor(self):
+        return self._impl.is_tensor
+
+    # @_generic.memoize_property
+    @property
+    def _impl(self):
+        """
+        Returns the internal tensor/numpy ArrayAPI implementation
+        """
+        return kwarray.ArrayAPI.coerce(self.data['class_probs'])
+
+    # @property
+    # def device(self):
+    #     """ If the backend is torch returns the data device, otherwise None """
+    #     return self.data['class_probs'].device
+
     @classmethod
     def random(cls, dims=(10, 10), classes=3, diameter=True, offset=True,
                keypoints=False, img_dims=None, dets=None, nblips=10, noise=0.0,
@@ -797,9 +820,11 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
                 diameter = _target['size'][[1, 0]]
 
         self = cls(class_probs=class_probs, offset=offset,
-                   diameter=diameter, keypoints=keypoints,
-                   img_dims=img_dims, classes=classes,
+                   diameter=diameter, img_dims=img_dims, classes=classes,
                    tf_data_to_img=tf_data_to_img)
+
+        if keypoints is not False and keypoints is not None:
+            self.data['keypoints'] = keypoints
         return self
 
     # --- Data Properties ---
@@ -945,7 +970,6 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> min_score = 0.5
         >>> dets = _prob_to_dets(probs, diameter, offset, class_probs, min_score)
     """
-    import kwarray
     impl = kwarray.ArrayAPI.impl(probs)
 
     if diameter is None:

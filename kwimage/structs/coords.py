@@ -171,7 +171,8 @@ class Coords(ub.NiceRepr):
         except AttributeError:
             return None
 
-    @_generic.memoize_property
+    # @_generic.memoize_property
+    @property
     def _impl(self):
         """
         Returns the internal tensor/numpy ArrayAPI implementation
