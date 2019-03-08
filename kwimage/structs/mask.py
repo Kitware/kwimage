@@ -330,7 +330,9 @@ class _MaskDrawMixin(object):
     Non-core functions for mask visualization
     """
 
-    def draw_on(self, image, color='blue', alpha=0.5):
+    def draw_on(self, image, color='blue', alpha=0.5,
+                show_border=True, border_thick=1,
+                border_color='white'):
         """
         Draws the mask on an image
 
@@ -345,6 +347,21 @@ class _MaskDrawMixin(object):
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
             >>> kwplot.show_if_requested()
+
+        Ignore:
+            from kwimage.structs.mask import *
+            import kwimage
+            import numpy as np
+            import matplotlib.pyplot as plt
+            import cv2
+            image = kwimage.grab_test_image()
+            self = Mask.random(shape=image.shape[0:2])
+            toshow = self.draw_on(image)
+            color='blue'
+            alpha=0.5,
+            show_border=True
+            border_thick=1
+            border_color='white'
         """
         import kwplot
         import kwimage
@@ -356,9 +373,20 @@ class _MaskDrawMixin(object):
         alpha_mask[..., 3] = mask * alpha
 
         toshow = kwimage.overlay_alpha_images(alpha_mask, image)
+
+        if show_border:
+            # return shape of contours to openCV contours
+            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
+            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8), contours, -1,
+                             kwplot.Color(border_color).as255(),
+                             border_thick, cv2.LINE_AA)
+            toshow = toshow.astype(np.float) / 255.
+
         return toshow
 
-    def draw(self, color='blue', alpha=0.5, ax=None):
+    def draw(self, color='blue', alpha=0.5, ax=None,
+                show_border=True, border_thick=1,
+                border_color='black'):
         """
         Draw on the current matplotlib axis
         """
@@ -372,6 +400,20 @@ class _MaskDrawMixin(object):
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]
         alpha_mask[..., 3] = mask * alpha
+
+        if show_border:
+            # Add alpha channel to color
+            border_color_tup = kwplot.Color(border_color).as255()
+            border_color_tup = (border_color_tup[0], border_color_tup[1],
+                                border_color_tup[2], 255 * alpha)
+                                
+            # return shape of contours to openCV contours
+            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
+            alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
+                                          border_color_tup, border_thick, cv2.LINE_AA)
+
+            alpha_mask = alpha_mask.astype(np.float) / 255.
+
         ax.imshow(alpha_mask)
 
 
