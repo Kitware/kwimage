@@ -290,9 +290,10 @@ class _HeatmapWarpMixin(object):
 
         Example:
             >>> from kwimage.structs.heatmap import *  # NOQA
-            >>> self = Heatmap.random(rng=0)
+            >>> self = Heatmap.random(rng=0, keypoints=True)
             >>> S = 3.0
             >>> mat = np.eye(3) * S
+            >>> mat[-1, -1] = 1
             >>> newself = self.warp(mat, np.array(self.dims) * S).numpy()
             >>> assert newself.offset.shape[0] == 2
             >>> assert newself.diameter.shape[0] == 2
@@ -314,7 +315,7 @@ class _HeatmapWarpMixin(object):
         newmeta = self.meta.copy()
 
         mat = torch.Tensor(mat)
-        spatial_keys = ['offset', 'diameter', 'kpts']
+        spatial_keys = ['offset', 'diameter', 'keypoints']
         impl = kwarray.ArrayAPI.coerce('tensor')
 
         tf = skimage.transform.AffineTransform(matrix=mat)
@@ -332,19 +333,20 @@ class _HeatmapWarpMixin(object):
             # For spatial keys we need to transform the underlying values as well
             if modify_spatial_coords:
                 if k in spatial_keys:
+                    if 1:
+                        pts = impl.contiguous(impl.T(v))
+                        pts = kwimage.warp_points(mat_notrans, pts)
+                        v = impl.contiguous(impl.T(pts))
+                    # else:
+                    #     # Add homogenous coordinate
+                    #     coords = impl.cat([v, torch.ones(v.shape[1:])[None, :]], axis=0)
+                    #     coords = coords.view(3, -1)
+                    #     # coords = coords.permute(1, 2, 0).view(-1, 3)
+                    #     coords = mat_notrans.matmul(coords)
+                    #     coords = coords[0:2] / coords[2]
+                    #     coords = coords.view(2, *v.shape[1:])
+                    #     v = coords
 
-                    # kwil.warp_points()
-
-                    v = v.clone(mat_notrans)
-
-                    # Add homogenous coordinate
-                    coords = impl.cat([v, torch.ones(v.shape[1:])[None, :]], axis=0)
-                    coords = coords.view(3, -1)
-                    # coords = coords.permute(1, 2, 0).view(-1, 3)
-                    coords = mat_notrans.matmul(coords)
-                    coords = coords[0:2] / coords[2]
-                    coords = coords.view(2, *v.shape[1:])
-                    v = coords
             newdata[k] = kwimage.warp_tensor(
                 v[None, :].float(), mat, output_dims=output_dims, mode=interpolation
             )[0]
@@ -670,6 +672,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
         Ignore:
             self.detect(0).sort().non_max_supress()[-np.arange(1, 4)].draw()
+            from kwimage.structs.heatmap import *  # NOQA
             import xdev
             globals().update(xdev.get_func_kwargs(Heatmap.random))
 
@@ -682,14 +685,25 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             >>> iminfo, anns = sampler.load_image_with_annots(1)
             >>> image = iminfo['imdata']
             >>> img_dims = image.shape[:2]
-            >>> dets = kwimage.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'], shape=img_dims)
+            >>> kpclasses = sampler.dset.keypoint_categories()
+            >>> dets = kwimage.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'], shape=img_dims, kpclasses=kpclasses)
             >>> #image = kwimage.grab_test_image('astro')
-            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets=dets, img_dims=img_dims)
+            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets=dets, keypoints=True, img_dims=img_dims)
             >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(toshow)
+
+        Ignore:
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(image)
+            >>> dets.draw()
+            >>> dets.data['keypoints'].draw(radius=6)
+            >>> dets.data['masks'].draw()
+
+            >>> self.draw()
         """
         import kwimage
         import kwarray
@@ -1068,9 +1082,9 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> kwplot.imshow(raster)
         >>> kwplot.show_if_requested()
 
-        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[5]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 5]) + [image], keepalpha=False) * 255).astype(np.uint8)
         kwplot.imshow(raster, pnum=(1, 3, 2), fnum=1)
-        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[6]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 6]) + [image], keepalpha=False) * 255).astype(np.uint8)
         kwplot.imshow(raster, pnum=(1, 3, 3), fnum=1)
         raster = (kwimage.overlay_alpha_layers(_vizmask(dxdy_mask) + [image], keepalpha=False) * 255).astype(np.uint8)
         raster = dets.draw_on(raster, labels=True, alpha=None)
@@ -1104,12 +1118,12 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     masks = dets.data.get('masks', [None] * len(dets))
 
     kpts_mask = None
-    if 'kpts' in dets.data:
-        if 'classes' in dets.data['kpts'].meta:
-            num_kp_classes = len(dets.data['kpts'].meta['classes'])
-            kpts_mask = np.zeros((num_kp_classes, 2,) + tuple(input_dims), dtype=np.float32)
+    if 'keypoints' in dets.data:
+        if 'classes' in dets.data['keypoints'].meta:
+            num_kp_classes = len(dets.data['keypoints'].meta['classes'])
+            kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims), dtype=np.float32)
 
-        kpts = dets.data['kpts'].data
+        kpts = dets.data['keypoints'].data
         for pts in kpts:
             if pts is not None:
                 pass
@@ -1180,8 +1194,8 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                 kp_x, kp_y = xy
                 kp_dx = kp_x - xcoord[mask]
                 kp_dy = kp_y - ycoord[mask]
-                kpts_mask[kp_cidx][0][mask] = kp_dx
-                kpts_mask[kp_cidx][1][mask] = kp_dy
+                kpts_mask[0, kp_cidx][mask] = kp_dx
+                kpts_mask[1, kp_cidx][mask] = kp_dy
 
     fcn_target = {
         'size': size_mask,
@@ -1193,8 +1207,12 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
         fcn_target['class_probs'] = cidx_probs
 
-    if 'kpts' in dets.data:
+    if kpts_mask is not None:
         fcn_target['kpts'] = kpts_mask
+    else:
+        if 'keypoints' in dets.data:
+            raise AssertionError(
+                'dets had keypoints, but we didnt encode them, were the kp classes missing?')
 
     return fcn_target
 

@@ -684,7 +684,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
-            >>> self = Detections.random(3, tensor=True)
+            >>> self = Detections.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.scores[0] = 0
             >>> assert newself.scores[0] == 0
@@ -758,6 +758,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Example:
             >>> import kwimage
             >>> dets = kwimage.Detections.random(keypoints=True)
+            >>> dets.data['keypoints'].data[0].data
+            >>> dets.data['keypoints'].meta
         """
         import kwimage
         import kwarray
@@ -777,15 +779,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             self = self.tensor()
 
         if keypoints is True:
-            kp_classes = [1, 2, 3, 4]
-            keypoints = kwimage.PointsList([
+            kpclasses = [1, 2, 3, 4]
+            kpts_list = kwimage.PointsList([
                 kwimage.Points.random(
-                    num=rng.randint(len(kp_classes)),
-                    classes=kp_classes,
+                    num=rng.randint(len(kpclasses)),
+                    classes=kpclasses,
                 ).scale(scale)
                 for _ in range(len(boxes))
             ])
-            self.data['keypoints'] = keypoints
+            kpts_list.meta['classes'] = kpclasses
+            self.data['keypoints'] = kpts_list
 
         return self
 

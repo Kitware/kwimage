@@ -218,8 +218,8 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
 def _box_ious_torch(tlbr1, tlbr2, bias=0):
     """
     Example:
-        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr', tensor=True).data
-        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr', tensor=True).data
+        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').tensor().data
+        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').tensor().data
         >>> bias = 0
         >>> ious = _box_ious_torch(tlbr1, tlbr2, bias)
         >>> ious_np = _box_ious_py(tlbr1.numpy(), tlbr2.numpy(), bias)
@@ -1271,7 +1271,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
                        [79, 38, 17, 14]]))>
-            >>> Boxes.random(3, rng=0, scale=100, tensor=True)
+            >>> Boxes.random(3, rng=0, scale=100).tensor()
             <Boxes(xywh,
                 tensor([[ 54,  54,   6,  17],
                         [ 42,  64,   1,  25],
@@ -1482,7 +1482,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
-            >>> self = Boxes.random(3, tensor=True)
+            >>> self = Boxes.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.data[0, 0] = 0
             >>> assert newself.data[0, 0] == 0
@@ -1633,9 +1633,9 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         Passthrough method to view or reshape
 
         Example:
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh', tensor=True)
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr', tensor=False)
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
         """
         data_ = _view(self.data, *shape)
