@@ -761,7 +761,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             tf_notrans = _remove_translation(tf_data_to_img)
             bg_size = tf_notrans.inverse([100, 100])[0]
 
-            _target = _dets_to_masks(warped_dets, bg_size, dims, bg_idx=bg_idx,
+            _target = _dets_to_fcmaps(warped_dets, bg_size, dims, bg_idx=bg_idx,
                                      soft=True)
             class_probs = _target['class_probs']
             noise = (rng.randn(*class_probs.shape) * noise)
@@ -991,8 +991,8 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     return dets
 
 
-def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
-                   soft=True):
+def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
+                    soft=True):
     """
     Construct semantic segmentation detection targets from annotations in
     dictionary format.
@@ -1000,6 +1000,8 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     TODO:
         - [X] Make this into something that effectively inverts detections
         into a heatmap so we can have prettier visualizations in our tests.
+        - [X] handle masks and keypoints
+        - [ ] handle masks and keypoints well
 
     Args:
         dets (Detections):
@@ -1015,11 +1017,11 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     Ignore:
         import xdev
-        globals().update(xdev.get_func_kwargs(_dets_to_masks))
+        globals().update(xdev.get_func_kwargs(_dets_to_fcmaps))
 
     Example:
         >>> from kwimage.structs.heatmap import *  # NOQA
-        >>> from kwimage.structs.heatmap import _prob_to_dets, _dets_to_masks, _remove_translation
+        >>> from kwimage.structs.heatmap import _prob_to_dets, _dets_to_fcmaps, _remove_translation
         >>> import kwimage
         >>> # xdoctest: +REQUIRES(--module:ndsampler)
         >>> import ndsampler
@@ -1033,7 +1035,7 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>>     anns, sampler.dset.dataset['categories'],
         >>>     sampler.catgraph, kpclasses, shape=input_dims)
         >>> bg_size = [100, 100]
-        >>> fcn_target = _dets_to_masks(dets, bg_size, input_dims, bg_idxs)
+        >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
