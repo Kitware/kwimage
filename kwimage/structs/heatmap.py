@@ -364,7 +364,15 @@ class _HeatmapAlgoMixin(object):
     @classmethod
     def combine(cls, heatmaps, root_index=None, dtype=np.float32):
         """
-        Combine multiple heatmaps
+        Combine multiple heatmaps into a single heatmap.
+
+        Args:
+            heatmaps (Sequence[Heatmap]): multiple heatmaps to combine into one
+            root_index (int): which heatmap in the sequence to align other
+                heatmaps with
+
+        Returns:
+            Heatmap: the combined heatmap
 
         Example:
             >>> from kwimage.structs.heatmap import *  # NOQA
