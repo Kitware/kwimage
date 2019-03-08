@@ -375,7 +375,8 @@ class _MaskDrawMixin(object):
         toshow = kwimage.overlay_alpha_images(alpha_mask, image)
 
         if show_border:
-            contours = self._rebuild_contours(self.get_polygon())
+            # return shape of contours to openCV contours
+            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
             toshow = cv2.drawContours((toshow * 255.).astype(np.uint8), contours, -1,
                              kwplot.Color(border_color).as255(),
                              border_thick, cv2.LINE_AA)
@@ -405,19 +406,15 @@ class _MaskDrawMixin(object):
             border_color_tup = kwplot.Color(border_color).as255()
             border_color_tup = (border_color_tup[0], border_color_tup[1],
                                 border_color_tup[2], 255 * alpha)
-
-            contours = self._rebuild_contours(self.get_polygon())
+                                
+            # return shape of contours to openCV contours
+            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
             alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
                                           border_color_tup, border_thick, cv2.LINE_AA)
 
             alpha_mask = alpha_mask.astype(np.float) / 255.
 
         ax.imshow(alpha_mask)
-
-    # return shape of contours to openCV contours
-    @staticmethod
-    def _rebuild_contours(contours):
-        return [np.expand_dims(c, axis=1) for c in contours]
 
 
 class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
