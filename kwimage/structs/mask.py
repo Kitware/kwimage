@@ -296,16 +296,46 @@ class _MaskConstructorMixin(object):
 
 
 class _MaskTransformMixin(object):
-    def warp(self):
-        raise NotImplementedError
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+        """
 
-    def translate(self, offset, output_shape=None):
+        Example:
+            >>> import kwimage
+            >>> self = mask = kwimage.Mask.random()
+            >>> transform = np.array([[2., 0, 0], [0, 2, 0], [0, 0, 1]])
+            >>> output_dims = np.array(self.shape) * 4
+            >>> new = self.warp(transform, output_dims=output_dims)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 1))
+            >>> self.draw()
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 2))
+            >>> new.draw()
+        """
+        # HACK: use brute force just to get this implemented.
+        # very inefficient
+        import kwimage
+        import torch
+        c_mask = self.to_c_mask(copy=False).data
+
+        t_mask = torch.Tensor(c_mask)
+        matrix = torch.Tensor(transform)
+        output_dims = output_dims
+        w_mask = kwimage.warp_tensor(t_mask, matrix, output_dims=output_dims,
+                                     mode='nearest')
+        new = self if inplace else Mask(self.data, self.format)
+        new.data = w_mask.numpy().astype(np.uint8)
+        new.format = MaskFormat.C_MASK
+        return new
+
+    def translate(self, offset, output_dims=None):
         """
         Efficiently translate an array_rle in the encoding space
 
         Args:
             offset (Tuple): x,y offset
-            output_shape (Tuple, optional): h,w of transformed mask.
+            output_dims (Tuple, optional): h,w of transformed mask.
                 If unspecified the parent shape is used.
 
         Example:
@@ -316,10 +346,10 @@ class _MaskTransformMixin(object):
             >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
         """
         import kwimage
-        if output_shape is None:
-            output_shape = self.shape
+        if output_dims is None:
+            output_dims = self.shape
         rle = self.to_array_rle(copy=False).data
-        new_rle = kwimage.rle_translate(rle, offset, output_shape)
+        new_rle = kwimage.rle_translate(rle, offset, output_dims)
         new_rle['size'] = new_rle['shape']
         new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
         return new_self
@@ -377,9 +407,10 @@ class _MaskDrawMixin(object):
         if show_border:
             # return shape of contours to openCV contours
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8), contours, -1,
-                             kwplot.Color(border_color).as255(),
-                             border_thick, cv2.LINE_AA)
+            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8),
+                                      contours, -1,
+                                      kwplot.Color(border_color).as255(),
+                                      border_thick, cv2.LINE_AA)
             toshow = toshow.astype(np.float) / 255.
 
         return toshow
@@ -406,7 +437,7 @@ class _MaskDrawMixin(object):
             border_color_tup = kwplot.Color(border_color).as255()
             border_color_tup = (border_color_tup[0], border_color_tup[1],
                                 border_color_tup[2], 255 * alpha)
-                                
+
             # return shape of contours to openCV contours
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
             alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
@@ -536,9 +567,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                    [0, 0, 0, 0, 0, 0, 1, 1]], dtype=uint8)
         """
         x, y, w, h = self.get_xywh().astype(np.int).tolist()
-        output_shape = (h, w)
+        output_dims = (h, w)
         xy_offset = (-x, -y)
-        temp = self.translate(xy_offset, output_shape)
+        temp = self.translate(xy_offset, output_dims)
         patch = temp.to_c_mask().data
         return patch
 
@@ -606,9 +637,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         else:
             # It should be faster to only exact the patch of non-zero values
             x, y, w, h = self.get_xywh().astype(np.int).tolist()
-            output_shape = (h, w)
+            output_dims = (h, w)
             xy_offset = (-x, -y)
-            temp = self.translate(xy_offset, output_shape)
+            temp = self.translate(xy_offset, output_dims)
             mask = temp.to_c_mask().data
             offset = (x - p, y - p)
 

@@ -7,13 +7,13 @@ from . import _generic
 
 class _PointsWarpMixin:
 
-    def _warp_imgaug(self, augmenter, input_shape, inplace=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
 
         Args:
             augmenter (imgaug.augmenters.Augmenter):
-            input_shape (Tuple): h/w of the input image
+            input_dims (Tuple): h/w of the input image
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
@@ -21,19 +21,19 @@ class _PointsWarpMixin:
             >>> import imgaug
             >>> self = Points.random(10)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
-            >>> input_shape = (10, 10)
-            >>> new = self._warp_imgaug(augmenter, input_shape)
-            >>> new2 = self.warp(augmenter, input_shape)
+            >>> input_dims = (10, 10)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
+            >>> new2 = self.warp(augmenter, input_dims)
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        kpoi = new.to_imgaug(shape=input_shape)
+        kpoi = new.to_imgaug(shape=input_dims)
         kpoi = augmenter.augment_keypoints(kpoi)
         xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints],
                       dtype=new.data['xy'].data.dtype)
         new.data['xy'].data = xy
         return new
 
-    def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
 
@@ -42,10 +42,10 @@ class _PointsWarpMixin:
                 scikit-image tranform, a 3x3 transformation matrix, or
                 an imgaug Augmenter.
 
-            input_shape (Tuple): shape of the image these objects correspond to
+            input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
-            output_shape (Tuple): unused, only exists for compatibility
+            output_dims (Tuple): unused, only exists for compatibility
 
             inplace (bool, default=False): if True, modifies data inplace
 
@@ -65,21 +65,21 @@ class _PointsWarpMixin:
         if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
             import imgaug
             if isinstance(transform, imgaug.augmenters.Augmenter):
-                return new._warp_imgaug(transform, input_shape, inplace=True)
+                return new._warp_imgaug(transform, input_dims, inplace=True)
             else:
                 raise TypeError(type(transform))
-        new.data['xy'] = new.data['xy'].warp(transform, input_shape,
-                                             output_shape, inplace)
+        new.data['xy'] = new.data['xy'].warp(transform, input_dims,
+                                             output_dims, inplace)
         return new
 
-    def scale(self, factor, output_shape=None, inplace=False):
+    def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a points by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> from kwimage.structs.points import *  # NOQA
@@ -88,17 +88,17 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 10
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        new.data['xy'] = new.data['xy'].scale(factor, output_shape, inplace)
+        new.data['xy'] = new.data['xy'].scale(factor, output_dims, inplace)
         return new
 
-    def translate(self, offset, output_shape=None, inplace=False):
+    def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the points up/down left/right
 
         Args:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> from kwimage.structs.points import *  # NOQA
@@ -108,7 +108,7 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 11
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        new.data['xy'] = new.data['xy'].translate(offset, output_shape, inplace)
+        new.data['xy'] = new.data['xy'].translate(offset, output_dims, inplace)
         return new
 
 
@@ -207,12 +207,21 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         return self
 
     @classmethod
-    def random(Points, num=1, rng=None):
+    def random(Points, num=1, classes=None, rng=None):
         """
         Makes random points; typically for testing purposes
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Points.random(classes=[1, 2, 3])
+            >>> self.data
         """
         rng = kwarray.ensure_rng(rng)
         self = Points(xy=rng.rand(num, 2))
+        if classes is not None:
+            class_idxs = (rng.rand(len(self)) * len(classes)).astype(np.int)
+            self.data['class_idxs'] = class_idxs
+            self.meta['classes'] = classes
         return self
 
     def is_numpy(self):

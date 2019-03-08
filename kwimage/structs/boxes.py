@@ -684,11 +684,11 @@ class _BoxTransformMixins(object):
     methods for transforming bounding boxes
     """
 
-    def _warp_imgaug(self, augmenter, input_shape, inplace=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Args:
             augmenter (imgaug.augmenters.Augmenter):
-            input_shape (Tuple): h/w of the input image
+            input_dims (Tuple): h/w of the input image
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
@@ -696,11 +696,11 @@ class _BoxTransformMixins(object):
             >>> import imgaug
             >>> self = Boxes.random(10)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
-            >>> input_shape = (10, 10)
-            >>> new = self._warp_imgaug(augmenter, input_shape)
+            >>> input_dims = (10, 10)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
         """
         new = self if inplace else self.__class__(self.data, self.format)
-        bboi = self.to_imgaug(shape=input_shape)
+        bboi = self.to_imgaug(shape=input_dims)
         bboi = augmenter.augment_bounding_boxes([bboi])[0]
         tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
                          for bb in bboi.bounding_boxes])
@@ -711,7 +711,7 @@ class _BoxTransformMixins(object):
             new = new.tensor()
         return new
 
-    def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
         not axis-aligned will lose information (and also may not be
@@ -721,10 +721,10 @@ class _BoxTransformMixins(object):
             transform (skimage.transform._geometric.GeometricTransform | ArrayLike):
                 scikit-image tranform or a 3x3 transformation matrix
 
-            input_shape (Tuple): shape of the image these objects correspond to
+            input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
             inplace (bool, default=False): if True, modifies data inplace
 
@@ -778,7 +778,7 @@ class _BoxTransformMixins(object):
             else:
                 import imgaug
                 if isinstance(transform, imgaug.augmenters.Augmenter):
-                    return new._warp_imgaug(transform, input_shape, inplace=True)
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
                 else:
                     raise TypeError(type(transform))
 
@@ -805,14 +805,14 @@ class _BoxTransformMixins(object):
 
         return new
 
-    def scale(self, factor, output_shape=None, inplace=False):
+    def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         TODO:
             it might be useful to have an argument `origin`, so everything
@@ -884,14 +884,14 @@ class _BoxTransformMixins(object):
                 raise NotImplementedError('Cannot scale: {}'.format(self.format))
         return new
 
-    def translate(self, amount, output_shape=None, inplace=False):
+    def translate(self, amount, output_dims=None, inplace=False):
         """
         Shift the boxes up/down left/right
 
         Args:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE

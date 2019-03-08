@@ -209,7 +209,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # not sure how to best structure the code to allow this so it is both clear
     # and efficient. Currently I've allowed the user to specify custom datakeys
     # and metakeys as kwargs, but that design might change.
-    __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights']
+    __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
+                    'keypoints', 'masks']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['classes']
@@ -361,6 +362,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         Example:
             >>> from kwimage.structs.detections import *  # NOQA
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> anns = [{
             >>>     'id': 0,
             >>>     'image_id': 1,
@@ -372,10 +374,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>>         'size': [20, 20],
             >>>     },
             >>> }]
-            >>> cats = [
-            >>>     {'id': 0, 'name': 'background'},
-            >>>     {'id': 2, 'name': 'class1', 'keypoints': ['spot']}
-            >>> ]
+            >>> dataset = {
+            >>>     'images': [],
+            >>>     'annotations': [],
+            >>>     'categories': [
+            >>>         {'id': 0, 'name': 'background'},
+            >>>         {'id': 2, 'name': 'class1', 'keypoints': ['spot']}
+            >>>     ]
+            >>> }
+            >>> #import ndsampler
+            >>> #dset = ndsampler.CocoDataset(dataset)
+            >>> cats = dataset['categories']
             >>> dets = Detections.from_coco_annots(anns, cats)
 
         Example:
@@ -447,10 +456,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         class_idxs=kpcidxs,
                     )
                     kpts.append(pts)
-            dets.data['kpts'] = kwimage.PointsList(kpts)
+            dets.data['keypoints'] = kwimage.PointsList(kpts)
 
             if kpclasses is not None:
-                dets.data['kpts'].meta['classes'] = kpclasses
+                dets.data['keypoints'].meta['classes'] = kpclasses
         return dets
 
     # --- Data Properties ---
@@ -489,7 +498,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     # --- Modifiers ---
 
-    def warp(self, transform, inplace=False):
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
 
@@ -501,13 +510,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> assert new.boxes == self.boxes.warp(transform)
             >>> assert new != self
         """
-        if inplace:
-            self.boxes.warp(transform, inplace=True)
-            return self
-        else:
-            newdata = self.data.copy()
-            newdata['boxes'] = self.boxes.warp(transform)
-            return self.__class__(newdata, self.meta)
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new.data['boxes'] = new.data['boxes'].warp(transform, inplace=inplace)
+        if 'keypoints' in new.data:
+            new.data['keypoints'] = new.data['keypoints'].warp(
+                transform, input_dims=input_dims, output_dims=output_dims,
+                inplace=inplace)
+        if 'masks' in new.data:
+            new.data['masks'] = new.data['masks'].warp(
+                transform, input_dims=input_dims, output_dims=output_dims,
+                inplace=inplace)
+        return new
 
     @classmethod
     def concatenate(cls, dets):
@@ -730,7 +743,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # --- Non-core methods ----
 
     @classmethod
-    def random(cls, num=10, scale=1.0, rng=None, classes=3, tensor=False):
+    def random(cls, num=10, scale=1.0, rng=None, classes=3, keypoints=False,
+               tensor=False):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -740,6 +754,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             classes (int | Sequence): list of class labels or number of classes
             tensor (bool, default=False): determines backend
             rng (np.random.RandomState): random state
+
+        Example:
+            >>> import kwimage
+            >>> dets = kwimage.Detections.random(keypoints=True)
         """
         import kwimage
         import kwarray
@@ -752,11 +770,23 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             num_classes = len(classes)
         scores = rng.rand(len(boxes))
         class_idxs = rng.randint(0, num_classes, size=len(boxes))
-        if tensor:
-            class_idxs = torch.LongTensor(class_idxs)
-            scores = torch.FloatTensor(scores)
         self = cls(boxes=boxes, scores=scores, class_idxs=class_idxs,
                    classes=classes)
+
+        if tensor:
+            self = self.tensor()
+
+        if keypoints is True:
+            kp_classes = [1, 2, 3, 4]
+            keypoints = kwimage.PointsList([
+                kwimage.Points.random(
+                    num=rng.randint(len(kp_classes)),
+                    classes=kp_classes,
+                ).scale(scale)
+                for _ in range(len(boxes))
+            ])
+            self.data['keypoints'] = keypoints
+
         return self
 
 

@@ -7,6 +7,9 @@ class ObjectList(ub.NiceRepr):
     Stores a list of potentially heterogenous structures, each item usually
     corresponds to a different object.
     """
+
+    # __slots__ = ('data', 'meta',)
+
     def __init__(self, data, meta=None):
         if meta is None:
             meta = {}
@@ -26,24 +29,31 @@ class ObjectList(ub.NiceRepr):
         for index in range(len(self)):
             yield self[index]
 
-    def translate(self, offset, output_shape=None):
+    def translate(self, offset, output_dims=None):
         newdata = [None if item is None else
-                   item.translate(offset, output_shape=output_shape)
+                   item.translate(offset, output_dims=output_dims)
                    for item in self.data]
         return ObjectList(newdata, self.meta)
 
-    def scale(self, factor, output_shape=None):
+    def scale(self, factor, output_dims=None):
         newdata = [None if item is None else
-                   item.scale(factor, output_shape=output_shape)
+                   item.scale(factor, output_dims=output_dims)
                    for item in self.data]
         return ObjectList(newdata, self.meta)
 
-    def warp(self, transform, input_shape=None, output_shape=None):
-        newdata = [None if item is None else
-                   item.warp(transform, input_shape=input_shape,
-                             output_shape=output_shape)
-                   for item in self.data]
-        return ObjectList(newdata, self.meta)
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+        if inplace:
+            for item in self.data:
+                if item is not None:
+                    item.warp(transform, input_dims=input_dims,
+                              output_dims=output_dims, inplace=inplace)
+            return self
+        else:
+            newdata = [None if item is None else
+                       item.warp(transform, input_dims=input_dims,
+                                 output_dims=output_dims, inplace=inplace)
+                       for item in self.data]
+            return ObjectList(newdata, self.meta)
 
     def apply(self, func):
         newdata = [None if item is None else func(item) for item in self.data]
