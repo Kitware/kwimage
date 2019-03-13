@@ -33,13 +33,13 @@ class ObjectList(ub.NiceRepr):
         newdata = [None if item is None else
                    item.translate(offset, output_dims=output_dims)
                    for item in self.data]
-        return ObjectList(newdata, self.meta)
+        return self.__class__(newdata, self.meta)
 
     def scale(self, factor, output_dims=None):
         newdata = [None if item is None else
                    item.scale(factor, output_dims=output_dims)
                    for item in self.data]
-        return ObjectList(newdata, self.meta)
+        return self.__class__(newdata, self.meta)
 
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         if inplace:
@@ -53,21 +53,21 @@ class ObjectList(ub.NiceRepr):
                        item.warp(transform, input_dims=input_dims,
                                  output_dims=output_dims, inplace=inplace)
                        for item in self.data]
-            return ObjectList(newdata, self.meta)
+            return self.__class__(newdata, self.meta)
 
     def apply(self, func):
         newdata = [None if item is None else func(item) for item in self.data]
-        return ObjectList(newdata, self.meta)
+        return self.__class__(newdata, self.meta)
 
     def compress(self, flags, axis=0):
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))
-        return ObjectList(newdata, self.meta)
+        return self.__class__(newdata, self.meta)
 
     def take(self, indices, axis=0):
         assert axis == 0
         newdata = list(ub.take(self.data, indices))
-        return ObjectList(newdata, self.meta)
+        return self.__class__(newdata, self.meta)
 
     def draw(self, **kwargs):
         for item in self.data:

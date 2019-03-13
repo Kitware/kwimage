@@ -235,8 +235,14 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         return self.data['xy']._impl
 
     def tensor(self, device=ub.NoParam):
+        """
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10)
+            >>> self.tensor()
+        """
         impl = self._impl
-        newdata = {k: impl.tensor(v, device) for k, v in self.data.items()}
+        newdata = {k: v.tensor(device) if hasattr(v, 'tensor') else impl.tensor(v, device)
+                   for k, v in self.data.items()}
         new = self.__class__(newdata, self.meta)
         return new
 

@@ -728,7 +728,6 @@ class _BoxTransformMixins(object):
 
             inplace (bool, default=False): if True, modifies data inplace
 
-
         TODO:
             - [ ] Generalize so the transform can be an arbitrary matrix
 
