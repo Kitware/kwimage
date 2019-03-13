@@ -480,6 +480,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def __nice__(self):
         return '{}, format={}'.format(ub.repr2(self.data, nl=0), self.format)
 
+    # def tensor(self):
+    #     # self.
+    #     # Mask(item.to_bytes_rle
+    #     # pass
+
     @classmethod
     def random(Mask, rng=None, shape=(32, 32)):
         import kwarray
