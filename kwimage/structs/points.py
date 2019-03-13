@@ -2,6 +2,7 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
+import torch
 from . import _generic
 
 
@@ -160,6 +161,9 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
                 if isinstance(data['xy'], np.ndarray):
                     import kwimage
                     data['xy'] = kwimage.Coords(data['xy'])
+                elif isinstance(data['xy'], torch.Tensor):
+                    import kwimage
+                    data['xy'] = kwimage.Coords(data['xy'])
 
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
@@ -236,6 +240,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
 
     def tensor(self, device=ub.NoParam):
         """
+        Example:
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(10)
             >>> self.tensor()
@@ -247,12 +252,19 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         return new
 
     def numpy(self):
+        """
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10)
+            >>> self.tensor().numpy().tensor().numpy()
+        """
         impl = self._impl
-        newdata = {k: impl.numpy(v) for k, v in self.data.items()}
+        newdata = {k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
+                   for k, v in self.data.items()}
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image, value=1):
+    def draw_on(self, image, color='white', radius=None):
         """
         Example:
             >>> from kwimage.structs.points import *  # NOQA
@@ -266,9 +278,45 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
             >>> self.draw(radius=3, alpha=.5)
+
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> s = 128
+            >>> image = np.zeros((s, s))
+            >>> self = Points.random(10).scale(s)
+            >>> image = self.draw_on(image, radius=3)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> self.draw(radius=3, alpha=.5)
         """
-        return self.data['xy'].fill(
-            image, value, coord_axes=[1, 0], interp='bilinear')
+        import kwplot
+        import kwimage
+        value = kwplot.Color(color).as01()
+
+        if radius is None:
+            image = kwimage.atleast_3channels(image)
+            image = kwimage.ensure_float01(image)
+            image = self.data['xy'].fill(
+                image, value, coord_axes=[1, 0], interp='bilinear')
+        else:
+            import cv2
+            image = kwimage.atleast_3channels(image)
+            image = kwimage.ensure_float01(image)
+            for xy in self.data['xy'].data:
+                # center = tuple(map(int, xy.tolist()))
+                center = tuple(xy.tolist())
+                axes = (radius / 2, radius / 2)
+                center = tuple(map(int, center))
+                axes = tuple(map(int, axes))
+                # print('center = {!r}'.format(center))
+                # print('axes = {!r}'.format(axes))
+                image = cv2.ellipse(image, center, axes, angle=0.0,
+                                    startAngle=0.0, endAngle=360.0,
+                                    color=value, thickness=-1)
+        return image
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
         """

@@ -1189,16 +1189,25 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     kpts_mask = None
     if 'keypoints' in dets.data:
+        kp_classes = None
         if 'classes' in dets.data['keypoints'].meta:
-            num_kp_classes = len(dets.data['keypoints'].meta['classes'])
+            kp_classes = dets.data['keypoints'].meta['classes']
+        else:
+            for kp in dets.data['keypoints']:
+                if kp is not None and 'classes' in kp.meta:
+                    kp_classes = kp.meta['classes']
+                    break
+
+        if kp_classes is not None:
+            num_kp_classes = len(kp_classes)
             kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims), dtype=np.float32)
 
-        kpts = dets.data['keypoints'].data
-        for pts in kpts:
+        pts_list = dets.data['keypoints'].data
+        for pts in pts_list:
             if pts is not None:
                 pass
     else:
-        kpts = [None] * len(dets)
+        pts_list = [None] * len(dets)
 
     # Overlay smaller classes on top of larger ones
     if len(cxywh):
@@ -1208,6 +1217,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     sortx = np.argsort(area)[::-1]
     cxywh = cxywh[sortx]
     class_idxs = class_idxs[sortx]
+    pts_list = list(ub.take(pts_list, sortx))
 
     def iround(x):
         return int(round(x))
@@ -1215,7 +1225,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     H, W = input_dims
     xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
 
-    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, masks, kpts):
+    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, masks, pts_list):
         (cx, cy, w, h) = box
         center = (iround(cx), iround(cy))
         # Adjust so smaller objects get more pixels
@@ -1253,12 +1263,12 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         assert np.all(size_mask[0][mask] == float(w))
 
         # object offset
-        dy = cy - ycoord[mask]
         dx = cx - xcoord[mask]
+        dy = cy - ycoord[mask]
         dxdy_mask[0][mask] = dx
         dxdy_mask[1][mask] = dy
 
-        if pts is not None:
+        if kpts_mask is not None and pts is not None:
             # Keypoint offsets
             for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
                 kp_x, kp_y = xy
@@ -1281,8 +1291,9 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         fcn_target['kpts'] = kpts_mask
     else:
         if 'keypoints' in dets.data:
-            raise AssertionError(
-                'dets had keypoints, but we didnt encode them, were the kp classes missing?')
+            if any(kp is not None for kp in dets.data['keypoints']):
+                raise AssertionError(
+                    'dets had keypoints, but we didnt encode them, were the kp classes missing?')
 
     return fcn_target
 
