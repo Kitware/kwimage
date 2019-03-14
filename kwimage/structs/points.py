@@ -246,7 +246,8 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             >>> self.tensor()
         """
         impl = self._impl
-        newdata = {k: v.tensor(device) if hasattr(v, 'tensor') else impl.tensor(v, device)
+        newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
+                   else impl.tensor(v, device)
                    for k, v in self.data.items()}
         new = self.__class__(newdata, self.meta)
         return new

@@ -361,7 +361,7 @@ class _MaskDrawMixin(object):
     """
 
     def draw_on(self, image, color='blue', alpha=0.5,
-                show_border=True, border_thick=1,
+                show_border=False, border_thick=1,
                 border_color='white'):
         """
         Draws the mask on an image
@@ -377,21 +377,6 @@ class _MaskDrawMixin(object):
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
             >>> kwplot.show_if_requested()
-
-        Ignore:
-            from kwimage.structs.mask import *
-            import kwimage
-            import numpy as np
-            import matplotlib.pyplot as plt
-            import cv2
-            image = kwimage.grab_test_image()
-            self = Mask.random(shape=image.shape[0:2])
-            toshow = self.draw_on(image)
-            color='blue'
-            alpha=0.5,
-            show_border=True
-            border_thick=1
-            border_color='white'
         """
         import kwplot
         import kwimage
@@ -415,9 +400,8 @@ class _MaskDrawMixin(object):
 
         return toshow
 
-    def draw(self, color='blue', alpha=0.5, ax=None,
-                show_border=True, border_thick=1,
-                border_color='black'):
+    def draw(self, color='blue', alpha=0.5, ax=None, show_border=False,
+             border_thick=1, border_color='black'):
         """
         Draw on the current matplotlib axis
         """
@@ -690,6 +674,115 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             toshow = np.zeros(image.shape, dtype="uint8")
             cv2.drawContours(toshow, _contours, -1, (255, 0, 0), 1)
             kwil.imshow(toshow)
+
+        return polygon
+
+    def to_multi_polygon(self):
+        """
+        Returns a MultiPolygon object fit around this raster including disjoint
+        pieces and holes.
+
+        Returns:
+            MultiPolygon: vectorized representation
+
+        Example:
+            >>> from kwimage.structs.mask import *  # NOQA
+            >>> self = Mask.random(shape=(8, 8), rng=0)
+            >>> polygons = self.get_polygon()
+            >>> print('polygons = ' + ub.repr2(polygons))
+            >>> polygons = self.get_polygon()
+            >>> self = self.to_bytes_rle()
+            >>> other = Mask.from_polygons(polygons, self.shape)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> image = np.ones(self.shape)
+            >>> image = self.draw_on(image, color='blue')
+            >>> image = other.draw_on(image, color='red')
+            >>> kwplot.imshow(image)
+
+            polygons = [
+                np.array([[6, 4],[7, 4]], dtype=np.int32),
+                np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
+            ]
+
+            >>> txt = ub.codeblock(
+            >>>     '''
+            >>>     ................................
+            >>>     ..ooooooo....ooooooooooooo......
+            >>>     ..ooooooo....o...........o......
+            >>>     ..oo...oo....o.oooooooo..o......
+            >>>     ..oo...oo....o.o......o..o......
+            >>>     ..ooooooo....o.o..oo..o..o......
+            >>>     .............o.o...o..o..o......
+            >>>     .............o.o..oo..o..o......
+            >>>     .............o.o......o..o......
+            >>>     ..ooooooo....o.oooooooo..o......
+            >>>     .............o...........o......
+            >>>     .............o...........o......
+            >>>     .............o....ooooo..o......
+            >>>     .............o....o...o..o......
+            >>>     .............o....ooooo..o......
+            >>>     .............o...........o......
+            >>>     .............ooooooooooooo......
+            >>>     ................................
+            >>>     ................................
+            >>>     ................................
+            >>>     ''')
+            >>> data = np.array( [[0 if c == '.' else 1 for c in line] for line in txt.split('\n')]).astype(np.uint8)
+            >>> self = Mask(data, format='c_mask')
+
+        """
+        p = 2
+        # It should be faster to only exact the patch of non-zero values
+        x, y, w, h = self.get_xywh().astype(np.int).tolist()
+        output_dims = (h, w)
+        xy_offset = (-x, -y)
+        temp = self.translate(xy_offset, output_dims)
+        mask = temp.to_c_mask().data
+        offset = (x - p, y - p)
+
+        padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
+                                         cv2.BORDER_CONSTANT, value=0)
+        kernel = np.array([[1, 1, 0],
+                           [1, 1, 0],
+                           [0, 0, 0]], dtype=np.uint8)
+        padded_mask = cv2.dilate(padded_mask, kernel, dst=padded_mask)
+
+        # https://docs.opencv.org/3.1.0/d3/dc0/
+        # group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+        mode = cv2.RETR_CCOMP
+        method = cv2.CHAIN_APPROX_SIMPLE
+        # method = cv2.CHAIN_APPROX_TC89_KCOS
+        # Different versions of cv2 have different return types
+        _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
+        if len(_ret) == 2:
+            _contours, _hierarchy = _ret
+        else:
+            _img, _contours, _hierarchy = _ret
+
+        for i, row in enumerate(_hierarchy):
+            # This only works in RETR_CCOMP mode
+            nxt, prev, child, parent = row[0:4]
+
+        polygon = [c[:, 0, :] for c in _contours]
+
+        # TODO: a kwimage structure for polygons
+
+        if False:
+            import kwil
+            kwil.autompl()
+            # Note that cv2 draw contours doesnt have the 1-pixel thick problem
+            # it seems to just be the way the coco implementation is
+            # interpreting polygons.
+            toshow = np.zeros(self.shape, dtype="uint8")
+            toshow = kwil.atleast_3channels(toshow)
+
+            line_type = cv2.LINE_AA
+            contour_idx = -1
+
+            cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), line_type)
+            kwil.imshow(toshow, fnum=2)
 
         return polygon
 
