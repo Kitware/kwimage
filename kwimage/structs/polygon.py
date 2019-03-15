@@ -54,20 +54,69 @@ class _PolyWarpMixin:
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> import imgaug
-            >>> self = Polygon.random(10)
+            >>> input_dims = np.array((10, 10))
+            >>> self = Polygon.random(10, n_holes=1, rng=0).scale(input_dims)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
-            >>> input_dims = (10, 10)
             >>> new = self._warp_imgaug(augmenter, input_dims)
-            >>> new2 = self.warp(augmenter, input_dims)
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> from matplotlib import pyplot as pl
+            >>> ax = plt.gca()
+            >>> ax.set_xlim(0, 10)
+            >>> ax.set_ylim(0, 10)
+            >>> self.draw(color='red', alpha=.4)
+            >>> new.draw(color='blue', alpha=.4)
         """
-        raise NotImplementedError
         new = self if inplace else self.__class__(self.data.copy())
-        kpoi = new.to_imgaug(shape=input_dims)
+
+        # current version of imgaug doesnt fully support polygons
+        # coerce to and from points instead
+        dtype = self.data['exterior'].data.dtype
+
+        import imgaug
+        parts = []
+        kps = [imgaug.Keypoint(x, y) for x, y in self.data['exterior'].data]
+        parts.append(kps)
+        for hole in self.data.get('interiors', []):
+            kps = [imgaug.Keypoint(x, y) for x, y in hole.data]
+            parts.append(kps)
+
+        cs = [0] + np.cumsum(np.array(list(map(len, parts)))).tolist()
+        flat_kps = list(ub.flatten(parts))
+
+        if imgaug.__version__ == '0.2.8':
+            # Hack to fix imgaug bug
+            h, w = input_dims
+            input_dims = (h + 1.0, w + 1.0)
+        else:
+            raise Exception('WAS THE BUG FIXED IN A NEW VERSION?')
+        kpoi = imgaug.KeypointsOnImage(flat_kps, shape=tuple(input_dims))
+
         kpoi = augmenter.augment_keypoints(kpoi)
-        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints],
-                      dtype=new.data['xy'].data.dtype)
-        new.data['xy'].data = xy
+
+        _new_parts = []
+        for a, b in ub.iter_window(cs, 2):
+            unpacked = [[kp.x, kp.y] for kp in kpoi.keypoints[a:b]]
+            new_part = np.array(unpacked, dtype=dtype)
+            _new_parts.append(new_part)
+        new_parts = _new_parts[::-1]
+
+        import kwimage
+        new_exterior = kwimage.Coords(new_parts[0])
+        new_interiors = [kwimage.Coords(p) for p in new_parts[1:]]
+        new.data['exterior'] = new_exterior
+        new.data['interiors'] = new_interiors
         return new
+
+    def to_imgaug(self, shape):
+        import imgaug
+        ia_exterior = imgaug.Polygon(self.data['exterior'])
+        ia_interiors = [imgaug.Polygon(p) for p in self.data.get('interiors', [])]
+        iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
+        return iamp
 
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
@@ -94,6 +143,10 @@ class _PolyWarpMixin:
 
         Doctest:
             >>> self = Polygon.random()
+            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
+            >>> new = self.warp(augmenter, input_dims=(1, 1))
+            >>> print('new = {!r}'.format(new.data))
+            >>> print('self = {!r}'.format(self.data))
             >>> #assert np.all(self.warp(np.eye(3)).exterior == self.exterior)
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
@@ -266,11 +319,11 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
         self = cls(exterior=exterior, interiors=interiors)
         return self
 
-    @_generic.memoize_property
+    @ub.memoize_property
     def _impl(self):
         return self.data['exterior']._impl
 
-    def draw_on(self, image, color='blue', fill=True):
+    def draw_on(self, image, color='blue', fill=True, border=False):
         """
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -285,9 +338,7 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
         import kwplot
         import kwimage
         # return shape of contours to openCV contours
-        thickness = 1
 
-        contour_idx = -1
         # line_type = cv2.LINE_AA
         line_type = cv2.LINE_8
         image = kwimage.ensure_uint255(image)
@@ -302,13 +353,48 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
         if fill:
             image = cv2.fillPoly(image, contours, rgb, line_type, shift=0)
 
-        if 1:
+        if border:
+            thickness = 1
+            contour_idx = -1
             image = cv2.drawContours(image, contours, contour_idx, rgb,
                                      thickness, line_type)
         image = kwimage.ensure_float01(image)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=None, radius=1):
+    def to_mask(self, dims=None):
+        """
+        Convert this polygon to a mask
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(n_holes=1).scale(128)
+            >>> mask = self.to_mask((128, 128))
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> mask.draw(color='blue')
+            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
+        """
+        import kwimage
+        c_mask = np.zeros(dims, dtype=np.uint8)
+        # return shape of contours to openCV contours
+
+        # line_type = cv2.LINE_AA
+        line_type = cv2.LINE_8
+
+        data = self.data
+        coords = [data['exterior']] + data['interiors']
+        contours = [np.expand_dims(c.data.astype(np.int), axis=1) for c in coords]
+
+        value = 1
+
+        c_mask = cv2.fillPoly(c_mask, contours, value, line_type, shift=0)
+
+        mask = kwimage.Mask(c_mask, 'c_mask')
+        return mask
+
+    def draw(self, color='blue', ax=None, alpha=1.0, radius=1):
         """
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -351,15 +437,8 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
 
         verts = np.array(verts)
         path = Path(verts, codes)
-        patch = mpl.patches.PathPatch(path, alpha=.4)
+        patch = mpl.patches.PathPatch(path, alpha=alpha, color=color)
         ax.add_patch(patch)
-
-    def to_imgaug(self, shape):
-        import imgaug
-        ia_exterior = imgaug.Polygon(self.data['exterior'])
-        ia_interiors = [imgaug.Polygon(p) for p in self.data.get('interiors', [])]
-        iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
-        return iamp
 
 
 def _order_vertices(verts):
@@ -378,7 +457,39 @@ def _order_vertices(verts):
 
 
 class MultiPolygon(_generic.ObjectList):
-    pass
+
+    @classmethod
+    def random(self, n=3, rng=None):
+        import kwarray
+        rng = kwarray.ensure_rng(rng)
+        data = [Polygon.random(rng=rng) for _ in range(n)]
+        self = MultiPolygon(data)
+        return self
+
+    def to_mask(self, dims=None):
+        """
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> s = 100
+            >>> self = MultiPolygon.random(rng=0).scale(s)
+            >>> dims = (s, s)
+            >>> mask = self.to_mask(dims)
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> from matplotlib import pyplot as pl
+            >>> ax = plt.gca()
+            >>> ax.set_xlim(0, s)
+            >>> ax.set_ylim(0, s)
+            >>> self.draw(color='red', alpha=.4)
+            >>> mask.draw(color='blue', alpha=.4)
+        """
+        import kwimage
+        masks = [poly.to_mask(dims) for poly in self.data]
+        mask = kwimage.Mask.union(*masks)
+        return mask
 
 
 class PolygonList(_generic.ObjectList):

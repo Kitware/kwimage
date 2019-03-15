@@ -61,7 +61,6 @@ import warnings
 import skimage
 import kwarray
 from distutils.version import LooseVersion
-from . import _generic
 
 __all__ = ['Boxes']
 
@@ -1430,7 +1429,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         """ is the backend fueled by numpy? """
         return isinstance(self.data, np.ndarray)
 
-    @_generic.memoize_property
+    @ub.memoize_property
     def _impl(self):
         """
         returns the kwarray.ArrayAPI implementation for the data

@@ -518,14 +518,66 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         This can be used as a staticmethod or an instancemethod
 
         Example:
+            >>> from kwimage.structs.mask import *  # NOQA
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
             33
+            >>> masks = [m.to_c_mask() for m in masks]
+            >>> mask = Mask.union(*masks)
+            >>> print(mask.area)
+
+            >>> masks = [m.to_bytes_rle() for m in masks]
+            >>> mask = Mask.union(*masks)
+            >>> print(mask.area)
+
+        Benchmark:
+            import ubelt as ub
+            ti = ub.Timerit(100, bestof=10, verbose=2)
+
+            masks = [Mask.random(shape=(172, 172), rng=i) for i in range(2)]
+
+            for timer in ti.reset('native rle union'):
+                masks = [m.to_bytes_rle() for m in masks]
+                with timer:
+                    mask = Mask.union(*masks)
+
+            for timer in ti.reset('native cmask union'):
+                masks = [m.to_c_mask() for m in masks]
+                with timer:
+                    mask = Mask.union(*masks)
+
+            for timer in ti.reset('cmask->rle union'):
+                masks = [m.to_c_mask() for m in masks]
+                with timer:
+                    mask = Mask.union(*[m.to_bytes_rle() for m in masks])
         """
-        cls = self.__class__ if isinstance(self, Mask) else Mask
-        rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
-        return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.BYTES_RLE)
+        if isinstance(self, Mask):
+            cls = self.__class__
+            items = list(it.chain([self], others))
+        else:
+            cls = Mask
+            items = others
+
+        if len(items) == 0:
+            raise Exception('empty union')
+        else:
+            format = items[0].format
+            if format == MaskFormat.C_MASK:
+                datas = [item.to_c_mask().data for item in items]
+                new_data = np.bitwise_or.reduce(datas)
+                new = cls(new_data, MaskFormat.C_MASK)
+            elif format == MaskFormat.BYTES_RLE:
+                datas = [item.to_bytes_rle().data for item in items]
+                new_data = cython_mask.merge(datas, intersect=0)
+                new = cls(new_data, MaskFormat.BYTES_RLE)
+            else:
+                datas = [item.to_bytes_rle().data for item in items]
+                new_rle = cython_mask.merge(datas, intersect=0)
+                new = cls(new_rle, MaskFormat.BYTES_RLE)
+        return new
+        # rle_datas = [item.to_bytes_rle().data for item in items]
+        # return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.BYTES_RLE)
 
     def intersection(self, *others):
         """
@@ -757,41 +809,45 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         p = 2
         # It should be faster to only exact the patch of non-zero values
         x, y, w, h = self.get_xywh().astype(np.int).tolist()
-        output_dims = (h, w)
-        xy_offset = (-x, -y)
-        temp = self.translate(xy_offset, output_dims)
-        mask = temp.to_c_mask().data
-        offset = (x - p, y - p)
+        if w > 0 and h > 0:
+            output_dims = (h, w)
+            xy_offset = (-x, -y)
+            temp = self.translate(xy_offset, output_dims)
+            mask = temp.to_c_mask().data
+            offset = (x - p, y - p)
 
-        padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
-                                         cv2.BORDER_CONSTANT, value=0)
+            padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
+                                             cv2.BORDER_CONSTANT, value=0)
 
-        # https://docs.opencv.org/3.1.0/d3/dc0/
-        # group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
-        mode = cv2.RETR_CCOMP
-        method = cv2.CHAIN_APPROX_SIMPLE
-        # method = cv2.CHAIN_APPROX_TC89_KCOS
-        # Different versions of cv2 have different return types
-        _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
-        if len(_ret) == 2:
-            _contours, _hierarchy = _ret
-        else:
-            _img, _contours, _hierarchy = _ret
+            # https://docs.opencv.org/3.1.0/d3/dc0/
+            # group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+            mode = cv2.RETR_CCOMP
+            method = cv2.CHAIN_APPROX_SIMPLE
+            # method = cv2.CHAIN_APPROX_TC89_KCOS
+            # Different versions of cv2 have different return types
+            _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
+            if len(_ret) == 2:
+                _contours, _hierarchy = _ret
+            else:
+                _img, _contours, _hierarchy = _ret
             _hierarchy = _hierarchy[0]
 
-        polys = {i: {'exterior': None, 'interiors': []}
-                 for i, row in enumerate(_hierarchy) if row[3] == -1}
-        for i, row in enumerate(_hierarchy):
-            # This only works in RETR_CCOMP mode
-            nxt, prev, child, parent = row[0:4]
-            if parent != -1:
-                polys[parent]['interiors'].append(_contours[i][:, 0, :])
-            else:
-                polys[i]['exterior'] = _contours[i][:, 0, :]
+            polys = {i: {'exterior': None, 'interiors': []}
+                     for i, row in enumerate(_hierarchy) if row[3] == -1}
+            for i, row in enumerate(_hierarchy):
+                # This only works in RETR_CCOMP mode
+                nxt, prev, child, parent = row[0:4]
+                if parent != -1:
+                    polys[parent]['interiors'].append(_contours[i][:, 0, :])
+                else:
+                    polys[i]['exterior'] = _contours[i][:, 0, :]
 
-        from kwimage.structs.polygon import Polygon, MultiPolygon
-        poly_list = [Polygon(**data) for data in polys.values()]
-        multi_poly = MultiPolygon(poly_list)
+            from kwimage.structs.polygon import Polygon, MultiPolygon
+            poly_list = [Polygon(**data) for data in polys.values()]
+            multi_poly = MultiPolygon(poly_list)
+        else:
+            from kwimage.structs.polygon import Polygon, MultiPolygon
+            multi_poly = MultiPolygon([])
         return multi_poly
 
         # if False:

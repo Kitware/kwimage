@@ -210,7 +210,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # and efficient. Currently I've allowed the user to specify custom datakeys
     # and metakeys as kwargs, but that design might change.
     __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
-                    'keypoints', 'masks']
+                    'keypoints', 'polygons', 'masks']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['classes']

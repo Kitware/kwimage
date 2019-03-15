@@ -1123,6 +1123,14 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> dets = kwimage.Detections.from_coco_annots(
         >>>     anns, sampler.dset.dataset['categories'],
         >>>     sampler.catgraph, kpclasses, shape=input_dims)
+
+        >>> if 1:
+        >>>     masks = dets.data.pop('masks')
+        >>>     dets.data['polygons'] = kwimage.PolygonList([
+        >>>         None if m is None else m.to_multi_polygon()
+        >>>         for m in masks
+        >>>     ])
+
         >>> bg_size = [100, 100]
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
@@ -1185,7 +1193,14 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     cxywh = dets.boxes.to_cxywh().data
     class_idxs = dets.class_idxs
 
-    masks = dets.data.get('masks', [None] * len(dets))
+    if 'polygons' in dets.data:
+        import kwimage
+        assert 'masks' not in dets.data, 'using polygon masks'
+        poly_list = dets.data.get('polygons', [None] * len(dets))
+        masks = [None if p is None else p.to_mask(input_dims)
+                     for p in poly_list]
+    else:
+        masks = dets.data.get('masks', [None] * len(dets))
 
     kpts_mask = None
     if 'keypoints' in dets.data:

@@ -20,19 +20,55 @@ class _PointsWarpMixin:
         Example:
             >>> from kwimage.structs.points import *  # NOQA
             >>> import imgaug
-            >>> self = Points.random(10)
-            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> input_dims = (10, 10)
+            >>> self = Points.random(10).scale(input_dims)
+            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
-            >>> new2 = self.warp(augmenter, input_dims)
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwil.autompl()
+            >>> kwil.figure(fnum=1, doclf=True)
+            >>> from matplotlib import pyplot as pl
+            >>> ax = plt.gca()
+            >>> ax.set_xlim(0, 10)
+            >>> ax.set_ylim(0, 10)
+            >>> self.draw(color='red', alpha=.4, radius=0.1)
+            >>> new.draw(color='blue', alpha=.4, radius=0.1)
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        kpoi = new.to_imgaug(shape=input_dims)
-        kpoi = augmenter.augment_keypoints(kpoi)
-        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints],
-                      dtype=new.data['xy'].data.dtype)
-        new.data['xy'].data = xy
+        kpoi = new.to_imgaug(input_dims=input_dims)
+        new_kpoi = augmenter.augment_keypoints(kpoi)
+        dtype = new.data['xy'].data.dtype
+        xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
+        import kwimage
+        new.data['xy'] = kwimage.Coords(xy)
         return new
+
+    def to_imgaug(self, input_dims):
+        """
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> pts = Points.random(10)
+            >>> input_dims = (10, 10)
+            >>> kpoi = pts.to_imgaug(input_dims)
+        """
+        import imgaug
+        if imgaug.__version__ == '0.2.8':
+            # Hack to fix imgaug bug
+            h, w = input_dims
+            input_dims = (h + 1.0, w + 1.0)
+        else:
+            raise Exception('WAS THE BUG FIXED IN A NEW VERSION?')
+        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
+        kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
+        return kpoi
+
+    @classmethod
+    def from_imgaug(cls, kpoi):
+        import numpy as np
+        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
+        self = cls(xy=xy)
+        return self
 
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
@@ -187,26 +223,6 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     def xy(self):
         return self.data['xy'].data
 
-    def to_imgaug(self, shape):
-        """
-        Example:
-            >>> from kwimage.structs.points import *  # NOQA
-            >>> pts = Points.random(10)
-            >>> shape = (10, 10)
-            >>> kpoi = pts.to_imgaug(shape)
-        """
-        import imgaug
-        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
-        kpoi = imgaug.KeypointsOnImage(kps, shape=shape)
-        return kpoi
-
-    @classmethod
-    def from_imgaug(cls, kpoi):
-        import numpy as np
-        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
-        self = cls(xy=xy)
-        return self
-
     @classmethod
     def random(Points, num=1, classes=None, rng=None):
         """
@@ -231,7 +247,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     def is_tensor(self):
         return self.data['xy'].is_tensor()
 
-    @_generic.memoize_property
+    @ub.memoize_property
     def _impl(self):
         return self.data['xy']._impl
 
