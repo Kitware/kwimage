@@ -296,14 +296,35 @@ class _MaskConstructorMixin(object):
 
 
 class _MaskTransformMixin(object):
+
+    def scale(self, factor, output_dims=None, inplace=False):
+        """
+        Example:
+            >>> self = Mask.random()
+            >>> factor = 5
+            >>> inplace = False
+            >>> new = self.scale(factor)
+            >>> print('new.shape = {!r}'.format(new.shape))
+        """
+        if not ub.iterable(factor):
+            sx = sy = factor
+        else:
+            sx, sy = factor
+        if output_dims is None:
+            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(np.int)
+        # FIXME: the warp breaks when the third row is left out
+        transform = np.array([[sx, 0.0, 0.0], [0.0, sy, 0.0], [0, 0, 1]])
+        new = self.warp(transform, output_dims=output_dims, inplace=inplace)
+        return new
+
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
 
         Example:
             >>> import kwimage
             >>> self = mask = kwimage.Mask.random()
-            >>> transform = np.array([[2., 0, 0], [0, 2, 0], [0, 0, 1]])
-            >>> output_dims = np.array(self.shape) * 4
+            >>> transform = np.array([[5., 0, 0], [0, 5, 0], [0, 0, 1]])
+            >>> output_dims = np.array(self.shape) * 6
             >>> new = self.warp(transform, output_dims=output_dims)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
@@ -715,14 +736,21 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>>     ''')
             >>> data = np.array( [[0 if c == '.' else 1 for c in line] for line in txt.split('\n')]).astype(np.uint8)
             >>> self = Mask(data, format='c_mask')
+            >>> self = self.scale(5)
+            >>> multi_poly = self.to_multi_polygon()
+
+            >>> self.draw(color='red')
+            >>> multi_poly.scale(1.1).draw(color='blue')
+
 
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> image = np.ones(self.shape)
             >>> image = self.draw_on(image, color='blue')
-            >>> image = other.draw_on(image, color='red')
+            >>> #image = other.draw_on(image, color='red')
             >>> kwplot.imshow(image)
+            >>> multi_poly.draw()
 
         """
         import cv2
@@ -761,55 +789,60 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             else:
                 polys[i]['exterior'] = _contours[i][:, 0, :]
 
-        if False:
-            import kwil
-            kwil.autompl()
-            # Note that cv2 draw contours doesnt have the 1-pixel thick problem
-            # it seems to just be the way the coco implementation is
-            # interpreting polygons.
+        from kwimage.structs.polygon import Polygon, MultiPolygon
+        poly_list = [Polygon(**data) for data in polys.values()]
+        multi_poly = MultiPolygon(poly_list)
+        return multi_poly
 
-            from matplotlib.patches import Path
-            from matplotlib import pyplot as plt
-            import matplotlib as mpl
+        # if False:
+        #     import kwil
+        #     kwil.autompl()
+        #     # Note that cv2 draw contours doesnt have the 1-pixel thick problem
+        #     # it seems to just be the way the coco implementation is
+        #     # interpreting polygons.
 
-            kwil.imshow(self.to_c_mask().data, fnum=2, doclf=True)
-            ax = plt.gca()
-            patches = []
+        #     from matplotlib.patches import Path
+        #     from matplotlib import pyplot as plt
+        #     import matplotlib as mpl
 
-            for i, poly in polys.items():
-                exterior = poly['exterior'].tolist()
-                exterior.append(exterior[0])
-                n = len(exterior)
-                verts = []
-                verts.extend(exterior)
-                codes = [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
+        #     kwil.imshow(self.to_c_mask().data, fnum=2, doclf=True)
+        #     ax = plt.gca()
+        #     patches = []
 
-                interiors = poly['interiors']
-                for hole in interiors:
-                    hole = hole.tolist()
-                    hole.append(hole[0])
-                    n = len(hole)
-                    verts.extend(hole)
-                    codes += [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
+        #     for i, poly in polys.items():
+        #         exterior = poly['exterior'].tolist()
+        #         exterior.append(exterior[0])
+        #         n = len(exterior)
+        #         verts = []
+        #         verts.extend(exterior)
+        #         codes = [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
 
-                verts = np.array(verts)
-                path = Path(verts, codes)
-                patch = mpl.patches.PathPatch(path)
-                patches.append(patch)
-            poly_col = mpl.collections.PatchCollection(patches, 2, alpha=0.4)
-            ax.add_collection(poly_col)
-            ax.set_xlim(0, 32)
-            ax.set_ylim(0, 32)
+        #         interiors = poly['interiors']
+        #         for hole in interiors:
+        #             hole = hole.tolist()
+        #             hole.append(hole[0])
+        #             n = len(hole)
+        #             verts.extend(hole)
+        #             codes += [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
 
-            # line_type = cv2.LINE_AA
-            # line_type = cv2.LINE_4
-            line_type = cv2.LINE_8
-            contour_idx = -1
-            thickness = 1
-            toshow = np.zeros(self.shape, dtype="uint8")
-            toshow = kwil.atleast_3channels(toshow)
-            toshow = cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), thickness, line_type)
-            kwil.imshow(toshow, fnum=2, doclf=True)
+        #         verts = np.array(verts)
+        #         path = Path(verts, codes)
+        #         patch = mpl.patches.PathPatch(path)
+        #         patches.append(patch)
+        #     poly_col = mpl.collections.PatchCollection(patches, 2, alpha=0.4)
+        #     ax.add_collection(poly_col)
+        #     ax.set_xlim(0, 32)
+        #     ax.set_ylim(0, 32)
+
+        #     # line_type = cv2.LINE_AA
+        #     # line_type = cv2.LINE_4
+        #     line_type = cv2.LINE_8
+        #     contour_idx = -1
+        #     thickness = 1
+        #     toshow = np.zeros(self.shape, dtype="uint8")
+        #     toshow = kwil.atleast_3channels(toshow)
+        #     toshow = cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), thickness, line_type)
+        #     kwil.imshow(toshow, fnum=2, doclf=True)
 
         # return polygon
 

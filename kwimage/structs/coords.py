@@ -2,7 +2,6 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
-from . import _generic
 
 
 class Coords(ub.NiceRepr):
@@ -171,7 +170,7 @@ class Coords(ub.NiceRepr):
         except AttributeError:
             return None
 
-    # @_generic.memoize_property
+    # @ub.memoize_property
     @property
     def _impl(self):
         """
@@ -274,22 +273,35 @@ class Coords(ub.NiceRepr):
             >>> self = Coords.random(10, rng=0)
             >>> new = self.scale(10)
             >>> assert new.data.max() <= 10
+
+            >>> self = Coords.random(10, rng=0)
+            >>> self.data = (self.data * 10).astype(np.int)
+            >>> new = self.scale(10)
+            >>> assert new.data.dtype.kind == 'i'
+            >>> new = self.scale(10.0)
+            >>> assert new.data.dtype.kind == 'f'
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         data = new.data
         impl = kwarray.ArrayAPI.coerce(data)
-        if not inplace:
-            data = new.data = impl.copy(data)
+
+        # if not inplace:
+        #     data = new.data = impl.copy(data)
         if impl.numel(data) > 0:
             dim = self.dim
             if not ub.iterable(factor):
                 factor_ = impl.asarray([factor] * dim)
             elif isinstance(factor, (list, tuple)):
-                factor_ = np.array(factor)
+                factor_ = impl.asarray(factor)
             else:
                 factor_ = factor
+
+            if self._impl.dtype_kind(data) != 'f' and self._impl.dtype_kind(factor_) == 'f':
+                data = self._impl.astype(data, factor_.dtype)
+
             assert factor_.shape == (dim,)
             data *= factor_
+        new.data = data
         return new
 
     def translate(self, offset, output_shape=None, inplace=False):

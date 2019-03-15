@@ -93,6 +93,11 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
             rotation or shear are non-zero. I'm not sure what the cause is.
             It may just be floating point issues, but Im' not sure.
 
+    TODO:
+        - [ ] FIXME: see example in Mask.scale where this algo breaks when
+        the matrix is `2x3`
+        - [ ] Make this algo work when matrix ix 2x2
+
     References:
         https://discuss.pytorch.org/t/affine-transformation-matrix-paramters-conversion/19522
         https://github.com/pytorch/pytorch/issues/15386
@@ -265,8 +270,10 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         raise ValueError('Invalid mat shape')
 
     if mat.shape[-1] not in [3, 4] or mat.shape[-1] not in [2, 3, 4]:
+        # if tuple(mat.shape) != (2, 2):
         raise ValueError(
             'mat must have shape: '
+            # '(..., 2, 2) or '
             '(..., 2, 3) or (..., 3, 3)'
             ' or (..., 3, 4) or (..., 4, 4)'
         )
@@ -294,6 +301,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     # Construct a homogenous coordinate system in the output frame where the
     # input is aligned with the top left corner.
+    # X = ndims + 1 if ishomog else ndims
     X = ndims + 1
     unwarped_coords = _coordinate_grid(output_dims)     # [X, *DIMS]
     unwarped_coords = unwarped_coords.to(inputs.device)
