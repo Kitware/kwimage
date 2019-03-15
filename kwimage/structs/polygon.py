@@ -46,22 +46,34 @@ class _GenMixin:
 
 class Polygon(object):
     """
-    A polygon is a list of points, so we reuse much of that implementation
-
-    A polygon is an external ring of coordinates
-
-    Notes: this implementation is similar to a MultiPolygon geojson object
+    Represents a single polygon as set of exterior boundary points and a list
+    of internal polygons representing holes.
 
     Example:
         >>> data = {
         >>>     'exterior': np.array([[13,  1], [13, 19], [25, 19], [25,  1]]),
-        >>>     'interiors': [np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18], [24, 19], [14, 19], [13, 18]]),
-        >>>                   np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11], [24, 12], [14, 12], [13, 11]])]
+        >>>     'interiors': [
+        >>>         np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18], [24, 19], [14, 19], [13, 18]]),
+        >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11], [24, 12], [14, 12], [13, 11]])]
         >>> }
         >>> self = Polygon(data)
     """
     __datakeys__ = ['exterior', 'interiors']
     __metakeys__ = []
+
+    @classmethod
+    def random(cls):
+        """
+        Example:
+            >>> self = Polygon.random()
+            >>> self.data
+        """
+        # TODO: https://stackoverflow.com/questions/8997099/algorithm-to-generate-random-2d-polygon
+        import kwimage
+        mask = kwimage.Mask.random()
+        exterior = mask.get_polygon()[0]
+        self = cls(exterior=exterior)
+        return self
 
     def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
                  **kwargs):
@@ -145,7 +157,7 @@ class Polygon(object):
         """
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random(10, rng=0)
+            >>> self = Polygon.random()
             >>> self.draw()
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
@@ -154,6 +166,8 @@ class Polygon(object):
             >>> kwplot.figure(fnum=2)
             >>> self.draw()
             >>> ax = plt.gca()
+            >>> ax.set_xlim(0, 120)
+            >>> ax.set_ylim(0, 120)
             >>> ax.invert_yaxis()
         """
         import matplotlib as mpl
@@ -164,16 +178,16 @@ class Polygon(object):
 
         data = self.data
 
-        exterior = data['exterior'].tolist()
+        exterior = data['exterior'].data.tolist()
         exterior.append(exterior[0])
         n = len(exterior)
         verts = []
         verts.extend(exterior)
         codes = [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
 
-        interiors = data['interiors']
+        interiors = data.get('interiors', [])
         for hole in interiors:
-            hole = hole.tolist()
+            hole = hole.data.tolist()
             hole.append(hole[0])
             n = len(hole)
             verts.extend(hole)
@@ -187,7 +201,7 @@ class Polygon(object):
     def to_imgaug(self, shape):
         import imgaug
         ia_exterior = imgaug.Polygon(self.data['exterior'])
-        ia_interiors = [imgaug.Polygon(p) for p in self.data['interiors']]
+        ia_interiors = [imgaug.Polygon(p) for p in self.data.get('interiors', [])]
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
