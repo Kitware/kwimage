@@ -701,6 +701,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>>     ..ooooooo....o.oooooooo..o......
             >>>     .............o...........o......
             >>>     .............o...........o......
+            >>>     .............ooooooooooooo......
+            >>>     .............o...........o......
+            >>>     .............o...........o......
             >>>     .............o....ooooo..o......
             >>>     .............o....o...o..o......
             >>>     .............o....ooooo..o......
@@ -769,7 +772,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             from matplotlib import pyplot as plt
             import matplotlib as mpl
 
-            # kwil.imshow(toshow, fnum=2, doclf=True)
             kwil.imshow(self.to_c_mask().data, fnum=2, doclf=True)
             ax = plt.gca()
             patches = []
@@ -801,13 +803,13 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
             # line_type = cv2.LINE_AA
             # line_type = cv2.LINE_4
-            # line_type = cv2.LINE_8
-            # contour_idx = -1
-            # thickness = 1
-
-            # toshow = np.zeros(self.shape, dtype="uint8")
-            # toshow = kwil.atleast_3channels(toshow)
-            # cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), thickness, line_type)
+            line_type = cv2.LINE_8
+            contour_idx = -1
+            thickness = 1
+            toshow = np.zeros(self.shape, dtype="uint8")
+            toshow = kwil.atleast_3channels(toshow)
+            toshow = cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), thickness, line_type)
+            kwil.imshow(toshow, fnum=2, doclf=True)
 
         # return polygon
 

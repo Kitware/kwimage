@@ -158,10 +158,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
 
             if 'xy' in data:
-                if isinstance(data['xy'], np.ndarray):
-                    import kwimage
-                    data['xy'] = kwimage.Coords(data['xy'])
-                elif isinstance(data['xy'], torch.Tensor):
+                if isinstance(data['xy'], (np.ndarray, torch.Tensor)):
                     import kwimage
                     data['xy'] = kwimage.Coords(data['xy'])
 
