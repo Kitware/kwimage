@@ -19,10 +19,24 @@ class _PolyArrayBackend:
             >>> self = Polygon.random()
             >>> self.tensor()
         """
+        # import xdev
+        # with xdev.embed_on_exception_context:
         impl = self._impl
-        newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
-                   else impl.tensor(v, device)
-                   for k, v in self.data.items()}
+
+        if True:
+            newdata = {}
+            for k, v in self.data.items():
+                if hasattr(v, 'tensor'):
+                    v2 = v.tensor(device)
+                elif isinstance(v, list):
+                    v2 = [x.tensor(device) for x in v]
+                else:
+                    v2 = impl.tensor(v, device)
+                newdata[k] = v2
+        else:
+            newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
+                       else impl.tensor(v, device)
+                       for k, v in self.data.items()}
         new = self.__class__(newdata)
         return new
 
@@ -34,8 +48,20 @@ class _PolyArrayBackend:
             >>> self.tensor().numpy().tensor().numpy()
         """
         impl = self._impl
-        newdata = {k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
-                   for k, v in self.data.items()}
+        if True:
+            newdata = {}
+            for k, v in self.data.items():
+                if hasattr(v, 'numpy'):
+                    v2 = v.numpy()
+                elif isinstance(v, list):
+                    v2 = [x.numpy() for x in v]
+                else:
+                    v2 = impl.numpy(v)
+                newdata[k] = v2
+        else:
+            # newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
+            newdata = {k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
+                       for k, v in self.data.items()}
         new = self.__class__(newdata)
         return new
 
