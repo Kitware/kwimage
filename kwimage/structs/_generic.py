@@ -76,7 +76,7 @@ class ObjectList(ub.NiceRepr):
     def draw_on(self, image, **kwargs):
         for item in self.data:
             if item is not None:
-                image = item.draw(image=image, **kwargs)
+                image = item.draw_on(image=image, **kwargs)
         return image
 
     def tensor(self, device=ub.NoParam):

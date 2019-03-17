@@ -45,11 +45,11 @@ class _DetDrawMixin:
 
         keypoints = self.data.get('keypoints', None)
         if keypoints is not None:
-            keypoints.draw(radius=10)
+            keypoints.draw(color=color, radius=10)
 
         segmentations = self.data.get('segmentations', None)
         if segmentations is not None:
-            segmentations.draw()
+            segmentations.draw(color=color, alpha=.4)
 
     def draw_on(self, image, color='blue', alpha=None, labels=True):
         """
@@ -79,11 +79,11 @@ class _DetDrawMixin:
 
         keypoints = self.data.get('keypoints', None)
         if keypoints is not None:
-            image = keypoints.draw_on(image, radius=10)
+            image = keypoints.draw_on(image, radius=10, color=color)
 
         segmentations = self.data.get('segmentations', None)
         if segmentations is not None:
-            image = segmentations.draw_on(image)
+            image = segmentations.draw_on(image, color=color, alpha=.4)
 
         return image
 

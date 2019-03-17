@@ -177,12 +177,12 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
         new = self if inplace else self.__class__(self.data.copy())
-        print('WARP new = {!r}'.format(new))
+        # print('WARP new = {!r}'.format(new))
         import skimage
         if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
             import imgaug
             if isinstance(transform, imgaug.augmenters.Augmenter):
-                print('WARP POLYGON IMGAUG')
+                # print('WARP POLYGON IMGAUG')
                 return new._warp_imgaug(transform, input_dims, inplace=True)
             else:
                 raise TypeError(type(transform))
@@ -353,7 +353,7 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
     def _impl(self):
         return self.data['exterior']._impl
 
-    def draw_on(self, image, color='blue', fill=True, border=False):
+    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
         """
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -371,24 +371,41 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
 
         # line_type = cv2.LINE_AA
         line_type = cv2.LINE_8
-        image = kwimage.ensure_uint255(image)
-        image = kwimage.atleast_3channels(image)
 
         data = self.data
         coords = [data['exterior']] + data['interiors']
         contours = [np.expand_dims(c.data.astype(np.int), axis=1) for c in coords]
 
-        rgb = kwplot.Color(color).as255()
+        # alpha = 1.0
+        if alpha == 1.0:
+            image = kwimage.ensure_uint255(image)
+            image = kwimage.atleast_3channels(image)
+            rgba = kwplot.Color(color).as255()
+        else:
+            # fill = False
+            image = kwimage.ensure_float01(image)
+            image = kwimage.ensure_alpha_channel(image)
+            rgba = kwplot.Color(color, alpha=alpha).as01()
+            print('rgba = {!r}'.format(rgba))
+        # print('rgba = {!r}'.format(rgba))
+        # print('image = {!r}'.format(image.shape))
+        # alpha # TODO
 
         if fill:
-            image = cv2.fillPoly(image, contours, rgb, line_type, shift=0)
+            if alpha == 1.0:
+                image = cv2.fillPoly(image, contours, rgba, line_type, shift=0)
+            else:
+                orig = image.copy()
+                mask = np.zeros_like(orig)
+                mask = cv2.fillPoly(mask, contours, rgba, line_type, shift=0)
+                image = kwimage.overlay_alpha_images(mask, orig)
 
-        if border:
-            thickness = 1
+        if border or True:
+            thickness = 4
             contour_idx = -1
-            image = cv2.drawContours(image, contours, contour_idx, rgb,
+            image = cv2.drawContours(image, contours, contour_idx, rgba,
                                      thickness, line_type)
-        image = kwimage.ensure_float01(image)
+        image = kwimage.ensure_float01(image)[..., 0:3]
         return image
 
     def to_mask(self, dims=None):

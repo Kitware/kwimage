@@ -782,7 +782,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             >>> kwplot.imshow(image)
             >>> dets.draw()
             >>> dets.data['keypoints'].draw(radius=6)
-            >>> dets.data['masks'].draw()
+            >>> dets.data['segmentations'].draw()
 
             >>> self.draw()
         """
@@ -1125,10 +1125,9 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>>     sampler.catgraph, kpclasses, shape=input_dims)
 
         >>> if 1:
-        >>>     masks = dets.data.pop('masks')
         >>>     dets.data['segmentations'] = kwimage.PolygonList([
         >>>         None if m is None else m.to_multi_polygon()
-        >>>         for m in masks
+        >>>         for m in dets.data['segmentations']
         >>>     ])
 
         >>> bg_size = [100, 100]
@@ -1195,12 +1194,10 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     import kwimage
 
     if 'segmentations' in dets.data:
-        assert 'masks' not in dets.data, 'using polygon masks'
-        poly_list = dets.data.get('segmentations', [None] * len(dets))
-        masks = [None if p is None else p.to_mask(input_dims)
-                     for p in poly_list]
+        sseg_list = [None if p is None else p.to_mask(input_dims)
+                     for p in dets.data['segmentations']]
     else:
-        masks = dets.data.get('masks', [None] * len(dets))
+        sseg_list = [None] * len(dets)
 
     kpts_mask = None
     if 'keypoints' in dets.data:
@@ -1233,6 +1230,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     cxywh = cxywh[sortx]
     class_idxs = class_idxs[sortx]
     pts_list = list(ub.take(pts_list, sortx))
+    sseg_list = list(ub.take(sseg_list, sortx))
 
     def iround(x):
         return int(round(x))
@@ -1240,7 +1238,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     H, W = input_dims
     xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
 
-    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, masks, pts_list):
+    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, sseg_list, pts_list):
         (cx, cy, w, h) = box
         center = (iround(cx), iround(cy))
         # Adjust so smaller objects get more pixels
