@@ -1219,7 +1219,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
             if pts is not None:
                 pass
 
-        ignore_kpts_mask = np.zeros((num_kp_classes) + tuple(input_dims), dtype=np.float32)
+        ignore_kpts_mask = np.zeros((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
     else:
         pts_list = [None] * len(dets)
 
