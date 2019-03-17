@@ -1219,7 +1219,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
             if pts is not None:
                 pass
 
-        ignore_kpts_mask = np.zeros((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
+        kpts_ignore_mask = np.zeros((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
     else:
         pts_list = [None] * len(dets)
 
@@ -1286,8 +1286,8 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
             if pts is None:
                 # Denote we dont care about
-                for kp_cidx in range(len(ignore_kpts_mask)):
-                    ignore_kpts_mask[kp_cidx][mask] = 1
+                for kp_cidx in range(len(kpts_ignore_mask)):
+                    kpts_ignore_mask[kp_cidx][mask] = 1
             else:
                 # Keypoint offsets
                 for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
@@ -1312,7 +1312,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     if kpts_mask is not None:
         fcn_target['kpts'] = kpts_mask
-        fcn_target['ignore_kpts'] = ignore_kpts_mask
+        fcn_target['kpts_ignore'] = kpts_ignore_mask
     else:
         if 'keypoints' in dets.data:
             if any(kp is not None for kp in dets.data['keypoints']):
