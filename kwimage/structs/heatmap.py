@@ -1126,7 +1126,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
         >>> if 1:
         >>>     masks = dets.data.pop('masks')
-        >>>     dets.data['polygons'] = kwimage.PolygonList([
+        >>>     dets.data['segmentations'] = kwimage.PolygonList([
         >>>         None if m is None else m.to_multi_polygon()
         >>>         for m in masks
         >>>     ])
@@ -1192,11 +1192,11 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     cxywh = dets.boxes.to_cxywh().data
     class_idxs = dets.class_idxs
+    import kwimage
 
-    if 'polygons' in dets.data:
-        import kwimage
+    if 'segmentations' in dets.data:
         assert 'masks' not in dets.data, 'using polygon masks'
-        poly_list = dets.data.get('polygons', [None] * len(dets))
+        poly_list = dets.data.get('segmentations', [None] * len(dets))
         masks = [None if p is None else p.to_mask(input_dims)
                      for p in poly_list]
     else:
@@ -1264,7 +1264,6 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         # class index
         cidx_mask[mask] = int(cidx)
         if soft:
-            import kwimage
             blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
             blip = blip / blip.max()
             subindex = (slice(cy - half_h, cy + half_h),
@@ -1291,6 +1290,9 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                 kp_dy = kp_y - ycoord[mask]
                 kpts_mask[0, kp_cidx][mask] = kp_dx
                 kpts_mask[1, kp_cidx][mask] = kp_dy
+
+        # SeeAlso:
+        # ~/code/ovharn/ovharn/models/mcd_coder.py
 
     fcn_target = {
         'size': size_mask,

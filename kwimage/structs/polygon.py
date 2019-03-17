@@ -177,10 +177,12 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
         new = self if inplace else self.__class__(self.data.copy())
+        print('WARP new = {!r}'.format(new))
         import skimage
         if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
             import imgaug
             if isinstance(transform, imgaug.augmenters.Augmenter):
+                print('WARP POLYGON IMGAUG')
                 return new._warp_imgaug(transform, input_dims, inplace=True)
             else:
                 raise TypeError(type(transform))
@@ -229,8 +231,10 @@ class _PolyWarpMixin:
             >>> assert new.xy.max() <= 11
         """
         new = self if inplace else self.__class__(self.data.copy())
-        new.data['exterior'] = new.data['exterior'].translate(offset, output_dims, inplace)
-        new.data['interiors'] = [p.translate(offset, output_dims, inplace) for p in new.data['interiors']]
+        new.data['exterior'] = new.data['exterior'].translate(
+            offset, output_dims, inplace)
+        new.data['interiors'] = [p.translate(offset, output_dims, inplace)
+                                 for p in new.data['interiors']]
         return new
 
 
@@ -490,6 +494,9 @@ class MultiPolygon(_generic.ObjectList):
         rng = kwarray.ensure_rng(rng)
         data = [Polygon.random(rng=rng) for _ in range(n)]
         self = MultiPolygon(data)
+        return self
+
+    def to_multi_polygon(self):
         return self
 
     def to_mask(self, dims=None):

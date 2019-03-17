@@ -750,6 +750,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         return polygon
 
+    def to_mask(self):
+        return self
+
     def to_multi_polygon(self):
         """
         Returns a MultiPolygon object fit around this raster including disjoint

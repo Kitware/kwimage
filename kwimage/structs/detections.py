@@ -43,6 +43,14 @@ class _DetDrawMixin:
         self.boxes.draw(labels=labels, color=color, alpha=alpha, fill=fill,
                         centers=centers, ax=ax, lw=lw)
 
+        keypoints = self.data.get('keypoints', None)
+        if keypoints is not None:
+            keypoints.draw(radius=10)
+
+        segmentations = self.data.get('segmentations', None)
+        if segmentations is not None:
+            segmentations.draw()
+
     def draw_on(self, image, color='blue', alpha=None, labels=True):
         """
         Draws boxes directly on the image using OpenCV
@@ -68,6 +76,15 @@ class _DetDrawMixin:
         alpha = self._make_alpha(alpha)
         image = self.boxes.draw_on(image, color=color, alpha=alpha,
                                    labels=labels)
+
+        keypoints = self.data.get('keypoints', None)
+        if keypoints is not None:
+            image = keypoints.draw_on(image, radius=10)
+
+        segmentations = self.data.get('segmentations', None)
+        if segmentations is not None:
+            image = segmentations.draw_on(image)
+
         return image
 
     def _make_alpha(self, alpha):
@@ -210,7 +227,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # and efficient. Currently I've allowed the user to specify custom datakeys
     # and metakeys as kwargs, but that design might change.
     __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
-                    'keypoints', 'polygons', 'masks']
+                    'keypoints', 'segmentations']
+                    # 'polygons', 'masks']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['classes']
@@ -422,10 +440,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if True:
             ss = [ann.get('segmentation', None) for ann in anns]
             masks = [
-                None if s is None else kwimage.Mask.coerce(s, shape=shape)
+                None if s is None else
+                kwimage.Mask.coerce(s, shape=shape).to_multi_polygon()
                 for s in ss
             ]
-            dets.data['masks'] = kwimage.MaskList(masks)
+            dets.data['segmentations'] = kwimage.PolygonList(masks)
 
         if True:
             name_to_cat = {c['name']: c for c in cats}
@@ -516,10 +535,53 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             new.data['keypoints'] = new.data['keypoints'].warp(
                 transform, input_dims=input_dims, output_dims=output_dims,
                 inplace=inplace)
-        if 'masks' in new.data:
-            new.data['masks'] = new.data['masks'].warp(
+        if 'segmentations' in new.data:
+            new.data['segmentations'] = new.data['segmentations'].warp(
                 transform, input_dims=input_dims, output_dims=output_dims,
                 inplace=inplace)
+        return new
+
+    def scale(self, factor, output_dims=None, inplace=False):
+        """
+        Spatially warp the detections.
+
+        Example:
+            >>> import skimage
+            >>> transform = skimage.transform.AffineTransform(scale=(2, 3), translation=(4, 5))
+            >>> self = Detections.random(2)
+            >>> new = self.warp(transform)
+            >>> assert new.boxes == self.boxes.warp(transform)
+            >>> assert new != self
+        """
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new.data['boxes'] = new.data['boxes'].scale(factor, inplace=inplace)
+        if 'keypoints' in new.data:
+            new.data['keypoints'] = new.data['keypoints'].scale(
+                factor, output_dims=output_dims, inplace=inplace)
+        if 'segmentations' in new.data:
+            new.data['segmentations'] = new.data['segmentations'].scale(
+                factor, output_dims=output_dims, inplace=inplace)
+        return new
+
+    def translate(self, offset, output_dims=None, inplace=False):
+        """
+        Spatially warp the detections.
+
+        Example:
+            >>> import skimage
+            >>> self = Detections.random(2)
+            >>> new = self.translate(10)
+            >>> assert new.boxes == self.boxes.warp(transform)
+            >>> assert new != self
+        """
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new.data['boxes'] = new.data['boxes'].translate(offset, inplace=inplace)
+        if 'keypoints' in new.data:
+            new.data['keypoints'] = new.data['keypoints'].translate(
+                offset, output_dims=output_dims)
+        if 'segmentations' in new.data:
+            new.data['segmentations'] = new.data['segmentations'].translate(
+                offset, output_dims=output_dims)
         return new
 
     @classmethod
@@ -605,6 +667,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> subset = dets.tensor().compress(flags)
             >>> assert len(subset) == flags.sum()
         """
+        if flags is Ellipsis:
+            return self
+
         if len(flags) != len(self):
             raise IndexError('compress must get a flag for every item')
 
