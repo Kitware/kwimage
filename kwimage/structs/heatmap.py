@@ -1218,6 +1218,8 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         for pts in pts_list:
             if pts is not None:
                 pass
+
+        ignore_kpts_mask = np.zeros((num_kp_classes) + tuple(input_dims), dtype=np.float32)
     else:
         pts_list = [None] * len(dets)
 
@@ -1280,14 +1282,20 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         dxdy_mask[0][mask] = dx
         dxdy_mask[1][mask] = dy
 
-        if kpts_mask is not None and pts is not None:
-            # Keypoint offsets
-            for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
-                kp_x, kp_y = xy
-                kp_dx = kp_x - xcoord[mask]
-                kp_dy = kp_y - ycoord[mask]
-                kpts_mask[0, kp_cidx][mask] = kp_dx
-                kpts_mask[1, kp_cidx][mask] = kp_dy
+        if kpts_mask is not None:
+
+            if pts is None:
+                # Denote we dont care about
+                for kp_cidx in range(len(ignore_kpts_mask)):
+                    ignore_kpts_mask[kp_cidx][mask] = 1
+            else:
+                # Keypoint offsets
+                for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
+                    kp_x, kp_y = xy
+                    kp_dx = kp_x - xcoord[mask]
+                    kp_dy = kp_y - ycoord[mask]
+                    kpts_mask[0, kp_cidx][mask] = kp_dx
+                    kpts_mask[1, kp_cidx][mask] = kp_dy
 
         # SeeAlso:
         # ~/code/ovharn/ovharn/models/mcd_coder.py
@@ -1304,6 +1312,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     if kpts_mask is not None:
         fcn_target['kpts'] = kpts_mask
+        fcn_target['ignore_kpts'] = ignore_kpts_mask
     else:
         if 'keypoints' in dets.data:
             if any(kp is not None for kp in dets.data['keypoints']):
