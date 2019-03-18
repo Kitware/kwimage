@@ -1123,16 +1123,19 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> dets = kwimage.Detections.from_coco_annots(
         >>>     anns, sampler.dset.dataset['categories'],
         >>>     sampler.catgraph, kpclasses, shape=input_dims)
-
-        >>> if 1:
-        >>>     dets.data['segmentations'] = kwimage.PolygonList([
-        >>>         None if m is None else m.to_multi_polygon()
-        >>>         for m in dets.data['segmentations']
-        >>>     ])
-
         >>> bg_size = [100, 100]
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
+        >>> fcn_target.keys()
+        >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        fcn_target: {
+            'cidx': (512, 512),
+            'class_probs': (10, 512, 512),
+            'dxdy': (2, 512, 512),
+            'kpts': (2, 7, 512, 512),
+            'kpts_ignore': (7, 512, 512),
+            'size': (2, 512, 512),
+        }
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -1219,7 +1222,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
             if pts is not None:
                 pass
 
-        kpts_ignore_mask = np.zeros((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
+        kpts_ignore_mask = np.ones((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
     else:
         pts_list = [None] * len(dets)
 
@@ -1284,11 +1287,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
         if kpts_mask is not None:
 
-            if pts is None:
-                # Denote we dont care about
-                for kp_cidx in range(len(kpts_ignore_mask)):
-                    kpts_ignore_mask[kp_cidx][mask] = 1
-            else:
+            if pts is not None:
                 # Keypoint offsets
                 for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
                     kp_x, kp_y = xy
@@ -1296,6 +1295,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     kp_dy = kp_y - ycoord[mask]
                     kpts_mask[0, kp_cidx][mask] = kp_dx
                     kpts_mask[1, kp_cidx][mask] = kp_dy
+                    kpts_ignore_mask[kp_cidx][mask]
 
         # SeeAlso:
         # ~/code/ovharn/ovharn/models/mcd_coder.py
