@@ -3,6 +3,9 @@
 Structure for efficient access and modification of bounding boxes with
 associated scores and class labels. Builds on top of the `kwimage.Boxes`
 structure.
+
+Also can optionally incorporate `kwimage.PolygonList` for segmentation masks
+and `kwimage.PointsList` for keypoints.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import six
