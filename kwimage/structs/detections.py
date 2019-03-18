@@ -18,7 +18,8 @@ class _DetDrawMixin:
     Non critical methods for visualizing detections
     """
     def draw(self, color='blue', alpha=None, labels=True, centers=False,
-             lw=2, fill=False, ax=None):
+             lw=2, fill=False, ax=None, radius=10, kpts=True, sseg=True,
+             setlim=False):
         """
         Draws boxes using matplotlib
 
@@ -44,12 +45,23 @@ class _DetDrawMixin:
                         centers=centers, ax=ax, lw=lw)
 
         keypoints = self.data.get('keypoints', None)
-        if keypoints is not None:
-            keypoints.draw(color=color, radius=10)
+        if kpts and keypoints is not None:
+            keypoints.draw(color=color, radius=radius)
 
         segmentations = self.data.get('segmentations', None)
-        if segmentations is not None:
+        if sseg and segmentations is not None:
             segmentations.draw(color=color, alpha=.4)
+
+        if setlim:
+            x1, y1, x2, y2 = self.boxes.to_tlbr().components
+            xmax = x2.max()
+            xmin = x1.min()
+            ymax = y2.max()
+            ymin = y1.min()
+            import matplotlib.pyplot as plt
+            ax = plt.gca()
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=True):
         """

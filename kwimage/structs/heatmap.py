@@ -157,7 +157,7 @@ class _HeatmapDrawMixin(object):
 
         Example:
             >>> import kwimage
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
             >>> toshow = self.draw_on(image, 0, vecs=False, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
@@ -167,7 +167,7 @@ class _HeatmapDrawMixin(object):
 
         Example:
             >>> import kwimage
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
             >>> kpts = 6
             >>> self = self.warp(self.tf_data_to_img.params)
@@ -190,6 +190,7 @@ class _HeatmapDrawMixin(object):
         if vecs:
             if self.data.get('offset', None) is not None:
                 #Hack
+                # Visualize center offset vectors
                 dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])
                 vecmask = kwplot.make_vector_field(dx, dy, stride=4, scale=1.0, alpha=with_alpha * .6)
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
@@ -198,6 +199,7 @@ class _HeatmapDrawMixin(object):
                 overlaid = kwimage.overlay_alpha_images(vecalign, overlaid)
 
         if kpts is not None:
+            # TODO: make a nicer keypoint offset vector visuliazation
             if self.data.get('keypoints', None) is not None:
                 dy, dx = kwarray.ArrayAPI.numpy(self.data['keypoints'][:, kpts])
                 vecmask = kwplot.make_vector_field(dx, dy, stride=8, scale=0.5, alpha=with_alpha * .6)
@@ -351,7 +353,7 @@ class _HeatmapWarpMixin(object):
 
         Example:
             >>> import kwimage
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> self = kwimage.Heatmap.random(dims=(100, 100), dets='coco', keypoints=True)
             >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
@@ -549,7 +551,7 @@ class _HeatmapAlgoMixin(object):
                 these results to remove duplicate detections.
 
         Example:
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> import ndsampler
             >>> self = Heatmap.random(rng=2, dims=(32, 32), diameter=10, offset=0)
@@ -568,13 +570,13 @@ class _HeatmapAlgoMixin(object):
             >>> dets2.draw()
 
         Example:
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> import ndsampler
             >>> catgraph = ndsampler.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.heirarchical_softmax(class_energy, dim=0)
-            >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph)
+            >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)
             >>> self.data['class_probs'] = class_probs.numpy()
             >>> channel = catgraph.index('background')
             >>> dets = self.detect(channel, invert=True)
@@ -587,12 +589,12 @@ class _HeatmapAlgoMixin(object):
             >>> dets1 = dets.sort().take(range(10))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
-            >>> dets1.draw()
+            >>> dets1.draw(radius=1.0)
             >>> # Transform heatmap and detections into image space.
             >>> colormask2 = self.colorize(0, imgspace=True)
             >>> dets2 = dets1.warp(self.tf_data_to_img)
             >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
-            >>> dets2.draw()
+            >>> dets2.draw(radius=1.0)
         """
         if isinstance(channel, int):
             probs = self.class_probs[channel]
@@ -603,8 +605,9 @@ class _HeatmapAlgoMixin(object):
 
         dets = _prob_to_dets(
             probs, diameter=self.diameter, offset=self.offset,
-            class_probs=self.class_probs, min_score=min_score,
-            num_min=num_min,
+            class_probs=self.class_probs,
+            keypoints=self.data.get('keypoints', None),
+            min_score=min_score, num_min=num_min,
         )
         dets.meta['classes'] = self.classes
         return dets
@@ -670,7 +673,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
     __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints']
 
     # Valid keys for the meta dictionary
-    __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes']
+    __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
 
     def __init__(self, data=None, meta=None, **kwargs):
         # Standardize input format
@@ -751,7 +754,9 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             img_dims (Tuple): dimensions of the image the heatmap corresponds to
 
         Example:
-            >>> self = Heatmap.random((128, 128), img_dims=(200, 200), classes=3, nblips=10, rng=0, noise=0.1)
+            >>> from kwimage.structs.heatmap import *  # NOQA
+            >>> self = Heatmap.random((128, 128), img_dims=(200, 200),
+            >>>     classes=3, nblips=10, rng=0, noise=0.1)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -767,10 +772,12 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             globals().update(xdev.get_func_kwargs(Heatmap.random))
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> import kwimage
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
-            >>> self = kwimage.Heatmap.random(dims=(50, 200), dets='coco', keypoints=True)
-            >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
+            >>> self = kwimage.Heatmap.random(dims=(50, 200), dets='coco',
+            >>>                               keypoints=True)
+            >>> image = np.zeros(self.img_dims)
+            >>> toshow = self.draw_on(image, 1, vecs=True, kpts=0, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -935,9 +942,11 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
 
 def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
-                  min_score=0.01, num_min=10):
+                  keypoints=None, min_score=0.01, num_min=10):
     """
     Directly convert a one-channel probability map into a Detections object.
+
+    Helper for Heatmap.detect
 
     It does this by converting each pixel above a threshold in a probability
     map to a detection with a specified diameter.
@@ -959,6 +968,9 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             probabilities for each class at each pixel location.
             If specified, this will populate the `probs` attribute of the
             returned Detections object.
+
+        keypoints (ArrayLike[2, K, H, W], optional):
+            Keypoint predictions for all keypoint classes
 
         min_score (float, default=0.1): probability threshold required
             for a pixel to be converted into a detection.
@@ -988,11 +1000,12 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> import kwimage
         >>> from kwimage.structs.heatmap import *
         >>> from kwimage.structs.heatmap import _prob_to_dets
-        >>> heatmap = kwimage.Heatmap.random(rng=0, dims=(3, 3))
+        >>> heatmap = kwimage.Heatmap.random(rng=0, dims=(3, 3), keypoints=True)
         >>> # Try with numpy
         >>> min_score = .5
         >>> dets = _prob_to_dets(heatmap.class_probs[0], heatmap.diameter,
         >>>                            heatmap.offset, heatmap.class_probs,
+        >>>                            heatmap.data['keypoints'],
         >>>                            min_score)
         >>> assert dets.boxes.data.dtype.kind == 'f'
         >>> assert len(dets) == 9
@@ -1001,11 +1014,17 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> heatmap = heatmap.tensor()
         >>> dets = _prob_to_dets(heatmap.class_probs[0], heatmap.diameter,
         >>>                            heatmap.offset, heatmap.class_probs,
+        >>>                            heatmap.data['keypoints'],
         >>>                            min_score)
         >>> assert dets.boxes.data.dtype.is_floating_point
         >>> assert len(dets) == 9
         >>> dets_torch = dets
         >>> assert np.all(dets_torch.numpy().boxes.data == dets_np.boxes.data)
+
+    Ignore:
+        import kwil
+        kwil.autompl()
+        dets.draw(setlim=True, radius=.1)
 
     Example:
         >>> heatmap = Heatmap.random(rng=0, dims=(3, 3), diameter=1)
@@ -1063,6 +1082,10 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     import kwimage
     tlbr = kwimage.Boxes(cxywh, 'cxywh').toformat('tlbr')
     scores = probs[flags]
+
+    # TODO:
+    # Can we extract the detected segmentation mask/poly here as well?
+
     dets = kwimage.Detections(boxes=tlbr, scores=scores)
 
     # Get per-class probs for each detection
@@ -1076,6 +1099,19 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         else:
             det_dxdy = impl.T(offset[:, yc, xc][[1, 0]])
         dets.boxes.translate(det_dxdy, inplace=True)
+
+    if keypoints is not None:
+        # Take keypoint predictions for each remaining detection
+        det_kpts_xy = impl.contiguous(impl.T(keypoints[:, :, yc, xc][[1, 0]]))
+        # Translate keypoints to absolute coordinates
+        det_kpts_xy[..., 0] += xc_[:, None]
+        det_kpts_xy[..., 1] += yc_[:, None]
+
+        # TODO: need to package kp_classes as well
+        det_kpts = kwimage.PointsList([
+            kwimage.Points(xy=xys) for xys in det_kpts_xy])
+
+        dets.data['keypoints'] = det_kpts
 
     assert len(dets.scores.shape) == 1
     return dets
@@ -1091,13 +1127,11 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         - [X] Make this into something that effectively inverts detections
         into a heatmap so we can have prettier visualizations in our tests.
         - [X] handle masks and keypoints
-        - [ ] handle masks and keypoints well
 
     Args:
-        dets (Detections):
-        input_dims (tuple): window H, W
+        dets (kwimage.Detections):
         bg_size (tuple): size (W, H) to predict for backgrounds
-        catgraph : category heirarchy
+        input_dims (tuple): window H, W
 
     Returns:
         dict: with keys
@@ -1113,7 +1147,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> from kwimage.structs.heatmap import *  # NOQA
         >>> from kwimage.structs.heatmap import _dets_to_fcmaps
         >>> import kwimage
-        >>> # xdoctest: +REQUIRES(--module:ndsampler)
+        >>> # xdoctest: +REQUIRES(module:ndsampler)
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo('photos')
         >>> iminfo, anns = sampler.load_image_with_annots(1)
