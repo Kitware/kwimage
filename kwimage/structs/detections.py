@@ -583,8 +583,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> import skimage
             >>> self = Detections.random(2)
             >>> new = self.translate(10)
-            >>> assert new.boxes == self.boxes.warp(transform)
-            >>> assert new != self
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['boxes'] = new.data['boxes'].translate(offset, inplace=inplace)
@@ -774,13 +772,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if val is None:
                 newval = val
             else:
-                try:
-                    if isinstance(val, _boxes.Boxes):
-                        newval = val.numpy()
-                    else:
-                        newval = val.data.cpu().numpy()
-                # except AttributeError('memoryview.* no attribute .*cpu'):
-                except AttributeError:
+                if torch.is_tensor(val):
+                    newval = val.data.cpu().numpy()
+                elif hasattr(val, 'numpy'):
+                    newval = val.numpy()
+                else:
                     newval = val
             newdata[key] = newval
         newself = self.__class__(newdata, self.meta)

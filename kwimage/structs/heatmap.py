@@ -159,6 +159,7 @@ class _HeatmapDrawMixin(object):
             >>> import kwimage
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
+            >>> image = kwimage.grab_test_image('astro')
             >>> toshow = self.draw_on(image, 0, vecs=False, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -171,6 +172,7 @@ class _HeatmapDrawMixin(object):
             >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
             >>> kpts = 6
             >>> self = self.warp(self.tf_data_to_img.params)
+            >>> image = kwimage.grab_test_image('astro')
             >>> toshow = self.draw_on(image, 0, with_alpha=0.85, kpts=kpts)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -355,6 +357,7 @@ class _HeatmapWarpMixin(object):
             >>> import kwimage
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> self = kwimage.Heatmap.random(dims=(100, 100), dets='coco', keypoints=True)
+            >>> image = np.zeros(self.img_dims)
             >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -1033,7 +1036,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> offset = heatmap.offset
         >>> class_probs = heatmap.class_probs
         >>> min_score = 0.5
-        >>> dets = _prob_to_dets(probs, diameter, offset, class_probs, min_score)
+        >>> dets = _prob_to_dets(probs, diameter, offset, class_probs, None, min_score)
     """
     impl = kwarray.ArrayAPI.impl(probs)
 
