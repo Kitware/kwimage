@@ -812,10 +812,10 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             iminfo, anns = sampler.load_image_with_annots(1)
             image = iminfo['imdata']
             input_dims = image.shape[:2]
-            kpclasses = sampler.dset.keypoint_categories()
+            kp_classes = sampler.dset.keypoint_categories()
             dets = kwimage.Detections.from_coco_annots(
                 anns, cats=sampler.dset.dataset['categories'], shape=input_dims,
-                kpclasses=kpclasses)
+                kp_classes=kp_classes)
             img_dims = input_dims
 
         if isinstance(classes, int):
@@ -875,6 +875,9 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             offset = _target['dxdy'][[1, 0]]
 
         if keypoints is True:
+            if 'kp_classes' not in locals():
+                kp_classes = list(range(_target['kpts'].shape[1]))  # HACK
+
             keypoints = _target['kpts'][[1, 0]]
 
         if diameter is True:
@@ -886,6 +889,8 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
         if keypoints is not False and keypoints is not None:
             self.data['keypoints'] = keypoints
+            self.meta['kp_classes'] = kp_classes
+
         return self
 
     # --- Data Properties ---
@@ -1161,10 +1166,10 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> iminfo, anns = sampler.load_image_with_annots(1)
         >>> image = iminfo['imdata']
         >>> input_dims = image.shape[0:2]
-        >>> kpclasses = sampler.dset.keypoint_categories()
+        >>> kp_classes = sampler.dset.keypoint_categories()
         >>> dets = kwimage.Detections.from_coco_annots(
         >>>     anns, sampler.dset.dataset['categories'],
-        >>>     sampler.catgraph, kpclasses, shape=input_dims)
+        >>>     sampler.catgraph, kp_classes, shape=input_dims)
         >>> bg_size = [100, 100]
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
