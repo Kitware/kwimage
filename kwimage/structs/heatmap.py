@@ -612,6 +612,11 @@ class _HeatmapAlgoMixin(object):
             keypoints=self.data.get('keypoints', None),
             min_score=min_score, num_min=num_min,
         )
+        if dets.data.get('keypoints', None) is not None:
+            kp_classes = self.meta['kp_classes']
+            dets.data['keypoints'].meta['classes'] = kp_classes
+            dets.meta['kp_classes'] = kp_classes
+
         dets.meta['classes'] = self.classes
         return dets
 
