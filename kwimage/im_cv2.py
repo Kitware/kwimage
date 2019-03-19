@@ -316,9 +316,12 @@ def draw_text_on_image(img, text, org, **kwargs):
         if k in kwargs
     }
     x0, y0 = list(map(int, org))
-    ypad = kwargs.get('thickness', 2) + 4
+    thickness = kwargs.get('thickness', 2)
+    ypad = thickness + 4
 
     lines = text.split('\n')
+    # line_sizes2 = np.array([cv2.getTextSize(line, **getsize_kw) for line in lines])
+    # print('line_sizes2 = {!r}'.format(line_sizes2))
     line_sizes = np.array([cv2.getTextSize(line, **getsize_kw)[0] for line in lines])
 
     line_org = []
@@ -353,6 +356,12 @@ def draw_text_on_image(img, text, org, **kwargs):
             line_org[:, 1] += first_h
         else:
             raise KeyError(valign)
+
+    if img is None:
+        # if image is unspecified allocate just enough space for text
+        total_w = line_sizes.T[0].max()
+        # TODO: does not account for origin offset
+        img = np.zeros((total_h + thickness, total_w), dtype=np.uint8)
 
     for i, line in enumerate(lines):
         (x, y) = line_org[i]
