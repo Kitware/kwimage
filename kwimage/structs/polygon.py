@@ -286,11 +286,14 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
         self.data = data
 
     @classmethod
-    def random(cls, n=6, n_holes=0, rng=None):
+    def random(cls, n=6, n_holes=0, convex=True, rng=None):
         """
         Args:
             n (int): number of points in the polygon (must be more than 4)
             n_holes (int): number of holes
+
+        CommandLine:
+            xdoctest -m kwimage.structs.polygon Polygon.random
 
         Example:
             >>> rng = 0
@@ -310,18 +313,17 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
             https://stackoverflow.com/questions/27548363/from-voronoi-tessellation-to-shapely-polygons
         """
         import kwarray
-        import shapely
-        from shapely.geometry import Point
+
         import scipy
         rng = kwarray.ensure_rng(rng)
         points = rng.rand(n, 2)
 
-        # exterior = _order_vertices(points)
-        hull = scipy.spatial.ConvexHull(points)
-        exterior = hull.points[hull.vertices]
+        if convex:
+            hull = scipy.spatial.ConvexHull(points)
+            exterior = hull.points[hull.vertices]
+        else:
+            exterior = points
         exterior = _order_vertices(exterior)
-
-        polygon = shapely.geometry.Polygon(shell=exterior)
 
         def generate_random(number, polygon, rng):
             # FIXME: needs to be inside a convex portion of the polygon
@@ -337,11 +339,19 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
             return list_of_points
 
         interiors = []
-        for _ in range(n_holes):
-            polygon = shapely.geometry.Polygon(shell=exterior, holes=interiors)
-            in_pts = generate_random(4, polygon, rng)
-            interior = _order_vertices(np.array(in_pts))[::-1]
-            interiors.append(interior)
+        if n_holes:
+            try:
+                import shapely
+                from shapely.geometry import Point
+            except Exception:
+                print('FAILED TO IMPORT SHAPELY')
+                raise
+            polygon = shapely.geometry.Polygon(shell=exterior)
+            for _ in range(n_holes):
+                polygon = shapely.geometry.Polygon(shell=exterior, holes=interiors)
+                in_pts = generate_random(4, polygon, rng)
+                interior = _order_vertices(np.array(in_pts))[::-1]
+                interiors.append(interior)
 
         self = cls(exterior=exterior, interiors=interiors)
         return self

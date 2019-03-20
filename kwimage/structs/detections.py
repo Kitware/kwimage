@@ -244,7 +244,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # and metakeys as kwargs, but that design might change.
     __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
                     'keypoints', 'segmentations']
-                    # 'polygons', 'masks']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['classes']
@@ -391,7 +390,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return copy.deepcopy(self)
 
     @classmethod
-    def from_coco_annots(cls, anns, cats, classes=None, kpclasses=None,
+    def from_coco_annots(cls, anns, cats, classes=None, kp_classes=None,
                          shape=None):
         """
         Example:
@@ -428,10 +427,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> sampler = ndsampler.CocoSampler.demo('photos')
             >>> iminfo, anns = sampler.load_image_with_annots(1)
             >>> shape = iminfo['imdata'].shape[0:2]
-            >>> kpclasses = sampler.dset.keypoint_categories()
+            >>> kp_classes = sampler.dset.keypoint_categories()
             >>> dets = kwimage.Detections.from_coco_annots(
             >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph,
-            >>>     kpclasses, shape=shape)
+            >>>     kp_classes, shape=shape)
 
         Ignore:
             import skimage
@@ -475,7 +474,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         cid = name_to_cat[cat['supercategory']]['id']
                     else:
                         raise KeyError(cid)
-                kpcidxs = [kpclasses.index(n) for n in kpnames]
+                kpcidxs = [kp_classes.index(n) for n in kpnames]
                 return kpcidxs
             kpts = []
             for ann in anns:
@@ -484,7 +483,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     kpts.append(k)
                 else:
                     kpcidxs = None
-                    if kpclasses is not None:
+                    if kp_classes is not None:
                         kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
                     pts = kwimage.Points(
                         xy=np.array(k).reshape(-1, 3)[:, 0:2],
@@ -493,8 +492,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     kpts.append(pts)
             dets.data['keypoints'] = kwimage.PointsList(kpts)
 
-            if kpclasses is not None:
-                dets.data['keypoints'].meta['classes'] = kpclasses
+            if kp_classes is not None:
+                dets.data['keypoints'].meta['classes'] = kp_classes
         return dets
 
     # --- Data Properties ---
@@ -862,15 +861,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                    classes=classes)
 
         if keypoints is True:
-            kpclasses = [1, 2, 3, 4]
+            kp_classes = [1, 2, 3, 4]
             kpts_list = kwimage.PointsList([
                 kwimage.Points.random(
-                    num=rng.randint(len(kpclasses)),
-                    classes=kpclasses,
+                    num=rng.randint(len(kp_classes)),
+                    classes=kp_classes,
                 ).scale(scale)
                 for _ in range(len(boxes))
             ])
-            kpts_list.meta['classes'] = kpclasses
+            kpts_list.meta['classes'] = kp_classes
             self.data['keypoints'] = kpts_list
 
         if tensor:

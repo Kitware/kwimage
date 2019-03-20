@@ -90,3 +90,17 @@ class ObjectList(ub.NiceRepr):
     @xdev.profile
     def numpy(self):
         return self.apply(lambda item: item.numpy())
+
+    @classmethod
+    def concatenate(cls, data):
+        raise NotImplementedError
+
+    def is_tensor(cls):
+        raise NotImplementedError
+
+    def is_numpy(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def random(cls):
+        raise NotImplementedError
