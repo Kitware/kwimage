@@ -1,4 +1,5 @@
 import ubelt as ub
+import xdev
 
 
 class ObjectList(ub.NiceRepr):
@@ -28,18 +29,21 @@ class ObjectList(ub.NiceRepr):
         for index in range(len(self)):
             yield self[index]
 
+    @xdev.profile
     def translate(self, offset, output_dims=None):
         newdata = [None if item is None else
                    item.translate(offset, output_dims=output_dims)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
+    @xdev.profile
     def scale(self, factor, output_dims=None):
         newdata = [None if item is None else
                    item.scale(factor, output_dims=output_dims)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
+    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         if inplace:
             for item in self.data:
@@ -79,8 +83,10 @@ class ObjectList(ub.NiceRepr):
                 image = item.draw_on(image=image, **kwargs)
         return image
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         return self.apply(lambda item: item.tensor(device))
 
+    @xdev.profile
     def numpy(self):
         return self.apply(lambda item: item.numpy())

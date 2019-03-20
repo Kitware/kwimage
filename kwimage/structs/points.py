@@ -3,11 +3,13 @@ import ubelt as ub
 import skimage
 import kwarray
 import torch
+import xdev
 from . import _generic
 
 
 class _PointsWarpMixin:
 
+    @xdev.profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -70,6 +72,7 @@ class _PointsWarpMixin:
         self = cls(xy=xy)
         return self
 
+    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -109,6 +112,7 @@ class _PointsWarpMixin:
                                              output_dims, inplace)
         return new
 
+    @xdev.profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a points by a factor
@@ -128,6 +132,7 @@ class _PointsWarpMixin:
         new.data['xy'] = new.data['xy'].scale(factor, output_dims, inplace)
         return new
 
+    @xdev.profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the points up/down left/right
@@ -174,6 +179,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     # Pre-registered keys for the meta dictionary
     __metakeys__ = ['classes']
 
+    @xdev.profile
     def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
                  **kwargs):
         if kwargs:
@@ -251,6 +257,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     def _impl(self):
         return self.data['xy']._impl
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Example:
@@ -265,6 +272,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
+    @xdev.profile
     def numpy(self):
         """
         Example:
@@ -319,7 +327,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             import cv2
             image = kwimage.atleast_3channels(image)
             image = kwimage.ensure_float01(image)
-            for xy in self.data['xy'].data:
+            for xy in self.data['xy'].data.reshape(-1, 2):
                 # center = tuple(map(int, xy.tolist()))
                 center = tuple(xy.tolist())
                 axes = (radius / 2, radius / 2)
@@ -344,7 +352,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         from matplotlib import pyplot as plt
         if ax is None:
             ax = plt.gca()
-        xy = self.data['xy'].data
+        xy = self.data['xy'].data.reshape(-1, 2)
 
         # More grouped patches == more efficient runtime
         if alpha is None:
@@ -367,6 +375,35 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
             ax.add_collection(col)
+
+    def compress(self, flags, axis=0, inplace=False):
+        """
+        Filters items based on a boolean criterion
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data['xy'] = new.data['xy'].compress(flags, axis, inplace=inplace)
+        return new
+
+    def take(self, indices, axis=0, inplace=False):
+        """
+        Takes a subset of items at specific indices
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data['xy'] = new.data['xy'].take(indices, axis, inplace=inplace)
+        return new
+
+    @classmethod
+    def concatenate(cls, points, axis=0):
+        if len(points) == 0:
+            raise ValueError('need at least one box to concatenate')
+        if axis != 0:
+            raise ValueError('can only concatenate along axis=0')
+        import kwimage
+        first = points[0]
+        datas = [p.data['xy'] for p in points]
+        newxy = kwimage.Coords.concatenate(datas)
+        new = cls({'xy': newxy}, first.meta)
+        return new
 
 
 class PointsList(_generic.ObjectList):

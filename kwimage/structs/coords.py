@@ -2,6 +2,7 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
+import xdev
 
 
 class Coords(ub.NiceRepr):
@@ -160,6 +161,38 @@ class Coords(ub.NiceRepr):
         data_ = self._impl.view(self.data, *shape)
         return self.__class__(data_, self.meta)
 
+    @classmethod
+    def concatenate(cls, coords, axis=0):
+        """
+        Concatenates lists of coordinates together
+
+        Args:
+            coords (Sequence[Coords]): list of coords to concatenate
+            axis (int, default=0): axis to stack on
+
+        Returns:
+            Coords: stacked coords
+
+        CommandLine:
+            xdoctest -m kwimage.structs.coords Coords.concatenate
+
+        Example:
+            >>> coords = [Coords.random(3) for _ in range(3)]
+            >>> new = Coords.concatenate(coords)
+            >>> assert len(new) == 9
+            >>> assert np.all(new.data[3:6] == coords[1].data)
+        """
+        if len(coords) == 0:
+            raise ValueError('need at least one box to concatenate')
+        if axis != 0:
+            raise ValueError('can only concatenate along axis=0')
+        first = coords[0]
+        impl = first._impl
+        datas = [b.data for b in coords]
+        newdata = impl.cat(datas, axis=axis)
+        new = cls(newdata)
+        return new
+
     @property
     def device(self):
         """
@@ -178,6 +211,7 @@ class Coords(ub.NiceRepr):
         """
         return kwarray.ArrayAPI.coerce(self.data)
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts numpy to tensors. Does not change memory if possible.
@@ -194,6 +228,7 @@ class Coords(ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
+    @xdev.profile
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
@@ -210,6 +245,7 @@ class Coords(ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
+    @xdev.profile
     def warp(self, transform, input_shape=None, output_shape=None,
              inplace=False):
         """

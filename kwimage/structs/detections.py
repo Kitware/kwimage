@@ -12,6 +12,7 @@ import six
 import torch
 import numpy as np
 import ubelt as ub
+import xdev
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
 
@@ -532,6 +533,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     # --- Modifiers ---
 
+    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -556,6 +558,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 inplace=inplace)
         return new
 
+    @xdev.profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -578,6 +581,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 factor, output_dims=output_dims, inplace=inplace)
         return new
 
+    @xdev.profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -616,8 +620,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if len(dets) == 0:
             raise ValueError('need at least one detection to concatenate')
         newdata = {}
-        for key in dets[0].data.keys():
-            if dets[0].data[key] is None:
+        first = dets[0]
+        for key in first.data.keys():
+            if first.data[key] is None:
                 newdata[key] = None
             else:
                 try:
@@ -630,7 +635,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         cat = _boxes._cat
                     newdata[key] = cat(tocat, axis=0)
                 except Exception:
-                    raise Exception('Error when trying to concat {}'.format(key))
+                    msg = ('Error when trying to concat {}'.format(key))
+                    print(msg)
+                    raise
+                    raise Exception(msg)
 
         newmeta = dets[0].meta
         new = cls(newdata, newmeta)
@@ -757,6 +765,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """ is the backend fueled by numpy? """
         return self.boxes.is_numpy()
 
+    @xdev.profile
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
@@ -785,6 +794,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         newself = self.__class__(newdata, self.meta)
         return newself
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts numpy to tensors. Does not change memory if possible.

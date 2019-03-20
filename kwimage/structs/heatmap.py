@@ -12,6 +12,7 @@ import skimage
 import kwarray
 import six
 import functools
+import xdev
 
 
 class _HeatmapDrawMixin(object):
@@ -305,6 +306,7 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
+    @xdev.profile
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
              mat_is_xy=True):
@@ -520,6 +522,7 @@ class _HeatmapAlgoMixin(object):
 
         return result
 
+    @xdev.profile
     def detect(self, channel, invert=False, min_score=0.01, num_min=10):
         """
         Transforms the heatmap into a Detections object.
@@ -923,6 +926,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
     # ---
 
+    @xdev.profile
     def numpy(self):
         """
         Converts underlying data to numpy arrays
@@ -938,6 +942,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         newself = self.__class__(newdata, self.meta)
         return newself
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts underlying data to torch tensors
@@ -954,6 +959,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         return newself
 
 
+@xdev.profile
 def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
                   keypoints=None, min_score=0.01, num_min=10):
     """
@@ -1120,9 +1126,24 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         det_kpts_xy[..., 0] += xc_[:, None]
         det_kpts_xy[..., 1] += yc_[:, None]
 
+        # The shape of det_kpts_xy is [N, K, 2]
+
         # TODO: need to package kp_classes as well
-        det_kpts = kwimage.PointsList([
-            kwimage.Points(xy=xys) for xys in det_kpts_xy])
+        # TODO: can we make this faster? It is bottlenecking, in this instance
+        # the points list wont be jagged, so perhaps we can use a denser data
+        # structure?
+        if 1:
+            # Try using a dense homogenous data structure
+            det_coords = kwimage.Coords(det_kpts_xy)
+            det_kpts = kwimage.Points({'xy': det_coords})
+        else:
+            # Using a jagged non-homogenous data structure is slow
+            det_coords = [
+                kwimage.Coords(xys) for xys in det_kpts_xy
+            ]
+            det_kpts = kwimage.PointsList([
+                kwimage.Points({'xy': xy}) for xy in det_coords
+            ])
 
         dets.data['keypoints'] = det_kpts
 
@@ -1130,6 +1151,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     return dets
 
 
+@xdev.profile
 def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     soft=True):
     """
