@@ -393,6 +393,7 @@ class Coords(ub.NiceRepr):
                 interp='bilinear'):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> s = 256
             >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
@@ -423,6 +424,7 @@ class Coords(ub.NiceRepr):
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10)
             >>> self.draw(radius=3.0)

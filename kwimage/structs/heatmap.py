@@ -32,6 +32,7 @@ class _HeatmapDrawMixin(object):
                 warping into the image space.
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> colormask2 = self.colorize(0, imgspace=True)
@@ -78,6 +79,7 @@ class _HeatmapDrawMixin(object):
                      top=None, chosen_cxs=None):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> stacked = self.draw_stacked()
             >>> # xdoctest: +REQUIRES(--show)
@@ -144,6 +146,7 @@ class _HeatmapDrawMixin(object):
                   either individually or all at the same time
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwarray
             >>> import kwimage
             >>> image = kwimage.grab_test_image('astro')

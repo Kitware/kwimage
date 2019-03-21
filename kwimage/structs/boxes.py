@@ -489,6 +489,7 @@ class _BoxConversionMixins(object):
             shape (tuple): shape of image that boxes belong to
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
             >>> bboi = self.to_imgaug((10, 10))
         """
@@ -522,6 +523,7 @@ class _BoxConversionMixins(object):
             bboi (ia.BoundingBoxesOnImage):
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> orig = Boxes.random(5, format='tlbr')
             >>> bboi = orig.to_imgaug(shape=(500, 500))
             >>> self = Boxes.from_imgaug(bboi)
@@ -691,6 +693,7 @@ class _BoxTransformMixins(object):
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.boxes import *  # NOQA
             >>> import imgaug
             >>> self = Boxes.random(10)
@@ -774,7 +777,12 @@ class _BoxTransformMixins(object):
             elif isinstance(transform, (np.ndarray, torch.Tensor)):
                 matrix = transform
             else:
-                import imgaug
+                try:
+                    import imgaug
+                except ImportError:
+                    import warnings
+                    warnings.warn('imgaug is not installed')
+                    raise TypeError(type(transform))
                 if isinstance(transform, imgaug.augmenters.Augmenter):
                     return new._warp_imgaug(transform, input_dims, inplace=True)
                 else:
@@ -1026,6 +1034,7 @@ class _BoxDrawMixins(object):
         Draws boxes using matplotlib. Wraps around mplutil.draw_boxes
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
@@ -1055,6 +1064,7 @@ class _BoxDrawMixins(object):
             image (ndarray): must be in uint8 format
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'

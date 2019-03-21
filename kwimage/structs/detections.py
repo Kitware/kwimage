@@ -28,6 +28,7 @@ class _DetDrawMixin:
         Draws boxes using matplotlib
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Detections.random(num=10, scale=512.0, rng=0, classes=['a', 'b', 'c'])
             >>> self.boxes.translate((-128, -128), inplace=True)
             >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
@@ -78,6 +79,7 @@ class _DetDrawMixin:
             ndarray[uint8]: image with labeled boxes drawn on it
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> self = Detections.random(num=10, scale=512, rng=0)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)

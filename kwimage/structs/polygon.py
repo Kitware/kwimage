@@ -79,6 +79,7 @@ class _PolyWarpMixin:
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> import imgaug
             >>> input_dims = np.array((10, 10))
@@ -168,6 +169,7 @@ class _PolyWarpMixin:
             >>> new = self.warp(transform)
 
         Doctest:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> self = Polygon.random()
             >>> import imgaug
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
@@ -180,9 +182,13 @@ class _PolyWarpMixin:
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
-            import imgaug
+            try:
+                import imgaug
+            except ImportError:
+                import warnings
+                warnings.warn('imgaug is not installed')
+                raise TypeError(type(transform))
             if isinstance(transform, imgaug.augmenters.Augmenter):
-                # print('WARP POLYGON IMGAUG')
                 return new._warp_imgaug(transform, input_dims, inplace=True)
             else:
                 raise TypeError(type(transform))
@@ -363,6 +369,7 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> image = np.zeros((128, 128), dtype=np.float32)
@@ -451,6 +458,7 @@ class Polygon(_PolyArrayBackend, _PolyWarpMixin):
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1)
             >>> self = self.scale(100)

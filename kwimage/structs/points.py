@@ -20,6 +20,7 @@ class _PointsWarpMixin:
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.points import *  # NOQA
             >>> import imgaug
             >>> input_dims = (10, 10)
@@ -49,6 +50,7 @@ class _PointsWarpMixin:
     def to_imgaug(self, input_dims):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
             >>> input_dims = (10, 10)
@@ -103,7 +105,12 @@ class _PointsWarpMixin:
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
-            import imgaug
+            try:
+                import imgaug
+            except ImportError:
+                import warnings
+                warnings.warn('imgaug is not installed')
+                raise TypeError(type(transform))
             if isinstance(transform, imgaug.augmenters.Augmenter):
                 return new._warp_imgaug(transform, input_dims, inplace=True)
             else:
@@ -289,6 +296,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     def draw_on(self, image, color='white', radius=None):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> s = 128
             >>> image = np.zeros((s, s))
@@ -302,6 +310,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             >>> self.draw(radius=3, alpha=.5)
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> s = 128
             >>> image = np.zeros((s, s))
@@ -343,6 +352,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
             >>> pts.draw(radius=0.01)
