@@ -192,12 +192,16 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
     """
     Draws boxes on an image.
 
+    TODO:
+        - [ ] Move to kwplot?
+
     Args:
         img (ndarray): image to copy and draw on
         boxes (nh.util.Boxes): boxes to draw
         colorspace (str): string code of the input image colorspace
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwimage
         >>> import numpy as np
         >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -236,6 +240,9 @@ def draw_text_on_image(img, text, org, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
+    TODO:
+        - [ ] Move to kwplot?
+
     Args:
         img (ndarray): image to draw on
         text (str): text to draw
@@ -253,6 +260,7 @@ def draw_text_on_image(img, text, org, **kwargs):
         https://stackoverflow.com/questions/27647424/
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwimage
         >>> img = kwimage.grab_test_image(space='rgb')
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR', org=(0, 0))
@@ -316,9 +324,12 @@ def draw_text_on_image(img, text, org, **kwargs):
         if k in kwargs
     }
     x0, y0 = list(map(int, org))
-    ypad = kwargs.get('thickness', 2) + 4
+    thickness = kwargs.get('thickness', 2)
+    ypad = thickness + 4
 
     lines = text.split('\n')
+    # line_sizes2 = np.array([cv2.getTextSize(line, **getsize_kw) for line in lines])
+    # print('line_sizes2 = {!r}'.format(line_sizes2))
     line_sizes = np.array([cv2.getTextSize(line, **getsize_kw)[0] for line in lines])
 
     line_org = []
@@ -353,6 +364,12 @@ def draw_text_on_image(img, text, org, **kwargs):
             line_org[:, 1] += first_h
         else:
             raise KeyError(valign)
+
+    if img is None:
+        # if image is unspecified allocate just enough space for text
+        total_w = line_sizes.T[0].max()
+        # TODO: does not account for origin offset
+        img = np.zeros((total_h + thickness, total_w), dtype=np.uint8)
 
     for i, line in enumerate(lines):
         (x, y) = line_org[i]

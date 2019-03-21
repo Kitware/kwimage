@@ -14,6 +14,9 @@ def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
         keepalpha (bool): if False, the alpha channel is removed after blending
         dtype (np.dtype): format for blending computation (defaults to float32)
 
+    Returns:
+        ndarray: raster: the blended images
+
     References:
         http://stackoverflow.com/questions/25182421/overlay-numpy-alpha
         https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
@@ -31,12 +34,17 @@ def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
         >>> kwplot.show_if_requested()
     """
     layer_iter = iter(layers)
-    raster = next(layer_iter)
+    img1 = next(layer_iter)
+    rgb1, alpha1 = _prep_rgb_alpha(img1, dtype=dtype)
+
     for img2 in layer_iter:
-        raster = overlay_alpha_images(raster, img2, keepalpha=True,
-                                      dtype=dtype)
-    if not keepalpha:
-        raster = raster[..., 0:3]
+        rgb2, alpha2 = _prep_rgb_alpha(img2, dtype=dtype)
+        rgb1, alpha1 = _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2)
+
+    if keepalpha:
+        raster = np.dstack([rgb1, alpha1[..., None]])
+    else:
+        raster = rgb1
     return raster
 
 
@@ -51,6 +59,9 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         img2 (ndarray): base image to superimpose on
         keepalpha (bool): if False, the alpha channel is removed after blending
         dtype (np.dtype): format for blending computation (defaults to float32)
+
+    Returns:
+        ndarray: raster: the blended images
 
     TODO:
         - [ ] Make fast C++ version of this function
@@ -87,14 +98,14 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         raise ValueError('unknown impl={}'.format(impl))
 
     if keepalpha:
-        img3 = np.dstack([rgb3, alpha3[..., None]])
+        raster = np.dstack([rgb3, alpha3[..., None]])
         # Note: if we want to output a 255 img we could do something like this
         # out = np.zeros_like(img1)
         # out[..., :3] = rgb3
         # out[..., 3] = alpha3
     else:
-        img3 = rgb3
-    return img3
+        raster = rgb3
+    return raster
 
 
 def _prep_rgb_alpha(img, dtype=np.float32):
@@ -127,36 +138,6 @@ def _alpha_blend_simple(rgb1, alpha1, rgb2, alpha2):
     numer2 = (rgb2 * (alpha2 * c_alpha1)[..., None])
     with np.errstate(invalid='ignore'):
         rgb3 = (numer1 + numer2) / alpha3[..., None]
-    rgb3[alpha3 == 0] = 0
-    return rgb3, alpha3
-
-
-def _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2):
-    """ Alternative. Not well optimized """
-    import numexpr
-    alpha1_ = alpha1[..., None]  # NOQA
-    alpha2_ = alpha2[..., None]  # NOQA
-    alpha3 = numexpr.evaluate('alpha1 + alpha2 * (1.0 - alpha1)')
-    alpha3_ = alpha3[..., None]  # NOQA
-    rgb3 = numexpr.evaluate('((rgb1 * alpha1_) + (rgb2 * alpha2_ * (1.0 - alpha1_))) / alpha3_')
-    rgb3[alpha3 == 0] = 0
-
-
-def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
-    """ Alternative. Not well optimized """
-    import numexpr
-    c_alpha1 = numexpr.evaluate('1.0 - alpha1')
-    alpha3 = numexpr.evaluate('alpha1 + alpha2 * c_alpha1')
-
-    c_alpha1_ = c_alpha1[..., None]  # NOQA
-    alpha1_ = alpha1[..., None]  # NOQA
-    alpha2_ = alpha2[..., None]  # NOQA
-    alpha3_ = alpha3[..., None]  # NOQA
-
-    numer1 = numexpr.evaluate('rgb1 * alpha1_')  # NOQA
-    numer2 = numexpr.evaluate('rgb2 * (alpha2_ * c_alpha1_)')  # NOQA
-    with np.errstate(invalid='ignore'):
-        rgb3 = numexpr.evaluate('(numer1 + numer2) / alpha3_')
     rgb3[alpha3 == 0] = 0
     return rgb3, alpha3
 
@@ -209,6 +190,36 @@ def _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2):
         np.divide(rgb3, alpha3[..., None], out=rgb3)
     if not np.all(alpha3):
         rgb3[alpha3 == 0] = 0
+    return rgb3, alpha3
+
+
+def _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2):
+    """ Alternative. Not well optimized """
+    import numexpr
+    alpha1_ = alpha1[..., None]  # NOQA
+    alpha2_ = alpha2[..., None]  # NOQA
+    alpha3 = numexpr.evaluate('alpha1 + alpha2 * (1.0 - alpha1)')
+    alpha3_ = alpha3[..., None]  # NOQA
+    rgb3 = numexpr.evaluate('((rgb1 * alpha1_) + (rgb2 * alpha2_ * (1.0 - alpha1_))) / alpha3_')
+    rgb3[alpha3 == 0] = 0
+
+
+def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
+    """ Alternative. Not well optimized """
+    import numexpr
+    c_alpha1 = numexpr.evaluate('1.0 - alpha1')
+    alpha3 = numexpr.evaluate('alpha1 + alpha2 * c_alpha1')
+
+    c_alpha1_ = c_alpha1[..., None]  # NOQA
+    alpha1_ = alpha1[..., None]  # NOQA
+    alpha2_ = alpha2[..., None]  # NOQA
+    alpha3_ = alpha3[..., None]  # NOQA
+
+    numer1 = numexpr.evaluate('rgb1 * alpha1_')  # NOQA
+    numer2 = numexpr.evaluate('rgb2 * (alpha2_ * c_alpha1_)')  # NOQA
+    with np.errstate(invalid='ignore'):
+        rgb3 = numexpr.evaluate('(numer1 + numer2) / alpha3_')
+    rgb3[alpha3 == 0] = 0
     return rgb3, alpha3
 
 

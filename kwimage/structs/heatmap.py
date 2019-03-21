@@ -9,8 +9,10 @@ import numpy as np
 import torch
 import ubelt as ub
 import skimage
+import kwarray
 import six
 import functools
+import xdev
 
 
 class _HeatmapDrawMixin(object):
@@ -30,6 +32,7 @@ class _HeatmapDrawMixin(object):
                 warping into the image space.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> colormask2 = self.colorize(0, imgspace=True)
@@ -76,6 +79,7 @@ class _HeatmapDrawMixin(object):
                      top=None, chosen_cxs=None):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> stacked = self.draw_stacked()
             >>> # xdoctest: +REQUIRES(--show)
@@ -127,7 +131,7 @@ class _HeatmapDrawMixin(object):
         return stacked
 
     def draw_on(self, image, channel, invert=False, with_alpha=1.0,
-                interpolation='linear', vecs=False, imgspace=True):
+                interpolation='linear', vecs=False, kpts=None, imgspace=True):
         """
         Overlays a heatmap channel on top of an image
 
@@ -142,6 +146,7 @@ class _HeatmapDrawMixin(object):
                   either individually or all at the same time
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwarray
             >>> import kwimage
             >>> image = kwimage.grab_test_image('astro')
@@ -155,17 +160,26 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.imshow(toshow)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> import kwimage
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
-            >>> import ndsampler
-            >>> sampler = ndsampler.CocoSampler.demo('photos')
-            >>> bg_idxs = sampler.catgraph.index('background')
-            >>> iminfo, anns = sampler.load_image_with_annots(1)
-            >>> image = iminfo['imdata']
-            >>> dets = kwimage.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'])
+            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
             >>> image = kwimage.grab_test_image('astro')
-            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets=dets, img_dims=image.shape[:2])
-            >>> toshow = self.draw_on(image, 0, vecs=True, with_alpha=0.85)
+            >>> toshow = self.draw_on(image, 0, vecs=False, with_alpha=0.85)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(toshow)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> import kwimage
+            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
+            >>> kpts = 6
+            >>> self = self.warp(self.tf_data_to_img.params)
+            >>> image = kwimage.grab_test_image('astro')
+            >>> toshow = self.draw_on(image, 0, with_alpha=0.85, kpts=kpts)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -179,16 +193,29 @@ class _HeatmapDrawMixin(object):
                                   interpolation=interpolation,
                                   imgspace=imgspace)
         overlaid = kwimage.overlay_alpha_images(colormask, image)
+        # overlaid = image
 
         if vecs:
             if self.data.get('offset', None) is not None:
                 #Hack
+                # Visualize center offset vectors
                 dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])
                 vecmask = kwplot.make_vector_field(dx, dy, stride=4, scale=1.0, alpha=with_alpha * .6)
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
                 overlaid = kwimage.overlay_alpha_images(vecalign, overlaid)
+
+        if kpts is not None:
+            # TODO: make a nicer keypoint offset vector visuliazation
+            if self.data.get('keypoints', None) is not None:
+                dy, dx = kwarray.ArrayAPI.numpy(self.data['keypoints'][:, kpts])
+                vecmask = kwplot.make_vector_field(dx, dy, stride=8, scale=0.5, alpha=with_alpha * .6)
+                chw = torch.Tensor(vecmask.transpose(2, 0, 1))
+                vecalign = self._warp_imgspace(chw, interpolation=interpolation)
+                vecalign = vecalign.transpose(1, 2, 0)
+                overlaid = kwimage.overlay_alpha_images(vecalign, overlaid)
+
         return overlaid
 
 
@@ -203,9 +230,18 @@ class _HeatmapWarpMixin(object):
         space as this heatmap. This lets us perform elementwise operations on
         the two heatmaps (like geometric mean).
 
+        Args:
+            other (Heatmap): the heatmap to align with `self`
+
+        Returns:
+            Heatmap: warped version of `other` that aligns with `self`.
+
         Example:
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
+            >>> other2 = self._align_other(other)
+            >>> assert self.shape != other.shape
+            >>> assert self.shape == other2.shape
             >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.imshow(self.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 1))
@@ -221,18 +257,20 @@ class _HeatmapWarpMixin(object):
 
         img_to_self = np.linalg.inv(self.tf_data_to_img.params)
         other_to_img = other.tf_data_to_img.params
-        other_to_self = img_to_self.dot(other_to_img)
+        other_to_self = np.matmul(img_to_self, other_to_img)
 
         mat = other_to_self
         output_dims = self.class_probs.shape[1:]
 
         # other now exists in the same space as self
-        new_other = other.warp(mat, output_dims)
+        new_other = other.warp(mat, output_dims=output_dims)
         return new_other
 
     def _align(self, mask, interpolation='linear'):
         """
         Align a linear combination of heatmap channels with the original image
+
+        DEPRICATE
         """
         import kwimage
         M = self.tf_data_to_img.params[0:3]
@@ -273,24 +311,47 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
-    def warp(self, mat=None, output_dims=None, interpolation='linear',
-             modify_spatial_coords=True):
+    @xdev.profile
+    def warp(self, mat=None, input_dims=None, output_dims=None,
+             interpolation='linear', modify_spatial_coords=True,
+             mat_is_xy=True):
         """
         Warp all spatial maps. If the map contains spatial data, that data is
         also warped (ignoring the translation component).
 
         Args:
             mat (ArrayLike): transformation matrix
+            input_dims (tuple): unused, only exists for compatibility
             output_dims (tuple): size of the output heatmap
             interpolation (str): see `kwimage.warp_tensor`
+            mat_is_xy (bool, default=True): set to false if the matrix
+                is in yx space instead of xy space
 
         Returns:
             Heatmap: this heatmap warped into a new spatial dimension
 
+        Ignore:
+            # Verify swapping rows 0 and 1 and then swapping columns 0 and 1
+            # Produces a matrix that works with permuted coordinates
+            # It does.
+            import sympy
+            a, b, c, d, e, f, g, h, i, x, y, z = sympy.symbols('a, b, c, d, e, f, g, h, i, x, y, z')
+            M1 = sympy.Matrix([[a, b, c], [d, e, f], [g, h, i]])
+            M2 = sympy.Matrix([[e, d, f], [b, a, c], [h, g, i]])
+            xy = sympy.Matrix([[x], [y], [z]])
+            yx = sympy.Matrix([[y], [x], [z]])
+
+            R1 = M1.multiply(xy)
+            R2 = M2.multiply(yx)
+            R3 = sympy.Matrix([[R1[1]], [R1[0]], [R1[2]],])
+            assert R2 == R3
+
         Example:
-            >>> self = Heatmap.random(rng=0)
+            >>> from kwimage.structs.heatmap import *  # NOQA
+            >>> self = Heatmap.random(rng=0, keypoints=True)
             >>> S = 3.0
             >>> mat = np.eye(3) * S
+            >>> mat[-1, -1] = 1
             >>> newself = self.warp(mat, np.array(self.dims) * S).numpy()
             >>> assert newself.offset.shape[0] == 2
             >>> assert newself.diameter.shape[0] == 2
@@ -298,6 +359,18 @@ class _HeatmapWarpMixin(object):
             >>> assert f1 == S
             >>> f2 = newself.diameter.max() / self.diameter.max()
             >>> assert f2 == S
+
+        Example:
+            >>> import kwimage
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> self = kwimage.Heatmap.random(dims=(100, 100), dets='coco', keypoints=True)
+            >>> image = np.zeros(self.img_dims)
+            >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(toshow)
         """
         import kwarray
         import kwimage
@@ -311,9 +384,14 @@ class _HeatmapWarpMixin(object):
         newdata = {}
         newmeta = self.meta.copy()
 
-        mat = torch.Tensor(mat)
-        spatial_keys = ['offset', 'diameter']
+        spatial_keys = ['offset', 'diameter', 'keypoints']
         impl = kwarray.ArrayAPI.coerce('tensor')
+
+        if mat_is_xy:
+            # If the matrix is in X/Y coords, modify it to be in Y/X coords
+            mat = mat[[1, 0, 2], :][:, [1, 0, 2]]
+
+        mat = impl.asarray(mat)
 
         tf = skimage.transform.AffineTransform(matrix=mat)
         # hack: need to get a version of the matrix without any translation
@@ -330,18 +408,14 @@ class _HeatmapWarpMixin(object):
             # For spatial keys we need to transform the underlying values as well
             if modify_spatial_coords:
                 if k in spatial_keys:
-                    v = v.clone()
-                    # Add homogenous coordinate
-                    coords = impl.cat([v, torch.ones(v.shape[1:])[None, :]], axis=0)
-                    coords = coords.view(3, -1)
-                    # coords = coords.permute(1, 2, 0).view(-1, 3)
-                    coords = mat_notrans.matmul(coords)
-                    coords = coords[0:2] / coords[2]
-                    coords = coords.view(2, *v.shape[1:])
-                    v = coords
-            newdata[k] = kwimage.warp_tensor(
-                v[None, :].float(), mat, output_dims=output_dims, mode=interpolation
-            )[0]
+                    pts = impl.contiguous(impl.T(v))
+                    pts = kwimage.warp_points(mat_notrans, pts)
+                    v = impl.contiguous(impl.T(pts))
+
+            new_v = kwimage.warp_tensor(
+                v[None, :].float(), mat, output_dims=output_dims,
+                mode=interpolation)[0]
+            newdata[k] = impl.asarray(new_v)
 
         newself = self.__class__(newdata, newmeta)
         return newself
@@ -355,9 +429,18 @@ class _HeatmapAlgoMixin(object):
     @classmethod
     def combine(cls, heatmaps, root_index=None, dtype=np.float32):
         """
-        Combine multiple heatmaps
+        Combine multiple heatmaps into a single heatmap.
+
+        Args:
+            heatmaps (Sequence[Heatmap]): multiple heatmaps to combine into one
+            root_index (int): which heatmap in the sequence to align other
+                heatmaps with
+
+        Returns:
+            Heatmap: the combined heatmap
 
         Example:
+            >>> from kwimage.structs.heatmap import *  # NOQA
             >>> a = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> b = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> c = Heatmap.random((40, 30), img_dims=(200, 210), classes=2, nblips=10, rng=1)
@@ -386,7 +469,6 @@ class _HeatmapAlgoMixin(object):
             >>> kwplot.imshow(newself.colorize('diameter', imgspace=1), fnum=3, pnum=(4, 1, 4))
         """
         # define arithmetic and geometric mean
-        from scipy.stats.mstats import gmean
         amean = functools.partial(np.mean, axis=0)
 
         # If the root is not specified use the largest heatmap
@@ -409,46 +491,35 @@ class _HeatmapAlgoMixin(object):
             newdata['offset'] = amean([h.offset for h in aligned_heatmaps])
         if 'diameter' in aligned_root.data:
             newdata['diameter'] = amean([h.diameter for h in aligned_heatmaps])
+        if 'keypoints' in aligned_root.data:
+            newdata['keypoints'] = amean([h.data['keypoints'] for h in aligned_heatmaps])
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself
 
     @staticmethod
-    def _gmean(a, axis=0, dtype=None, clobber=False):
+    def _gmean(a, axis=0, clobber=False):
         """
         Compute the geometric mean along the specified axis.
 
-        Modification of the scikit-learn method to be more memory efficient
+        Modification of the scipy.mstats method to be more memory efficient
 
         Example
             >>> rng = np.random.RandomState(0)
             >>> C, H, W = 8, 32, 32
             >>> axis = 0
-            >>> a = [rng.rand(C, H, W).astype(np.float16), rng.rand(C, H, W).astype(np.float16)]
-
+            >>> a = rng.rand(2, C, H, W)
+            >>> Heatmap._gmean(a)
         """
-        if isinstance(a, np.ndarray):
-            if clobber:
-                # NOTE: we reuse (a), we clobber the input array!
-                log_a = np.log(a, out=a)
-            else:
-                log_a = np.log(a)
+        assert isinstance(a, np.ndarray)
+
+        if clobber:
+            # NOTE: we reuse (a), we clobber the input array!
+            log_a = np.log(a, out=a)
         else:
-            if dtype is None:
-                # if not an ndarray object attempt to convert it
-                log_a = np.log(np.array(a, dtype=dtype))
-            else:
-                # Must change the default dtype allowing array type
-                # Note: that this will use memory, but there isn't anything we can
-                # do here.
-                if isinstance(a, np.ma.MaskedArray):
-                    a_ = np.ma.asarray(a, dtype=dtype)
-                else:
-                    a_ = np.asarray(a, dtype=dtype)
-                # We can reuse `a_` because it was a temp var
-                log_a = np.log(a_, out=a_)
+            log_a = np.log(a)
 
         # attempt to reuse memory when computing mean
-        mem = log_a[axis]
+        mem = log_a[tuple([slice(None)] * axis + [0])]
         mean_log_a = log_a.mean(axis=axis, out=mem)
 
         # And reuse memory again when computing the final result
@@ -456,7 +527,7 @@ class _HeatmapAlgoMixin(object):
 
         return result
 
-
+    @xdev.profile
     def detect(self, channel, invert=False, min_score=0.01, num_min=10):
         """
         Transforms the heatmap into a Detections object.
@@ -491,7 +562,8 @@ class _HeatmapAlgoMixin(object):
                 these results to remove duplicate detections.
 
         Example:
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> from kwimage.structs.heatmap import *  # NOQA
             >>> import ndsampler
             >>> self = Heatmap.random(rng=2, dims=(32, 32), diameter=10, offset=0)
             >>> dets = self.detect(channel=0)
@@ -509,12 +581,13 @@ class _HeatmapAlgoMixin(object):
             >>> dets2.draw()
 
         Example:
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> from kwimage.structs.heatmap import *  # NOQA
             >>> import ndsampler
             >>> catgraph = ndsampler.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.heirarchical_softmax(class_energy, dim=0)
-            >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph)
+            >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)
             >>> self.data['class_probs'] = class_probs.numpy()
             >>> channel = catgraph.index('background')
             >>> dets = self.detect(channel, invert=True)
@@ -527,12 +600,12 @@ class _HeatmapAlgoMixin(object):
             >>> dets1 = dets.sort().take(range(10))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
-            >>> dets1.draw()
+            >>> dets1.draw(radius=1.0)
             >>> # Transform heatmap and detections into image space.
             >>> colormask2 = self.colorize(0, imgspace=True)
             >>> dets2 = dets1.warp(self.tf_data_to_img)
             >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
-            >>> dets2.draw()
+            >>> dets2.draw(radius=1.0)
         """
         if isinstance(channel, int):
             probs = self.class_probs[channel]
@@ -543,9 +616,15 @@ class _HeatmapAlgoMixin(object):
 
         dets = _prob_to_dets(
             probs, diameter=self.diameter, offset=self.offset,
-            class_probs=self.class_probs, min_score=min_score,
-            num_min=num_min,
+            class_probs=self.class_probs,
+            keypoints=self.data.get('keypoints', None),
+            min_score=min_score, num_min=num_min,
         )
+        if dets.data.get('keypoints', None) is not None:
+            kp_classes = self.meta['kp_classes']
+            dets.data['keypoints'].meta['classes'] = kp_classes
+            dets.meta['kp_classes'] = kp_classes
+
         dets.meta['classes'] = self.classes
         return dets
 
@@ -566,10 +645,13 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
                 A probability map for each class. C is the number of classes.
 
             offset (ArrayLike[2, H, W] | ArrayLike[3, D, H, W], optional):
-                center position offset in y,x / t,y,x coordinates
+                object center position offset in y,x / t,y,x coordinates
 
             diamter (ArrayLike[2, H, W] | ArrayLike[3, D, H, W], optional):
-                bounding box sizes in h,w / d,h,w coordinates
+                object bounding box sizes in h,w / d,h,w coordinates
+
+            keypoints (ArrayLike[2, K, H, W] | ArrayLike[3, K, D, H, W], optional):
+                y/x offsets for K different keypoint classes
 
         data (Dict[str, object]): dictionary containing miscellanious metadata
             about the heatmap data. Valid keys are as follows.
@@ -604,10 +686,10 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         >>> kwplot.imshow(aligned[0])
     """
     # Valid keys for the data dictionary
-    __datakeys__ = ['class_probs', 'offset', 'diameter']
+    __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints']
 
     # Valid keys for the meta dictionary
-    __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes']
+    __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
 
     def __init__(self, data=None, meta=None, **kwargs):
         # Standardize input format
@@ -657,14 +739,40 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         """ space-time dimensions of this heatmap """
         return self.class_probs.shape[1:]
 
+    def is_numpy(self):
+        return self._impl.is_numpy
+
+    def is_tensor(self):
+        return self._impl.is_tensor
+
+    # @_generic.memoize_property
+    @property
+    def _impl(self):
+        """
+        Returns the internal tensor/numpy ArrayAPI implementation
+        """
+        return kwarray.ArrayAPI.coerce(self.data['class_probs'])
+
+    # @property
+    # def device(self):
+    #     """ If the backend is torch returns the data device, otherwise None """
+    #     return self.data['class_probs'].device
+
     @classmethod
     def random(cls, dims=(10, 10), classes=3, diameter=True, offset=True,
-               img_dims=None, dets=None, nblips=10, noise=0.0, rng=None):
+               keypoints=False, img_dims=None, dets=None, nblips=10, noise=0.0,
+               rng=None):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
+        Args:
+            dims (Tuple): dimensions of the heatmap
+            img_dims (Tuple): dimensions of the image the heatmap corresponds to
+
         Example:
-            >>> self = Heatmap.random((128, 128), img_dims=(200, 200), classes=3, nblips=10, rng=0, noise=0.1)
+            >>> from kwimage.structs.heatmap import *  # NOQA
+            >>> self = Heatmap.random((128, 128), img_dims=(200, 200),
+            >>>     classes=3, nblips=10, rng=0, noise=0.1)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -675,40 +783,56 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
         Ignore:
             self.detect(0).sort().non_max_supress()[-np.arange(1, 4)].draw()
+            from kwimage.structs.heatmap import *  # NOQA
+            import xdev
+            globals().update(xdev.get_func_kwargs(Heatmap.random))
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> import kwimage
-            >>> # xdoctest: +REQUIRES(--module:ndsampler)
-            >>> import ndsampler
-            >>> sampler = ndsampler.CocoSampler.demo('photos')
-            >>> bg_idxs = sampler.catgraph.index('background')
-            >>> iminfo, anns = sampler.load_image_with_annots(1)
-            >>> image = iminfo['imdata']
-            >>> dets = kwimage.Detections.from_coco_annots(anns, sampler.dset.dataset['categories'])
-            >>> image = kwimage.grab_test_image('astro')
-            >>> self = kwimage.Heatmap.random(dims=(200, 200), dets=dets, img_dims=image.shape[:2])
-            >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
+            >>> self = kwimage.Heatmap.random(dims=(50, 200), dets='coco',
+            >>>                               keypoints=True)
+            >>> image = np.zeros(self.img_dims)
+            >>> toshow = self.draw_on(image, 1, vecs=True, kpts=0, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(toshow)
+
+        Ignore:
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(image)
+            >>> dets.draw()
+            >>> dets.data['keypoints'].draw(radius=6)
+            >>> dets.data['segmentations'].draw()
+
+            >>> self.draw()
         """
         import kwimage
         import kwarray
         rng = kwarray.ensure_rng(rng)
 
-        if isinstance(classes, int):
-            num_classes = classes
-            classes = ['class_{}'.format(c) for c in range(classes)]
-        else:
-            num_classes = len(classes)
+        if dets == 'coco':
+            # special detections from the ndsampler coco demo
+            import ndsampler
+            sampler = ndsampler.CocoSampler.demo('photos')
+            iminfo, anns = sampler.load_image_with_annots(1)
+            image = iminfo['imdata']
+            input_dims = image.shape[:2]
+            kp_classes = sampler.dset.keypoint_categories()
+            dets = kwimage.Detections.from_coco_annots(
+                anns, cats=sampler.dset.dataset['categories'], shape=input_dims,
+                kp_classes=kp_classes)
+            img_dims = input_dims
 
-        num_dims = len(dims)
+        if isinstance(classes, int):
+            classes = ['class_{}'.format(c) for c in range(classes)]
 
         # Pretend this heatmap corresponds to some upscaled subregion
         if img_dims is None:
             scale = 1 + rng.rand(2) * 2
-            translation = rng.rand(2) * np.array(dims) / 2
+            translation = rng.rand(2) * np.array(dims[::-1]) / 2
             tf_data_to_img = skimage.transform.AffineTransform(
                 scale=scale, translation=translation)
 
@@ -717,69 +841,64 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             img_dims = img_wh_dims[::-1]
         else:
             img_dims = np.array(img_dims)
-            scale = img_dims / dims
-            translation = (0, 0)
             tf_data_to_img = skimage.transform.AffineTransform(
-                scale=scale, translation=translation)
+                scale=(img_dims / dims)[::-1],
+                translation=(0, 0),
+            )
 
-        if False:
-            class_probs = rng.rand(num_classes, *dims).astype(np.float32)
-            dims = np.array(dims)
-            nblips = nblips
-            for i in range(nblips):
-                subshape = np.ceil(((np.abs(rng.randn(2)) + 1) ** 2) * (dims / 4)).astype(np.int)
-                loc = rng.rand(2) * (dims - subshape)
-                index = tuple([slice(x, x + d) for x, d in zip(loc, subshape)])
-                patch = kwimage.gaussian_patch(subshape)
-                patch = (patch / patch.max())
-                cx = i % num_classes
-                kwimage.subpixel_accum(class_probs[cx], patch, index)
-            class_probs = torch.softmax(torch.Tensor(class_probs), dim=0).numpy()
+        # TODO: clean up method of making heatmap from detections
+        if dets is None:
+            # We are either given detections, or we make random ones
+            dets = kwimage.Detections.random(num=nblips, scale=img_dims,
+                                             keypoints=keypoints,
+                                             classes=classes, rng=rng)
+            if 'background' not in dets.classes:
+                dets.classes.append('background')
 
-            if offset is True:
-                offset = rng.rand(num_dims, *dims).astype(np.float32) * 10
-
-            if diameter is True:
-                diameter = rng.rand(num_dims, *dims).astype(np.float32) * 10
+            classes = dets.classes
         else:
-            # TODO: clean up method of making heatmap from detections
-            if dets is None:
-                # We are either given detections, or we make random ones
-                dets = kwimage.Detections.random(num=nblips, scale=img_dims,
-                                                 classes=classes, rng=rng)
-                if 'background' not in dets.classes:
-                    dets.classes.append('background')
-                classes = dets.classes
-            else:
-                classes = dets.classes
-            # assume we have background
-            bg_idx = dets.classes.index('background')
+            classes = dets.classes
+        # assume we have background
+        bg_idx = dets.classes.index('background')
 
-            # Warp detections into heatmap space
-            warped_dets = dets.warp(np.linalg.inv(tf_data_to_img.params))
+        # Warp detections into heatmap space
+        transform = np.linalg.inv(tf_data_to_img.params)
+        warped_dets = dets.warp(transform, input_dims=img_dims,
+                                output_dims=dims)
 
-            tf_notrans = _remove_translation(tf_data_to_img)
-            bg_size = tf_notrans.inverse([100, 100])[0]
+        tf_notrans = _remove_translation(tf_data_to_img)
+        bg_size = tf_notrans.inverse([100, 100])[0]
 
-            _target = _dets_to_masks(warped_dets, bg_size, dims, bg_idx=bg_idx,
-                                     soft=True)
-            class_probs = _target['class_probs']
-            noise = (rng.randn(*class_probs.shape) * noise)
-            class_probs += noise
-            np.clip(class_probs, 0, None, out=class_probs)
-            # class_probs = class_probs / class_probs.sum(axis=0)
-            class_probs = np.array([smooth_prob(p) for p in class_probs])
-            class_probs = class_probs / np.maximum(class_probs.sum(axis=0), 1e-9)
+        _target = _dets_to_fcmaps(warped_dets, bg_size, dims,
+                                  bg_idx=bg_idx, soft=True)
+        class_probs = _target['class_probs']
+        noise = (rng.randn(*class_probs.shape) * noise)
+        class_probs += noise
+        np.clip(class_probs, 0, None, out=class_probs)
+        # class_probs = class_probs / class_probs.sum(axis=0)
+        class_probs = np.array([smooth_prob(p) for p in class_probs])
+        class_probs = class_probs / np.maximum(class_probs.sum(axis=0), 1e-9)
 
-            if offset is True:
-                offset = _target['dxdy'][[1, 0]]
+        if offset is True:
+            offset = _target['dxdy'][[1, 0]]
 
-            if diameter is True:
-                diameter = _target['size'][[1, 0]]
+        if keypoints is True:
+            if 'kp_classes' not in locals():
+                kp_classes = list(range(_target['kpts'].shape[1]))  # HACK
 
-        self = cls(class_probs=class_probs, offset=offset, diameter=diameter,
-                   img_dims=img_dims, classes=classes,
+            keypoints = _target['kpts'][[1, 0]]
+
+        if diameter is True:
+            diameter = _target['size'][[1, 0]]
+
+        self = cls(class_probs=class_probs, offset=offset,
+                   diameter=diameter, img_dims=img_dims, classes=classes,
                    tf_data_to_img=tf_data_to_img)
+
+        if keypoints is not False and keypoints is not None:
+            self.data['keypoints'] = keypoints
+            self.meta['kp_classes'] = kp_classes
+
         return self
 
     # --- Data Properties ---
@@ -812,6 +931,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
     # ---
 
+    @xdev.profile
     def numpy(self):
         """
         Converts underlying data to numpy arrays
@@ -827,6 +947,7 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         newself = self.__class__(newdata, self.meta)
         return newself
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts underlying data to torch tensors
@@ -843,10 +964,13 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         return newself
 
 
+@xdev.profile
 def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
-                  min_score=0.01, num_min=10):
+                  keypoints=None, min_score=0.01, num_min=10):
     """
     Directly convert a one-channel probability map into a Detections object.
+
+    Helper for Heatmap.detect
 
     It does this by converting each pixel above a threshold in a probability
     map to a detection with a specified diameter.
@@ -868,6 +992,9 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             probabilities for each class at each pixel location.
             If specified, this will populate the `probs` attribute of the
             returned Detections object.
+
+        keypoints (ArrayLike[2, K, H, W], optional):
+            Keypoint predictions for all keypoint classes
 
         min_score (float, default=0.1): probability threshold required
             for a pixel to be converted into a detection.
@@ -897,11 +1024,12 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> import kwimage
         >>> from kwimage.structs.heatmap import *
         >>> from kwimage.structs.heatmap import _prob_to_dets
-        >>> heatmap = kwimage.Heatmap.random(rng=0, dims=(3, 3))
+        >>> heatmap = kwimage.Heatmap.random(rng=0, dims=(3, 3), keypoints=True)
         >>> # Try with numpy
         >>> min_score = .5
         >>> dets = _prob_to_dets(heatmap.class_probs[0], heatmap.diameter,
         >>>                            heatmap.offset, heatmap.class_probs,
+        >>>                            heatmap.data['keypoints'],
         >>>                            min_score)
         >>> assert dets.boxes.data.dtype.kind == 'f'
         >>> assert len(dets) == 9
@@ -910,11 +1038,17 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> heatmap = heatmap.tensor()
         >>> dets = _prob_to_dets(heatmap.class_probs[0], heatmap.diameter,
         >>>                            heatmap.offset, heatmap.class_probs,
+        >>>                            heatmap.data['keypoints'],
         >>>                            min_score)
         >>> assert dets.boxes.data.dtype.is_floating_point
         >>> assert len(dets) == 9
         >>> dets_torch = dets
         >>> assert np.all(dets_torch.numpy().boxes.data == dets_np.boxes.data)
+
+    Ignore:
+        import kwil
+        kwil.autompl()
+        dets.draw(setlim=True, radius=.1)
 
     Example:
         >>> heatmap = Heatmap.random(rng=0, dims=(3, 3), diameter=1)
@@ -923,9 +1057,8 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> offset = heatmap.offset
         >>> class_probs = heatmap.class_probs
         >>> min_score = 0.5
-        >>> dets = _prob_to_dets(probs, diameter, offset, class_probs, min_score)
+        >>> dets = _prob_to_dets(probs, diameter, offset, class_probs, None, min_score)
     """
-    import kwarray
     impl = kwarray.ArrayAPI.impl(probs)
 
     if diameter is None:
@@ -973,6 +1106,10 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     import kwimage
     tlbr = kwimage.Boxes(cxywh, 'cxywh').toformat('tlbr')
     scores = probs[flags]
+
+    # TODO:
+    # Can we extract the detected segmentation mask/poly here as well?
+
     dets = kwimage.Detections(boxes=tlbr, scores=scores)
 
     # Get per-class probs for each detection
@@ -987,12 +1124,41 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             det_dxdy = impl.T(offset[:, yc, xc][[1, 0]])
         dets.boxes.translate(det_dxdy, inplace=True)
 
+    if keypoints is not None:
+        # Take keypoint predictions for each remaining detection
+        det_kpts_xy = impl.contiguous(impl.T(keypoints[:, :, yc, xc][[1, 0]]))
+        # Translate keypoints to absolute coordinates
+        det_kpts_xy[..., 0] += xc_[:, None]
+        det_kpts_xy[..., 1] += yc_[:, None]
+
+        # The shape of det_kpts_xy is [N, K, 2]
+
+        # TODO: need to package kp_classes as well
+        # TODO: can we make this faster? It is bottlenecking, in this instance
+        # the points list wont be jagged, so perhaps we can use a denser data
+        # structure?
+        if 1:
+            # Try using a dense homogenous data structure
+            det_coords = kwimage.Coords(det_kpts_xy)
+            det_kpts = kwimage.Points({'xy': det_coords})
+        else:
+            # Using a jagged non-homogenous data structure is slow
+            det_coords = [
+                kwimage.Coords(xys) for xys in det_kpts_xy
+            ]
+            det_kpts = kwimage.PointsList([
+                kwimage.Points({'xy': xy}) for xy in det_coords
+            ])
+
+        dets.data['keypoints'] = det_kpts
+
     assert len(dets.scores.shape) == 1
     return dets
 
 
-def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
-                   soft=True):
+@xdev.profile
+def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
+                    soft=True):
     """
     Construct semantic segmentation detection targets from annotations in
     dictionary format.
@@ -1000,12 +1166,12 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     TODO:
         - [X] Make this into something that effectively inverts detections
         into a heatmap so we can have prettier visualizations in our tests.
+        - [X] handle masks and keypoints
 
     Args:
-        dets (Detections):
-        input_dims (tuple): window H, W
+        dets (kwimage.Detections):
         bg_size (tuple): size (W, H) to predict for backgrounds
-        catgraph : category heirarchy
+        input_dims (tuple): window H, W
 
     Returns:
         dict: with keys
@@ -1015,63 +1181,86 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     Ignore:
         import xdev
-        globals().update(xdev.get_func_kwargs(_dets_to_masks))
+        globals().update(xdev.get_func_kwargs(_dets_to_fcmaps))
 
     Example:
         >>> from kwimage.structs.heatmap import *  # NOQA
-        >>> from kwimage.structs.heatmap import _prob_to_dets, _dets_to_masks, _remove_translation
+        >>> from kwimage.structs.heatmap import _dets_to_fcmaps
         >>> import kwimage
-        >>> # xdoctest: +REQUIRES(--module:ndsampler)
+        >>> # xdoctest: +REQUIRES(module:ndsampler)
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo('photos')
-        >>> bg_idxs = sampler.catgraph.index('background')
         >>> iminfo, anns = sampler.load_image_with_annots(1)
         >>> image = iminfo['imdata']
-        >>> mask0 = kwimage.Mask.from_polygons(anns[0]['segmentation'], shape=iminfo['imdata'].shape[0:2])
-        >>> masks = kwimage.MaskList([mask0, None])
-        >>> dets = kwimage.Detections.from_coco_annots(
-        >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph)
-        >>> dets.data['masks'] = masks
         >>> input_dims = image.shape[0:2]
+        >>> kp_classes = sampler.dset.keypoint_categories()
+        >>> dets = kwimage.Detections.from_coco_annots(
+        >>>     anns, sampler.dset.dataset['categories'],
+        >>>     sampler.catgraph, kp_classes, shape=input_dims)
         >>> bg_size = [100, 100]
-        >>> fcn_target = _dets_to_masks(dets, bg_size, input_dims, bg_idxs)
+        >>> bg_idxs = sampler.catgraph.index('background')
+        >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
+        >>> fcn_target.keys()
+        >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        fcn_target: {
+            'cidx': (512, 512),
+            'class_probs': (10, 512, 512),
+            'dxdy': (2, 512, 512),
+            'kpts': (2, 7, 512, 512),
+            'kpts_ignore': (7, 512, 512),
+            'size': (2, 512, 512),
+        }
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> size_mask = fcn_target['size']
         >>> dxdy_mask = fcn_target['dxdy']
         >>> cidx_mask = fcn_target['cidx']
-        >>> dx, dy = dxdy_mask
-        >>> mag = np.sqrt(dx ** 2 + dy ** 2)
-        >>> mag /= (mag.max() + 1e-9)
-        >>> #mag = 1 - fcn_target['class_probs'][0]
-        >>> mask = (cidx_mask != 0).astype(np.float32)
-        >>> angle = np.arctan2(dy, dx)
-        >>> orimask = kwplot.make_orimask(angle, mask, alpha=mag)
-        >>> vecmask = kwplot.make_vector_field(
-        >>>     dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
-        >>>     line_type=16)
+        >>> kpts_mask = fcn_target['kpts']
+        >>> def _vizmask(dxdy_mask):
+        >>>     dx, dy = dxdy_mask
+        >>>     mag = np.sqrt(dx ** 2 + dy ** 2)
+        >>>     mag /= (mag.max() + 1e-9)
+        >>>     mask = (cidx_mask != 0).astype(np.float32)
+        >>>     angle = np.arctan2(dy, dx)
+        >>>     orimask = kwplot.make_orimask(angle, mask, alpha=mag)
+        >>>     vecmask = kwplot.make_vector_field(
+        >>>         dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
+        >>>         line_type=16)
+        >>>     return [vecmask, orimask]
+        >>> vecmask, orimask = _vizmask(dxdy_mask)
         >>> raster = kwimage.overlay_alpha_layers(
         >>>     [vecmask, orimask, image], keepalpha=False)
         >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
         >>>                       labels=True, alpha=None)
         >>> kwplot.imshow(raster)
         >>> kwplot.show_if_requested()
+
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 5]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 2), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 6]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 3), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(dxdy_mask) + [image], keepalpha=False) * 255).astype(np.uint8)
+        raster = dets.draw_on(raster, labels=True, alpha=None)
+        kwplot.imshow(raster, pnum=(1, 3, 1), fnum=1)
+        raster = kwimage.overlay_alpha_layers(
+            [vecmask, orimask, image], keepalpha=False)
+        raster = dets.draw_on((raster * 255).astype(np.uint8),
+                              labels=True, alpha=None)
+        kwplot.imshow(raster)
+        kwplot.show_if_requested()
     """
     import cv2
     # In soft mode we made a one-channel segmentation target mask
     cidx_mask = np.full(input_dims, dtype=np.int32, fill_value=bg_idx)
     if soft:
         # In soft mode we add per-class channel probability blips
-        num_classes = len(dets.classes)
-        cidx_probs = np.full((num_classes,) + tuple(input_dims),
+        num_obj_classes = len(dets.classes)
+        cidx_probs = np.full((num_obj_classes,) + tuple(input_dims),
                              dtype=np.float32, fill_value=0)
 
     size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
     size_mask[:] = np.array(bg_size)[:, None, None]
-
-    # kpts_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
-    # ktps_mask[:] = np.array(bg_size)[:, None, None]
 
     dxdy_mask = np.zeros((2,) + tuple(input_dims), dtype=np.float32)
 
@@ -1079,16 +1268,37 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     cxywh = dets.boxes.to_cxywh().data
     class_idxs = dets.class_idxs
+    import kwimage
 
-    masks = dets.data.get('masks', [None] * len(dets))
+    if 'segmentations' in dets.data:
+        sseg_list = [None if p is None else p.to_mask(input_dims)
+                     for p in dets.data['segmentations']]
+    else:
+        sseg_list = [None] * len(dets)
 
-    if 'kpts' in dets.data:
-        kpts = dets.data['kpts']
-        for pts in kpts:
+    kpts_mask = None
+    if 'keypoints' in dets.data:
+        kp_classes = None
+        if 'classes' in dets.data['keypoints'].meta:
+            kp_classes = dets.data['keypoints'].meta['classes']
+        else:
+            for kp in dets.data['keypoints']:
+                if kp is not None and 'classes' in kp.meta:
+                    kp_classes = kp.meta['classes']
+                    break
+
+        if kp_classes is not None:
+            num_kp_classes = len(kp_classes)
+            kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims), dtype=np.float32)
+
+        pts_list = dets.data['keypoints'].data
+        for pts in pts_list:
             if pts is not None:
                 pass
+
+        kpts_ignore_mask = np.ones((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
     else:
-        kpts = [None] * len(dets)
+        pts_list = [None] * len(dets)
 
     # Overlay smaller classes on top of larger ones
     if len(cxywh):
@@ -1098,6 +1308,8 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     sortx = np.argsort(area)[::-1]
     cxywh = cxywh[sortx]
     class_idxs = class_idxs[sortx]
+    pts_list = list(ub.take(pts_list, sortx))
+    sseg_list = list(ub.take(sseg_list, sortx))
 
     def iround(x):
         return int(round(x))
@@ -1105,7 +1317,8 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     H, W = input_dims
     xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
 
-    for (cx, cy, w, h), cidx, sseg_mask in zip(cxywh, class_idxs, masks):
+    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, sseg_list, pts_list):
+        (cx, cy, w, h) = box
         center = (iround(cx), iround(cy))
         # Adjust so smaller objects get more pixels
         wf = min(1, (w / 64))
@@ -1118,8 +1331,6 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         half_h = iround(hf * h / 2 + 1)
         axes = (half_w, half_h)
 
-        sseg_mask = None
-
         if sseg_mask is None:
             mask = np.zeros_like(cidx_mask, dtype=np.uint8)
             mask = cv2.ellipse(mask, center, axes, angle=0.0,
@@ -1130,7 +1341,6 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         # class index
         cidx_mask[mask] = int(cidx)
         if soft:
-            import kwimage
             blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
             blip = blip / blip.max()
             subindex = (slice(cy - half_h, cy + half_h),
@@ -1144,10 +1354,25 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         assert np.all(size_mask[0][mask] == float(w))
 
         # object offset
-        dy = cy - ycoord
-        dx = cx - xcoord
-        dxdy_mask[0][mask] = dx[mask]
-        dxdy_mask[1][mask] = dy[mask]
+        dx = cx - xcoord[mask]
+        dy = cy - ycoord[mask]
+        dxdy_mask[0][mask] = dx
+        dxdy_mask[1][mask] = dy
+
+        if kpts_mask is not None:
+
+            if pts is not None:
+                # Keypoint offsets
+                for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
+                    kp_x, kp_y = xy
+                    kp_dx = kp_x - xcoord[mask]
+                    kp_dy = kp_y - ycoord[mask]
+                    kpts_mask[0, kp_cidx][mask] = kp_dx
+                    kpts_mask[1, kp_cidx][mask] = kp_dy
+                    kpts_ignore_mask[kp_cidx][mask]
+
+        # SeeAlso:
+        # ~/code/ovharn/ovharn/models/mcd_coder.py
 
     fcn_target = {
         'size': size_mask,
@@ -1155,9 +1380,19 @@ def _dets_to_masks(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         'cidx': cidx_mask,
     }
     if soft:
-        nonbg_idxs = sorted(set(range(num_classes)) - {bg_idx})
+        nonbg_idxs = sorted(set(range(num_obj_classes)) - {bg_idx})
         cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
         fcn_target['class_probs'] = cidx_probs
+
+    if kpts_mask is not None:
+        fcn_target['kpts'] = kpts_mask
+        fcn_target['kpts_ignore'] = kpts_ignore_mask
+    else:
+        if 'keypoints' in dets.data:
+            if any(kp is not None for kp in dets.data['keypoints']):
+                raise AssertionError(
+                    'dets had keypoints, but we didnt encode them, were the kp classes missing?')
+
     return fcn_target
 
 

@@ -2,38 +2,80 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
+import torch
+import xdev
 from . import _generic
 
 
 class _PointsWarpMixin:
 
-    def _warp_imgaug(self, augmenter, input_shape, inplace=False):
+    @xdev.profile
+    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
 
         Args:
             augmenter (imgaug.augmenters.Augmenter):
-            input_shape (Tuple): h/w of the input image
+            input_dims (Tuple): h/w of the input image
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.points import *  # NOQA
             >>> import imgaug
-            >>> self = Points.random(10)
+            >>> input_dims = (10, 10)
+            >>> self = Points.random(10).scale(input_dims)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
-            >>> input_shape = (10, 10)
-            >>> new = self._warp_imgaug(augmenter, input_shape)
-            >>> new2 = self.warp(augmenter, input_shape)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwil.autompl()
+            >>> kwil.figure(fnum=1, doclf=True)
+            >>> from matplotlib import pyplot as pl
+            >>> ax = plt.gca()
+            >>> ax.set_xlim(0, 10)
+            >>> ax.set_ylim(0, 10)
+            >>> self.draw(color='red', alpha=.4, radius=0.1)
+            >>> new.draw(color='blue', alpha=.4, radius=0.1)
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        kpoi = new.to_imgaug(shape=input_shape)
-        kpoi = augmenter.augment_keypoints(kpoi)
-        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints],
-                      dtype=new.xy.dtype)
-        new.data['xy'] = xy
+        kpoi = new.to_imgaug(input_dims=input_dims)
+        new_kpoi = augmenter.augment_keypoints(kpoi)
+        dtype = new.data['xy'].data.dtype
+        xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
+        import kwimage
+        new.data['xy'] = kwimage.Coords(xy)
         return new
 
-    def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
+    def to_imgaug(self, input_dims):
+        """
+        Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> pts = Points.random(10)
+            >>> input_dims = (10, 10)
+            >>> kpoi = pts.to_imgaug(input_dims)
+        """
+        import imgaug
+        if imgaug.__version__ == '0.2.8':
+            # Hack to fix imgaug bug
+            h, w = input_dims
+            input_dims = (h + 1.0, w + 1.0)
+        else:
+            raise Exception('WAS THE BUG FIXED IN A NEW VERSION?')
+        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
+        kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
+        return kpoi
+
+    @classmethod
+    def from_imgaug(cls, kpoi):
+        import numpy as np
+        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
+        self = cls(xy=xy)
+        return self
+
+    @xdev.profile
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
 
@@ -42,10 +84,10 @@ class _PointsWarpMixin:
                 scikit-image tranform, a 3x3 transformation matrix, or
                 an imgaug Augmenter.
 
-            input_shape (Tuple): shape of the image these objects correspond to
+            input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
-            output_shape (Tuple): unused, only exists for compatibility
+            output_dims (Tuple): unused, only exists for compatibility
 
             inplace (bool, default=False): if True, modifies data inplace
 
@@ -61,29 +103,31 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(3)).xy == self.xy)
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
-        import kwimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if isinstance(transform, np.ndarray):
-            matrix = transform
-        elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
-            matrix = transform.params
-        else:
-            import imgaug
+        if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
+            try:
+                import imgaug
+            except ImportError:
+                import warnings
+                warnings.warn('imgaug is not installed')
+                raise TypeError(type(transform))
             if isinstance(transform, imgaug.augmenters.Augmenter):
-                return new._warp_imgaug(transform, input_shape, inplace=True)
+                return new._warp_imgaug(transform, input_dims, inplace=True)
             else:
                 raise TypeError(type(transform))
-        new.data['xy'] = kwimage.warp_points(matrix, new.data['xy'])
+        new.data['xy'] = new.data['xy'].warp(transform, input_dims,
+                                             output_dims, inplace)
         return new
 
-    def scale(self, factor, output_shape=None, inplace=False):
+    @xdev.profile
+    def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a points by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> from kwimage.structs.points import *  # NOQA
@@ -92,30 +136,18 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 10
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if not ub.iterable(factor):
-            sx = sy = factor
-        elif isinstance(factor, (list, tuple)):
-            sx, sy = factor
-        else:
-            sx = factor[..., 0]
-            sy = factor[..., 1]
-        xy = new.data['xy']
-        impl = kwarray.ArrayAPI.coerce(xy)
-        if not inplace:
-            xy = new.data['xy'] = impl.copy(xy)
-        if impl.numel(xy) > 0:
-            xy[..., 0] *= sx
-            xy[..., 1] *= sy
+        new.data['xy'] = new.data['xy'].scale(factor, output_dims, inplace)
         return new
 
-    def translate(self, amount, output_shape=None, inplace=False):
+    @xdev.profile
+    def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the points up/down left/right
 
         Args:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> from kwimage.structs.points import *  # NOQA
@@ -125,20 +157,7 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 11
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if not ub.iterable(amount):
-            tx = ty = amount
-        elif isinstance(amount, (list, tuple)):
-            tx, ty = amount
-        else:
-            tx = amount[..., 0]
-            ty = amount[..., 1]
-        xy = new.data['xy']
-        impl = kwarray.ArrayAPI.coerce(xy)
-        if not inplace:
-            xy = new.data['xy'] = impl.copy(xy)
-        if impl.numel(xy) > 0:
-            xy[..., 0] += tx
-            xy[..., 1] += ty
+        new.data['xy'] = new.data['xy'].translate(offset, output_dims, inplace)
         return new
 
 
@@ -167,6 +186,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
     # Pre-registered keys for the meta dictionary
     __metakeys__ = ['classes']
 
+    @xdev.profile
     def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
                  **kwargs):
         if kwargs:
@@ -185,6 +205,12 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             if kwargs:
                 raise ValueError(
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
+
+            if 'xy' in data:
+                if isinstance(data['xy'], (np.ndarray, torch.Tensor)):
+                    import kwimage
+                    data['xy'] = kwimage.Coords(data['xy'])
+
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data and meta are explicitly specified
@@ -208,65 +234,125 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
 
     @property
     def xy(self):
-        return self.data['xy']
-
-    def to_imgaug(self, shape):
-        """
-        Example:
-            >>> from kwimage.structs.points import *  # NOQA
-            >>> pts = Points.random(10)
-            >>> shape = (10, 10)
-            >>> kpoi = pts.to_imgaug(shape)
-        """
-        import imgaug
-        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy']]
-        kpoi = imgaug.KeypointsOnImage(kps, shape=shape)
-        return kpoi
+        return self.data['xy'].data
 
     @classmethod
-    def from_imgaug(cls, kpoi):
-        import numpy as np
-        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
-        self = cls(xy=xy)
-        return self
-
-    @classmethod
-    def random(Points, num=1, rng=None):
+    def random(Points, num=1, classes=None, rng=None):
         """
         Makes random points; typically for testing purposes
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Points.random(classes=[1, 2, 3])
+            >>> self.data
         """
         rng = kwarray.ensure_rng(rng)
         self = Points(xy=rng.rand(num, 2))
+        if classes is not None:
+            class_idxs = (rng.rand(len(self)) * len(classes)).astype(np.int)
+            self.data['class_idxs'] = class_idxs
+            self.meta['classes'] = classes
         return self
 
     def is_numpy(self):
-        return kwarray.ArrayAPI.coerce(self.xy).is_numpy
+        return self.data['xy'].is_numpy()
 
     def is_tensor(self):
-        return kwarray.ArrayAPI.coerce(self.xy).is_tensor
+        return self.data['xy'].is_tensor()
 
-    @_generic.memoize_property
+    @ub.memoize_property
     def _impl(self):
-        return kwarray.ArrayAPI.coerce(self.xy)
+        return self.data['xy']._impl
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
+        """
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10)
+            >>> self.tensor()
+        """
         impl = self._impl
-        newdata = {k: impl.tensor(v, device) for k, v in self.data.items()}
+        newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
+                   else impl.tensor(v, device)
+                   for k, v in self.data.items()}
         new = self.__class__(newdata, self.meta)
         return new
 
+    @xdev.profile
     def numpy(self):
+        """
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10)
+            >>> self.tensor().numpy().tensor().numpy()
+        """
         impl = self._impl
-        newdata = {k: impl.numpy(v) for k, v in self.data.items()}
+        newdata = {k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
+                   for k, v in self.data.items()}
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image):
-        raise NotImplementedError
+    def draw_on(self, image, color='white', radius=None):
+        """
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> s = 128
+            >>> image = np.zeros((s, s))
+            >>> self = Points.random(10).scale(s)
+            >>> image = self.draw_on(image)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> self.draw(radius=3, alpha=.5)
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> s = 128
+            >>> image = np.zeros((s, s))
+            >>> self = Points.random(10).scale(s)
+            >>> image = self.draw_on(image, radius=3)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> self.draw(radius=3, alpha=.5)
+        """
+        import kwplot
+        import kwimage
+        value = kwplot.Color(color).as01()
+
+        if radius is None:
+            image = kwimage.atleast_3channels(image)
+            image = kwimage.ensure_float01(image)
+            image = self.data['xy'].fill(
+                image, value, coord_axes=[1, 0], interp='bilinear')
+        else:
+            import cv2
+            image = kwimage.atleast_3channels(image)
+            image = kwimage.ensure_float01(image)
+            for xy in self.data['xy'].data.reshape(-1, 2):
+                # center = tuple(map(int, xy.tolist()))
+                center = tuple(xy.tolist())
+                axes = (radius / 2, radius / 2)
+                center = tuple(map(int, center))
+                axes = tuple(map(int, axes))
+                # print('center = {!r}'.format(center))
+                # print('axes = {!r}'.format(axes))
+                image = cv2.ellipse(image, center, axes, angle=0.0,
+                                    startAngle=0.0, endAngle=360.0,
+                                    color=value, thickness=-1)
+        return image
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
         """
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
             >>> pts.draw(radius=0.01)
@@ -276,7 +362,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
         from matplotlib import pyplot as plt
         if ax is None:
             ax = plt.gca()
-        xy = self.data['xy']
+        xy = self.data['xy'].data.reshape(-1, 2)
 
         # More grouped patches == more efficient runtime
         if alpha is None:
@@ -299,6 +385,35 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
             ax.add_collection(col)
+
+    def compress(self, flags, axis=0, inplace=False):
+        """
+        Filters items based on a boolean criterion
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data['xy'] = new.data['xy'].compress(flags, axis, inplace=inplace)
+        return new
+
+    def take(self, indices, axis=0, inplace=False):
+        """
+        Takes a subset of items at specific indices
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data['xy'] = new.data['xy'].take(indices, axis, inplace=inplace)
+        return new
+
+    @classmethod
+    def concatenate(cls, points, axis=0):
+        if len(points) == 0:
+            raise ValueError('need at least one box to concatenate')
+        if axis != 0:
+            raise ValueError('can only concatenate along axis=0')
+        import kwimage
+        first = points[0]
+        datas = [p.data['xy'] for p in points]
+        newxy = kwimage.Coords.concatenate(datas)
+        new = cls({'xy': newxy}, first.meta)
+        return new
 
 
 class PointsList(_generic.ObjectList):

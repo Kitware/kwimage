@@ -1,5 +1,5 @@
 import ubelt as ub
-import functools
+import xdev
 
 
 class ObjectList(ub.NiceRepr):
@@ -7,8 +7,14 @@ class ObjectList(ub.NiceRepr):
     Stores a list of potentially heterogenous structures, each item usually
     corresponds to a different object.
     """
-    def __init__(self, data):
+
+    # __slots__ = ('data', 'meta',)
+
+    def __init__(self, data, meta=None):
+        if meta is None:
+            meta = {}
         self.data = data
+        self.meta = meta
 
     def __len__(self):
         return len(self.data)
@@ -23,38 +29,48 @@ class ObjectList(ub.NiceRepr):
         for index in range(len(self)):
             yield self[index]
 
-    def translate(self, offset, output_shape=None):
+    @xdev.profile
+    def translate(self, offset, output_dims=None):
         newdata = [None if item is None else
-                   item.translate(offset, output_shape=output_shape)
+                   item.translate(offset, output_dims=output_dims)
                    for item in self.data]
-        return ObjectList(newdata)
+        return self.__class__(newdata, self.meta)
 
-    def scale(self, factor, output_shape=None):
+    @xdev.profile
+    def scale(self, factor, output_dims=None):
         newdata = [None if item is None else
-                   item.scale(factor, output_shape=output_shape)
+                   item.scale(factor, output_dims=output_dims)
                    for item in self.data]
-        return ObjectList(newdata)
+        return self.__class__(newdata, self.meta)
 
-    def warp(self, transform, input_shape=None, output_shape=None):
-        newdata = [None if item is None else
-                   item.warp(transform, input_shape=input_shape,
-                             output_shape=output_shape)
-                   for item in self.data]
-        return ObjectList(newdata)
+    @xdev.profile
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+        if inplace:
+            for item in self.data:
+                if item is not None:
+                    item.warp(transform, input_dims=input_dims,
+                              output_dims=output_dims, inplace=inplace)
+            return self
+        else:
+            newdata = [None if item is None else
+                       item.warp(transform, input_dims=input_dims,
+                                 output_dims=output_dims, inplace=inplace)
+                       for item in self.data]
+            return self.__class__(newdata, self.meta)
 
     def apply(self, func):
         newdata = [None if item is None else func(item) for item in self.data]
-        return ObjectList(newdata)
+        return self.__class__(newdata, self.meta)
 
     def compress(self, flags, axis=0):
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))
-        return ObjectList(newdata)
+        return self.__class__(newdata, self.meta)
 
     def take(self, indices, axis=0):
         assert axis == 0
         newdata = list(ub.take(self.data, indices))
-        return ObjectList(newdata)
+        return self.__class__(newdata, self.meta)
 
     def draw(self, **kwargs):
         for item in self.data:
@@ -64,56 +80,27 @@ class ObjectList(ub.NiceRepr):
     def draw_on(self, image, **kwargs):
         for item in self.data:
             if item is not None:
-                image = item.draw(image=image, **kwargs)
+                image = item.draw_on(image=image, **kwargs)
         return image
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         return self.apply(lambda item: item.tensor(device))
 
+    @xdev.profile
     def numpy(self):
         return self.apply(lambda item: item.numpy())
 
+    @classmethod
+    def concatenate(cls, data):
+        raise NotImplementedError
 
-def memoize_property(fget):
-    """
-    TEMPORARY LOCATION UNTIL UBELT 0.7.0 LANDS IN MASTER
+    def is_tensor(cls):
+        raise NotImplementedError
 
-    Return a property attribute for new-style classes that only calls its
-    getter on the first access. The result is stored and on subsequent accesses
-    is returned, preventing the need to call the getter any more.
+    def is_numpy(cls):
+        raise NotImplementedError
 
-    Notes:
-        implementation taken directly from [1].
-
-    References:
-        ..[1] https://github.com/estebistec/python-memoized-property
-
-    Example:
-        >>> class C(object):
-        ...     load_name_count = 0
-        ...     @memoize_property
-        ...     def name(self):
-        ...         "name's docstring"
-        ...         self.load_name_count += 1
-        ...         return "the name"
-        >>> c = C()
-        >>> c.load_name_count
-        0
-        >>> c.name
-        'the name'
-        >>> c.load_name_count
-        1
-        >>> c.name
-        'the name'
-        >>> c.load_name_count
-        1
-    """
-    attr_name = '_' + fget.__name__
-
-    @functools.wraps(fget)
-    def fget_memoized(self):
-        if not hasattr(self, attr_name):
-            setattr(self, attr_name, fget(self))
-        return getattr(self, attr_name)
-
-    return property(fget_memoized)
+    @classmethod
+    def random(cls):
+        raise NotImplementedError

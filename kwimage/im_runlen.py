@@ -177,6 +177,27 @@ def rle_translate(rle, offset, output_shape=None):
         [[0 0 1 0 0]
          [0 0 1 0 1]
          [0 1 1 1 1]]
+
+    Example
+
+        >>> from kwimage.im_runlen import *  # NOQA
+        >>> img = np.array([
+        >>>     [0, 0, 0],
+        >>>     [0, 1, 0],
+        >>>     [0, 0, 0]], dtype=np.uint8)
+        >>> rle = encode_run_length(img, binary=True, order='C')
+        >>> new_rle = rle_translate(rle, (1, 0))
+        >>> decoded = decode_run_length(**new_rle)
+        >>> print(decoded)
+        [[0 0 0]
+         [0 0 1]
+         [0 0 0]]
+        >>> new_rle = rle_translate(rle, (0, 1))
+        >>> decoded = decode_run_length(**new_rle)
+        >>> print(decoded)
+        [[0 0 0]
+         [0 0 0]
+         [0 1 0]]
     """
     if not rle['binary']:
         raise NotImplementedError(

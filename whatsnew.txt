@@ -1,5 +1,8 @@
 Version 0.3.0
 =============
+* Add `subpixel_setvalue` and `subpixel_getvalue` 
+* Add `Coords` data structure
+* Speedup `overlay_alpha_layers` by bypassing redundant dstack operations. 
 * Changed `encode_run_length` to return a dictionary
 * Add `Mask` data structure
 * Add `Points` data structure

@@ -38,6 +38,7 @@ import ubelt as ub
 import itertools as it
 from . import _generic
 from kwimage.structs._mask_backend import cython_mask
+import xdev
 
 __all__ = ['Mask', 'MaskList']
 
@@ -296,16 +297,70 @@ class _MaskConstructorMixin(object):
 
 
 class _MaskTransformMixin(object):
-    def warp(self):
-        raise NotImplementedError
 
-    def translate(self, offset, output_shape=None):
+    @xdev.profile
+    def scale(self, factor, output_dims=None, inplace=False):
+        """
+        Example:
+            >>> self = Mask.random()
+            >>> factor = 5
+            >>> inplace = False
+            >>> new = self.scale(factor)
+            >>> print('new.shape = {!r}'.format(new.shape))
+        """
+        if not ub.iterable(factor):
+            sx = sy = factor
+        else:
+            sx, sy = factor
+        if output_dims is None:
+            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(np.int)
+        # FIXME: the warp breaks when the third row is left out
+        transform = np.array([[sx, 0.0, 0.0], [0.0, sy, 0.0], [0, 0, 1]])
+        new = self.warp(transform, output_dims=output_dims, inplace=inplace)
+        return new
+
+    @xdev.profile
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+        """
+
+        Example:
+            >>> import kwimage
+            >>> self = mask = kwimage.Mask.random()
+            >>> transform = np.array([[5., 0, 0], [0, 5, 0], [0, 0, 1]])
+            >>> output_dims = np.array(self.shape) * 6
+            >>> new = self.warp(transform, output_dims=output_dims)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 1))
+            >>> self.draw()
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 2))
+            >>> new.draw()
+        """
+        # HACK: use brute force just to get this implemented.
+        # very inefficient
+        import kwimage
+        import torch
+        c_mask = self.to_c_mask(copy=False).data
+
+        t_mask = torch.Tensor(c_mask)
+        matrix = torch.Tensor(transform)
+        output_dims = output_dims
+        w_mask = kwimage.warp_tensor(t_mask, matrix, output_dims=output_dims,
+                                     mode='nearest')
+        new = self if inplace else Mask(self.data, self.format)
+        new.data = w_mask.numpy().astype(np.uint8)
+        new.format = MaskFormat.C_MASK
+        return new
+
+    @xdev.profile
+    def translate(self, offset, output_dims=None):
         """
         Efficiently translate an array_rle in the encoding space
 
         Args:
             offset (Tuple): x,y offset
-            output_shape (Tuple, optional): h,w of transformed mask.
+            output_dims (Tuple, optional): h,w of transformed mask.
                 If unspecified the parent shape is used.
 
         Example:
@@ -316,10 +371,10 @@ class _MaskTransformMixin(object):
             >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
         """
         import kwimage
-        if output_shape is None:
-            output_shape = self.shape
+        if output_dims is None:
+            output_dims = self.shape
         rle = self.to_array_rle(copy=False).data
-        new_rle = kwimage.rle_translate(rle, offset, output_shape)
+        new_rle = kwimage.rle_translate(rle, offset, output_dims)
         new_rle['size'] = new_rle['shape']
         new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
         return new_self
@@ -331,12 +386,13 @@ class _MaskDrawMixin(object):
     """
 
     def draw_on(self, image, color='blue', alpha=0.5,
-                show_border=True, border_thick=1,
+                show_border=False, border_thick=1,
                 border_color='white'):
         """
         Draws the mask on an image
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> import kwimage
             >>> image = kwimage.grab_test_image()
@@ -347,21 +403,6 @@ class _MaskDrawMixin(object):
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
             >>> kwplot.show_if_requested()
-
-        Ignore:
-            from kwimage.structs.mask import *
-            import kwimage
-            import numpy as np
-            import matplotlib.pyplot as plt
-            import cv2
-            image = kwimage.grab_test_image()
-            self = Mask.random(shape=image.shape[0:2])
-            toshow = self.draw_on(image)
-            color='blue'
-            alpha=0.5,
-            show_border=True
-            border_thick=1
-            border_color='white'
         """
         import kwplot
         import kwimage
@@ -377,16 +418,16 @@ class _MaskDrawMixin(object):
         if show_border:
             # return shape of contours to openCV contours
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8), contours, -1,
-                             kwplot.Color(border_color).as255(),
-                             border_thick, cv2.LINE_AA)
+            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8),
+                                      contours, -1,
+                                      kwplot.Color(border_color).as255(),
+                                      border_thick, cv2.LINE_AA)
             toshow = toshow.astype(np.float) / 255.
 
         return toshow
 
-    def draw(self, color='blue', alpha=0.5, ax=None,
-                show_border=True, border_thick=1,
-                border_color='black'):
+    def draw(self, color='blue', alpha=0.5, ax=None, show_border=False,
+             border_thick=1, border_color='black'):
         """
         Draw on the current matplotlib axis
         """
@@ -406,7 +447,7 @@ class _MaskDrawMixin(object):
             border_color_tup = kwplot.Color(border_color).as255()
             border_color_tup = (border_color_tup[0], border_color_tup[1],
                                 border_color_tup[2], 255 * alpha)
-                                
+
             # return shape of contours to openCV contours
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
             alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
@@ -449,6 +490,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def __nice__(self):
         return '{}, format={}'.format(ub.repr2(self.data, nl=0), self.format)
 
+    # def tensor(self):
+    #     # self.
+    #     # Mask(item.to_bytes_rle
+    #     # pass
+
     @classmethod
     def random(Mask, rng=None, shape=(32, 32)):
         import kwarray
@@ -477,14 +523,66 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         This can be used as a staticmethod or an instancemethod
 
         Example:
+            >>> from kwimage.structs.mask import *  # NOQA
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
             33
+            >>> masks = [m.to_c_mask() for m in masks]
+            >>> mask = Mask.union(*masks)
+            >>> print(mask.area)
+
+            >>> masks = [m.to_bytes_rle() for m in masks]
+            >>> mask = Mask.union(*masks)
+            >>> print(mask.area)
+
+        Benchmark:
+            import ubelt as ub
+            ti = ub.Timerit(100, bestof=10, verbose=2)
+
+            masks = [Mask.random(shape=(172, 172), rng=i) for i in range(2)]
+
+            for timer in ti.reset('native rle union'):
+                masks = [m.to_bytes_rle() for m in masks]
+                with timer:
+                    mask = Mask.union(*masks)
+
+            for timer in ti.reset('native cmask union'):
+                masks = [m.to_c_mask() for m in masks]
+                with timer:
+                    mask = Mask.union(*masks)
+
+            for timer in ti.reset('cmask->rle union'):
+                masks = [m.to_c_mask() for m in masks]
+                with timer:
+                    mask = Mask.union(*[m.to_bytes_rle() for m in masks])
         """
-        cls = self.__class__ if isinstance(self, Mask) else Mask
-        rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
-        return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.BYTES_RLE)
+        if isinstance(self, Mask):
+            cls = self.__class__
+            items = list(it.chain([self], others))
+        else:
+            cls = Mask
+            items = others
+
+        if len(items) == 0:
+            raise Exception('empty union')
+        else:
+            format = items[0].format
+            if format == MaskFormat.C_MASK:
+                datas = [item.to_c_mask().data for item in items]
+                new_data = np.bitwise_or.reduce(datas)
+                new = cls(new_data, MaskFormat.C_MASK)
+            elif format == MaskFormat.BYTES_RLE:
+                datas = [item.to_bytes_rle().data for item in items]
+                new_data = cython_mask.merge(datas, intersect=0)
+                new = cls(new_data, MaskFormat.BYTES_RLE)
+            else:
+                datas = [item.to_bytes_rle().data for item in items]
+                new_rle = cython_mask.merge(datas, intersect=0)
+                new = cls(new_rle, MaskFormat.BYTES_RLE)
+        return new
+        # rle_datas = [item.to_bytes_rle().data for item in items]
+        # return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.BYTES_RLE)
 
     def intersection(self, *others):
         """
@@ -536,9 +634,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                    [0, 0, 0, 0, 0, 0, 1, 1]], dtype=uint8)
         """
         x, y, w, h = self.get_xywh().astype(np.int).tolist()
-        output_shape = (h, w)
+        output_dims = (h, w)
         xy_offset = (-x, -y)
-        temp = self.translate(xy_offset, output_shape)
+        temp = self.translate(xy_offset, output_dims)
         patch = temp.to_c_mask().data
         return patch
 
@@ -578,16 +676,13 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
+            >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_polygon()
             >>> print('polygons = ' + ub.repr2(polygons))
-            polygons = [
-                np.array([[6, 4],[7, 4]], dtype=np.int32),
-                np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
-            ]
             >>> polygons = self.get_polygon()
-            >>> other = Mask.from_polygons(polygons, self.shape)
             >>> self = self.to_bytes_rle()
+            >>> other = Mask.from_polygons(polygons, self.shape)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -595,10 +690,40 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> image = self.draw_on(image, color='blue')
             >>> image = other.draw_on(image, color='red')
             >>> kwplot.imshow(image)
+
+            polygons = [
+                np.array([[6, 4],[7, 4]], dtype=np.int32),
+                np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
+            ]
         """
-        mask = self.to_c_mask().data
-        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1,
+        import warnings
+        warnings.warn('depricated use to_multi_polygon', DeprecationWarning)
+        p = 2
+
+        if 0:
+            mask = self.to_c_mask().data
+            offset = (-p, -p)
+        else:
+            # It should be faster to only exact the patch of non-zero values
+            x, y, w, h = self.get_xywh().astype(np.int).tolist()
+            output_dims = (h, w)
+            xy_offset = (-x, -y)
+            temp = self.translate(xy_offset, output_dims)
+            mask = temp.to_c_mask().data
+            offset = (x - p, y - p)
+
+        padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
                                          cv2.BORDER_CONSTANT, value=0)
+
+        # print('src =\n{!r}'.format(padded_mask))
+        kernel = np.array([
+            [1, 1, 0],
+            [1, 1, 0],
+            [0, 0, 0],
+        ], dtype=np.uint8)
+        padded_mask = cv2.dilate(padded_mask, kernel, dst=padded_mask)
+        # print('dst =\n{!r}'.format(padded_mask))
+
         mode = cv2.RETR_LIST
         # mode = cv2.RETR_EXTERNAL
 
@@ -609,7 +734,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # method = cv2.CHAIN_APPROX_NONE
         # method = cv2.CHAIN_APPROX_TC89_KCOS
         # Different versions of cv2 have different return types
-        _ret = cv2.findContours(padded_mask, mode, method, offset=(-1, -1))
+        _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
         if len(_ret) == 2:
             _contours, _hierarchy = _ret
         else:
@@ -631,6 +756,168 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwil.imshow(toshow)
 
         return polygon
+
+    def to_mask(self):
+        return self
+
+    @classmethod
+    def demo(cls):
+        """
+        Demo mask with holes and disjoint shapes
+        """
+        text = ub.codeblock(
+            '''
+            ................................
+            ..ooooooo....ooooooooooooo......
+            ..ooooooo....o...........o......
+            ..oo...oo....o.oooooooo..o......
+            ..oo...oo....o.o......o..o......
+            ..ooooooo....o.o..oo..o..o......
+            .............o.o...o..o..o......
+            .............o.o..oo..o..o......
+            .............o.o......o..o......
+            ..ooooooo....o.oooooooo..o......
+            .............o...........o......
+            .............o...........o......
+            .............ooooooooooooo......
+            .............o...........o......
+            .............o...........o......
+            .............o....ooooo..o......
+            .............o....o...o..o......
+            .............o....ooooo..o......
+            .............o...........o......
+            .............ooooooooooooo......
+            ................................
+            ................................
+            ................................
+            ''')
+        lines = text.split('\n')
+        data = [[0 if c == '.' else 1 for c in line] for line in lines]
+        data = np.array(data).astype(np.uint8)
+        self = cls(data, format=MaskFormat.C_MASK)
+        return self
+
+    def to_multi_polygon(self):
+        """
+        Returns a MultiPolygon object fit around this raster including disjoint
+        pieces and holes.
+
+        Returns:
+            MultiPolygon: vectorized representation
+
+        Example:
+            >>> from kwimage.structs.mask import *  # NOQA
+            >>> self = Mask.demo()
+            >>> self = self.scale(5)
+            >>> multi_poly = self.to_multi_polygon()
+            >>> self.draw(color='red')
+            >>> multi_poly.scale(1.1).draw(color='blue')
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> image = np.ones(self.shape)
+            >>> image = self.draw_on(image, color='blue')
+            >>> #image = other.draw_on(image, color='red')
+            >>> kwplot.imshow(image)
+            >>> multi_poly.draw()
+        """
+        import cv2
+        p = 2
+        # It should be faster to only exact the patch of non-zero values
+        x, y, w, h = self.get_xywh().astype(np.int).tolist()
+        if w > 0 and h > 0:
+            output_dims = (h, w)
+            xy_offset = (-x, -y)
+            temp = self.translate(xy_offset, output_dims)
+            mask = temp.to_c_mask().data
+            offset = (x - p, y - p)
+
+            padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
+                                             cv2.BORDER_CONSTANT, value=0)
+
+            # https://docs.opencv.org/3.1.0/d3/dc0/
+            # group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+            mode = cv2.RETR_CCOMP
+            method = cv2.CHAIN_APPROX_SIMPLE
+            # method = cv2.CHAIN_APPROX_TC89_KCOS
+            # Different versions of cv2 have different return types
+            _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
+            if len(_ret) == 2:
+                _contours, _hierarchy = _ret
+            else:
+                _img, _contours, _hierarchy = _ret
+            _hierarchy = _hierarchy[0]
+
+            polys = {i: {'exterior': None, 'interiors': []}
+                     for i, row in enumerate(_hierarchy) if row[3] == -1}
+            for i, row in enumerate(_hierarchy):
+                # This only works in RETR_CCOMP mode
+                nxt, prev, child, parent = row[0:4]
+                if parent != -1:
+                    polys[parent]['interiors'].append(_contours[i][:, 0, :])
+                else:
+                    polys[i]['exterior'] = _contours[i][:, 0, :]
+
+            from kwimage.structs.polygon import Polygon, MultiPolygon
+            poly_list = [Polygon(**data) for data in polys.values()]
+            multi_poly = MultiPolygon(poly_list)
+        else:
+            from kwimage.structs.polygon import Polygon, MultiPolygon
+            multi_poly = MultiPolygon([])
+        return multi_poly
+
+        # if False:
+        #     import kwil
+        #     kwil.autompl()
+        #     # Note that cv2 draw contours doesnt have the 1-pixel thick problem
+        #     # it seems to just be the way the coco implementation is
+        #     # interpreting polygons.
+
+        #     from matplotlib.patches import Path
+        #     from matplotlib import pyplot as plt
+        #     import matplotlib as mpl
+
+        #     kwil.imshow(self.to_c_mask().data, fnum=2, doclf=True)
+        #     ax = plt.gca()
+        #     patches = []
+
+        #     for i, poly in polys.items():
+        #         exterior = poly['exterior'].tolist()
+        #         exterior.append(exterior[0])
+        #         n = len(exterior)
+        #         verts = []
+        #         verts.extend(exterior)
+        #         codes = [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
+
+        #         interiors = poly['interiors']
+        #         for hole in interiors:
+        #             hole = hole.tolist()
+        #             hole.append(hole[0])
+        #             n = len(hole)
+        #             verts.extend(hole)
+        #             codes += [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
+
+        #         verts = np.array(verts)
+        #         path = Path(verts, codes)
+        #         patch = mpl.patches.PathPatch(path)
+        #         patches.append(patch)
+        #     poly_col = mpl.collections.PatchCollection(patches, 2, alpha=0.4)
+        #     ax.add_collection(poly_col)
+        #     ax.set_xlim(0, 32)
+        #     ax.set_ylim(0, 32)
+
+        #     # line_type = cv2.LINE_AA
+        #     # line_type = cv2.LINE_4
+        #     line_type = cv2.LINE_8
+        #     contour_idx = -1
+        #     thickness = 1
+        #     toshow = np.zeros(self.shape, dtype="uint8")
+        #     toshow = kwil.atleast_3channels(toshow)
+        #     toshow = cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), thickness, line_type)
+        #     kwil.imshow(toshow, fnum=2, doclf=True)
+
+        # return polygon
 
     def get_convex_hull(self):
         """

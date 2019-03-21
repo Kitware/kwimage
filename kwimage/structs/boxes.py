@@ -61,7 +61,6 @@ import warnings
 import skimage
 import kwarray
 from distutils.version import LooseVersion
-from . import _generic
 
 __all__ = ['Boxes']
 
@@ -218,8 +217,8 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
 def _box_ious_torch(tlbr1, tlbr2, bias=0):
     """
     Example:
-        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr', tensor=True).data
-        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr', tensor=True).data
+        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').tensor().data
+        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').tensor().data
         >>> bias = 0
         >>> ious = _box_ious_torch(tlbr1, tlbr2, bias)
         >>> ious_np = _box_ious_py(tlbr1.numpy(), tlbr2.numpy(), bias)
@@ -490,6 +489,7 @@ class _BoxConversionMixins(object):
             shape (tuple): shape of image that boxes belong to
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
             >>> bboi = self.to_imgaug((10, 10))
         """
@@ -523,6 +523,7 @@ class _BoxConversionMixins(object):
             bboi (ia.BoundingBoxesOnImage):
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> orig = Boxes.random(5, format='tlbr')
             >>> bboi = orig.to_imgaug(shape=(500, 500))
             >>> self = Boxes.from_imgaug(bboi)
@@ -684,23 +685,24 @@ class _BoxTransformMixins(object):
     methods for transforming bounding boxes
     """
 
-    def _warp_imgaug(self, augmenter, input_shape, inplace=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Args:
             augmenter (imgaug.augmenters.Augmenter):
-            input_shape (Tuple): h/w of the input image
+            input_dims (Tuple): h/w of the input image
             inplace (bool, default=False): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.boxes import *  # NOQA
             >>> import imgaug
             >>> self = Boxes.random(10)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
-            >>> input_shape = (10, 10)
-            >>> new = self._warp_imgaug(augmenter, input_shape)
+            >>> input_dims = (10, 10)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
         """
         new = self if inplace else self.__class__(self.data, self.format)
-        bboi = self.to_imgaug(shape=input_shape)
+        bboi = self.to_imgaug(shape=input_dims)
         bboi = augmenter.augment_bounding_boxes([bboi])[0]
         tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
                          for bb in bboi.bounding_boxes])
@@ -711,7 +713,7 @@ class _BoxTransformMixins(object):
             new = new.tensor()
         return new
 
-    def warp(self, transform, input_shape=None, output_shape=None, inplace=False):
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
         not axis-aligned will lose information (and also may not be
@@ -721,13 +723,12 @@ class _BoxTransformMixins(object):
             transform (skimage.transform._geometric.GeometricTransform | ArrayLike):
                 scikit-image tranform or a 3x3 transformation matrix
 
-            input_shape (Tuple): shape of the image these objects correspond to
+            input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
             inplace (bool, default=False): if True, modifies data inplace
-
 
         TODO:
             - [ ] Generalize so the transform can be an arbitrary matrix
@@ -776,9 +777,14 @@ class _BoxTransformMixins(object):
             elif isinstance(transform, (np.ndarray, torch.Tensor)):
                 matrix = transform
             else:
-                import imgaug
+                try:
+                    import imgaug
+                except ImportError:
+                    import warnings
+                    warnings.warn('imgaug is not installed')
+                    raise TypeError(type(transform))
                 if isinstance(transform, imgaug.augmenters.Augmenter):
-                    return new._warp_imgaug(transform, input_shape, inplace=True)
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
                 else:
                     raise TypeError(type(transform))
 
@@ -805,14 +811,14 @@ class _BoxTransformMixins(object):
 
         return new
 
-    def scale(self, factor, output_shape=None, inplace=False):
+    def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         TODO:
             it might be useful to have an argument `origin`, so everything
@@ -884,14 +890,14 @@ class _BoxTransformMixins(object):
                 raise NotImplementedError('Cannot scale: {}'.format(self.format))
         return new
 
-    def translate(self, amount, output_shape=None, inplace=False):
+    def translate(self, amount, output_dims=None, inplace=False):
         """
         Shift the boxes up/down left/right
 
         Args:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1028,6 +1034,7 @@ class _BoxDrawMixins(object):
         Draws boxes using matplotlib. Wraps around mplutil.draw_boxes
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
@@ -1057,6 +1064,7 @@ class _BoxDrawMixins(object):
             image (ndarray): must be in uint8 format
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'
@@ -1271,7 +1279,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
                        [79, 38, 17, 14]]))>
-            >>> Boxes.random(3, rng=0, scale=100, tensor=True)
+            >>> Boxes.random(3, rng=0, scale=100).tensor()
             <Boxes(xywh,
                 tensor([[ 54,  54,   6,  17],
                         [ 42,  64,   1,  25],
@@ -1372,6 +1380,11 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         """
         Filters boxes based on a boolean criterion
 
+        Args:
+            flags (ArrayLike[bool]): true for items to be kept
+            axis (int): you usually want this to be 0
+            inplace (bool): if True, modifies this object
+
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
             >>> self.compress([True])
@@ -1392,7 +1405,12 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
 
     def take(self, idxs, axis=0, inplace=False):
         """
-        Filters boxes based on a boolean criterion
+        Takes a subset of items at specific indices
+
+        Args:
+            indices (ArrayLike[int]): indexes of items to take
+            axis (int): you usually want this to be 0
+            inplace (bool): if True, modifies this object
 
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
@@ -1421,7 +1439,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         """ is the backend fueled by numpy? """
         return isinstance(self.data, np.ndarray)
 
-    @_generic.memoize_property
+    @ub.memoize_property
     def _impl(self):
         """
         returns the kwarray.ArrayAPI implementation for the data
@@ -1472,7 +1490,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
-            >>> self = Boxes.random(3, tensor=True)
+            >>> self = Boxes.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.data[0, 0] = 0
             >>> assert newself.data[0, 0] == 0
@@ -1623,9 +1641,9 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         Passthrough method to view or reshape
 
         Example:
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh', tensor=True)
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr', tensor=False)
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
         """
         data_ = _view(self.data, *shape)
