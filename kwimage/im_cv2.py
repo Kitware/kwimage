@@ -201,7 +201,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         colorspace (str): string code of the input image colorspace
 
     Example:
-        >>> # xdoctest: +REQUIRES(kwplot)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwimage
         >>> import numpy as np
         >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -260,7 +260,7 @@ def draw_text_on_image(img, text, org, **kwargs):
         https://stackoverflow.com/questions/27647424/
 
     Example:
-        >>> # xdoctest: +REQUIRES(kwplot)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwimage
         >>> img = kwimage.grab_test_image(space='rgb')
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR', org=(0, 0))
