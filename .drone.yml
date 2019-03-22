@@ -29,3 +29,4 @@ volumes:
   - name: ssh
     host:
       path: /home/vigilant-robot/.ssh
+
