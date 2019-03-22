@@ -1163,6 +1163,8 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     Construct semantic segmentation detection targets from annotations in
     dictionary format.
 
+    Rasterize detections.
+
     TODO:
         - [X] Make this into something that effectively inverts detections
         into a heatmap so we can have prettier visualizations in our tests.
@@ -1289,14 +1291,16 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
         if kp_classes is not None:
             num_kp_classes = len(kp_classes)
-            kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims), dtype=np.float32)
+            kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims),
+                                 dtype=np.float32)
 
         pts_list = dets.data['keypoints'].data
         for pts in pts_list:
             if pts is not None:
                 pass
 
-        kpts_ignore_mask = np.ones((num_kp_classes,) + tuple(input_dims), dtype=np.float32)
+        kpts_ignore_mask = np.ones((num_kp_classes,) + tuple(input_dims),
+                                   dtype=np.float32)
     else:
         pts_list = [None] * len(dets)
 
