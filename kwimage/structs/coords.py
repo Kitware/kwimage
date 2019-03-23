@@ -247,7 +247,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return new
 
     @xdev.profile
-    def warp(self, transform, input_shape=None, output_shape=None,
+    def warp(self, transform, input_shape=None, output_dims=None,
              inplace=False):
         """
         Generalized coordinate transform.
@@ -260,7 +260,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             input_shape (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
-            output_shape (Tuple): unused in non-raster structures, only exists
+            output_dims (Tuple): unused in non-raster structures, only exists
                 for compatibility.
 
             inplace (bool, default=False): if True, modifies data inplace
@@ -296,14 +296,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = kwimage.warp_points(matrix, new.data)
         return new
 
-    def scale(self, factor, output_shape=None, inplace=False):
+    def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale coordinates by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or per-dimension tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -341,14 +341,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = data
         return new
 
-    def translate(self, offset, output_shape=None, inplace=False):
+    def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the coordinates up/down left/right
 
         Args:
             offset (float or Tuple[float]):
                 transation offset as either a scalar or a per-dimension tuple.
-            output_shape (Tuple): unused in non-raster spatial structures
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA

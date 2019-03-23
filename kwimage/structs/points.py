@@ -136,7 +136,8 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 10
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        new.data['xy'] = new.data['xy'].scale(factor, output_dims, inplace)
+        new.data['xy'] = new.data['xy'].scale(factor, output_dims=output_dims,
+                                              inplace=inplace)
         return new
 
     @xdev.profile

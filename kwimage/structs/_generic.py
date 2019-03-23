@@ -83,16 +83,17 @@ class ObjectList(Spatial):
             yield self[index]
 
     @xdev.profile
-    def translate(self, offset, output_dims=None):
+    def translate(self, offset, output_dims=None, inplace=False):
         newdata = [None if item is None else
-                   item.translate(offset, output_dims=output_dims)
+                   item.translate(offset, output_dims=output_dims,
+                                  inplace=inplace)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
     @xdev.profile
-    def scale(self, factor, output_dims=None):
+    def scale(self, factor, output_dims=None, inplace=False):
         newdata = [None if item is None else
-                   item.scale(factor, output_dims=output_dims)
+                   item.scale(factor, output_dims=output_dims, inplace=inplace)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 

@@ -1,5 +1,9 @@
 Version 0.3.0
 =============
+* Detections now has `rasterize` method, which should be used instead of _dets_to_fcn_target
+
+* All structs should now have warp and draw method
+
 * Add `subpixel_setvalue` and `subpixel_getvalue` 
 * Add `Coords` data structure
 * Speedup `overlay_alpha_layers` by bypassing redundant dstack operations. 

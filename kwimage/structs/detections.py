@@ -963,12 +963,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if isinstance(classes, int):
             num_classes = classes
             classes = ['class_{}'.format(c) for c in range(classes)]
+            # hack: ensure that we have a background class
+            classes.append('background')
         else:
             num_classes = len(classes)
         scores = rng.rand(len(boxes))
         class_idxs = rng.randint(0, num_classes, size=len(boxes))
         self = cls(boxes=boxes, scores=scores, class_idxs=class_idxs,
                    classes=classes)
+        self.meta['classes'] = classes
 
         if keypoints is True:
             kp_classes = [1, 2, 3, 4]
@@ -981,6 +984,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             ])
             kpts_list.meta['classes'] = kp_classes
             self.data['keypoints'] = kpts_list
+            self.meta['kp_classes'] = kp_classes
 
         if tensor:
             self = self.tensor()
