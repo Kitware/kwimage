@@ -542,6 +542,32 @@ class _HeatmapWarpMixin(object):
         newself = self.__class__(newdata, newmeta)
         return newself
 
+    def scale(self, factor, output_dims=None, interpolation='linear'):
+        if not ub.iterable(factor):
+            s1 = s2 = factor
+        else:
+            s1, s2 = factor
+        mat = np.array([
+            [s1,  0, 0],
+            [ 0, s2, 0],
+            [ 0,  0, 1.],
+        ])
+        return self.warp(mat, output_dims=output_dims,
+                         interpolation=interpolation)
+
+    def translate(self, offset, output_dims=None, interpolation='linear'):
+        if not ub.iterable(offset):
+            tx = ty = offset
+        else:
+            tx, ty = offset
+        mat = np.array([
+            [1, 0, tx],
+            [0, 1, ty],
+            [0, 0, 1.],
+        ])
+        return self.warp(mat, output_dims=output_dims,
+                         interpolation=interpolation)
+
 
 class _HeatmapAlgoMixin(object):
     """
@@ -607,7 +633,7 @@ class _HeatmapAlgoMixin(object):
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', 'divide by zero')
                 tmp = np.array([h.class_probs.astype(dtype) for h in aligned_heatmaps], dtype=dtype)
-                newdata['class_probs'] = cls._gmean(tmp, clobber=True)
+                newdata['class_probs'] = _gmean(tmp, clobber=True)
                 tmp = None
         if 'offset' in aligned_root.data:
             newdata['offset'] = amean([h.offset for h in aligned_heatmaps])
@@ -618,41 +644,10 @@ class _HeatmapAlgoMixin(object):
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself
 
-    @staticmethod
-    def _gmean(a, axis=0, clobber=False):
-        """
-        Compute the geometric mean along the specified axis.
-
-        Modification of the scipy.mstats method to be more memory efficient
-
-        Example
-            >>> rng = np.random.RandomState(0)
-            >>> C, H, W = 8, 32, 32
-            >>> axis = 0
-            >>> a = rng.rand(2, C, H, W)
-            >>> Heatmap._gmean(a)
-        """
-        assert isinstance(a, np.ndarray)
-
-        if clobber:
-            # NOTE: we reuse (a), we clobber the input array!
-            log_a = np.log(a, out=a)
-        else:
-            log_a = np.log(a)
-
-        # attempt to reuse memory when computing mean
-        mem = log_a[tuple([slice(None)] * axis + [0])]
-        mean_log_a = log_a.mean(axis=axis, out=mem)
-
-        # And reuse memory again when computing the final result
-        result = np.exp(mean_log_a, out=mean_log_a)
-
-        return result
-
     @xdev.profile
     def detect(self, channel, invert=False, min_score=0.01, num_min=10):
         """
-        Transforms the heatmap into a Detections object.
+        Lossy conversion from a Heatmap to a Detections object.
 
         For efficiency, the detections are returned in the same space as the
         heatmap, which usually some downsampled version of the image space.
@@ -682,6 +677,9 @@ class _HeatmapAlgoMixin(object):
 
                 It is the users responsbility to run non-max suppression on
                 these results to remove duplicate detections.
+
+        SeeAlso:
+            Detections.rasterize
 
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
@@ -1330,3 +1328,34 @@ def _remove_translation(tf):
     else:
         raise TypeError(tf)
     return tf_notrans
+
+
+def _gmean(a, axis=0, clobber=False):
+    """
+    Compute the geometric mean along the specified axis.
+
+    Modification of the scipy.mstats method to be more memory efficient
+
+    Example
+        >>> rng = np.random.RandomState(0)
+        >>> C, H, W = 8, 32, 32
+        >>> axis = 0
+        >>> a = rng.rand(2, C, H, W)
+        >>> _gmean(a)
+    """
+    assert isinstance(a, np.ndarray)
+
+    if clobber:
+        # NOTE: we reuse (a), we clobber the input array!
+        log_a = np.log(a, out=a)
+    else:
+        log_a = np.log(a)
+
+    # attempt to reuse memory when computing mean
+    mem = log_a[tuple([slice(None)] * axis + [0])]
+    mean_log_a = log_a.mean(axis=axis, out=mem)
+
+    # And reuse memory again when computing the final result
+    result = np.exp(mean_log_a, out=mean_log_a)
+
+    return result

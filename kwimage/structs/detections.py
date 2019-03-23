@@ -211,7 +211,13 @@ class _DetAlgoMixin:
 
     def rasterize(self, bg_size, input_dims, soften=1):
         """
-        Lossy conversion from detections to a Heatmap data structure
+        Ambiguous conversion from a Heatmap to a Detections object.
+
+        SeeAlso:
+            Heatmap.detect
+
+        Returns:
+            kwimage.Heatmap: raster-space detections.
 
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
@@ -290,6 +296,7 @@ class _DetAlgoMixin:
         kpts_ignore = fcn_target['kpts_ignore']
 
         self = kwimage.Heatmap(
+            class_idx=fcn_target['cidx'],
             class_probs=class_probs,
             keypoints=keypoints,
             offset=offset,
@@ -299,7 +306,7 @@ class _DetAlgoMixin:
 
             img_dims=img_dims,
             tf_data_to_img=tf_data_to_img,
-            datakeys=['kpts_ignore'],
+            datakeys=['kpts_ignore', 'class_idx'],
         )
         print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
         return self
