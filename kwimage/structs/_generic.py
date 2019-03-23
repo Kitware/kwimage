@@ -2,7 +2,37 @@ import ubelt as ub
 import xdev
 
 
-class ObjectList(ub.NiceRepr):
+class Spatial(ub.NiceRepr):
+    """
+    Abstract base class defining the spatial annotation API
+    """
+    def translate(self, offset, output_dims=None):
+        raise NotImplementedError
+
+    def scale(self, factor, output_dims=None):
+        raise NotImplementedError
+
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+        raise NotImplementedError
+
+    def draw(self):
+        raise NotImplementedError
+
+    def draw_on(self, image):
+        raise NotImplementedError
+
+    def tensor(self, device=ub.NoParam):
+        raise NotImplementedError
+
+    def numpy(self):
+        raise NotImplementedError
+
+    @classmethod
+    def random(cls):
+        raise NotImplementedError
+
+
+class ObjectList(Spatial):
     """
     Stores a list of potentially heterogenous structures, each item usually
     corresponds to a different object.

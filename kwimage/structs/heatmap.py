@@ -88,7 +88,6 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.imshow(stacked)
         """
         import kwimage
-        import kwarray
         import matplotlib as mpl
         tf = self.tf_data_to_img
         mat = np.linalg.inv(tf.params)
@@ -745,7 +744,6 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
     def is_tensor(self):
         return self._impl.is_tensor
 
-    # @_generic.memoize_property
     @property
     def _impl(self):
         """
@@ -810,7 +808,6 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             >>> self.draw()
         """
         import kwimage
-        import kwarray
         rng = kwarray.ensure_rng(rng)
 
         if dets == 'coco':
@@ -936,7 +933,6 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         """
         Converts underlying data to numpy arrays
         """
-        import kwarray
         newdata = {}
         for key, val in self.data.items():
             if val is None:
@@ -952,7 +948,6 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         """
         Converts underlying data to torch tensors
         """
-        import kwarray
         newdata = {}
         for key, val in self.data.items():
             if val is None:
