@@ -21,8 +21,8 @@ class _DetDrawMixin:
     """
     Non critical methods for visualizing detections
     """
-    def draw(self, color='blue', alpha=None, labels=True, centers=False,
-             lw=2, fill=False, ax=None, radius=10, kpts=True, sseg=True,
+    def draw(self, color='blue', alpha=None, labels=True, centers=False, lw=2,
+             fill=False, ax=None, radius=5, kpts=True, sseg=True,
              setlim=False):
         """
         Draws boxes using matplotlib
@@ -68,7 +68,7 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=True):
+    def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -94,14 +94,19 @@ class _DetDrawMixin:
         alpha = self._make_alpha(alpha)
         image = self.boxes.draw_on(image, color=color, alpha=alpha,
                                    labels=labels)
+        import kwimage
 
         keypoints = self.data.get('keypoints', None)
         if keypoints is not None:
-            image = keypoints.draw_on(image, radius=10, color=color)
+            image = kwimage.ensure_uint255(image)
+            image = keypoints.draw_on(image, radius=radius, color=color)
+            kwimage.ensure_float01(image)
 
         segmentations = self.data.get('segmentations', None)
         if segmentations is not None:
+            image = kwimage.ensure_uint255(image)
             image = segmentations.draw_on(image, color=color, alpha=.4)
+            kwimage.ensure_float01(image)
 
         return image
 
