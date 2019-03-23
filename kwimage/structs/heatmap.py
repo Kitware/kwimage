@@ -2,6 +2,77 @@
 """
 TODO:
     - [ ] Remove doctest dependency on ndsampler?
+
+CommandLine:
+    xdoctest -m ~/code/# xdoctest: +REQUIRES(module:ndsampler)
+
+
+Example:
+    >>> from kwimage.structs.heatmap import *  # NOQA
+    >>> from kwimage.structs.heatmap import _dets_to_fcmaps
+    >>> import kwimage
+    >>> import ndsampler
+    >>> sampler = ndsampler.CocoSampler.demo('shapes')
+    >>> iminfo, anns = sampler.load_image_with_annots(1)
+    >>> image = iminfo['imdata']
+    >>> input_dims = image.shape[0:2]
+    >>> kp_classes = sampler.dset.keypoint_categories()
+    >>> dets = kwimage.Detections.from_coco_annots(
+    >>>     anns, sampler.dset.dataset['categories'],
+    >>>     sampler.catgraph, kp_classes, shape=input_dims)
+    >>> bg_size = [100, 100]
+    >>> heatmap = Heatmap.from_detections(dets, bg_size, input_dims, soften=2)
+    >>> # xdoctest: +REQUIRES(--show)
+    >>> import kwplot
+    >>> kwplot.autompl()
+    >>> kwplot.figure(fnum=1, doclf=True)
+    >>> kwplot.imshow(image)
+    >>> heatmap.draw(invert=True, kpts=[0, 1, 2, 3, 4])
+
+Example:
+    >>> # xdoctest: +REQUIRES(module:ndsampler)
+    >>> from kwimage.structs.heatmap import *  # NOQA
+    >>> from kwimage.structs.heatmap import _dets_to_fcmaps
+    >>> import kwimage
+    >>> import ndsampler
+    >>> sampler = ndsampler.CocoSampler.demo('shapes')
+    >>> iminfo, anns = sampler.load_image_with_annots(1)
+    >>> image = iminfo['imdata']
+    >>> input_dims = image.shape[0:2]
+    >>> kp_classes = sampler.dset.keypoint_categories()
+    >>> dets = kwimage.Detections.from_coco_annots(
+    >>>     anns, sampler.dset.dataset['categories'],
+    >>>     sampler.catgraph, kp_classes, shape=input_dims)
+    >>> bg_size = [100, 100]
+    >>> bg_idxs = sampler.catgraph.index('background')
+    >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
+    >>> fcn_target.keys()
+    >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+    >>> # xdoctest: +REQUIRES(--show)
+    >>> import kwplot
+    >>> kwplot.autompl()
+    >>> size_mask = fcn_target['size']
+    >>> dxdy_mask = fcn_target['dxdy']
+    >>> cidx_mask = fcn_target['cidx']
+    >>> kpts_mask = fcn_target['kpts']
+    >>> def _vizmask(dxdy_mask):
+    >>>     dx, dy = dxdy_mask
+    >>>     mag = np.sqrt(dx ** 2 + dy ** 2)
+    >>>     mag /= (mag.max() + 1e-9)
+    >>>     mask = (cidx_mask != 0).astype(np.float32)
+    >>>     angle = np.arctan2(dy, dx)
+    >>>     orimask = kwplot.make_orimask(angle, mask, alpha=mag)
+    >>>     vecmask = kwplot.make_vector_field(
+    >>>         dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
+    >>>         line_type=16)
+    >>>     return [vecmask, orimask]
+    >>> vecmask, orimask = _vizmask(dxdy_mask)
+    >>> raster = kwimage.overlay_alpha_layers(
+    >>>     [vecmask, orimask, image], keepalpha=False)
+    >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
+    >>>                       labels=True, alpha=None)
+    >>> kwplot.imshow(raster)
+    >>> kwplot.show_if_requested()
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
@@ -13,6 +84,7 @@ import kwarray
 import six
 import functools
 import xdev
+from . import _generic
 
 
 class _HeatmapDrawMixin(object):
@@ -31,24 +103,31 @@ class _HeatmapDrawMixin(object):
             imgspace (bool, default=False): colorize the image after
                 warping into the image space.
 
+        CommandLine:
+            xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py _HeatmapDrawMixin.colorize --show
+
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> colormask2 = self.colorize(0, imgspace=True)
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
             >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
+            >>> kwplot.show_if_requested()
 
         Example:
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize('diameter', imgspace=False)
             >>> colormask2 = self.colorize('diameter', imgspace=True)
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
             >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
+            >>> kwplot.show_if_requested()
         """
         import kwplot
         if isinstance(channel, six.string_types):
@@ -129,8 +208,8 @@ class _HeatmapDrawMixin(object):
         stacked = kwimage.stack_images(colorized, overlap=-3, axis=1)
         return stacked
 
-    def draw_on(self, image, channel, invert=False, with_alpha=1.0,
-                interpolation='linear', vecs=False, kpts=None, imgspace=True):
+    def draw_on(self, image, channel=0, invert=False, with_alpha=1.0,
+                interpolation='linear', vecs=False, kpts=None, imgspace=None):
         """
         Overlays a heatmap channel on top of an image
 
@@ -155,6 +234,7 @@ class _HeatmapDrawMixin(object):
             >>> self = kwimage.Heatmap(class_probs=class_probs, offset=5 * np.random.randn(2, *probs.shape[1:]))
             >>> toshow = self.draw_on(image, 0, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
 
@@ -178,6 +258,7 @@ class _HeatmapDrawMixin(object):
             >>> kpts = 6
             >>> self = self.warp(self.tf_data_to_img.params)
             >>> image = kwimage.grab_test_image('astro')
+            >>> image = kwimage.ensure_alpha_channel(image)
             >>> toshow = self.draw_on(image, 0, with_alpha=0.85, kpts=kpts)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -185,36 +266,80 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.imshow(toshow)
         """
         import kwimage
-        import kwarray
         import kwplot
+
+        if imgspace is None:
+            if np.all(image.shape[0:2] == np.array(self.img_dims)):
+                imgspace = True
+
         colormask = self.colorize(channel, invert=invert,
                                   with_alpha=with_alpha,
                                   interpolation=interpolation,
                                   imgspace=imgspace)
-        overlaid = kwimage.overlay_alpha_images(colormask, image)
-        # overlaid = image
+
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
+
+        image = kwimage.ensure_float01(image)
+        layers = []
+
+        vec_colors = kwplot.Color.distinct(2)
+        vec_alpha = .5
+
+        if kpts is not None:
+            # TODO: make a nicer keypoint offset vector visuliazation
+            if kpts is True:
+                if self.data.get('keypoints', None) is not None:
+                    keypoints = self.data['keypoints']
+                    kpts = list(range(len(keypoints.shape[1])))
+            if not ub.iterable(kpts):
+                kpts = [kpts]
+            vec_colors = kwplot.Color.distinct(len(kpts) + int(bool(vecs)))
 
         if vecs:
             if self.data.get('offset', None) is not None:
                 #Hack
                 # Visualize center offset vectors
                 dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])
-                vecmask = kwplot.make_vector_field(dx, dy, stride=4, scale=1.0, alpha=with_alpha * .6)
+                color = vec_colors[0]
+                vecmask = kwplot.make_vector_field(dx, dy, stride=4, scale=1.0,
+                                                   alpha=with_alpha * vec_alpha,
+                                                   color=color)
+                vec_alpha = max(.1, vec_alpha - .1)
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
-                overlaid = kwimage.overlay_alpha_images(vecalign, overlaid)
+                print('vecalign = {!r}'.format(vecalign))
+                layers.append(vecalign)
 
         if kpts is not None:
             # TODO: make a nicer keypoint offset vector visuliazation
             if self.data.get('keypoints', None) is not None:
-                dy, dx = kwarray.ArrayAPI.numpy(self.data['keypoints'][:, kpts])
-                vecmask = kwplot.make_vector_field(dx, dy, stride=8, scale=0.5, alpha=with_alpha * .6)
-                chw = torch.Tensor(vecmask.transpose(2, 0, 1))
-                vecalign = self._warp_imgspace(chw, interpolation=interpolation)
-                vecalign = vecalign.transpose(1, 2, 0)
-                overlaid = kwimage.overlay_alpha_images(vecalign, overlaid)
+                keypoints = self.data['keypoints']
+                if not ub.iterable(kpts):
+                    kpts = [kpts]
+                if kpts is True:
+                    kpts = list(range(len(keypoints.shape[1])))
+                for k in kpts:
+                    # color = (np.array(vec_colors[k]) * 255).astype(np.uint8)
+                    color = vec_colors[k + int(bool(vecs))]
 
+                    dy, dx = kwarray.ArrayAPI.numpy(keypoints[:, k])
+                    vecmask = kwplot.make_vector_field(dx, dy, stride=8,
+                                                       scale=0.5,
+                                                       alpha=with_alpha *
+                                                       vec_alpha, color=color)
+                    vec_alpha = max(.1, vec_alpha - .1)
+                    chw = torch.Tensor(vecmask.transpose(2, 0, 1))
+                    vecalign = self._warp_imgspace(chw, interpolation=interpolation)
+                    vecalign = vecalign.transpose(1, 2, 0)
+                    print('vecalign = {!r}'.format(vecalign))
+                    layers.append(vecalign)
+
+        layers.append(colormask)
+        layers.append(image)
+
+        overlaid = kwimage.overlay_alpha_layers(layers)
+        overlaid = dtype_fixer(overlaid)
         return overlaid
 
 
@@ -371,7 +496,6 @@ class _HeatmapWarpMixin(object):
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(toshow)
         """
-        import kwarray
         import kwimage
 
         if mat is None:
@@ -383,7 +507,6 @@ class _HeatmapWarpMixin(object):
         newdata = {}
         newmeta = self.meta.copy()
 
-        spatial_keys = ['offset', 'diameter', 'keypoints']
         impl = kwarray.ArrayAPI.coerce('tensor')
 
         if mat_is_xy:
@@ -406,7 +529,7 @@ class _HeatmapWarpMixin(object):
             v = kwarray.ArrayAPI.tensor(v)
             # For spatial keys we need to transform the underlying values as well
             if modify_spatial_coords:
-                if k in spatial_keys:
+                if k in self.__spatialkeys__:
                     pts = impl.contiguous(impl.T(v))
                     pts = kwimage.warp_points(mat_notrans, pts)
                     v = impl.contiguous(impl.T(pts))
@@ -627,9 +750,102 @@ class _HeatmapAlgoMixin(object):
         dets.meta['classes'] = self.classes
         return dets
 
+    @classmethod
+    def from_detections(Heatmap, dets, bg_size, input_dims, soften=1):
+        """
+        Lossy conversion from detections to a Heatmap data structure
 
-class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
-              _HeatmapAlgoMixin):
+        Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> from kwimage.structs.heatmap import *  # NOQA
+            >>> from kwimage.structs.heatmap import _dets_to_fcmaps
+            >>> import kwimage
+            >>> import ndsampler
+            >>> sampler = ndsampler.CocoSampler.demo('shapes')
+            >>> iminfo, anns = sampler.load_image_with_annots(1)
+            >>> image = iminfo['imdata']
+            >>> input_dims = image.shape[0:2]
+            >>> kp_classes = sampler.dset.keypoint_categories()
+            >>> dets = kwimage.Detections.from_coco_annots(
+            >>>     anns, sampler.dset.dataset['categories'],
+            >>>     sampler.catgraph, kp_classes, shape=input_dims)
+            >>> bg_size = [100, 100]
+            >>> heatmap = Heatmap.from_detections(dets, bg_size, input_dims)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 1))
+            >>> heatmap.draw(invert=True)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 2))
+            >>> kwplot.imshow(heatmap.draw_on(image))
+            >>> kwplot.figure(fnum=1, pnum=(2, 1, 2))
+            >>> kwplot.imshow(self.draw_stacked())
+        """
+        import kwarray
+        classes = dets.meta['classes']
+        kp_classes = dets.meta['kp_classes']
+        bg_idx = classes.index('background')
+        fcn_target = _dets_to_fcmaps(dets, bg_size=bg_size,
+                                     input_dims=input_dims, bg_idx=bg_idx,
+                                     soft=False)
+
+        img_dims = np.array(input_dims)
+        tf_data_to_img = skimage.transform.AffineTransform(
+            scale=(1, 1), translation=(0, 0),
+        )
+        print(fcn_target.keys())
+        print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+
+        impl = kwarray.ArrayAPI.coerce(fcn_target['cidx'])
+
+        import netharn as nh
+        # class_probs = nh.criterions.focal.one_hot_embedding(
+        #     fcn_target['cidx'].reshape(-1),
+        #     num_classes=len(classes), dim=1)
+        labels = fcn_target['cidx']
+        class_probs = nh.criterions.focal.one_hot_embedding(labels, num_classes=len(classes), dim=0)
+        # if 0:
+        #     kwil.imshow(fcn_target['cidx'] > 0)
+        #     kwil.imshow(class_probs[0])
+
+        if soften > 0:
+            k = 31
+            sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
+            data = impl.contiguous(class_probs.T)
+            cv2.GaussianBlur(data, (k, k), sigma, dst=data)
+            class_probs = impl.contiguous(data.T)
+
+        if soften > 1:
+            class_probs = impl.softmax(class_probs, axis=0)
+
+        dims = tuple(class_probs.shape[1:])
+        K = len(kp_classes)
+
+        # TODo: add noise or do some bluring?
+        keypoints = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
+        diameter = fcn_target['size'][[1, 0]]
+        offset = fcn_target['dxdy'][[1, 0]]
+
+        kpts_ignore = fcn_target['kpts_ignore']
+
+        self = Heatmap(
+            class_probs=class_probs,
+            keypoints=keypoints,
+            offset=offset,
+            diameter=diameter,
+
+            kpts_ignore=kpts_ignore,
+
+            img_dims=img_dims,
+            tf_data_to_img=tf_data_to_img,
+            datakeys=['kpts_ignore'],
+        )
+        print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+        return self
+
+
+class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
+              _HeatmapWarpMixin, _HeatmapAlgoMixin):
     """
     Keeps track of a downscaled heatmap and how to transform it to overlay the
     original input image. Heatmaps generally are used to estimate class
@@ -671,6 +887,9 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
             can be specified as a keyword argument to this class and it will
             be properly placed in the appropriate internal dictionary.
 
+    CommandLine:
+        xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py Heatmap --show
+
     Example:
         >>> import kwimage
         >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
@@ -683,12 +902,15 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(aligned[0])
+        >>> kwplot.show_if_requested()
     """
     # Valid keys for the data dictionary
     __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
+
+    __spatialkeys__ = ['offset', 'diameter', 'keypoints']
 
     def __init__(self, data=None, meta=None, **kwargs):
         # Standardize input format
@@ -732,6 +954,10 @@ class Heatmap(ub.NiceRepr, _HeatmapDrawMixin, _HeatmapWarpMixin,
     @property
     def shape(self):
         return self.class_probs.shape
+
+    @property
+    def bounds(self):
+        return self.class_probs.shape[1:]
 
     @property
     def dims(self):
@@ -1181,10 +1407,10 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         globals().update(xdev.get_func_kwargs(_dets_to_fcmaps))
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:ndsampler)
         >>> from kwimage.structs.heatmap import *  # NOQA
         >>> from kwimage.structs.heatmap import _dets_to_fcmaps
         >>> import kwimage
-        >>> # xdoctest: +REQUIRES(module:ndsampler)
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo('photos')
         >>> iminfo, anns = sampler.load_image_with_annots(1)

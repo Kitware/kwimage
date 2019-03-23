@@ -3,9 +3,10 @@ import ubelt as ub
 import skimage
 import kwarray
 import xdev
+from . import _generic
 
 
-class Coords(ub.NiceRepr):
+class Coords(_generic.Spatial, ub.NiceRepr):
     """
     This stores arbitrary sparse coordinate geometry.
 

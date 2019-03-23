@@ -1,35 +1,58 @@
 import ubelt as ub
 import xdev
+import abc
 
 
-class Spatial(ub.NiceRepr):
+class Spatial(ub.NiceRepr, abc.ABC):
     """
     Abstract base class defining the spatial annotation API
     """
-    def translate(self, offset, output_dims=None):
-        raise NotImplementedError
 
-    def scale(self, factor, output_dims=None):
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def translate(self, offset, output_dims=None):
+    #     raise NotImplementedError
 
-    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def scale(self, factor, output_dims=None):
+    #     raise NotImplementedError
 
-    def draw(self):
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+    #     raise NotImplementedError
 
-    def draw_on(self, image):
-        raise NotImplementedError
+    def draw(self, image=None, **kwargs):
+        # If draw doesnt exist use draw_on
+        import numpy as np
+        if image is None:
+            dims = self.bounds
+            shape = tuple(dims) + (4,)
+            image = np.zeros(shape, dtype=np.float32)
+        image = self.draw_on(image, **kwargs)
+        import kwplot
+        kwplot.imshow(image)
 
-    def tensor(self, device=ub.NoParam):
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def draw_on(self, image):
+    #     """
+    #     TODO -
+    #         - [ ] Choose 1:
+    #             Should accept either uint255 or float01, and should return the
+    #             same kind
+    #     """
+    #     raise NotImplementedError
 
-    def numpy(self):
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def tensor(self, device=ub.NoParam):
+    #     raise NotImplementedError
 
-    @classmethod
-    def random(cls):
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def numpy(self):
+    #     raise NotImplementedError
+
+    # @classmethod
+    # @abc.abstractmethod
+    # def random(cls):
+    #     raise NotImplementedError
 
 
 class ObjectList(Spatial):
@@ -134,3 +157,16 @@ class ObjectList(Spatial):
     @classmethod
     def random(cls):
         raise NotImplementedError
+
+
+def _consistent_dtype_fixer(data):
+    """
+    helper for ensuring out.dtype == in.dtype
+    """
+    import kwimage
+    if data.dtype.kind == 'f':
+        return kwimage.ensure_float01
+    elif data.dtype.kind == 'u':
+        return kwimage.ensure_uint255
+    else:
+        raise TypeError(data.dtype)

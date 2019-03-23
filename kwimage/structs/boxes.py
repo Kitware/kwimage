@@ -61,6 +61,7 @@ import warnings
 import skimage
 import kwarray
 from distutils.version import LooseVersion
+from . import _generic
 
 __all__ = ['Boxes']
 
@@ -1137,7 +1138,7 @@ class _BoxDrawMixins(object):
 # object) so isinstance works outside of the internal lib?
 
 
-class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
+class Boxes(_generic.Spatial, _BoxConversionMixins, _BoxPropertyMixins,
             _BoxTransformMixins, _BoxDrawMixins):
     """
     Converts boxes between different formats as long as the last dimension

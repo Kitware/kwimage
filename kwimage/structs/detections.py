@@ -501,6 +501,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
             if kp_classes is not None:
                 dets.data['keypoints'].meta['classes'] = kp_classes
+                dets.meta['kp_classes'] = kp_classes
         return dets
 
     # --- Data Properties ---

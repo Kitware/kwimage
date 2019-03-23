@@ -1,9 +1,9 @@
 import ubelt as ub
 import cv2
 import numpy as np
-from . import _generic
 import torch
 import skimage
+from . import _generic
 
 
 class _PolyArrayBackend:
@@ -241,7 +241,7 @@ class _PolyWarpMixin:
         return new
 
 
-class Polygon(_PolyArrayBackend, _PolyWarpMixin):
+class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin):
     """
     Represents a single polygon as set of exterior boundary points and a list
     of internal polygons representing holes.

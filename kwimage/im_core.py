@@ -45,6 +45,10 @@ def ensure_float01(img, dtype=np.float32, copy=True):
     """
     Ensure that an image is encoded using a float32 properly
 
+    Args:
+        img (ndarray): an image in uint255 or float01 format.
+            Other formats will raise errors.
+
     Example:
         >>> ensure_float01(np.array([[0, .5, 1.0]]))
         array([[0. , 0.5, 1. ]], dtype=float32)

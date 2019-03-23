@@ -161,7 +161,7 @@ class _PointsWarpMixin:
         return new
 
 
-class Points(ub.NiceRepr, _PointsWarpMixin):
+class Points(_generic.Spatial, _PointsWarpMixin):
     """
     Stores multiple keypoints for a single object.
 
@@ -295,6 +295,9 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
 
     def draw_on(self, image, color='white', radius=None):
         """
+        CommandLine:
+            xdoctest -m ~/code/kwimage/kwimage/structs/points.py Points.draw_on --show
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
@@ -308,6 +311,7 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
             >>> self.draw(radius=3, alpha=.5)
+            >>> kwplot.show_if_requested()
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -322,10 +326,13 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
             >>> self.draw(radius=3, alpha=.5)
+            >>> kwplot.show_if_requested()
         """
         import kwplot
         import kwimage
         value = kwplot.Color(color).as01()
+
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         if radius is None:
             image = kwimage.atleast_3channels(image)
@@ -347,6 +354,8 @@ class Points(ub.NiceRepr, _PointsWarpMixin):
                 image = cv2.ellipse(image, center, axes, angle=0.0,
                                     startAngle=0.0, endAngle=360.0,
                                     color=value, thickness=-1)
+
+        image = dtype_fixer(image)
         return image
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1):
