@@ -209,6 +209,101 @@ class _DetAlgoMixin:
                                        impl=impl, daq=daq)
         return self.take(keep)
 
+    def rasterize(self, bg_size, input_dims, soften=1):
+        """
+        Lossy conversion from detections to a Heatmap data structure
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> from kwimage.structs.detections import _dets_to_fcmaps
+            >>> import kwimage
+            >>> import ndsampler
+            >>> sampler = ndsampler.CocoSampler.demo('shapes')
+            >>> iminfo, anns = sampler.load_image_with_annots(1)
+            >>> image = iminfo['imdata']
+            >>> input_dims = image.shape[0:2]
+            >>> kp_classes = sampler.dset.keypoint_categories()
+            >>> self = kwimage.Detections.from_coco_annots(
+            >>>     anns, sampler.dset.dataset['categories'],
+            >>>     sampler.catgraph, kp_classes, shape=input_dims)
+            >>> bg_size = [100, 100]
+            >>> heatmap = self.rasterize(bg_size, input_dims)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 1))
+            >>> heatmap.draw(invert=True)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 2))
+            >>> kwplot.imshow(heatmap.draw_on(image))
+            >>> kwplot.figure(fnum=1, pnum=(2, 1, 2))
+            >>> kwplot.imshow(self.draw_stacked())
+        """
+        import kwarray
+        import skimage
+        import kwimage
+        classes = self.meta['classes']
+        kp_classes = self.meta['kp_classes']
+        bg_idx = classes.index('background')
+        fcn_target = _dets_to_fcmaps(self, bg_size=bg_size,
+                                     input_dims=input_dims, bg_idx=bg_idx,
+                                     soft=False)
+
+        img_dims = np.array(input_dims)
+        tf_data_to_img = skimage.transform.AffineTransform(
+            scale=(1, 1), translation=(0, 0),
+        )
+        print(fcn_target.keys())
+        print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+
+        impl = kwarray.ArrayAPI.coerce(fcn_target['cidx'])
+
+        import netharn as nh
+        # class_probs = nh.criterions.focal.one_hot_embedding(
+        #     fcn_target['cidx'].reshape(-1),
+        #     num_classes=len(classes), dim=1)
+        labels = fcn_target['cidx']
+        class_probs = nh.criterions.focal.one_hot_embedding(labels, num_classes=len(classes), dim=0)
+        # if 0:
+        #     kwil.imshow(fcn_target['cidx'] > 0)
+        #     kwil.imshow(class_probs[0])
+
+        if soften > 0:
+            k = 31
+            sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
+            data = impl.contiguous(class_probs.T)
+            import cv2
+            cv2.GaussianBlur(data, (k, k), sigma, dst=data)
+            class_probs = impl.contiguous(data.T)
+
+        if soften > 1:
+            class_probs = impl.softmax(class_probs, axis=0)
+
+        dims = tuple(class_probs.shape[1:])
+        K = len(kp_classes)
+
+        # TODo: add noise or do some bluring?
+        keypoints = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
+        diameter = fcn_target['size'][[1, 0]]
+        offset = fcn_target['dxdy'][[1, 0]]
+
+        kpts_ignore = fcn_target['kpts_ignore']
+
+        self = kwimage.Heatmap(
+            class_probs=class_probs,
+            keypoints=keypoints,
+            offset=offset,
+            diameter=diameter,
+
+            kpts_ignore=kpts_ignore,
+
+            img_dims=img_dims,
+            tf_data_to_img=tf_data_to_img,
+            datakeys=['kpts_ignore'],
+        )
+        print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+        return self
+
 
 class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     """
@@ -902,6 +997,245 @@ def _safe_compress(v, flags, axis):
         return _boxes._compress(v, flags, axis=axis)
     except TypeError:
         return v.compress(flags, axis=axis)
+
+
+@xdev.profile
+def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
+                    soft=True):
+    """
+    Construct semantic segmentation detection targets from annotations in
+    dictionary format.
+
+    Rasterize detections.
+
+    Args:
+        dets (kwimage.Detections):
+        bg_size (tuple): size (W, H) to predict for backgrounds
+        input_dims (tuple): window H, W
+
+    Returns:
+        dict: with keys
+            size : 2D ndarray containing the W,H of the object
+            dxdy : 2D ndarray containing the x,y offset of the object
+            cidx : 2D ndarray containing the class index of the object
+
+    Ignore:
+        import xdev
+        globals().update(xdev.get_func_kwargs(_dets_to_fcmaps))
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:ndsampler)
+        >>> from kwimage.structs.detections import *  # NOQA
+        >>> from kwimage.structs.detections import _dets_to_fcmaps
+        >>> import kwimage
+        >>> import ndsampler
+        >>> sampler = ndsampler.CocoSampler.demo('photos')
+        >>> iminfo, anns = sampler.load_image_with_annots(1)
+        >>> image = iminfo['imdata']
+        >>> input_dims = image.shape[0:2]
+        >>> kp_classes = sampler.dset.keypoint_categories()
+        >>> dets = kwimage.Detections.from_coco_annots(
+        >>>     anns, sampler.dset.dataset['categories'],
+        >>>     sampler.catgraph, kp_classes, shape=input_dims)
+        >>> bg_size = [100, 100]
+        >>> bg_idxs = sampler.catgraph.index('background')
+        >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
+        >>> fcn_target.keys()
+        >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        fcn_target: {
+            'cidx': (512, 512),
+            'class_probs': (10, 512, 512),
+            'dxdy': (2, 512, 512),
+            'kpts': (2, 7, 512, 512),
+            'kpts_ignore': (7, 512, 512),
+            'size': (2, 512, 512),
+        }
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> size_mask = fcn_target['size']
+        >>> dxdy_mask = fcn_target['dxdy']
+        >>> cidx_mask = fcn_target['cidx']
+        >>> kpts_mask = fcn_target['kpts']
+        >>> def _vizmask(dxdy_mask):
+        >>>     dx, dy = dxdy_mask
+        >>>     mag = np.sqrt(dx ** 2 + dy ** 2)
+        >>>     mag /= (mag.max() + 1e-9)
+        >>>     mask = (cidx_mask != 0).astype(np.float32)
+        >>>     angle = np.arctan2(dy, dx)
+        >>>     orimask = kwplot.make_orimask(angle, mask, alpha=mag)
+        >>>     vecmask = kwplot.make_vector_field(
+        >>>         dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
+        >>>         line_type=16)
+        >>>     return [vecmask, orimask]
+        >>> vecmask, orimask = _vizmask(dxdy_mask)
+        >>> raster = kwimage.overlay_alpha_layers(
+        >>>     [vecmask, orimask, image], keepalpha=False)
+        >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
+        >>>                       labels=True, alpha=None)
+        >>> kwplot.imshow(raster)
+        >>> kwplot.show_if_requested()
+
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 5]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 2), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 6]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 3), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(dxdy_mask) + [image], keepalpha=False) * 255).astype(np.uint8)
+        raster = dets.draw_on(raster, labels=True, alpha=None)
+        kwplot.imshow(raster, pnum=(1, 3, 1), fnum=1)
+        raster = kwimage.overlay_alpha_layers(
+            [vecmask, orimask, image], keepalpha=False)
+        raster = dets.draw_on((raster * 255).astype(np.uint8),
+                              labels=True, alpha=None)
+        kwplot.imshow(raster)
+        kwplot.show_if_requested()
+    """
+    import cv2
+    # In soft mode we made a one-channel segmentation target mask
+    cidx_mask = np.full(input_dims, dtype=np.int32, fill_value=bg_idx)
+    if soft:
+        # In soft mode we add per-class channel probability blips
+        num_obj_classes = len(dets.classes)
+        cidx_probs = np.full((num_obj_classes,) + tuple(input_dims),
+                             dtype=np.float32, fill_value=0)
+
+    size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
+    size_mask[:] = np.array(bg_size)[:, None, None]
+
+    dxdy_mask = np.zeros((2,) + tuple(input_dims), dtype=np.float32)
+
+    dets = dets.numpy()
+
+    cxywh = dets.boxes.to_cxywh().data
+    class_idxs = dets.class_idxs
+    import kwimage
+
+    if 'segmentations' in dets.data:
+        sseg_list = [None if p is None else p.to_mask(input_dims)
+                     for p in dets.data['segmentations']]
+    else:
+        sseg_list = [None] * len(dets)
+
+    kpts_mask = None
+    if 'keypoints' in dets.data:
+        kp_classes = None
+        if 'classes' in dets.data['keypoints'].meta:
+            kp_classes = dets.data['keypoints'].meta['classes']
+        else:
+            for kp in dets.data['keypoints']:
+                if kp is not None and 'classes' in kp.meta:
+                    kp_classes = kp.meta['classes']
+                    break
+
+        if kp_classes is not None:
+            num_kp_classes = len(kp_classes)
+            kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims),
+                                 dtype=np.float32)
+
+        pts_list = dets.data['keypoints'].data
+        for pts in pts_list:
+            if pts is not None:
+                pass
+
+        kpts_ignore_mask = np.ones((num_kp_classes,) + tuple(input_dims),
+                                   dtype=np.float32)
+    else:
+        pts_list = [None] * len(dets)
+
+    # Overlay smaller classes on top of larger ones
+    if len(cxywh):
+        area = cxywh[..., 2] * cxywh[..., 2]
+    else:
+        area = []
+    sortx = np.argsort(area)[::-1]
+    cxywh = cxywh[sortx]
+    class_idxs = class_idxs[sortx]
+    pts_list = list(ub.take(pts_list, sortx))
+    sseg_list = list(ub.take(sseg_list, sortx))
+
+    def iround(x):
+        return int(round(x))
+
+    H, W = input_dims
+    xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
+
+    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, sseg_list, pts_list):
+        (cx, cy, w, h) = box
+        center = (iround(cx), iround(cy))
+        # Adjust so smaller objects get more pixels
+        wf = min(1, (w / 64))
+        hf = min(1, (h / 64))
+        # wf = min(1, (w / W))
+        # hf = min(1, (h / H))
+        wf = (1 - wf) * pmax + wf * pmin
+        hf = (1 - hf) * pmax + hf * pmin
+        half_w = iround(wf * w / 2 + 1)
+        half_h = iround(hf * h / 2 + 1)
+        axes = (half_w, half_h)
+
+        if sseg_mask is None:
+            mask = np.zeros_like(cidx_mask, dtype=np.uint8)
+            mask = cv2.ellipse(mask, center, axes, angle=0.0,
+                               startAngle=0.0, endAngle=360.0, color=1,
+                               thickness=-1).astype(np.bool)
+        else:
+            mask = sseg_mask.to_c_mask().data.astype(np.bool)
+        # class index
+        cidx_mask[mask] = int(cidx)
+        if soft:
+            blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
+            blip = blip / blip.max()
+            subindex = (slice(cy - half_h, cy + half_h),
+                        slice(cx - half_w, cx + half_w))
+            kwimage.subpixel_maximum(cidx_probs[cidx], blip, subindex)
+
+        # object size
+        size_mask[0][mask] = float(w)
+        size_mask[1][mask] = float(h)
+
+        assert np.all(size_mask[0][mask] == float(w))
+
+        # object offset
+        dx = cx - xcoord[mask]
+        dy = cy - ycoord[mask]
+        dxdy_mask[0][mask] = dx
+        dxdy_mask[1][mask] = dy
+
+        if kpts_mask is not None:
+
+            if pts is not None:
+                # Keypoint offsets
+                for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
+                    kp_x, kp_y = xy
+                    kp_dx = kp_x - xcoord[mask]
+                    kp_dy = kp_y - ycoord[mask]
+                    kpts_mask[0, kp_cidx][mask] = kp_dx
+                    kpts_mask[1, kp_cidx][mask] = kp_dy
+                    kpts_ignore_mask[kp_cidx][mask] = 0
+
+        # SeeAlso:
+        # ~/code/ovharn/ovharn/models/mcd_coder.py
+
+    fcn_target = {
+        'size': size_mask,
+        'dxdy': dxdy_mask,
+        'cidx': cidx_mask,
+    }
+    if soft:
+        nonbg_idxs = sorted(set(range(num_obj_classes)) - {bg_idx})
+        cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
+        fcn_target['class_probs'] = cidx_probs
+
+    if kpts_mask is not None:
+        fcn_target['kpts'] = kpts_mask
+        fcn_target['kpts_ignore'] = kpts_ignore_mask
+    else:
+        if 'keypoints' in dets.data:
+            if any(kp is not None for kp in dets.data['keypoints']):
+                raise AssertionError(
+                    'dets had keypoints, but we didnt encode them, were the kp classes missing?')
+
+    return fcn_target
 
 
 if __name__ == '__main__':
