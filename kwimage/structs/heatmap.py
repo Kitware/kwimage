@@ -255,7 +255,7 @@ class _HeatmapDrawMixin(object):
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> import kwimage
             >>> self = kwimage.Heatmap.random(dims=(200, 200), dets='coco', keypoints=True)
-            >>> kpts = 6
+            >>> kpts = [6]
             >>> self = self.warp(self.tf_data_to_img.params)
             >>> image = kwimage.grab_test_image('astro')
             >>> image = kwimage.ensure_alpha_channel(image)
@@ -293,7 +293,10 @@ class _HeatmapDrawMixin(object):
                     kpts = list(range(len(keypoints.shape[1])))
             if not ub.iterable(kpts):
                 kpts = [kpts]
-            vec_colors = kwplot.Color.distinct(len(kpts) + int(bool(vecs)))
+            print('kpts = {!r}'.format(kpts))
+            E = int(bool(vecs))
+            vec_colors = kwplot.Color.distinct(len(kpts) + E)
+            print('vec_colors = {!r}'.format(vec_colors))
 
         if vecs:
             if self.data.get('offset', None) is not None:
@@ -315,13 +318,9 @@ class _HeatmapDrawMixin(object):
             # TODO: make a nicer keypoint offset vector visuliazation
             if self.data.get('keypoints', None) is not None:
                 keypoints = self.data['keypoints']
-                if not ub.iterable(kpts):
-                    kpts = [kpts]
-                if kpts is True:
-                    kpts = list(range(len(keypoints.shape[1])))
-                for k in kpts:
+                for i, k in enumerate(kpts):
                     # color = (np.array(vec_colors[k]) * 255).astype(np.uint8)
-                    color = vec_colors[k + int(bool(vecs))]
+                    color = vec_colors[i + E]
 
                     dy, dx = kwarray.ArrayAPI.numpy(keypoints[:, k])
                     vecmask = kwplot.make_vector_field(dx, dy, stride=8,
