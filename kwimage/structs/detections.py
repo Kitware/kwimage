@@ -1004,8 +1004,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     num=(len(boxes), len(kp_classes)),
                     classes=kp_classes,)
                 self.data['keypoints'] = keypoints
-        else:
-            raise TypeError(type(keypoints))
 
         self = self.scale(scale)
 

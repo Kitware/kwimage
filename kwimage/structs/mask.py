@@ -122,13 +122,13 @@ class _MaskConversionMixin(object):
         """
         Example:
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
-            >>> mask = Mask.random(shape=(8, 8), rng=0)
+            >>> mask = Mask.demo()
             >>> print(mask.to_bytes_rle().data['counts'])
-            ...'135000k0NWO0L'
+            ...'_153L;4EL;1DO10;1DO10;1DO10;4EL;4ELW3b0jL^O60...
             >>> print(mask.to_array_rle().data['counts'].tolist())
-            [1, 3, 5, 3, 5, 3, 32, 1, 7, 1, 3]
+            [47, 5, 3, 1, 14, 5, 3, 1, 14, 2, 2, 1, 3, 1, 14, ...
             >>> print(mask.to_array_rle().to_bytes_rle().data['counts'])
-            ...'135000k0NWO0L'
+            ...'_153L;4EL;1DO10;1DO10;1DO10;4EL;4ELW3b0jL^O60L0...
         """
         if self.format == MaskFormat.BYTES_RLE:
             return self.copy() if copy else self
@@ -373,6 +373,8 @@ class _MaskTransformMixin(object):
         import kwimage
         if output_dims is None:
             output_dims = self.shape
+        if not ub.iterable(offset):
+            offset = (offset, offset)
         rle = self.to_array_rle(copy=False).data
         new_rle = kwimage.rle_translate(rle, offset, output_dims)
         new_rle['size'] = new_rle['shape']
@@ -527,7 +529,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
-            33
+            34
             >>> masks = [m.to_c_mask() for m in masks]
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
@@ -592,7 +594,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.intersection(*masks)
             >>> print(mask.area)
-            9
+            8
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
         rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
@@ -614,9 +616,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Returns the number of non-zero pixels
 
         Example:
-            >>> self = Mask.random(shape=(8, 8), rng=0)
+            >>> self = Mask.demo()
             >>> self.area
-            11
+            150
         """
         self = self.to_bytes_rle()
         return cython_mask.area([self.data])[0]
@@ -626,10 +628,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Extract the patch with non-zero data
 
         Example:
+            >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
-            array([[1, 1, 1, 0, 0, 0, 0, 0],
-                   [1, 1, 1, 0, 0, 0, 0, 0],
+            array([[0, 0, 1, 0, 0, 0, 0, 0],
+                   [1, 1, 1, 1, 0, 0, 0, 0],
                    [1, 1, 1, 0, 0, 0, 0, 0],
                    [0, 0, 0, 0, 0, 0, 1, 1]], dtype=uint8)
         """
@@ -947,12 +950,15 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             - [ ] Write plural Masks version of this class, which should
                   be able to perform this operation more efficiently.
 
+        CommandLine:
+            xdoctest -m kwimage.structs.mask Mask.iou
+
         Example:
-            >>> self = Mask.random(rng=0)
-            >>> other = Mask.random(rng=1)
+            >>> self = Mask.demo()
+            >>> other = self.translate(1)
             >>> iou = self.iou(other)
             >>> print('iou = {:.4f}'.format(iou))
-            iou = 0.0542
+            iou = 0.0830
         """
         item1 = self.to_bytes_rle(copy=False).data
         item2 = other.to_bytes_rle(copy=False).data

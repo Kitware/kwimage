@@ -1,6 +1,6 @@
 kwarray
 
-scipy >= 1.1.0
+scipy >= 1.2.1
 numpy >= 1.15.2
 pandas >= 0.23.3
 torch >= 0.4.1
