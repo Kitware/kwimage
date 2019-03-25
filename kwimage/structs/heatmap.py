@@ -209,6 +209,17 @@ class _HeatmapDrawMixin(object):
         stacked = kwimage.stack_images(colorized, overlap=-3, axis=1)
         return stacked
 
+    def draw(self, image=None, **kwargs):
+        # If draw doesnt exist use draw_on
+        import numpy as np
+        if image is None:
+            dims = self.bounds
+            shape = tuple(dims) + (4,)
+            image = np.zeros(shape, dtype=np.float32)
+        image = self.draw_on(image, **kwargs)
+        import kwplot
+        kwplot.imshow(image)
+
     def draw_on(self, image, channel=0, invert=False, with_alpha=1.0,
                 interpolation='linear', vecs=False, kpts=None, imgspace=None):
         """
@@ -526,18 +537,19 @@ class _HeatmapWarpMixin(object):
         newmeta['tf_data_to_img'] = self.tf_data_to_img + inv_tf
 
         for k, v in self.data.items():
-            v = kwarray.ArrayAPI.tensor(v)
-            # For spatial keys we need to transform the underlying values as well
-            if modify_spatial_coords:
-                if k in self.__spatialkeys__:
-                    pts = impl.contiguous(impl.T(v))
-                    pts = kwimage.warp_points(mat_notrans, pts)
-                    v = impl.contiguous(impl.T(pts))
+            if v is not None:
+                v = kwarray.ArrayAPI.tensor(v)
+                # For spatial keys we need to transform the underlying values as well
+                if modify_spatial_coords:
+                    if k in self.__spatialkeys__:
+                        pts = impl.contiguous(impl.T(v))
+                        pts = kwimage.warp_points(mat_notrans, pts)
+                        v = impl.contiguous(impl.T(pts))
 
-            new_v = kwimage.warp_tensor(
-                v[None, :].float(), mat, output_dims=output_dims,
-                mode=interpolation)[0]
-            newdata[k] = impl.asarray(new_v)
+                new_v = kwimage.warp_tensor(
+                    v[None, :].float(), mat, output_dims=output_dims,
+                    mode=interpolation)[0]
+                newdata[k] = impl.asarray(new_v)
 
         newself = self.__class__(newdata, newmeta)
         return newself
@@ -639,7 +651,7 @@ class _HeatmapAlgoMixin(object):
             newdata['offset'] = amean([h.offset for h in aligned_heatmaps])
         if 'diameter' in aligned_root.data:
             newdata['diameter'] = amean([h.diameter for h in aligned_heatmaps])
-        if 'keypoints' in aligned_root.data:
+        if 'keypoints' in aligned_root.data and aligned_root.data['keypoints'] is not None:
             newdata['keypoints'] = amean([h.data['keypoints'] for h in aligned_heatmaps])
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself

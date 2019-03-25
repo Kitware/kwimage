@@ -1138,8 +1138,8 @@ class _BoxDrawMixins(object):
 # object) so isinstance works outside of the internal lib?
 
 
-class Boxes(_generic.Spatial, _BoxConversionMixins, _BoxPropertyMixins,
-            _BoxTransformMixins, _BoxDrawMixins):
+class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
+            _BoxDrawMixins):  # _generic.Spatial
     """
     Converts boxes between different formats as long as the last dimension
     contains 4 coordinates and the format is specified.

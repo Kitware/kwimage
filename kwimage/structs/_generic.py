@@ -21,16 +21,16 @@ class Spatial(ub.NiceRepr, abc.ABC):
     # def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
     #     raise NotImplementedError
 
-    def draw(self, image=None, **kwargs):
-        # If draw doesnt exist use draw_on
-        import numpy as np
-        if image is None:
-            dims = self.bounds
-            shape = tuple(dims) + (4,)
-            image = np.zeros(shape, dtype=np.float32)
-        image = self.draw_on(image, **kwargs)
-        import kwplot
-        kwplot.imshow(image)
+    # def draw(self, image=None, **kwargs):
+    #     # If draw doesnt exist use draw_on
+    #     import numpy as np
+    #     if image is None:
+    #         dims = self.bounds
+    #         shape = tuple(dims) + (4,)
+    #         image = np.zeros(shape, dtype=np.float32)
+    #     image = self.draw_on(image, **kwargs)
+    #     import kwplot
+    #     kwplot.imshow(image)
 
     # @abc.abstractmethod
     # def draw_on(self, image):
