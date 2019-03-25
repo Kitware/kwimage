@@ -259,17 +259,17 @@ class _DetAlgoMixin:
         tf_data_to_img = skimage.transform.AffineTransform(
             scale=(1, 1), translation=(0, 0),
         )
-        print(fcn_target.keys())
-        print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        # print(fcn_target.keys())
+        # print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
 
         impl = kwarray.ArrayAPI.coerce(fcn_target['cidx'])
 
-        import netharn as nh
         # class_probs = nh.criterions.focal.one_hot_embedding(
         #     fcn_target['cidx'].reshape(-1),
         #     num_classes=len(classes), dim=1)
         labels = fcn_target['cidx']
-        class_probs = nh.criterions.focal.one_hot_embedding(labels, num_classes=len(classes), dim=0)
+        class_probs = kwarray.one_hot_embedding(
+            labels, num_classes=len(classes), dim=0)
         # if 0:
         #     kwil.imshow(fcn_target['cidx'] > 0)
         #     kwil.imshow(class_probs[0])
@@ -308,7 +308,7 @@ class _DetAlgoMixin:
             tf_data_to_img=tf_data_to_img,
             datakeys=['kpts_ignore', 'class_idx'],
         )
-        print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+        # print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
         return self
 
 
@@ -790,12 +790,19 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         Example:
             >>> import kwimage
-            >>> dets = kwimage.Detections(boxes=kwimage.Boxes.random(10))
+            >>> dets = kwimage.Detections.random(keypoints='dense')
             >>> flags = np.random.rand(len(dets)) > 0.5
             >>> subset = dets.compress(flags)
             >>> assert len(subset) == flags.sum()
             >>> subset = dets.tensor().compress(flags)
             >>> assert len(subset) == flags.sum()
+
+
+            z = dets.tensor().data['keypoints'].data['xy']
+            z.compress(flags)
+            ub.map_vals(lambda x: x.shape, dets.data)
+            ub.map_vals(lambda x: x.shape, subset.data)
+
         """
         if flags is Ellipsis:
             return self
@@ -808,7 +815,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 if flags.dtype.kind == 'b':
                     flags = flags.astype(np.uint8)
             flags = torch.ByteTensor(flags).to(self.device)
-        newdata = {k: _safe_compress(v, flags, axis) for k, v in self.data.items()}
+        newdata = {k: _generic._safe_compress(v, flags, axis)
+                   for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
 
     def take(self, indices, axis=0):
@@ -831,7 +839,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         if self.is_tensor():
             indices = torch.LongTensor(indices).to(self.device)
-        newdata = {k: _safe_take(v, indices, axis) for k, v in self.data.items()}
+        newdata = {k: _generic._safe_take(v, indices, axis)
+                   for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
 
     def __getitem__(self, index):
@@ -952,14 +961,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         Example:
             >>> import kwimage
-            >>> dets = kwimage.Detections.random(keypoints=True)
+            >>> dets = kwimage.Detections.random(keypoints='jagged')
             >>> dets.data['keypoints'].data[0].data
             >>> dets.data['keypoints'].meta
+            >>> dets = kwimage.Detections.random(keypoints='dense')
         """
         import kwimage
         import kwarray
         rng = kwarray.ensure_rng(rng)
-        boxes = kwimage.Boxes.random(num=num, scale=scale, rng=rng, tensor=tensor)
+        boxes = kwimage.Boxes.random(num=num, rng=rng)
         if isinstance(classes, int):
             num_classes = classes
             classes = ['class_{}'.format(c) for c in range(classes)]
@@ -974,40 +984,35 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self.meta['classes'] = classes
 
         if keypoints is True:
+            keypoints = 'jagged'
+
+        if isinstance(keypoints, six.string_types):
             kp_classes = [1, 2, 3, 4]
-            kpts_list = kwimage.PointsList([
-                kwimage.Points.random(
-                    num=rng.randint(len(kp_classes)),
-                    classes=kp_classes,
-                ).scale(scale)
-                for _ in range(len(boxes))
-            ])
-            kpts_list.meta['classes'] = kp_classes
-            self.data['keypoints'] = kpts_list
             self.meta['kp_classes'] = kp_classes
+            if keypoints == 'jagged':
+                kpts_list = kwimage.PointsList([
+                    kwimage.Points.random(
+                        num=rng.randint(len(kp_classes)),
+                        classes=kp_classes,
+                    )
+                    for _ in range(len(boxes))
+                ])
+                kpts_list.meta['classes'] = kp_classes
+                self.data['keypoints'] = kpts_list
+            elif keypoints == 'dense':
+                keypoints = kwimage.Points.random(
+                    num=(len(boxes), len(kp_classes)),
+                    classes=kp_classes,)
+                self.data['keypoints'] = keypoints
+        else:
+            raise TypeError(type(keypoints))
+
+        self = self.scale(scale)
 
         if tensor:
             self = self.tensor()
 
         return self
-
-
-def _safe_take(v, indices, axis):
-    if v is None:
-        return v
-    try:
-        return _boxes._take(v, indices, axis=axis)
-    except TypeError:
-        return v.take(indices, axis=axis)
-
-
-def _safe_compress(v, flags, axis):
-    if v is None:
-        return v
-    try:
-        return _boxes._compress(v, flags, axis=axis)
-    except TypeError:
-        return v.compress(flags, axis=axis)
 
 
 @xdev.profile

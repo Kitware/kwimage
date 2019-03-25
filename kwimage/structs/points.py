@@ -234,6 +234,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return len(self.data['xy'])
 
     @property
+    def shape(self):
+        return self.data['xy'].shape
+
+    @property
     def xy(self):
         return self.data['xy'].data
 
@@ -248,7 +252,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.data
         """
         rng = kwarray.ensure_rng(rng)
-        self = Points(xy=rng.rand(num, 2))
+        if ub.iterable(num):
+            shape = tuple(num) + (2,)
+        else:
+            shape = (num, 2)
+        self = Points(xy=rng.rand(*shape))
         if classes is not None:
             class_idxs = (rng.rand(len(self)) * len(classes)).astype(np.int)
             self.data['class_idxs'] = class_idxs
@@ -399,17 +407,45 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     def compress(self, flags, axis=0, inplace=False):
         """
         Filters items based on a boolean criterion
+
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(4)
+            >>> flags = [1, 0, 1, 1]
+            >>> other = self.compress(flags)
+            >>> assert len(self) == 4
+            >>> assert len(other) == 3
+
+            >>> other = self.tensor().compress(flags)
+            >>> assert len(other) == 3
         """
-        new = self if inplace else self.__class__(self.data, self.meta)
-        new.data['xy'] = new.data['xy'].compress(flags, axis, inplace=inplace)
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        for k, v in self.data.items():
+            try:
+                new.data[k] = _generic._safe_compress(v, flags, axis=axis)
+            except Exception:
+                print('FAILED TO COMPRESS k={!r}, v={!r}'.format(k, v))
+                raise
         return new
 
     def take(self, indices, axis=0, inplace=False):
         """
         Takes a subset of items at specific indices
+
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(4)
+            >>> indices = [1, 3]
+            >>> other = self.take(indices)
+            >>> assert len(self) == 4
+            >>> assert len(other) == 2
+
+            >>> other = self.tensor().take(indices)
+            >>> assert len(other) == 2
         """
-        new = self if inplace else self.__class__(self.data, self.meta)
-        new.data['xy'] = new.data['xy'].take(indices, axis, inplace=inplace)
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        for k, v in self.data.items():
+            new.data[k] = _generic._safe_take(v, indices, axis=axis)
         return new
 
     @classmethod

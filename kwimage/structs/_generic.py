@@ -1,6 +1,7 @@
 import ubelt as ub
 import xdev
 import abc
+import kwarray
 
 
 class Spatial(ub.NiceRepr, abc.ABC):
@@ -71,6 +72,10 @@ class ObjectList(Spatial):
 
     def __len__(self):
         return len(self.data)
+
+    @property
+    def shape(self):
+        return (len(self),)
 
     def __nice__(self):
         return 'n={}'.format(len(self))
@@ -171,3 +176,21 @@ def _consistent_dtype_fixer(data):
         return kwimage.ensure_uint255
     else:
         raise TypeError(data.dtype)
+
+
+def _safe_take(data, indices, axis):
+    if data is None:
+        return data
+    elif hasattr(data, 'take'):
+        return data.take(indices, axis=axis)
+    else:
+        return kwarray.ArrayAPI.take(data, indices, axis=axis)
+
+
+def _safe_compress(data, flags, axis):
+    if data is None:
+        return data
+    elif hasattr(data, 'compress'):
+        return data.compress(flags, axis=axis)
+    else:
+        return kwarray.ArrayAPI.compress(data, flags, axis=axis)
