@@ -4,8 +4,6 @@ Data structure for Binary Masks
 Structure for efficient encoding of per-annotation segmentation masks
 Based on efficient cython/C code in the cocoapi [1].
 
-THIS IS CURRENTLY A WORK IN PROGRESS.
-
 References:
     ..[1] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/_mask.pyx
     ..[2] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.c
