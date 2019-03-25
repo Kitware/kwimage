@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "wheel", "scikit-build", "cmake", "cython", "ninja", "ubelt", "cffi"]
+requires = ["setuptools", "wheel", "scikit-build", "numpy", "cmake", "cython", "ninja", "ubelt", "cffi"]

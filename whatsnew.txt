@@ -1,0 +1,22 @@
+Version 0.3.0
+=============
+* Detections now has `rasterize` method, which should be used instead of _dets_to_fcn_target
+
+* All structs should now have warp and draw method
+
+* Add `subpixel_setvalue` and `subpixel_getvalue` 
+* Add `Coords` data structure
+* Speedup `overlay_alpha_layers` by bypassing redundant dstack operations. 
+* Changed `encode_run_length` to return a dictionary
+* Add `Mask` data structure
+* Add `Points` data structure
+* Add `_generic.ObjectList` data structure for `MaskList` and `PointsList`.
+* Add `output_shape` and `input_shape` as generally accepted kwargs for warp (even if they are unused)
+* Spatial data structure `warp` methods can now accept imgaug augmenters
+* Add `util_warp.warp_points`
+* Add checks to detection types
+
+
+Version 0.0.1
+=============
+* Port from kwil

@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import ubelt as ub
 import torch
 import numpy as np
+import kwarray
 
 
 def _coordinate_grid(dims):
@@ -91,6 +92,11 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         KNOWN ISSUE: There appears to some difference with cv2.warpAffine when
             rotation or shear are non-zero. I'm not sure what the cause is.
             It may just be floating point issues, but Im' not sure.
+
+    TODO:
+        - [ ] FIXME: see example in Mask.scale where this algo breaks when
+        the matrix is `2x3`
+        - [ ] Make this algo work when matrix ix 2x2
 
     References:
         https://discuss.pytorch.org/t/affine-transformation-matrix-paramters-conversion/19522
@@ -264,8 +270,10 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         raise ValueError('Invalid mat shape')
 
     if mat.shape[-1] not in [3, 4] or mat.shape[-1] not in [2, 3, 4]:
+        # if tuple(mat.shape) != (2, 2):
         raise ValueError(
             'mat must have shape: '
+            # '(..., 2, 2) or '
             '(..., 2, 3) or (..., 3, 3)'
             ' or (..., 3, 4) or (..., 4, 4)'
         )
@@ -293,6 +301,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     # Construct a homogenous coordinate system in the output frame where the
     # input is aligned with the top left corner.
+    # X = ndims + 1 if ishomog else ndims
     X = ndims + 1
     unwarped_coords = _coordinate_grid(output_dims)     # [X, *DIMS]
     unwarped_coords = unwarped_coords.to(inputs.device)
@@ -338,7 +347,6 @@ def subpixel_align(dst, src, index, interp_axes=None):
     """
     Returns an aligned version of the source tensor and destination index.
     """
-    import kwarray
     if interp_axes is None:
         # Assume spatial dimensions are trailing
         interp_axes = len(dst.shape) + np.arange(-min(2, len(index)), 0)
@@ -394,6 +402,52 @@ def subpixel_align(dst, src, index, interp_axes=None):
                                      output_shape=output_shape,
                                      interp_axes=interp_axes)
     return aligned_src, aligned_index
+
+
+def subpixel_set(dst, src, index, interp_axes=None):
+    """
+    Add the source values array into the destination array at a particular
+    subpixel index.
+
+    Args:
+        dst (ArrayLike): destination accumulation array
+        src (ArrayLike): source array containing values to add
+        index (Tuple[slice]): subpixel slice into dst that corresponds with src
+        interp_axes (tuple): specify which axes should be spatially interpolated
+
+    TODO:
+        - [ ]: allow index to be a sequence indices
+
+    Example:
+        >>> import kwimage
+        >>> dst = np.zeros(5) + .1
+        >>> src = np.ones(2)
+        >>> index = [slice(1.5, 3.5)]
+        >>> kwimage.util_warp.subpixel_set(dst, src, index)
+        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        np.array([0.1, 0.5, 1. , 0.5, 0.1])
+    """
+    aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
+    # accumulate the newly aligned source array
+    try:
+        dst[aligned_index] = aligned_src
+    except RuntimeError:
+        try:
+            print('dst.shape = {!r}'.format(dst.shape))
+            print('dst.dtype = {!r}'.format(dst.dtype))
+            print('dst.device = {!r}'.format(dst.device))
+
+            print('aligned_src.shape = {!r}'.format(aligned_src.shape))
+            print('aligned_src.dtype = {!r}'.format(aligned_src.dtype))
+            print('aligned_src.device = {!r}'.format(aligned_src.device))
+
+            print('src.shape = {!r}'.format(src.shape))
+            print('src.dtype = {!r}'.format(src.dtype))
+            print('src.device = {!r}'.format(src.device))
+        except Exception:
+            print('unexpected numpy')
+        raise
+    return dst
 
 
 def subpixel_accum(dst, src, index, interp_axes=None):
@@ -512,6 +566,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
         src (ArrayLike): source array that agrees with the index
         index (Tuple[slice]): subpixel slice into dst that corresponds with src
         interp_axes (tuple): specify which axes should be spatially interpolated
+
     Example:
         >>> dst = np.array([0, 1.0, 1.0, 1.0, 0])
         >>> src = np.array([2.0, 2.0])
@@ -532,7 +587,6 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
                   [0.5 , 0.75, 1.  , 1.  , 0.5 ],
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.5 ]])
     """
-    import kwarray
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
     impl = kwarray.ArrayAPI.impl(dst)
     impl.maximum(dst[aligned_index], aligned_src, out=dst[aligned_index])
@@ -570,7 +624,6 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.25],
                   [0.5 , 0.3 , 0.4 , 0.4 , 0.1 ]])
     """
-    import kwarray
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
     impl = kwarray.ArrayAPI.impl(dst)
     impl.minimum(dst[aligned_index], aligned_src, out=dst[aligned_index])
@@ -682,7 +735,6 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         >>> subpixel_translate(inputs, shift, interp_axes, output_shape=(9, 9))
         >>> subpixel_translate(inputs, shift, interp_axes, output_shape=(3, 4))
     """
-    import kwarray
     impl = kwarray.ArrayAPI.impl(inputs)
 
     if output_shape is None:
@@ -763,16 +815,6 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         wb = alpha[1] *  beta[0]
         wc =  beta[1] * alpha[0]
         wd  = beta[1] *  beta[0]
-
-        # y0 = int(np.floor(y))
-        # x0 = int(np.floor(x))
-        # y1 = y0 + 1
-        # x1 = x0 + 1
-        # # Find bilinear weights
-        # wa = (x1 - x) * (y1 - y)
-        # wb = (x1 - x) * (y - y0)
-        # wc = (x - x0) * (y1 - y)
-        # wd = (x - x0) * (y - y0)
 
         # Create a (potentially negative) slice containing the relvant area
         relevant_slice = [slice(None)] * ndims
@@ -867,7 +909,6 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         np.array([2, 3])
         [(2, 4)]
     """
-    import kwarray
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 
@@ -1042,7 +1083,6 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> kwplot.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
     """
     import cv2
-    import kwarray
     import kwimage
     impl = kwarray.ArrayAPI.impl(inputs)
 
@@ -1082,3 +1122,328 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
 
     outputs = impl.ensure(outputs)
     return outputs
+
+
+def warp_points(matrix, pts):
+    """
+    Warp ND points / coordinates using a transformation matrix.
+
+    Homogoenous coordinates are added on the fly if needed. Works with both
+    numpy and torch.
+
+    Args:
+        matrix (ArrayLike): [D1 x D2] transformation matrix.
+            if using homogenous coordinates D2=D + 1, otherwise D2=D.
+            if using homogenous coordinates and the matrix represents an Affine
+            transformation, then either D1=D or D1=D2, i.e. the last row of
+            zeros and a one is optional.
+
+        pts (ArrayLike): [N1 x ... x D] points (usually x, y).
+            If points are already in homogenous space, then the output will be
+            returned in homogenous space. D is the dimensionality of the
+            points.  The leading axis may take any shape, but usually, shape
+            will be [N x D] where N is the number of points.
+
+    Retrns:
+        new_pts (ArrayLike): the points after being transformed by the matrix
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> # --- with numpy
+        >>> rng = np.random.RandomState(0)
+        >>> pts = rng.rand(10, 2)
+        >>> matrix = rng.rand(2, 2)
+        >>> warp_points(matrix, pts)
+        >>> # --- with torch
+        >>> pts = torch.Tensor(pts)
+        >>> matrix = torch.Tensor(matrix)
+        >>> warp_points(matrix, pts)
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> # --- with numpy
+        >>> pts = np.ones((10, 2))
+        >>> matrix = np.diag([2, 3, 1])
+        >>> ra = warp_points(matrix, pts)
+        >>> rb = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
+        >>> assert np.allclose(ra, rb.numpy())
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> # test different cases
+        >>> rng = np.random.RandomState(0)
+        >>> # Test 3x3 style projective matrices
+        >>> pts = rng.rand(1000, 2)
+        >>> matrix = rng.rand(3, 3)
+        >>> ra33 = warp_points(matrix, pts)
+        >>> rb33 = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
+        >>> assert np.allclose(ra33, rb33.numpy())
+        >>> # Test opencv style affine matrices
+        >>> pts = rng.rand(10, 2)
+        >>> matrix = rng.rand(2, 3)
+        >>> ra23 = warp_points(matrix, pts)
+        >>> rb23 = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
+        >>> assert np.allclose(ra33, rb33.numpy())
+    """
+    impl = kwarray.ArrayAPI.coerce(pts)
+
+    if len(matrix.shape) != 2:
+        raise ValueError('matrix must have 2 dimensions')
+
+    D = pts.shape[-1]  # the trailing axis is the point dimensionality
+    D1, D2 = matrix.shape
+
+    # Reshape points into a NxD, and transpose into a
+    pts_T = impl.T(impl.view(pts, (-1, D)))
+
+    if D != D2:
+        assert D + 1 == D2, 'only can have one homog coord'
+        # Add homogenous coordinate
+        new_pts_T = impl.cat([pts_T, impl.ones_like(pts_T[0:1])], axis=0)
+    else:
+        # new_pts_T = impl.contiguous(pts_T)
+        new_pts_T = pts_T
+
+    # TODO: we could be more memory efficient (and possibly faster) by using
+    # the `out` kwarg and resuing memory in `new_pts_T`, we just need to ensure
+    # it doesn't share memory with `pts`, which is probably doable by just
+    # using imp.contiguous, but this needs testing.
+    new_pts_T = impl.matmul(matrix, new_pts_T)
+
+    if D != D1:
+        # remove homogenous coordinates (unless the matrix was affine with the
+        # last row was ommitted)
+        new_pts_T = new_pts_T[0:D] / new_pts_T[-1:]
+
+    # Return the warped points with the same shape as the input
+    new_pts = impl.T(new_pts_T)
+    new_pts = impl.view(new_pts, pts.shape)
+    return new_pts
+
+
+def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
+                      bordermode='edge'):
+    """
+    Get values at subpixel locations
+
+    Args:
+        img (ArrayLike): image to sample from
+        pts (ArrayLike): subpixel rc-coordinates to sample
+        coord_axes (Sequence, default=None):
+            axes to perform interpolation on, if not specified the first `d`
+            axes are interpolated, where `d=pts.shape[-1]`.
+            IE: this indicates which axes each coordinate dimension corresponds to.
+        interp (str): interpolation mode
+        bordermode (str): how locations outside the image are handled
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> img = np.arange(3 * 3).reshape(3, 3)
+        >>> pts = np.array([[1, 1], [1.5, 1.5], [1.9, 1.1]])
+        >>> subpixel_getvalue(img, pts)
+        array([4. , 6. , 6.8])
+        >>> subpixel_getvalue(img, pts, coord_axes=(1, 0))
+        array([4. , 6. , 5.2])
+        >>> img = torch.Tensor(img)
+        >>> pts = torch.Tensor(pts)
+        >>> subpixel_getvalue(img, pts)
+        tensor([4.0000, 6.0000, 6.8000])
+        >>> subpixel_getvalue(img.numpy(), pts.numpy(), interp='nearest')
+        array([4., 8., 7.], dtype=float32)
+        >>> subpixel_getvalue(img.numpy(), pts.numpy(), interp='nearest', coord_axes=[1, 0])
+        array([4., 8., 5.], dtype=float32)
+        >>> subpixel_getvalue(img, pts, interp='nearest')
+        tensor([4., 8., 7.])
+
+    References:
+        stackoverflow.com/uestions/12729228/simple-binlin-interp-images-numpy
+
+    SeeAlso:
+        cv2.getRectSubPix(image, patchSize, center[, patch[, patchType]])
+    """
+    # Image info
+    impl = kwarray.ArrayAPI.coerce(img)
+    ptsT = impl.T(pts)
+    assert bordermode == 'edge'
+
+    if coord_axes is None:
+        coord_axes = list(range(len(ptsT)))
+
+    if interp == 'nearest':
+        r, c = impl.iround(ptsT, dtype=np.int)
+        ndims = len(img.shape)
+        index_a = [slice(None)] * ndims
+        i, j = coord_axes
+        index_a[i] = r
+        index_a[j] = c
+        subpxl_vals = img[tuple(index_a)]
+    elif interp == 'bilinear':
+        # Subpixel locations to sample
+        indices, weights = _bilinear_coords(ptsT, impl, img, coord_axes)
+        index_a, index_b, index_c, index_d = indices
+        wa, wb, wc, wd = weights
+
+        # Sample values
+        Ia = img[index_a]
+        Ib = img[index_b]
+        Ic = img[index_c]
+        Id = img[index_d]
+
+        Iwa = wa * Ia
+        Iwb = wb * Ib
+        Iwc = wc * Ic
+        Iwd = wd * Id
+
+        # Perform the bilinear interpolation
+        subpxl_vals = Iwa
+        subpxl_vals += Iwb
+        subpxl_vals += Iwc
+        subpxl_vals += Iwd
+    else:
+        raise KeyError(interp)
+
+    return subpxl_vals
+
+
+def subpixel_setvalue(img, pts, value, coord_axes=None,
+                      interp='bilinear', bordermode='edge'):
+    """
+    Set values at subpixel locations
+
+    Args:
+        img (ArrayLike): image to set values in
+        pts (ArrayLike): subpixel rc-coordinates to set
+        value (ArrayLike): value to place in the image
+        coord_axes (Sequence, default=None):
+            axes to perform interpolation on, if not specified the first `d`
+            axes are interpolated, where `d=pts.shape[-1]`.
+            IE: this indicates which axes each coordinate dimension corresponds to.
+        interp (str): interpolation mode
+        bordermode (str): how locations outside the image are handled
+
+    Example:
+        >>> from kwimage.util_warp import *  # NOQA
+        >>> img = np.arange(3 * 3).reshape(3, 3).astype(np.float)
+        >>> pts = np.array([[1, 1], [1.5, 1.5], [1.9, 1.1]])
+        >>> interp = 'bilinear'
+        >>> value = 0
+        >>> print('img = {!r}'.format(img))
+        >>> pts = np.array([[1.5, 1.5]])
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
+        >>> print('img2 = {!r}'.format(img2))
+        >>> pts = np.array([[1.0, 1.0]])
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
+        >>> print('img2 = {!r}'.format(img2))
+        >>> pts = np.array([[1.1, 1.9]])
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value)
+        >>> print('img2 = {!r}'.format(img2))
+        >>> img2 = subpixel_setvalue(img.copy(), pts, value, coord_axes=[1, 0])
+        >>> print('img2 = {!r}'.format(img2))
+    """
+    assert bordermode == 'edge'
+    # Image info
+    impl = kwarray.ArrayAPI.coerce(img)
+    ptsT = impl.T(pts)
+    ndims = len(img.shape)
+
+    if len(pts) == 0:
+        return img
+
+    if coord_axes is None:
+        # TODO: cleanup
+        coord_axes = list(range(len(ptsT)))
+
+    if interp == 'nearest':
+        r, c = impl.iround(ptsT, dtype=np.int)
+        index_a = [slice(None)] * ndims
+        i, j = coord_axes
+        index_a[i] = r
+        index_a[j] = c
+        img[tuple(index_a)] = value
+    elif interp == 'bilinear':
+        # Get quantized pixel locations near subpixel pts
+        # TODO: Figure out an efficient way to do this.
+        indices, weights = _bilinear_coords(ptsT, impl, img, coord_axes)
+        index_a, index_b, index_c, index_d = indices
+        wa, wb, wc, wd = weights
+
+        # set values (blend old values with new values at subpixel locs)
+        # when location is an integer, the value is exactly overwritten.
+        # I'm unsure if this is correct
+        Ia = (1 - wa) * img[index_a] + (wa * value)
+        Ib = (1 - wb) * img[index_b] + (wb * value)
+        Ic = (1 - wc) * img[index_c] + (wc * value)
+        Id = (1 - wd) * img[index_d] + (wd * value)
+
+        img[index_a] = Ia
+        img[index_b] = Ib
+        img[index_c] = Ic
+        img[index_d] = Id
+    else:
+        raise KeyError(interp)
+    return img
+
+
+def _bilinear_coords(ptsT, impl, img, coord_axes):
+    i, j = coord_axes
+    height, width = img.shape[0:2]
+    ndims = len(img.shape)
+
+    r, c = ptsT
+    # Get quantized pixel locations near subpixel pts
+    r0, c0 = impl.floor(ptsT)
+    c1 = c0 + 1
+    r1 = r0 + 1
+
+    # Make sure the values do not go past the boundary
+    # Note: this is equivalent to bordermode=edge
+    c0 = impl.clip(c0, 0, width - 1, out=c0)
+    c1 = impl.clip(c1, 0, width - 1, out=c1)
+    r0 = impl.clip(r0, 0, height - 1, out=r0)
+    r1 = impl.clip(r1, 0, height - 1, out=r1)
+
+    # Find bilinear weights
+    alpha0 = (c - c0)
+    alpha1 = (c1 - c)
+    beta0 = (r - r0)
+    beta1 = (r1 - r)
+    wa = alpha1 * beta1
+    wb = alpha1 * beta0
+    wc = alpha0 * beta1
+    wd = alpha0 * beta0
+
+    nChannels = 1 if len(img.shape) == 2 else img.shape[2]
+    if nChannels != 1:
+        wa = impl.T(impl.asarray([wa] *  nChannels))
+        wb = impl.T(impl.asarray([wb] *  nChannels))
+        wc = impl.T(impl.asarray([wc] *  nChannels))
+        wd = impl.T(impl.asarray([wd] *  nChannels))
+
+    r0 = impl.astype(r0, int)
+    r1 = impl.astype(r1, int)
+    c0 = impl.astype(c0, int)
+    c1 = impl.astype(c1, int)
+
+    index_a = [slice(None)] * ndims
+    index_b = [slice(None)] * ndims
+    index_c = [slice(None)] * ndims
+    index_d = [slice(None)] * ndims
+
+    index_a[i] = r0
+    index_b[i] = r1
+    index_c[i] = r0
+    index_d[i] = r1
+
+    index_a[j] = c0
+    index_b[j] = c0
+    index_c[j] = c1
+    index_d[j] = c1
+
+    indices = (
+        tuple(index_a),
+        tuple(index_b),
+        tuple(index_c),
+        tuple(index_d),
+    )
+    weights = (wa, wb, wc, wd)
+    return indices, weights

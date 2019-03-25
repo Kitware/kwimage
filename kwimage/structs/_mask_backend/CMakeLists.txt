@@ -1,16 +1,25 @@
 
-option(BUILD_BOXES_CYTHON "Are your IoU ops TOO SLOW? Try Cython!" True)
-if (BUILD_BOXES_CYTHON)
+option(BUILD_MASK_CYTHON "Enable cython masks" True)
+if (BUILD_MASK_CYTHON)
 
-  set(cython_source "cython_boxes.pyx")
-  set(module_name "cython_boxes")
+  set(cython_source "cython_mask.pyx")
+  set(module_name "cython_mask")
 
   # Translate Cython into C/C++
   add_cython_target(${module_name} "${cython_source}" C OUTPUT_VAR sources)
 
+  # Add other C sources
+  list(APPEND sources "maskApi.c" "maskApi.h")
+
   # Create C++ library. Specify include dirs and link libs as normal
   add_library(${module_name} MODULE ${sources})
-  target_include_directories(${module_name} PUBLIC ${NumPy_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS})
+  target_include_directories(
+    ${module_name}
+    PUBLIC
+        ${NumPy_INCLUDE_DIRS}
+        ${PYTHON_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+  )
   target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
 
   target_compile_definitions(${module_name} PUBLIC

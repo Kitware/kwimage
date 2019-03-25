@@ -59,7 +59,9 @@ import torch
 import ubelt as ub
 import warnings
 import skimage
+import kwarray
 from distutils.version import LooseVersion
+from . import _generic  # NOQA
 
 __all__ = ['Boxes']
 
@@ -75,7 +77,7 @@ class NeedsWarpCorners(AssertionError):
     pass
 
 
-class Format:
+class BoxFormat:
     """
     Defines valid Box formats and their aliases.
 
@@ -216,8 +218,8 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
 def _box_ious_torch(tlbr1, tlbr2, bias=0):
     """
     Example:
-        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr', tensor=True).data
-        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr', tensor=True).data
+        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').tensor().data
+        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').tensor().data
         >>> bias = 0
         >>> ious = _box_ious_torch(tlbr1, tlbr2, bias)
         >>> ious_np = _box_ious_py(tlbr1.numpy(), tlbr2.numpy(), bias)
@@ -356,90 +358,90 @@ class _BoxConversionMixins(object):
             >>> boxes.toformat('tlbr')
             ...
         """
-        key = Format.aliases.get(format, format)
+        key = BoxFormat.aliases.get(format, format)
         try:
             func = self.convert_funcs[key]
             return func(self, copy)
         except KeyError:
             raise KeyError('Cannot convert {} to {}'.format(self.format, format))
 
-    @_register_convertor(Format.XXYY)
+    @_register_convertor(BoxFormat.XXYY)
     def to_xxyy(self, copy=True):
-        if self.format == Format.XXYY:
+        if self.format == BoxFormat.XXYY:
             return self.copy() if copy else self
         else:
             # Only difference between tlbr and extent=xxyy is the column order
             # xxyy: is x1, x2, y1, y2
             tlbr = self.to_tlbr().data
             xxyy = tlbr[..., [0, 2, 1, 3]]
-        return Boxes(xxyy, Format.XXYY, check=False)
+        return Boxes(xxyy, BoxFormat.XXYY, check=False)
 
     to_extent = to_xxyy
 
-    @_register_convertor(Format.XYWH)
+    @_register_convertor(BoxFormat.XYWH)
     def to_xywh(self, copy=True):
-        if self.format == Format.XYWH:
+        if self.format == BoxFormat.XYWH:
             return self.copy() if copy else self
-        elif self.format == Format.CXYWH:
+        elif self.format == BoxFormat.CXYWH:
             cx, cy, w, h = self.components
             x1 = cx - w / 2
             y1 = cy - h / 2
-        elif self.format == Format.TLBR:
+        elif self.format == BoxFormat.TLBR:
             x1, y1, x2, y2 = self.components
             w = x2 - x1
             h = y2 - y1
-        elif self.format == Format.XXYY:
+        elif self.format == BoxFormat.XXYY:
             x1, x2, y1, y2 = self.components
             w = x2 - x1
             h = y2 - y1
-        elif self.format == Format._YYXX:
+        elif self.format == BoxFormat._YYXX:
             y1, y2, x1, x2 = self.components
             w = x2 - x1
             h = y2 - y1
-        elif self.format == Format._RCHW:
+        elif self.format == BoxFormat._RCHW:
             y1, x1, h, w = self.components
             return self.to_tlbr(copy=copy).to_xywh(copy=copy)
         else:
             raise KeyError(self.format)
         xywh = _cat([x1, y1, w, h])
-        return Boxes(xywh, Format.XYWH, check=False)
+        return Boxes(xywh, BoxFormat.XYWH, check=False)
 
-    @_register_convertor(Format.CXYWH)
+    @_register_convertor(BoxFormat.CXYWH)
     def to_cxywh(self, copy=True):
-        if self.format == Format.CXYWH:
+        if self.format == BoxFormat.CXYWH:
             return self.copy() if copy else self
-        elif self.format == Format.XYWH:
+        elif self.format == BoxFormat.XYWH:
             x1, y1, w, h = self.components
             cx = x1 + (w / 2)
             cy = y1 + (h / 2)
-        elif self.format == Format.TLBR:
+        elif self.format == BoxFormat.TLBR:
             x1, y1, x2, y2 = self.components
             w = x2 - x1
             h = y2 - y1
             cx = (x1 + x2) / 2
             cy = (y1 + y2) / 2
-        elif self.format == Format.XXYY:
+        elif self.format == BoxFormat.XXYY:
             x1, x2, y1, y2 = self.components
             w = x2 - x1
             h = y2 - y1
             cx = (x1 + x2) / 2
             cy = (y1 + y2) / 2
-        elif self.format == Format._YYXX:
+        elif self.format == BoxFormat._YYXX:
             return self.to_tlbr(copy=copy).to_cxywh(copy=copy)
-        elif self.format == Format._RCHW:
+        elif self.format == BoxFormat._RCHW:
             return self.to_tlbr(copy=copy).to_cxywh(copy=copy)
         else:
             raise KeyError(self.format)
         cxywh = _cat([cx, cy, w, h])
-        return Boxes(cxywh, Format.CXYWH, check=False)
+        return Boxes(cxywh, BoxFormat.CXYWH, check=False)
 
-    @_register_convertor(Format.TLBR)
+    @_register_convertor(BoxFormat.TLBR)
     def to_tlbr(self, copy=True):
-        if self.format == Format.TLBR:
+        if self.format == BoxFormat.TLBR:
             return self.copy() if copy else self
-        elif self.format == Format.XXYY:
+        elif self.format == BoxFormat.XXYY:
             x1, x2, y1, y2 = self.components
-        elif self.format == Format.CXYWH:
+        elif self.format == BoxFormat.CXYWH:
             cx, cy, w, h = self.components
             half_w = (w / 2)
             half_h = (h / 2)
@@ -447,40 +449,40 @@ class _BoxConversionMixins(object):
             x2 = cx + half_w
             y1 = cy - half_h
             y2 = cy + half_h
-        elif self.format == Format.XYWH:
+        elif self.format == BoxFormat.XYWH:
             x1, y1, w, h = self.components
             x2 = x1 + w
             y2 = y1 + h
-        elif self.format == Format._YYXX:
+        elif self.format == BoxFormat._YYXX:
             y1, y2, x1, x2 = self.components
-        elif self.format == Format._RCHW:
+        elif self.format == BoxFormat._RCHW:
             y1, x1, h, w = self.components
             x2 = x1 + w
             y2 = y1 + h
         else:
             raise KeyError(self.format)
         tlbr = _cat([x1, y1, x2, y2])
-        return Boxes(tlbr, Format.TLBR, check=False)
+        return Boxes(tlbr, BoxFormat.TLBR, check=False)
 
-    @_register_convertor(Format._RCHW)
+    @_register_convertor(BoxFormat._RCHW)
     def _to_rchw(self, copy=True):
-        if self.format == Format._RCHW:
+        if self.format == BoxFormat._RCHW:
             return self.copy() if copy else self
-        if self.format == Format.XYWH:
+        if self.format == BoxFormat.XYWH:
             _rchw = self.data[..., [1, 0, 3, 2]]
         else:
             _rchw = self.to_xywh(copy)._to_rchw(copy)
-        return Boxes(_rchw, Format._RCHW, check=False)
+        return Boxes(_rchw, BoxFormat._RCHW, check=False)
 
-    @_register_convertor(Format._YYXX)
+    @_register_convertor(BoxFormat._YYXX)
     def _to_yyxx(self, copy=True):
-        if self.format == Format._YYXX:
+        if self.format == BoxFormat._YYXX:
             return self.copy() if copy else self
-        if self.format == Format.TLBR:
+        if self.format == BoxFormat.TLBR:
             _yyxx = self.data[..., [1, 3, 0, 2]]
         else:
             _yyxx = self.to_tlbr(copy)._to_yyxx(copy)
-        return Boxes(_yyxx, Format._YYXX, check=False)
+        return Boxes(_yyxx, BoxFormat._YYXX, check=False)
 
     def to_imgaug(self, shape):
         """
@@ -488,6 +490,7 @@ class _BoxConversionMixins(object):
             shape (tuple): shape of image that boxes belong to
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
             >>> bboi = self.to_imgaug((10, 10))
         """
@@ -521,6 +524,7 @@ class _BoxConversionMixins(object):
             bboi (ia.BoundingBoxesOnImage):
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> orig = Boxes.random(5, format='tlbr')
             >>> bboi = orig.to_imgaug(shape=(500, 500))
             >>> self = Boxes.from_imgaug(bboi)
@@ -529,7 +533,7 @@ class _BoxConversionMixins(object):
         tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
                          for bb in bboi.bounding_boxes])
         tlbr = tlbr.reshape(-1, 4)
-        return Boxes(tlbr, format=Format.TLBR, check=False)
+        return Boxes(tlbr, format=BoxFormat.TLBR, check=False)
 
 
 class _BoxPropertyMixins(object):
@@ -682,7 +686,35 @@ class _BoxTransformMixins(object):
     methods for transforming bounding boxes
     """
 
-    def warp(self, transform, inplace=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
+        """
+        Args:
+            augmenter (imgaug.augmenters.Augmenter):
+            input_dims (Tuple): h/w of the input image
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> import imgaug
+            >>> self = Boxes.random(10)
+            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
+            >>> input_dims = (10, 10)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
+        """
+        new = self if inplace else self.__class__(self.data, self.format)
+        bboi = self.to_imgaug(shape=input_dims)
+        bboi = augmenter.augment_bounding_boxes([bboi])[0]
+        tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
+                         for bb in bboi.bounding_boxes])
+        tlbr = tlbr.reshape(-1, 4)
+        new.data = tlbr
+        new.format = BoxFormat.TLBR
+        if self._impl.is_tensor:
+            new = new.tensor()
+        return new
+
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
         not axis-aligned will lose information (and also may not be
@@ -691,6 +723,13 @@ class _BoxTransformMixins(object):
         Args:
             transform (skimage.transform._geometric.GeometricTransform | ArrayLike):
                 scikit-image tranform or a 3x3 transformation matrix
+
+            input_dims (Tuple): shape of the image these objects correspond to
+                (only needed / used when transform is an imgaug augmenter)
+
+            output_dims (Tuple): unused in non-raster spatial structures
+
+            inplace (bool, default=False): if True, modifies data inplace
 
         TODO:
             - [ ] Generalize so the transform can be an arbitrary matrix
@@ -739,7 +778,16 @@ class _BoxTransformMixins(object):
             elif isinstance(transform, (np.ndarray, torch.Tensor)):
                 matrix = transform
             else:
-                raise TypeError(type(transform))
+                try:
+                    import imgaug
+                except ImportError:
+                    import warnings
+                    warnings.warn('imgaug is not installed')
+                    raise TypeError(type(transform))
+                if isinstance(transform, imgaug.augmenters.Augmenter):
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
+                else:
+                    raise TypeError(type(transform))
 
             if matrix is not None:
                 # See if we can extract simple params from the matrix
@@ -764,17 +812,20 @@ class _BoxTransformMixins(object):
 
         return new
 
-    def scale(self, factor, inplace=False):
+    def scale(self, factor, output_dims=None, inplace=False):
         """
-        works with tlbr, cxywh, xywh, xy, or wh formats
+        Scale a bounding boxes by a factor.
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+            output_dims (Tuple): unused in non-raster spatial structures
 
         TODO:
             it might be useful to have an argument `origin`, so everything
             is scaled about that origin.
+
+            works natively with tlbr, cxywh, xywh, xy, or wh formats
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -795,7 +846,6 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> import kwarray
             >>> import kwimage
             >>> rng = kwarray.ensure_rng(0)
             >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng).astype(np.float64)
@@ -827,12 +877,12 @@ class _BoxTransformMixins(object):
                 new_data = self.data.astype(np.float, copy=True)
             new = Boxes(new_data, self.format)
         if _numel(new_data) > 0:
-            if self.format in [Format.XYWH, Format.CXYWH, Format.TLBR]:
+            if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.TLBR]:
                 new_data[..., 0] *= sx
                 new_data[..., 1] *= sy
                 new_data[..., 2] *= sx
                 new_data[..., 3] *= sy
-            elif self.format in [Format.XXYY]:
+            elif self.format in [BoxFormat.XXYY]:
                 new_data[..., 0] *= sx
                 new_data[..., 1] *= sx
                 new_data[..., 2] *= sy
@@ -841,13 +891,14 @@ class _BoxTransformMixins(object):
                 raise NotImplementedError('Cannot scale: {}'.format(self.format))
         return new
 
-    def translate(self, amount, inplace=False):
+    def translate(self, amount, output_dims=None, inplace=False):
         """
         Shift the boxes up/down left/right
 
         Args:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
+            output_dims (Tuple): unused in non-raster spatial structures
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -869,7 +920,6 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> import kwarray
             >>> import kwimage
             >>> rng = kwarray.ensure_rng(0)
             >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng)
@@ -892,6 +942,8 @@ class _BoxTransformMixins(object):
             tx = amount[..., 0]
             ty = amount[..., 1]
 
+        kwarray.ArrayAPI.impl(self.data)
+
         if inplace:
             new = self
             new_data = self.data
@@ -903,15 +955,15 @@ class _BoxTransformMixins(object):
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:
-            if self.format in [Format.XYWH, Format.CXYWH]:
+            if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH]:
                 new_data[..., 0] += tx
                 new_data[..., 1] += ty
-            elif self.format in [Format.TLBR]:
+            elif self.format in [BoxFormat.TLBR]:
                 new_data[..., 0] += tx
                 new_data[..., 1] += ty
                 new_data[..., 2] += tx
                 new_data[..., 3] += ty
-            elif self.format in [Format.XXYY]:
+            elif self.format in [BoxFormat.XXYY]:
                 new_data[..., 0] += tx
                 new_data[..., 1] += tx
                 new_data[..., 2] += ty
@@ -939,7 +991,7 @@ class _BoxTransformMixins(object):
                        [  1,   0,  30,  50]]))>
         """
         if inplace:
-            if self.format != Format.TLBR:
+            if self.format != BoxFormat.TLBR:
                 raise ValueError('Must be in tlbr format to operate inplace')
             self2 = self
         else:
@@ -967,7 +1019,7 @@ class _BoxTransformMixins(object):
             <Boxes(tlbr, array([[1, 0, 4, 2]]))>
         """
         x, y, w, h = self.to_xywh().components
-        self2 = self.__class__(_cat([y, x, h, w]), format=Format.XYWH)
+        self2 = self.__class__(_cat([y, x, h, w]), format=BoxFormat.XYWH)
         self2 = self2.toformat(self.format)
         return self2
 
@@ -983,6 +1035,7 @@ class _BoxDrawMixins(object):
         Draws boxes using matplotlib. Wraps around mplutil.draw_boxes
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
@@ -1012,6 +1065,7 @@ class _BoxDrawMixins(object):
             image (ndarray): must be in uint8 format
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'
@@ -1084,8 +1138,8 @@ class _BoxDrawMixins(object):
 # object) so isinstance works outside of the internal lib?
 
 
-class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
-            _BoxTransformMixins, _BoxDrawMixins):
+class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
+            _BoxDrawMixins):  # _generic.Spatial
     """
     Converts boxes between different formats as long as the last dimension
     contains 4 coordinates and the format is specified.
@@ -1117,7 +1171,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         >>>     [[1, 2, 3, 4], [4, 5, 6, 7]],
         >>>     [[[1, 2, 3, 4], [4, 5, 6, 7]]],
         >>> ]
-        >>> formats = Format.cannonical
+        >>> formats = BoxFormat.cannonical
         >>> for format1 in formats:
         >>>     for data in datas:
         >>>         self = box1 = Boxes(data, format1)
@@ -1126,7 +1180,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         >>>             back = box2.toformat(format1)
         >>>             assert box1 == back
     """
-    __slots__ = ('data', 'format',)
+    # __slots__ = ('data', 'format',)
 
     def __init__(self, data, format=None, check=True):
         """
@@ -1157,7 +1211,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         if format is None:
             raise ValueError('Must specify format of raw box data')
 
-        format = Format.aliases.get(format, format)
+        format = BoxFormat.aliases.get(format, format)
 
         if check:
             if _numel(data) > 0 and data.shape[-1] != 4:
@@ -1204,7 +1258,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
     __repr__ = ub.NiceRepr.__str__
 
     @classmethod
-    def random(Boxes, num=1, scale=1.0, format=Format.XYWH, anchors=None,
+    def random(Boxes, num=1, scale=1.0, format=BoxFormat.XYWH, anchors=None,
                anchor_std=1.0 / 6, tensor=False, rng=None):
         """
         Makes random boxes; typically for testing purposes
@@ -1226,7 +1280,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
                        [79, 38, 17, 14]]))>
-            >>> Boxes.random(3, rng=0, scale=100, tensor=True)
+            >>> Boxes.random(3, rng=0, scale=100).tensor()
             <Boxes(xywh,
                 tensor([[ 54,  54,   6,  17],
                         [ 42,  64,   1,  25],
@@ -1238,7 +1292,6 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
                        [32, 51, 32, 36],
                        [36, 28, 23, 26]]))>
         """
-        import kwarray
         rng = kwarray.ensure_rng(rng)
 
         if ub.iterable(scale):
@@ -1272,9 +1325,9 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
             rel_cxy = rng.rand(num, 2).astype(np.float32) * .99
             rand_cxwy = rel_cxy * (max_cxy - min_cxy) + min_cxy
             cxywh = np.hstack([rand_cxwy, rand_whs])
-            tlbr = Boxes(cxywh, Format.CXYWH, check=False).to_tlbr().data
+            tlbr = Boxes(cxywh, BoxFormat.CXYWH, check=False).to_tlbr().data
 
-        boxes = Boxes(tlbr, format=Format.TLBR, check=False)
+        boxes = Boxes(tlbr, format=BoxFormat.TLBR, check=False)
         boxes = boxes.scale(scale, inplace=True)
         if as_integer:
             boxes.data = boxes.data.astype(np.int)
@@ -1328,6 +1381,11 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         """
         Filters boxes based on a boolean criterion
 
+        Args:
+            flags (ArrayLike[bool]): true for items to be kept
+            axis (int): you usually want this to be 0
+            inplace (bool): if True, modifies this object
+
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
             >>> self.compress([True])
@@ -1348,7 +1406,12 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
 
     def take(self, idxs, axis=0, inplace=False):
         """
-        Filters boxes based on a boolean criterion
+        Takes a subset of items at specific indices
+
+        Args:
+            indices (ArrayLike[int]): indexes of items to take
+            axis (int): you usually want this to be 0
+            inplace (bool): if True, modifies this object
 
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
@@ -1376,6 +1439,17 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
     def is_numpy(self):
         """ is the backend fueled by numpy? """
         return isinstance(self.data, np.ndarray)
+
+    @ub.memoize_property
+    def _impl(self):
+        """
+        returns the kwarray.ArrayAPI implementation for the data
+
+        Example:
+            >>> assert Boxes.random().numpy()._impl.is_numpy
+            >>> assert Boxes.random().tensor()._impl.is_tensor
+        """
+        return kwarray.ArrayAPI.coerce(self.data)
 
     @property
     def device(self):
@@ -1417,7 +1491,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
-            >>> self = Boxes.random(3, tensor=True)
+            >>> self = Boxes.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.data[0, 0] = 0
             >>> assert newself.data[0, 0] == 0
@@ -1489,7 +1563,7 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
             (0, 1)
 
         Examples:
-            >>> formats = Format.cannonical
+            >>> formats = BoxFormat.cannonical
             >>> istensors = [False, True]
             >>> results = {}
             >>> for format in formats:
@@ -1568,9 +1642,9 @@ class Boxes(ub.NiceRepr, _BoxConversionMixins, _BoxPropertyMixins,
         Passthrough method to view or reshape
 
         Example:
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh', tensor=True)
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr', tensor=False)
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
         """
         data_ = _view(self.data, *shape)

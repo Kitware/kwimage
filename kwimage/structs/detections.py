@@ -3,25 +3,32 @@
 Structure for efficient access and modification of bounding boxes with
 associated scores and class labels. Builds on top of the `kwimage.Boxes`
 structure.
+
+Also can optionally incorporate `kwimage.PolygonList` for segmentation masks
+and `kwimage.PointsList` for keypoints.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import six
 import torch
 import numpy as np
 import ubelt as ub
+import xdev
 from kwimage.structs import boxes as _boxes
+from kwimage.structs import _generic
 
 
 class _DetDrawMixin:
     """
     Non critical methods for visualizing detections
     """
-    def draw(self, color='blue', alpha=None, labels=True, centers=False,
-             lw=2, fill=False, ax=None):
+    def draw(self, color='blue', alpha=None, labels=True, centers=False, lw=2,
+             fill=False, ax=None, radius=5, kpts=True, sseg=True,
+             setlim=False):
         """
         Draws boxes using matplotlib
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self = Detections.random(num=10, scale=512.0, rng=0, classes=['a', 'b', 'c'])
             >>> self.boxes.translate((-128, -128), inplace=True)
             >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
@@ -42,7 +49,26 @@ class _DetDrawMixin:
         self.boxes.draw(labels=labels, color=color, alpha=alpha, fill=fill,
                         centers=centers, ax=ax, lw=lw)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=True):
+        keypoints = self.data.get('keypoints', None)
+        if kpts and keypoints is not None:
+            keypoints.draw(color=color, radius=radius)
+
+        segmentations = self.data.get('segmentations', None)
+        if sseg and segmentations is not None:
+            segmentations.draw(color=color, alpha=.4)
+
+        if setlim:
+            x1, y1, x2, y2 = self.boxes.to_tlbr().components
+            xmax = x2.max()
+            xmin = x1.min()
+            ymax = y2.max()
+            ymin = y1.min()
+            import matplotlib.pyplot as plt
+            ax = plt.gca()
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
+
+    def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -53,6 +79,7 @@ class _DetDrawMixin:
             ndarray[uint8]: image with labeled boxes drawn on it
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> self = Detections.random(num=10, scale=512, rng=0)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
@@ -67,6 +94,20 @@ class _DetDrawMixin:
         alpha = self._make_alpha(alpha)
         image = self.boxes.draw_on(image, color=color, alpha=alpha,
                                    labels=labels)
+        import kwimage
+
+        keypoints = self.data.get('keypoints', None)
+        if keypoints is not None:
+            image = kwimage.ensure_uint255(image)
+            image = keypoints.draw_on(image, radius=radius, color=color)
+            kwimage.ensure_float01(image)
+
+        segmentations = self.data.get('segmentations', None)
+        if segmentations is not None:
+            image = kwimage.ensure_uint255(image)
+            image = segmentations.draw_on(image, color=color, alpha=.4)
+            kwimage.ensure_float01(image)
+
         return image
 
     def _make_alpha(self, alpha):
@@ -168,6 +209,108 @@ class _DetAlgoMixin:
                                        impl=impl, daq=daq)
         return self.take(keep)
 
+    def rasterize(self, bg_size, input_dims, soften=1):
+        """
+        Ambiguous conversion from a Heatmap to a Detections object.
+
+        SeeAlso:
+            Heatmap.detect
+
+        Returns:
+            kwimage.Heatmap: raster-space detections.
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> from kwimage.structs.detections import _dets_to_fcmaps
+            >>> import kwimage
+            >>> import ndsampler
+            >>> sampler = ndsampler.CocoSampler.demo('shapes')
+            >>> iminfo, anns = sampler.load_image_with_annots(1)
+            >>> image = iminfo['imdata']
+            >>> input_dims = image.shape[0:2]
+            >>> kp_classes = sampler.dset.keypoint_categories()
+            >>> self = kwimage.Detections.from_coco_annots(
+            >>>     anns, sampler.dset.dataset['categories'],
+            >>>     sampler.catgraph, kp_classes, shape=input_dims)
+            >>> bg_size = [100, 100]
+            >>> heatmap = self.rasterize(bg_size, input_dims)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 1))
+            >>> heatmap.draw(invert=True)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 2))
+            >>> kwplot.imshow(heatmap.draw_on(image))
+            >>> kwplot.figure(fnum=1, pnum=(2, 1, 2))
+            >>> kwplot.imshow(self.draw_stacked())
+        """
+        import kwarray
+        import skimage
+        import kwimage
+        classes = self.meta['classes']
+        kp_classes = self.meta['kp_classes']
+        bg_idx = classes.index('background')
+        fcn_target = _dets_to_fcmaps(self, bg_size=bg_size,
+                                     input_dims=input_dims, bg_idx=bg_idx,
+                                     soft=False)
+
+        img_dims = np.array(input_dims)
+        tf_data_to_img = skimage.transform.AffineTransform(
+            scale=(1, 1), translation=(0, 0),
+        )
+        # print(fcn_target.keys())
+        # print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+
+        impl = kwarray.ArrayAPI.coerce(fcn_target['cidx'])
+
+        # class_probs = nh.criterions.focal.one_hot_embedding(
+        #     fcn_target['cidx'].reshape(-1),
+        #     num_classes=len(classes), dim=1)
+        labels = fcn_target['cidx']
+        class_probs = kwarray.one_hot_embedding(
+            labels, num_classes=len(classes), dim=0)
+        # if 0:
+        #     kwil.imshow(fcn_target['cidx'] > 0)
+        #     kwil.imshow(class_probs[0])
+
+        if soften > 0:
+            k = 31
+            sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
+            data = impl.contiguous(class_probs.T)
+            import cv2
+            cv2.GaussianBlur(data, (k, k), sigma, dst=data)
+            class_probs = impl.contiguous(data.T)
+
+        if soften > 1:
+            class_probs = impl.softmax(class_probs, axis=0)
+
+        dims = tuple(class_probs.shape[1:])
+        K = len(kp_classes)
+
+        # TODo: add noise or do some bluring?
+        keypoints = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
+        diameter = fcn_target['size'][[1, 0]]
+        offset = fcn_target['dxdy'][[1, 0]]
+
+        kpts_ignore = fcn_target['kpts_ignore']
+
+        self = kwimage.Heatmap(
+            class_idx=fcn_target['cidx'],
+            class_probs=class_probs,
+            keypoints=keypoints,
+            offset=offset,
+            diameter=diameter,
+
+            kpts_ignore=kpts_ignore,
+
+            img_dims=img_dims,
+            tf_data_to_img=tf_data_to_img,
+            datakeys=['kpts_ignore', 'class_idx'],
+        )
+        # print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+        return self
+
 
 class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     """
@@ -199,7 +342,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         >>> assert other.data == self.data
         >>> assert other.data is self.data, 'try not to copy unless necessary'
     """
-    __slots__ = ('data', 'meta',)
+    # __slots__ = ('data', 'meta',)
 
     # Valid keys for the data dictionary
     # NOTE: I'm not sure its productive to restrict to a set of specified
@@ -208,18 +351,32 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # not sure how to best structure the code to allow this so it is both clear
     # and efficient. Currently I've allowed the user to specify custom datakeys
     # and metakeys as kwargs, but that design might change.
-    __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights']
+    __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
+                    'keypoints', 'segmentations']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['classes']
 
-    def __init__(self, data=None, meta=None, **kwargs):
+    def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
+                 checks=True, **kwargs):
         """
         Construct a Detections object by either explicitly specifying the
         internal data and meta dictionary structures or by passing expected
         attribute names as kwargs. Note that custom data and metadata can be
         specified as long as you pass the names of these keys in the `datakeys`
         and/or `metakeys` kwargs.
+
+        Args:
+            data (Dict[str, ArrayLike]): explicitly specify the data dictionary
+            meta (Dict[str, object]): explicitly specify the meta dictionary
+            datakeys (List[str]): a list of custom attributes that should be
+               considered as data (i.e. must be an array aligned with boxes).
+            metakeys (List[str]): a list of custom attributes that should be
+               considered as metadata (i.e. can be arbitrary).
+            checks (bool, default=True): if True and arguments are passed by
+                kwargs, then check / ensure that all types are compatible
+            **kwargs:
+                specify any key for the data or meta dictionaries.
 
         Example:
             >>> import kwimage
@@ -238,7 +395,33 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>>     # time of construction.
             >>>     datakeys=['myattr1', 'myattr2'],
             >>>     metakeys=['mymeta'],
+            >>>     checks=True,
             >>> )
+
+        Doctest:
+            >>> # TODO: move to external unit test
+            >>> # Coerce to numpy
+            >>> import kwimage
+            >>> dets = Detections(
+            >>>     boxes=kwimage.Boxes.random(3).numpy(),
+            >>>     class_idxs=[0, 1, 1],
+            >>>     checks=True,
+            >>> )
+            >>> # Coerce to tensor
+            >>> dets = Detections(
+            >>>     boxes=kwimage.Boxes.random(3).tensor(),
+            >>>     class_idxs=[0, 1, 1],
+            >>>     checks=True,
+            >>> )
+            >>> # Error on incompatible types
+            >>> import pytest
+            >>> with pytest.raises(TypeError):
+            >>>     dets = Detections(
+            >>>         boxes=kwimage.Boxes.random(3).tensor(),
+            >>>         scores=np.random.rand(3),
+            >>>         class_idxs=[0, 1, 1],
+            >>>         checks=True,
+            >>>     )
         """
         # Standardize input format
         if kwargs:
@@ -247,16 +430,50 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             _datakeys = self.__datakeys__
             _metakeys = self.__metakeys__
             # Allow the user to specify custom data and meta keys
-            if 'datakeys' in kwargs:
-                _datakeys = _datakeys + list(kwargs.pop('datakeys'))
-            if 'metakeys' in kwargs:
-                _metakeys = _metakeys + list(kwargs.pop('metakeys'))
+            if datakeys is not None:
+                _datakeys = _datakeys + list(datakeys)
+            if metakeys is not None:
+                _metakeys = _metakeys + list(metakeys)
             # Perform input checks whenever kwargs is given
             data = {key: kwargs.pop(key) for key in _datakeys if key in kwargs}
             meta = {key: kwargs.pop(key) for key in _metakeys if key in kwargs}
             if kwargs:
                 raise ValueError(
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
+
+            if checks:
+                import kwarray
+                # Check to make sure all types in `data` are compatible
+                ndarrays = []
+                tensors = []
+                other = []
+                objlist = []
+                for k, v in data.items():
+                    if isinstance(v, _generic.ObjectList):
+                        objlist.append(v)
+                    elif isinstance(v, _boxes.Boxes):
+                        if v.is_numpy():
+                            ndarrays.append(k)
+                        else:
+                            tensors.append(k)
+                    elif isinstance(v, np.ndarray):
+                        ndarrays.append(k)
+                    elif isinstance(v, torch.Tensor):
+                        tensors.append(k)
+                    else:
+                        other.append(k)
+
+                if bool(ndarrays) and bool(tensors):
+                    raise TypeError(
+                        'Detections can hold numpy.ndarrays or torch.Tensors, '
+                        'but not both')
+                if tensors:
+                    impl = kwarray.ArrayAPI.coerce('tensor')
+                else:
+                    impl = kwarray.ArrayAPI.coerce('numpy')
+                for k in other:
+                    data[k] = impl.asarray(data[k])
+
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data and meta are explicitly specified
@@ -282,27 +499,111 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return copy.deepcopy(self)
 
     @classmethod
-    def from_coco_annots(cls, anns, cats, classes=None):
+    def from_coco_annots(cls, anns, cats, classes=None, kp_classes=None,
+                         shape=None):
         """
         Example:
-            >>> anns = [{'bbox': [0, 0, 10, 10], 'id': 0, 'category_id': 2, 'image_id': 1}]
-            >>> cats = [{'id': 0, 'name': 'background'}, {'id': 2, 'name': 'class1'}]
-            >>> Detections.from_coco_annots(anns, cats)
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> anns = [{
+            >>>     'id': 0,
+            >>>     'image_id': 1,
+            >>>     'category_id': 2,
+            >>>     'bbox': [2, 3, 10, 10],
+            >>>     'keypoints': [4.5, 4.5, 2],
+            >>>     'segmentation': {
+            >>>         'counts': '_11a04M2O0O20N101N3L_5',
+            >>>         'size': [20, 20],
+            >>>     },
+            >>> }]
+            >>> dataset = {
+            >>>     'images': [],
+            >>>     'annotations': [],
+            >>>     'categories': [
+            >>>         {'id': 0, 'name': 'background'},
+            >>>         {'id': 2, 'name': 'class1', 'keypoints': ['spot']}
+            >>>     ]
+            >>> }
+            >>> #import ndsampler
+            >>> #dset = ndsampler.CocoDataset(dataset)
+            >>> cats = dataset['categories']
+            >>> dets = Detections.from_coco_annots(anns, cats)
+
+        Example:
+            >>> import kwimage
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> import ndsampler
+            >>> sampler = ndsampler.CocoSampler.demo('photos')
+            >>> iminfo, anns = sampler.load_image_with_annots(1)
+            >>> shape = iminfo['imdata'].shape[0:2]
+            >>> kp_classes = sampler.dset.keypoint_categories()
+            >>> dets = kwimage.Detections.from_coco_annots(
+            >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph,
+            >>>     kp_classes, shape=shape)
+
+        Ignore:
+            import skimage
+            m = skimage.morphology.disk(4)
+            mask = kwimage.Mask.from_mask(m, offset=(2, 3), shape=(20, 20))
+            print(mask.to_bytes_rle().data)
         """
         import kwimage
-        true_xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
-        true_boxes = kwimage.Boxes(true_xywh, 'xywh')
-        true_cids = [ann['category_id'] for ann in anns]
-        cid_to_name = {c['id']: c['name'] for c in cats}  # Hack
-        true_cnames = [cid_to_name[cid] for cid in true_cids]
+        xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
+        boxes = kwimage.Boxes(xywh, 'xywh')
+        cids = [ann['category_id'] for ann in anns]
+        cid_to_cat = {c['id']: c for c in cats}  # Hack
+        cnames = [cid_to_cat[cid]['name'] for cid in cids]
         if classes is None:
-            classes = list(cid_to_name.values())
-        true_class_idxs = [classes.index(cname) for cname in true_cnames]
+            classes = list([cat['name'] for cat in cid_to_cat.values()])
+        class_idxs = [classes.index(cname) for cname in cnames]
         dets = Detections(
-            boxes=true_boxes,
-            class_idxs=np.array(true_class_idxs),
+            boxes=boxes,
+            class_idxs=np.array(class_idxs),
             classes=classes,
         )
+        if True:
+            ss = [ann.get('segmentation', None) for ann in anns]
+            masks = [
+                None if s is None else
+                kwimage.Mask.coerce(s, shape=shape).to_multi_polygon()
+                for s in ss
+            ]
+            dets.data['segmentations'] = kwimage.PolygonList(masks)
+
+        if True:
+            name_to_cat = {c['name']: c for c in cats}
+            def _lookup_kp_class_idxs(cid):
+                kpnames = None
+                while kpnames is None:
+                    cat = cid_to_cat[cid]
+                    parent = cat.get('supercategory', None)
+                    if 'keypoints' in cat:
+                        kpnames = cat['keypoints']
+                    elif parent is not None:
+                        cid = name_to_cat[cat['supercategory']]['id']
+                    else:
+                        raise KeyError(cid)
+                kpcidxs = [kp_classes.index(n) for n in kpnames]
+                return kpcidxs
+            kpts = []
+            for ann in anns:
+                k = ann.get('keypoints', None)
+                if k is None:
+                    kpts.append(k)
+                else:
+                    kpcidxs = None
+                    if kp_classes is not None:
+                        kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
+                    pts = kwimage.Points(
+                        xy=np.array(k).reshape(-1, 3)[:, 0:2],
+                        class_idxs=kpcidxs,
+                    )
+                    kpts.append(pts)
+            dets.data['keypoints'] = kwimage.PointsList(kpts)
+
+            if kp_classes is not None:
+                dets.data['keypoints'].meta['classes'] = kp_classes
+                dets.meta['kp_classes'] = kp_classes
         return dets
 
     # --- Data Properties ---
@@ -341,7 +642,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     # --- Modifiers ---
 
-    def warp(self, transform, inplace=False):
+    @xdev.profile
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
 
@@ -353,13 +655,60 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> assert new.boxes == self.boxes.warp(transform)
             >>> assert new != self
         """
-        if inplace:
-            self.boxes.warp(transform, inplace=True)
-            return self
-        else:
-            newdata = self.data.copy()
-            newdata['boxes'] = self.boxes.warp(transform)
-            return self.__class__(newdata, self.meta)
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new.data['boxes'] = new.data['boxes'].warp(transform, inplace=inplace)
+        if 'keypoints' in new.data:
+            new.data['keypoints'] = new.data['keypoints'].warp(
+                transform, input_dims=input_dims, output_dims=output_dims,
+                inplace=inplace)
+        if 'segmentations' in new.data:
+            new.data['segmentations'] = new.data['segmentations'].warp(
+                transform, input_dims=input_dims, output_dims=output_dims,
+                inplace=inplace)
+        return new
+
+    @xdev.profile
+    def scale(self, factor, output_dims=None, inplace=False):
+        """
+        Spatially warp the detections.
+
+        Example:
+            >>> import skimage
+            >>> transform = skimage.transform.AffineTransform(scale=(2, 3), translation=(4, 5))
+            >>> self = Detections.random(2)
+            >>> new = self.warp(transform)
+            >>> assert new.boxes == self.boxes.warp(transform)
+            >>> assert new != self
+        """
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new.data['boxes'] = new.data['boxes'].scale(factor, inplace=inplace)
+        if 'keypoints' in new.data:
+            new.data['keypoints'] = new.data['keypoints'].scale(
+                factor, output_dims=output_dims, inplace=inplace)
+        if 'segmentations' in new.data:
+            new.data['segmentations'] = new.data['segmentations'].scale(
+                factor, output_dims=output_dims, inplace=inplace)
+        return new
+
+    @xdev.profile
+    def translate(self, offset, output_dims=None, inplace=False):
+        """
+        Spatially warp the detections.
+
+        Example:
+            >>> import skimage
+            >>> self = Detections.random(2)
+            >>> new = self.translate(10)
+        """
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new.data['boxes'] = new.data['boxes'].translate(offset, inplace=inplace)
+        if 'keypoints' in new.data:
+            new.data['keypoints'] = new.data['keypoints'].translate(
+                offset, output_dims=output_dims)
+        if 'segmentations' in new.data:
+            new.data['segmentations'] = new.data['segmentations'].translate(
+                offset, output_dims=output_dims)
+        return new
 
     @classmethod
     def concatenate(cls, dets):
@@ -380,8 +729,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if len(dets) == 0:
             raise ValueError('need at least one detection to concatenate')
         newdata = {}
-        for key in dets[0].data.keys():
-            if dets[0].data[key] is None:
+        first = dets[0]
+        for key in first.data.keys():
+            if first.data[key] is None:
                 newdata[key] = None
             else:
                 try:
@@ -394,7 +744,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         cat = _boxes._cat
                     newdata[key] = cat(tocat, axis=0)
                 except Exception:
-                    raise Exception('Error when trying to concat {}'.format(key))
+                    msg = ('Error when trying to concat {}'.format(key))
+                    print(msg)
+                    raise
+                    raise Exception(msg)
 
         newmeta = dets[0].meta
         new = cls(newdata, newmeta)
@@ -437,13 +790,23 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         Example:
             >>> import kwimage
-            >>> dets = kwimage.Detections(boxes=kwimage.Boxes.random(10))
+            >>> dets = kwimage.Detections.random(keypoints='dense')
             >>> flags = np.random.rand(len(dets)) > 0.5
             >>> subset = dets.compress(flags)
             >>> assert len(subset) == flags.sum()
             >>> subset = dets.tensor().compress(flags)
             >>> assert len(subset) == flags.sum()
+
+
+            z = dets.tensor().data['keypoints'].data['xy']
+            z.compress(flags)
+            ub.map_vals(lambda x: x.shape, dets.data)
+            ub.map_vals(lambda x: x.shape, subset.data)
+
         """
+        if flags is Ellipsis:
+            return self
+
         if len(flags) != len(self):
             raise IndexError('compress must get a flag for every item')
 
@@ -452,7 +815,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 if flags.dtype.kind == 'b':
                     flags = flags.astype(np.uint8)
             flags = torch.ByteTensor(flags).to(self.device)
-        newdata = {k: _safe_compress(v, flags, axis) for k, v in self.data.items()}
+        newdata = {k: _generic._safe_compress(v, flags, axis)
+                   for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
 
     def take(self, indices, axis=0):
@@ -475,7 +839,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         if self.is_tensor():
             indices = torch.LongTensor(indices).to(self.device)
-        newdata = {k: _safe_take(v, indices, axis) for k, v in self.data.items()}
+        newdata = {k: _generic._safe_take(v, indices, axis)
+                   for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
 
     def __getitem__(self, index):
@@ -518,12 +883,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """ is the backend fueled by numpy? """
         return self.boxes.is_numpy()
 
+    @xdev.profile
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
-            >>> self = Detections.random(3, tensor=True)
+            >>> self = Detections.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.scores[0] = 0
             >>> assert newself.scores[0] == 0
@@ -536,18 +902,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if val is None:
                 newval = val
             else:
-                try:
-                    if isinstance(val, _boxes.Boxes):
-                        newval = val.numpy()
-                    else:
-                        newval = val.data.cpu().numpy()
-                # except AttributeError('memoryview.* no attribute .*cpu'):
-                except AttributeError:
+                if torch.is_tensor(val):
+                    newval = val.data.cpu().numpy()
+                elif hasattr(val, 'numpy'):
+                    newval = val.numpy()
+                else:
                     newval = val
             newdata[key] = newval
         newself = self.__class__(newdata, self.meta)
         return newself
 
+    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts numpy to tensors. Does not change memory if possible.
@@ -582,7 +947,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # --- Non-core methods ----
 
     @classmethod
-    def random(cls, num=10, scale=1.0, rng=None, classes=3, tensor=False):
+    def random(cls, num=10, scale=1.0, rng=None, classes=3, keypoints=False,
+               tensor=False):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -592,42 +958,298 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             classes (int | Sequence): list of class labels or number of classes
             tensor (bool, default=False): determines backend
             rng (np.random.RandomState): random state
+
+        Example:
+            >>> import kwimage
+            >>> dets = kwimage.Detections.random(keypoints='jagged')
+            >>> dets.data['keypoints'].data[0].data
+            >>> dets.data['keypoints'].meta
+            >>> dets = kwimage.Detections.random(keypoints='dense')
         """
         import kwimage
         import kwarray
         rng = kwarray.ensure_rng(rng)
-        boxes = kwimage.Boxes.random(num=num, scale=scale, rng=rng, tensor=tensor)
+        boxes = kwimage.Boxes.random(num=num, rng=rng)
         if isinstance(classes, int):
             num_classes = classes
             classes = ['class_{}'.format(c) for c in range(classes)]
+            # hack: ensure that we have a background class
+            classes.append('background')
         else:
             num_classes = len(classes)
         scores = rng.rand(len(boxes))
         class_idxs = rng.randint(0, num_classes, size=len(boxes))
-        if tensor:
-            class_idxs = torch.LongTensor(class_idxs)
-            scores = torch.FloatTensor(scores)
         self = cls(boxes=boxes, scores=scores, class_idxs=class_idxs,
                    classes=classes)
+        self.meta['classes'] = classes
+
+        if keypoints is True:
+            keypoints = 'jagged'
+
+        if isinstance(keypoints, six.string_types):
+            kp_classes = [1, 2, 3, 4]
+            self.meta['kp_classes'] = kp_classes
+            if keypoints == 'jagged':
+                kpts_list = kwimage.PointsList([
+                    kwimage.Points.random(
+                        num=rng.randint(len(kp_classes)),
+                        classes=kp_classes,
+                    )
+                    for _ in range(len(boxes))
+                ])
+                kpts_list.meta['classes'] = kp_classes
+                self.data['keypoints'] = kpts_list
+            elif keypoints == 'dense':
+                keypoints = kwimage.Points.random(
+                    num=(len(boxes), len(kp_classes)),
+                    classes=kp_classes,)
+                self.data['keypoints'] = keypoints
+
+        self = self.scale(scale)
+
+        if tensor:
+            self = self.tensor()
+
         return self
 
 
-def _safe_take(v, indices, axis):
-    if v is None:
-        return v
-    try:
-        return _boxes._take(v, indices, axis=axis)
-    except TypeError:
-        return v.take(indices, axis=axis)
+@xdev.profile
+def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
+                    soft=True):
+    """
+    Construct semantic segmentation detection targets from annotations in
+    dictionary format.
 
+    Rasterize detections.
 
-def _safe_compress(v, flags, axis):
-    if v is None:
-        return v
-    try:
-        return _boxes._compress(v, flags, axis=axis)
-    except TypeError:
-        return v.compress(flags, axis=axis)
+    Args:
+        dets (kwimage.Detections):
+        bg_size (tuple): size (W, H) to predict for backgrounds
+        input_dims (tuple): window H, W
+
+    Returns:
+        dict: with keys
+            size : 2D ndarray containing the W,H of the object
+            dxdy : 2D ndarray containing the x,y offset of the object
+            cidx : 2D ndarray containing the class index of the object
+
+    Ignore:
+        import xdev
+        globals().update(xdev.get_func_kwargs(_dets_to_fcmaps))
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:ndsampler)
+        >>> from kwimage.structs.detections import *  # NOQA
+        >>> from kwimage.structs.detections import _dets_to_fcmaps
+        >>> import kwimage
+        >>> import ndsampler
+        >>> sampler = ndsampler.CocoSampler.demo('photos')
+        >>> iminfo, anns = sampler.load_image_with_annots(1)
+        >>> image = iminfo['imdata']
+        >>> input_dims = image.shape[0:2]
+        >>> kp_classes = sampler.dset.keypoint_categories()
+        >>> dets = kwimage.Detections.from_coco_annots(
+        >>>     anns, sampler.dset.dataset['categories'],
+        >>>     sampler.catgraph, kp_classes, shape=input_dims)
+        >>> bg_size = [100, 100]
+        >>> bg_idxs = sampler.catgraph.index('background')
+        >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
+        >>> fcn_target.keys()
+        >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        fcn_target: {
+            'cidx': (512, 512),
+            'class_probs': (10, 512, 512),
+            'dxdy': (2, 512, 512),
+            'kpts': (2, 7, 512, 512),
+            'kpts_ignore': (7, 512, 512),
+            'size': (2, 512, 512),
+        }
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> size_mask = fcn_target['size']
+        >>> dxdy_mask = fcn_target['dxdy']
+        >>> cidx_mask = fcn_target['cidx']
+        >>> kpts_mask = fcn_target['kpts']
+        >>> def _vizmask(dxdy_mask):
+        >>>     dx, dy = dxdy_mask
+        >>>     mag = np.sqrt(dx ** 2 + dy ** 2)
+        >>>     mag /= (mag.max() + 1e-9)
+        >>>     mask = (cidx_mask != 0).astype(np.float32)
+        >>>     angle = np.arctan2(dy, dx)
+        >>>     orimask = kwplot.make_orimask(angle, mask, alpha=mag)
+        >>>     vecmask = kwplot.make_vector_field(
+        >>>         dx, dy, stride=4, scale=0.1, thickness=1, tipLength=.2,
+        >>>         line_type=16)
+        >>>     return [vecmask, orimask]
+        >>> vecmask, orimask = _vizmask(dxdy_mask)
+        >>> raster = kwimage.overlay_alpha_layers(
+        >>>     [vecmask, orimask, image], keepalpha=False)
+        >>> raster = dets.draw_on((raster * 255).astype(np.uint8),
+        >>>                       labels=True, alpha=None)
+        >>> kwplot.imshow(raster)
+        >>> kwplot.show_if_requested()
+
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 5]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 2), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(kpts_mask[:, 6]) + [image], keepalpha=False) * 255).astype(np.uint8)
+        kwplot.imshow(raster, pnum=(1, 3, 3), fnum=1)
+        raster = (kwimage.overlay_alpha_layers(_vizmask(dxdy_mask) + [image], keepalpha=False) * 255).astype(np.uint8)
+        raster = dets.draw_on(raster, labels=True, alpha=None)
+        kwplot.imshow(raster, pnum=(1, 3, 1), fnum=1)
+        raster = kwimage.overlay_alpha_layers(
+            [vecmask, orimask, image], keepalpha=False)
+        raster = dets.draw_on((raster * 255).astype(np.uint8),
+                              labels=True, alpha=None)
+        kwplot.imshow(raster)
+        kwplot.show_if_requested()
+    """
+    import cv2
+    # In soft mode we made a one-channel segmentation target mask
+    cidx_mask = np.full(input_dims, dtype=np.int32, fill_value=bg_idx)
+    if soft:
+        # In soft mode we add per-class channel probability blips
+        num_obj_classes = len(dets.classes)
+        cidx_probs = np.full((num_obj_classes,) + tuple(input_dims),
+                             dtype=np.float32, fill_value=0)
+
+    size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
+    size_mask[:] = np.array(bg_size)[:, None, None]
+
+    dxdy_mask = np.zeros((2,) + tuple(input_dims), dtype=np.float32)
+
+    dets = dets.numpy()
+
+    cxywh = dets.boxes.to_cxywh().data
+    class_idxs = dets.class_idxs
+    import kwimage
+
+    if 'segmentations' in dets.data:
+        sseg_list = [None if p is None else p.to_mask(input_dims)
+                     for p in dets.data['segmentations']]
+    else:
+        sseg_list = [None] * len(dets)
+
+    kpts_mask = None
+    if 'keypoints' in dets.data:
+        kp_classes = None
+        if 'classes' in dets.data['keypoints'].meta:
+            kp_classes = dets.data['keypoints'].meta['classes']
+        else:
+            for kp in dets.data['keypoints']:
+                if kp is not None and 'classes' in kp.meta:
+                    kp_classes = kp.meta['classes']
+                    break
+
+        if kp_classes is not None:
+            num_kp_classes = len(kp_classes)
+            kpts_mask = np.zeros((2, num_kp_classes) + tuple(input_dims),
+                                 dtype=np.float32)
+
+        pts_list = dets.data['keypoints'].data
+        for pts in pts_list:
+            if pts is not None:
+                pass
+
+        kpts_ignore_mask = np.ones((num_kp_classes,) + tuple(input_dims),
+                                   dtype=np.float32)
+    else:
+        pts_list = [None] * len(dets)
+
+    # Overlay smaller classes on top of larger ones
+    if len(cxywh):
+        area = cxywh[..., 2] * cxywh[..., 2]
+    else:
+        area = []
+    sortx = np.argsort(area)[::-1]
+    cxywh = cxywh[sortx]
+    class_idxs = class_idxs[sortx]
+    pts_list = list(ub.take(pts_list, sortx))
+    sseg_list = list(ub.take(sseg_list, sortx))
+
+    def iround(x):
+        return int(round(x))
+
+    H, W = input_dims
+    xcoord, ycoord = np.meshgrid(np.arange(W), np.arange(H))
+
+    for box, cidx, sseg_mask, pts in zip(cxywh, class_idxs, sseg_list, pts_list):
+        (cx, cy, w, h) = box
+        center = (iround(cx), iround(cy))
+        # Adjust so smaller objects get more pixels
+        wf = min(1, (w / 64))
+        hf = min(1, (h / 64))
+        # wf = min(1, (w / W))
+        # hf = min(1, (h / H))
+        wf = (1 - wf) * pmax + wf * pmin
+        hf = (1 - hf) * pmax + hf * pmin
+        half_w = iround(wf * w / 2 + 1)
+        half_h = iround(hf * h / 2 + 1)
+        axes = (half_w, half_h)
+
+        if sseg_mask is None:
+            mask = np.zeros_like(cidx_mask, dtype=np.uint8)
+            mask = cv2.ellipse(mask, center, axes, angle=0.0,
+                               startAngle=0.0, endAngle=360.0, color=1,
+                               thickness=-1).astype(np.bool)
+        else:
+            mask = sseg_mask.to_c_mask().data.astype(np.bool)
+        # class index
+        cidx_mask[mask] = int(cidx)
+        if soft:
+            blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
+            blip = blip / blip.max()
+            subindex = (slice(cy - half_h, cy + half_h),
+                        slice(cx - half_w, cx + half_w))
+            kwimage.subpixel_maximum(cidx_probs[cidx], blip, subindex)
+
+        # object size
+        size_mask[0][mask] = float(w)
+        size_mask[1][mask] = float(h)
+
+        assert np.all(size_mask[0][mask] == float(w))
+
+        # object offset
+        dx = cx - xcoord[mask]
+        dy = cy - ycoord[mask]
+        dxdy_mask[0][mask] = dx
+        dxdy_mask[1][mask] = dy
+
+        if kpts_mask is not None:
+
+            if pts is not None:
+                # Keypoint offsets
+                for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
+                    kp_x, kp_y = xy
+                    kp_dx = kp_x - xcoord[mask]
+                    kp_dy = kp_y - ycoord[mask]
+                    kpts_mask[0, kp_cidx][mask] = kp_dx
+                    kpts_mask[1, kp_cidx][mask] = kp_dy
+                    kpts_ignore_mask[kp_cidx][mask] = 0
+
+        # SeeAlso:
+        # ~/code/ovharn/ovharn/models/mcd_coder.py
+
+    fcn_target = {
+        'size': size_mask,
+        'dxdy': dxdy_mask,
+        'cidx': cidx_mask,
+    }
+    if soft:
+        nonbg_idxs = sorted(set(range(num_obj_classes)) - {bg_idx})
+        cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
+        fcn_target['class_probs'] = cidx_probs
+
+    if kpts_mask is not None:
+        fcn_target['kpts'] = kpts_mask
+        fcn_target['kpts_ignore'] = kpts_ignore_mask
+    else:
+        if 'keypoints' in dets.data:
+            if any(kp is not None for kp in dets.data['keypoints']):
+                raise AssertionError(
+                    'dets had keypoints, but we didnt encode them, were the kp classes missing?')
+
+    return fcn_target
 
 
 if __name__ == '__main__':
