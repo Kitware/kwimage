@@ -61,7 +61,7 @@ import warnings
 import skimage
 import kwarray
 from distutils.version import LooseVersion
-from . import _generic
+from . import _generic  # NOQA
 
 __all__ = ['Boxes']
 
