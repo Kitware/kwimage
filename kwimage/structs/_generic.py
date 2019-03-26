@@ -181,16 +181,16 @@ def _consistent_dtype_fixer(data):
 def _safe_take(data, indices, axis):
     if data is None:
         return data
-    elif hasattr(data, 'take'):
+    try:
         return data.take(indices, axis=axis)
-    else:
+    except TypeError:
         return kwarray.ArrayAPI.take(data, indices, axis=axis)
 
 
 def _safe_compress(data, flags, axis):
     if data is None:
         return data
-    elif hasattr(data, 'compress'):
+    try:
         return data.compress(flags, axis=axis)
-    else:
+    except TypeError:
         return kwarray.ArrayAPI.compress(data, flags, axis=axis)
