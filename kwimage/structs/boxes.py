@@ -1637,6 +1637,43 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             isect = isect[..., 0]
         return isect
 
+    def intersection(self, other):
+        """
+        Pairwise intersection between two sets of Boxes
+
+        Returns:
+            Boxes: intersected boxes
+
+        Examples:
+            >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> self = Boxes.random(5, rng=0).scale(10.)
+            >>> other = self.translate(1)
+            >>> new = self.intersection(other)
+            >>> new_area = np.nan_to_num(new.area).ravel()
+            >>> alt_area = np.diag(self.isect_area(other))
+            >>> close = np.isclose(new_area, alt_area)
+            >>> assert np.all(close)
+        """
+        other_is_1d = (len(other.shape) == 1)
+        if other_is_1d:
+            other = other[None, :]
+
+        self_tlbr = self.to_tlbr(copy=False).data
+        other_tlbr = other.to_tlbr(copy=False).data
+
+        tl = np.maximum(self_tlbr[..., :2], other_tlbr[..., :2])
+        br = np.minimum(self_tlbr[..., 2:], other_tlbr[..., 2:])
+
+        is_bad = np.any(tl > br, axis=1)
+        tlbr = np.concatenate([tl, br], axis=-1)
+
+        tlbr[is_bad] = np.nan
+
+        isect = Boxes(tlbr, 'tlbr')
+
+        return isect
+
     def view(self, *shape):
         """
         Passthrough method to view or reshape

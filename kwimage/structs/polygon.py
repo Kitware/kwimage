@@ -241,7 +241,7 @@ class _PolyWarpMixin:
         return new
 
 
-class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin):
+class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     """
     Represents a single polygon as set of exterior boundary points and a list
     of internal polygons representing holes.
@@ -290,6 +290,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin):
             # if data is explicitly specified
             data = data.data
         self.data = data
+
+    def __nice__(self):
+        return ub.repr2(self.data, nl=1)
 
     @classmethod
     def random(cls, n=6, n_holes=0, convex=True, rng=None):
@@ -426,6 +429,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin):
         """
         Convert this polygon to a mask
 
+        TODO:
+            - [ ] currently not efficient
+
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
@@ -438,6 +444,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin):
             >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
         """
         import kwimage
+        if dims is None:
+            raise Exception('REQUIRES DIMS')
+
+        self.to_boxes()
+
         c_mask = np.zeros(dims, dtype=np.uint8)
         # return shape of contours to openCV contours
 
@@ -502,6 +513,31 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin):
         patch = mpl.patches.PathPatch(path, alpha=alpha, color=color)
         ax.add_patch(patch)
 
+    def _to_coco(self):
+        interiors = self.data.get('interiors', [])
+        if interiors:
+            raise NotImplementedError('no holes yet')
+            _new = {
+                'exterior': self.data['exterior'].data.ravel().tolist(),
+                'interiors': [item.data.ravel().tolist() for item in interiors]
+            }
+            return _new
+        else:
+            return self.data['exterior'].data.ravel().tolist()
+
+    def to_multi_polygon(self):
+        return MultiPolygon([self])
+
+    def to_boxes(self):
+        import kwimage
+        xys = self.data['exterior'].data
+        tl = xys.min(axis=0)
+        br = xys.max(axis=0)
+        tlbr = np.hstack([tl, br])[None, :]
+        boxes = kwimage.Boxes(tlbr, 'tlbr')
+        return boxes
+        # return MultiPolygon([self])
+
 
 def _order_vertices(verts):
     """
@@ -555,6 +591,27 @@ class MultiPolygon(_generic.ObjectList):
         masks = [poly.to_mask(dims) for poly in self.data]
         mask = kwimage.Mask.union(*masks)
         return mask
+
+    @classmethod
+    def coerce(cls, data, dims=None):
+        """
+        See Mask.coerce
+        """
+        if data is None:
+            return None
+        from kwimage.structs.mask import _coerce_coco_segmentation
+        self = _coerce_coco_segmentation(data, dims=dims)
+        self = self.to_multi_polygon()
+        return self
+
+    def _to_coco(self):
+        """
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = MultiPolygon.random(1, rng=0)
+            >>> self._to_coco()
+        """
+        return [item._to_coco() for item in self.data]
 
 
 class PolygonList(_generic.ObjectList):

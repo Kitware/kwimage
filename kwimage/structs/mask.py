@@ -31,6 +31,7 @@ Notes:
 """
 import cv2
 import copy
+import six
 import numpy as np
 import ubelt as ub
 import itertools as it
@@ -212,28 +213,30 @@ class _MaskConstructorMixin(object):
     """
 
     @classmethod
-    def from_polygons(Mask, polygons, shape):
+    def from_polygons(Mask, polygons, dims):
         """
+        DEPRICATE:
+
         Args:
             polygons (ndarray | List[ndarray]): one or more polygons that
                 will be joined together. The ndarray may either be an
                 Nx2 or a flat c-contiguous array or xy points.
-            shape (Tuple): height / width of the source image
+            dims (Tuple): height / width of the source image
 
         Example:
             >>> polygons = [
             >>>     np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]]),
             >>>     np.array([[0, 9],[4, 8],[2, 3]]),
             >>> ]
-            >>> shape = (9, 5)
-            >>> self = Mask.from_polygons(polygons, shape)
+            >>> dims = (9, 5)
+            >>> self = Mask.from_polygons(polygons, dims)
             >>> print(self)
             <Mask({'counts': b'724;MG2MN16', 'size': [9, 5]}, format=bytes_rle)>
             >>> polygon = polygons[0]
             >>> print(Mask.from_polygons(polygon, shape))
             <Mask({'counts': b'b04500N2', 'size': [9, 5]}, format=bytes_rle)>
         """
-        h, w = shape
+        h, w = dims
         # TODO: holes? geojson?
         if isinstance(polygons, np.ndarray):
             polygons = [polygons]
@@ -967,13 +970,17 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return iou
 
     @classmethod
-    def coerce(Mask, data, shape=None):
+    def coerce(Mask, data, dims=None):
         """
-        Attempts to auto-inspect the format of the data
+        Attempts to auto-inspect the format of the data and conver to Mask
 
         Args:
             data : the data to coerce
-            shape (Tuple): required for certain formats like polygons
+            dims (Tuple): required for certain formats like polygons
+                height / width of the source image
+
+        Returns:
+            Mask
 
         Example:
             >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
@@ -981,36 +988,138 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>>     [np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]])],
             >>>     [np.array([[2, 1],[2, 2],[4, 2],[4, 1]])],
             >>> ]
-            >>> shape = (9, 5)
+            >>> dims = (9, 5)
             >>> mask = (np.random.rand(32, 32) > .5).astype(np.uint8)
-            >>> Mask.coerce(polygon, shape).to_bytes_rle()
+            >>> Mask.coerce(polygon, dims).to_bytes_rle()
             >>> Mask.coerce(segmentation).to_bytes_rle()
             >>> Mask.coerce(mask).to_bytes_rle()
         """
-        if isinstance(data, np.ndarray):
-            if shape is not None:
-                assert shape == data.shape[0:2]
-            if data.flags['F_CONTIGUOUS']:
-                self = Mask(data, MaskFormat.F_MASK)
+        self = _coerce_coco_segmentation(data, dims)
+        self = self.to_mask(dims)
+        return self
+
+    def _to_coco(self):
+        """
+        Example:
+            >>> from kwimage.structs.mask import *  # NOQA
+            >>> self = Mask.demo()
+            >>> data = self._to_coco()
+            >>> print(ub.repr2(data, nl=1))
+        """
+        if False:
+            data = self.to_bytes_rle().data.copy()
+            if six.PY3:
+                data['counts'] = ub.ensure_unicode(data['counts'])
             else:
-                self = Mask(data, MaskFormat.C_MASK)
-        elif isinstance(data, dict):
-            import six
-            # Handle COCO RLE dictionaries
-            if shape is not None:
-                data_shape = data.get('shape', data.get('size', None))
+                data['counts'] = data['counts']
+        else:
+            data = self.to_array_rle().data.copy()
+            data['counts'] = data['counts'].tolist()
+        return data
+
+
+def _coerce_coco_segmentation(data, dims=None):
+    """
+    Attempts to auto-inspect the format of segmentation data
+
+    Args:
+        data : the data to coerce
+
+             2D-C-ndarray -> C_MASK
+             2D-F-ndarray -> F_MASK
+
+             Dict(counts=bytes) -> BYTES_RLE
+             Dict(counts=ndarray) -> ARRAY_RLE
+
+             Dict(exterior=ndarray) -> ARRAY_RLE
+
+             # List[List[int]] -> Polygon
+             List[int] -> Polygon
+             List[Dict] -> MultPolygon
+
+        dims (Tuple): required for certain formats like polygons
+            height / width of the source image
+
+    Returns:
+        Mask | Polygon | MultiPolygon - depending on which is appropriate
+
+    Example:
+        >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
+        >>> dims = (9, 5)
+        >>> raw_mask = (np.random.rand(32, 32) > .5).astype(np.uint8)
+        >>> _coerce_coco_segmentation(segmentation)
+        >>> _coerce_coco_segmentation(raw_mask)
+
+        >>> coco_polygon = [
+        >>>     np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]]),
+        >>>     np.array([[2, 1],[2, 2],[4, 2],[4, 1]]),
+        >>> ]
+        >>> self = _coerce_coco_segmentation(coco_polygon, dims)
+        >>> print('self = {!r}'.format(self))
+        >>> coco_polygon = [
+        >>>     np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]]),
+        >>> ]
+        >>> self = _coerce_coco_segmentation(coco_polygon, dims)
+        >>> print('self = {!r}'.format(self))
+    """
+    import kwimage
+    if isinstance(data, np.ndarray):
+        # INPUT TYPE: RAW MASK
+        if dims is not None:
+            assert dims == data.shape[0:2]
+        if data.flags['F_CONTIGUOUS']:
+            self = kwimage.Mask(data, MaskFormat.F_MASK)
+        else:
+            self = kwimage.Mask(data, MaskFormat.C_MASK)
+    elif isinstance(data, dict):
+        if 'counts' in data:
+            # INPUT TYPE: COCO RLE DICTIONARY
+            if dims is not None:
+                data_shape = data.get('dims', data.get('shape', data.get('size', None)))
                 if data_shape is None:
                     data['shape'] = data_shape
                 else:
-                    assert tuple(map(int, shape)) == tuple(map(int, data_shape)), (
-                        '{} {}'.format(shape, data_shape))
+                    assert tuple(map(int, dims)) == tuple(map(int, data_shape)), (
+                        '{} {}'.format(dims, data_shape))
             if isinstance(data['counts'], (six.text_type, six.binary_type)):
-                self = Mask(data, MaskFormat.BYTES_RLE)
+                self = kwimage.Mask(data, MaskFormat.BYTES_RLE)
             else:
-                self = Mask(data, MaskFormat.ARRAY_RLE)
-        elif isinstance(data, list):
-            self = Mask.from_polygons(data, shape)
-        return self
+                self = kwimage.Mask(data, MaskFormat.ARRAY_RLE)
+        elif 'exterior' in data:
+            raise NotImplementedError('explicit polygon coerce')
+        else:
+            raise TypeError
+    elif isinstance(data, list):
+        # THIS IS NOT AN IDEAL FORMAT. IDEALLY WE WILL MODIFY COCO TO USE
+        # DICTIONARIES FOR POLYGONS, WHICH ARE UNAMBIGUOUS
+        if len(data) == 0:
+            self = None
+        else:
+            first = ub.peek(data)
+            if isinstance(first, dict):
+                raise NotImplementedError('MultiPolygon')
+            elif isinstance(first, int):
+                exterior = np.array(data).reshape(-1, 2)
+                self = kwimage.Polygon(exterior=exterior)
+            elif isinstance(first, list):
+                poly_list = [kwimage.Polygon(exterior=np.array(item).reshape(-1, 2))
+                             for item in data]
+                if len(poly_list) == 1:
+                    self = poly_list[0]
+                else:
+                    self = kwimage.MultiPolygon(poly_list)
+            elif isinstance(first, np.ndarray):
+                poly_list = [kwimage.Polygon(exterior=item.reshape(-1, 2))
+                             for item in data]
+                if len(poly_list) == 1:
+                    self = poly_list[0]
+                else:
+                    self = kwimage.MultiPolygon(poly_list)
+            else:
+                raise TypeError
+    else:
+        raise TypeError
+    return self
 
 
 class MaskList(_generic.ObjectList):

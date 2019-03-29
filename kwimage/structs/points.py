@@ -183,7 +183,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     # __slots__ = ('data', 'meta',)
 
     # Pre-registered keys for the data dictionary
-    __datakeys__ = ['xy', 'class_idxs']
+    __datakeys__ = ['xy', 'class_idxs', 'visible']
     # Pre-registered keys for the meta dictionary
     __metakeys__ = ['classes']
 
@@ -460,6 +460,33 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         newxy = kwimage.Coords.concatenate(datas)
         new = cls({'xy': newxy}, first.meta)
         return new
+
+    def _to_coco(self):
+        """
+        Example:
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(4)
+        """
+        visible = self.data.get('visible', None)
+        assert len(self.xy.shape) == 2
+        if visible is None:
+            visible = np.full((len(self), 1), fill_value=2)
+        else:
+            raise NotImplementedError
+
+        # TODO: ensure these are in the right order for the classes
+        flat_pts = np.hstack([self.xy, visible]).reshape(-1)
+        return flat_pts
+
+    @classmethod
+    def _from_coco(cls, coco_kpts):
+        if coco_kpts is None:
+            return None
+        kp = np.array(coco_kpts).reshape(-1, 3)
+        xy = kp.T[0:2]
+        flags = kp.T[2]
+        xy = xy[flags == 2].T
+        return cls(xy=xy)
 
 
 class PointsList(_generic.ObjectList):
