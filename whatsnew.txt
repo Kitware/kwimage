@@ -1,6 +1,7 @@
 Version 0.4.0
 =============
 * Continue improvements of annotation structures
+* Increased efficiency of Cython CPU non-max-supression
 
 
 Version 0.3.0

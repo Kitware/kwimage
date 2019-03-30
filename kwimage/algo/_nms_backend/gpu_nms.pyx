@@ -6,12 +6,16 @@
 # --------------------------------------------------------
 """
 NUMPY_INCLUDE=$(python -c "import numpy as np; print(np.get_include())")
-CPATH=$CPATH:$NUMPY_INCLUDE cythonize -a -i ~/code/clab/clab/models/yolo2/utils/nms/gpu_nms.pyx
+CPATH=$CPATH:$NUMPY_INCLUDE cythonize -a -i ~/code/kwimage/kwimage/algo/_nms_backend/gpu_nms.pyx
+
+cd ~/code/kwimage && ./setup.py develop
+
+python -c "from kwimage.algo._nms_backend import gpu_nms"
 
 See Also:
     https://github.com/bharatsingh430/soft-nms/blob/dc97adf100fb2cad66e04f0d09e031fce81948c5/lib/nms/py_cpu_nms.py
 """
-# https://github.com/cython/cython/issues/1720 
+# https://github.com/cython/cython/issues/1720
 from __future__ import absolute_import
 
 import numpy as np
@@ -21,14 +25,15 @@ cimport numpy as np
 assert sizeof(int) == sizeof(np.int32_t)
 
 cdef extern from "gpu_nms.hpp" nogil:
-    void _nms(int*, int*, float*, int, int, float, float, int)
+    void _nms_cuda(int*, int*, float*, int, int, float, float, int)
+
 
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.wraparound(False)
 def gpu_nms(np.ndarray[np.float32_t, ndim=2] dets,
             np.ndarray[np.float32_t, ndim=1] scores,
-            np.float thresh, 
+            np.float thresh,
             np.float bias=0.0,
             np.int32_t device_id=0):
     cdef int boxes_num = dets.shape[0]
@@ -51,8 +56,8 @@ def gpu_nms(np.ndarray[np.float32_t, ndim=2] dets,
     cdef int device_id_ = device_id
 
     with nogil:
-        _nms(keep0_ptr, num_out_ptr, det_00_ptr, boxes_num, 
-             boxes_dim, thresh_, bias_, device_id_)
+        _nms_cuda(keep0_ptr, num_out_ptr, det_00_ptr, boxes_num, boxes_dim,
+                  thresh_, bias_, device_id_)
 
     keep = keep[:num_out]
     return list(order[keep])

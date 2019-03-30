@@ -54,6 +54,7 @@ if (USE_CUDA AND BUILD_GPU_NMS)
     "nms_kernel.cu"
     "gpu_nms.hpp"
   )
+  message(STATUS "THE sources = ${sources}")
 
   # Create C++ library. Specify include dirs and link libs as normal
   add_library(${module_name} MODULE ${sources})

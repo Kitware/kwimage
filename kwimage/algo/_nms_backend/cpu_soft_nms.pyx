@@ -42,8 +42,8 @@ cdef inline np.float32_t min(np.float32_t a, np.float32_t b) nogil:
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.wraparound(False)
-def soft_nms(np.ndarray[np.float32_t, ndim=2] tlbr, 
-             np.ndarray[np.float32_t, ndim=1] scores, 
+def soft_nms(np.ndarray[np.float32_t, ndim=2] tlbr,
+             np.ndarray[np.float32_t, ndim=1] scores,
              float thresh=0.001,
              float overlap_thresh=0.3,
              float sigma=0.5,
