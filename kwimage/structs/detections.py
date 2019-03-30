@@ -249,7 +249,7 @@ class _DetAlgoMixin:
         import skimage
         import kwimage
         classes = self.meta['classes']
-        kp_classes = self.meta['kp_classes']
+
         bg_idx = classes.index('background')
         fcn_target = _dets_to_fcmaps(self, bg_size=bg_size,
                                      input_dims=input_dims, bg_idx=bg_idx,
@@ -286,28 +286,27 @@ class _DetAlgoMixin:
             class_probs = impl.softmax(class_probs, axis=0)
 
         dims = tuple(class_probs.shape[1:])
-        K = len(kp_classes)
 
-        # TODo: add noise or do some bluring?
-        keypoints = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
-        diameter = fcn_target['size'][[1, 0]]
-        offset = fcn_target['dxdy'][[1, 0]]
+        kw_heat = {
+            'diameter': fcn_target['size'][[1, 0]],
+            'offset': fcn_target['dxdy'][[1, 0]],
 
-        kpts_ignore = fcn_target['kpts_ignore']
+            'class_idx': fcn_target['cidx'],
+            'class_probs': class_probs,
 
-        self = kwimage.Heatmap(
-            class_idx=fcn_target['cidx'],
-            class_probs=class_probs,
-            keypoints=keypoints,
-            offset=offset,
-            diameter=diameter,
+            'img_dims': img_dims,
+            'tf_data_to_img': tf_data_to_img,
+            'datakeys': ['kpts_ignore', 'class_idx'],
+        }
 
-            kpts_ignore=kpts_ignore,
+        if 'kpts' in fcn_target:
+            kp_classes = self.meta['kp_classes']
+            K = len(kp_classes)
+            # TODO: add noise or do some bluring?
+            kw_heat['keypoints'] = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
+            kw_heat['kpts_ignore'] = fcn_target['kpts_ignore']
 
-            img_dims=img_dims,
-            tf_data_to_img=tf_data_to_img,
-            datakeys=['kpts_ignore', 'class_idx'],
-        )
+        self = kwimage.Heatmap(**kw_heat)
         # print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
         return self
 
