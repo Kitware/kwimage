@@ -183,7 +183,7 @@ def _safe_take(data, indices, axis):
         return data
     try:
         return data.take(indices, axis=axis)
-    except TypeError:
+    except (TypeError, AttributeError):
         return kwarray.ArrayAPI.take(data, indices, axis=axis)
 
 
@@ -192,5 +192,5 @@ def _safe_compress(data, flags, axis):
         return data
     try:
         return data.compress(flags, axis=axis)
-    except TypeError:
+    except (TypeError, AttributeError):
         return kwarray.ArrayAPI.compress(data, flags, axis=axis)

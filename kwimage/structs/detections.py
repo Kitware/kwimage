@@ -565,7 +565,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             ss = [ann.get('segmentation', None) for ann in anns]
             masks = [
                 None if s is None else
-                kwimage.Mask.coerce(s, shape=shape).to_multi_polygon()
+                kwimage.MultiPolygon.coerce(s, dims=shape)
                 for s in ss
             ]
             dets.data['segmentations'] = kwimage.PolygonList(masks)

@@ -233,7 +233,7 @@ class _MaskConstructorMixin(object):
             >>> print(self)
             <Mask({'counts': b'724;MG2MN16', 'size': [9, 5]}, format=bytes_rle)>
             >>> polygon = polygons[0]
-            >>> print(Mask.from_polygons(polygon, shape))
+            >>> print(Mask.from_polygons(polygon, dims))
             <Mask({'counts': b'b04500N2', 'size': [9, 5]}, format=bytes_rle)>
         """
         h, w = dims
@@ -761,7 +761,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         return polygon
 
-    def to_mask(self):
+    def to_mask(self, dims=None):
         return self
 
     @classmethod

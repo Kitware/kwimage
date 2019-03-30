@@ -44,7 +44,7 @@ def benchamrk_det_nms():
     xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 1500, max_boxes]
     # xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500]
     # xdata = [10, 100, 500, 1000, 1500, 2000]
-    xdata = [10, 100, 500, 1000, 10000]
+    xdata = [10, 100, 500, 1000, 5000, 10000 ]
 
     thresh = 0.01
 
@@ -180,5 +180,8 @@ def benchamrk_det_nms():
     kwplot.autompl()
 
     ydata = ub.dict_subset(ydata, ub.argsort(ub.map_vals(lambda x: x[-1], ydata)))
-    kwplot.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds', yscale='symlog')
+    kwplot.multi_plot(
+        xdata, ydata, xlabel='num boxes', ylabel='seconds',
+        # yscale='symlog', xscale='symlog',
+    )
     kwplot.show_if_requested()
