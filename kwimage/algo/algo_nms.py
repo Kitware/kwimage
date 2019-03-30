@@ -188,7 +188,7 @@ class _NMS_Impls():
             if torch.cuda.is_available():
                 from kwimage.algo._nms_backend import gpu_nms
                 _impls['gpu'] = gpu_nms.gpu_nms
-                _automode = 'gpu'
+                # _automode = 'gpu'  # HACK: lets disable GPU nms for now
         except Exception as ex:
             warnings.warn('gpu_nms is not available: {}'.format(str(ex)))
         self._automode = _automode
@@ -278,6 +278,29 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         >>>     [150, 100, 200, 101],
         >>> ], dtype=np.float32)
         >>> scores = np.linspace(0, 1, len(tlbr))
+        >>> thresh = .2
+        >>> solutions = {}
+        >>> if not _impls._impls:
+        >>>     _impls._init()
+        >>> for impl in _impls._impls:
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl=impl)
+        >>>     solutions[impl] = sorted(keep)
+        >>> assert 'py' in solutions
+        >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
+        >>> assert ub.allsame(solutions.values())
+
+    CommandLine:
+        xdoctest -m ~/code/kwimage/kwimage/algo/algo_nms.py non_max_supression
+
+    Example:
+        >>> import ubelt as ub
+        >>> # Check that zero-area boxes are ok
+        >>> tlbr = np.array([
+        >>>     [0, 0, 0, 0],
+        >>>     [0, 0, 0, 0],
+        >>>     [10, 10, 10, 10],
+        >>> ], dtype=np.float32)
+        >>> scores = np.array([1, 2, 3], dtype=np.float32)
         >>> thresh = .2
         >>> solutions = {}
         >>> if not _impls._impls:

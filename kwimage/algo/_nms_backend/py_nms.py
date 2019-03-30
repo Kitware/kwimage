@@ -36,6 +36,7 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
     y2 = np_tlbr[:, 3]
 
     areas = (x2 - x1 + bias) * (y2 - y1 + bias)
+
     order = np_scores.argsort()[::-1]
 
     keep = []
@@ -54,6 +55,7 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
         h = np.maximum(0.0, yy2 - yy1 + bias)
         inter = w * h
         ovr = inter / (areas[i] + areas[js_remain] - inter)
+        ovr = np.nan_to_num(ovr)
 
         # Remove any indices that (significantly) overlap with this item
         # NOTE: We are using following convention:
@@ -61,7 +63,9 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
         #     * consider if overlap <= thresh
         # This convention has the property that when thresh=0, we dont just
         # remove everything.
-        inds = np.where(ovr <= thresh)[0]
+        flags = ovr <= thresh
+        print('flags = {!r}'.format(flags))
+        inds = np.where(flags)[0]
         order = order[inds + 1]
 
     return keep
