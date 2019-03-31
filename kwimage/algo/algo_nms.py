@@ -24,6 +24,9 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
             consider rectification. If specified as an integer, then number
             is used for both height and width. If specified as a tuple, then
             dims are assumed to be in [height, width] format.
+        thresh (float): iou threshold. Boxes are removed if they overlap
+            greater than this threshold. 0 is the most strict, resulting in the
+            fewest boxes, and 1 is the most permissive resulting in the most.
         max_depth (int): maximum number of times we can divide and conquor
         stop_size (int): number of boxes that triggers full NMS computation
         recsize (int): number of boxes that triggers full NMS recombination
@@ -188,7 +191,10 @@ class _NMS_Impls():
             if torch.cuda.is_available():
                 from kwimage.algo._nms_backend import gpu_nms
                 _impls['gpu'] = gpu_nms.gpu_nms
-                # _automode = 'gpu'  # HACK: lets disable GPU nms for now
+                # TODO: GPU is not the fastests on all systems.
+                # See the benchmarks for more info.
+
+                _automode = 'gpu'  # HACK: lets disable GPU nms for now
         except Exception as ex:
             warnings.warn('gpu_nms is not available: {}'.format(str(ex)))
         self._automode = _automode
@@ -223,7 +229,9 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
     Args:
         tlbr (ndarray[float32]): Nx4 boxes in tlbr format
         scores (ndarray[float32]): score for each bbox
-        thresh (float): iou threshold
+        thresh (float): iou threshold. Boxes are removed if they overlap
+            greater than this threshold. 0 is the most strict, resulting in the
+            fewest boxes, and 1 is the most permissive resulting in the most.
         bias (float): bias for iou computation either 0 or 1
         classes (ndarray[int64] or None): integer classes.
             If specified NMS is done on a perclass basis.
@@ -265,6 +273,19 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         >>> if 'torch' in available_nms_impls():
         >>>     keep = non_max_supression(dets, scores, thresh, impl='torch')
         >>>     assert set(keep.tolist()) == {2, 1}
+        >>> thresh = 1.0
+        >>> if 'py' in available_nms_impls():
+        >>>     keep = non_max_supression(dets, scores, thresh, impl='py')
+        >>>     assert list(keep) == [2, 1, 3, 0]
+        >>> if 'cpu' in available_nms_impls():
+        >>>     keep = non_max_supression(dets, scores, thresh, impl='cpu')
+        >>>     assert list(keep) == [2, 1, 3, 0]
+        >>> if 'gpu' in available_nms_impls():
+        >>>     keep = non_max_supression(dets, scores, thresh, impl='gpu')
+        >>>     assert list(keep) == [2, 1, 3, 0]
+        >>> if 'torch' in available_nms_impls():
+        >>>     keep = non_max_supression(dets, scores, thresh, impl='torch')
+        >>>     assert set(keep.tolist()) == {2, 1, 3, 0}
 
     Example:
         >>> import ubelt as ub
@@ -323,6 +344,16 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         #     impl = 'torch'
         # else:
         impl = _impls._automode
+    elif ub.iterable(impl):
+        # if impl is iterable, it is a preference order
+        found = False
+        for item in impl:
+            if item in _impls._impls:
+                impl = item
+                found = True
+                break
+        if not found:
+            raise KeyError('Unknown impls={}'.format(impl))
 
     if classes is not None:
         keep = []

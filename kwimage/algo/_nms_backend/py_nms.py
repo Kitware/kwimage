@@ -64,7 +64,6 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
         # This convention has the property that when thresh=0, we dont just
         # remove everything.
         flags = ovr <= thresh
-        print('flags = {!r}'.format(flags))
         inds = np.where(flags)[0]
         order = order[inds + 1]
 
