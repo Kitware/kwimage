@@ -525,6 +525,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         else:
             return self.data['exterior'].data.ravel().tolist()
 
+    def to_coco(self):
+        return self._to_coco()
+
     def to_multi_polygon(self):
         return MultiPolygon([self])
 
@@ -612,6 +615,9 @@ class MultiPolygon(_generic.ObjectList):
             >>> self._to_coco()
         """
         return [item._to_coco() for item in self.data]
+
+    def to_coco(self):
+        return [item.to_coco() for item in self.data]
 
 
 class PolygonList(_generic.ObjectList):

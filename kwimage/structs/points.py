@@ -478,6 +478,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         flat_pts = np.hstack([self.xy, visible]).reshape(-1)
         return flat_pts
 
+    def to_coco(self):
+        if len(self.xy.shape) == 2:
+            return self._to_coco()
+        else:
+            raise NotImplementedError('dim > 2, dense case todo')
+
     @classmethod
     def _from_coco(cls, coco_kpts):
         if coco_kpts is None:

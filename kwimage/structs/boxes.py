@@ -535,6 +535,16 @@ class _BoxConversionMixins(object):
         tlbr = tlbr.reshape(-1, 4)
         return Boxes(tlbr, format=BoxFormat.TLBR, check=False)
 
+    def to_coco(self):
+        """
+        Example:
+            >>> orig = Boxes.random(5)
+            >>> coco_boxes = list(orig.to_coco())
+            >>> print('coco_boxes = {!r}'.format(coco_boxes))
+        """
+        for row in self.to_xywh().data.tolist():
+            yield [round(x, 4) for x in row]
+
 
 class _BoxPropertyMixins(object):
 

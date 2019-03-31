@@ -121,6 +121,14 @@ class ObjectList(Spatial):
         newdata = [None if item is None else func(item) for item in self.data]
         return self.__class__(newdata, self.meta)
 
+    def to_coco(self):
+        for item in self.data:
+            if item is None:
+                yield None
+            else:
+                print('item = {!r}'.format(item))
+                yield item.to_coco()
+
     def compress(self, flags, axis=0):
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))

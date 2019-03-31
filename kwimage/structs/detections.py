@@ -68,7 +68,8 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5):
+    def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
+                kpts=True, sseg=True):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -97,13 +98,13 @@ class _DetDrawMixin:
         import kwimage
 
         keypoints = self.data.get('keypoints', None)
-        if keypoints is not None:
+        if kpts and keypoints is not None:
             image = kwimage.ensure_uint255(image)
             image = keypoints.draw_on(image, radius=radius, color=color)
             kwimage.ensure_float01(image)
 
         segmentations = self.data.get('segmentations', None)
-        if segmentations is not None:
+        if sseg and segmentations is not None:
             image = kwimage.ensure_uint255(image)
             image = segmentations.draw_on(image, color=color, alpha=.4)
             kwimage.ensure_float01(image)
@@ -222,17 +223,9 @@ class _DetAlgoMixin:
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.detections import *  # NOQA
-            >>> from kwimage.structs.detections import _dets_to_fcmaps
-            >>> import kwimage
-            >>> import ndsampler
-            >>> sampler = ndsampler.CocoSampler.demo('shapes')
-            >>> iminfo, anns = sampler.load_image_with_annots(1)
+            >>> self, iminfo, sampler = Detections.demo()
             >>> image = iminfo['imdata']
-            >>> input_dims = image.shape[0:2]
-            >>> kp_classes = sampler.dset.keypoint_categories()
-            >>> self = kwimage.Detections.from_coco_annots(
-            >>>     anns, sampler.dset.dataset['categories'],
-            >>>     sampler.catgraph, kp_classes, shape=input_dims)
+            >>> input_dims = iminfo['imdata'].shape[0:2]
             >>> bg_size = [100, 100]
             >>> heatmap = self.rasterize(bg_size, input_dims)
             >>> # xdoctest: +REQUIRES(--show)
@@ -243,7 +236,7 @@ class _DetAlgoMixin:
             >>> kwplot.figure(fnum=1, pnum=(2, 2, 2))
             >>> kwplot.imshow(heatmap.draw_on(image))
             >>> kwplot.figure(fnum=1, pnum=(2, 1, 2))
-            >>> kwplot.imshow(self.draw_stacked())
+            >>> kwplot.imshow(heatmap.draw_stacked())
         """
         import kwarray
         import skimage
@@ -605,6 +598,50 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 dets.meta['kp_classes'] = kp_classes
         return dets
 
+    def to_coco(self, cname_to_cat=None):
+        """
+        CommandLine:
+            xdoctest -m kwimage.structs.detections Detections.to_coco
+
+        Example:
+            >>> from kwimage.structs.detections import *
+            >>> self = Detections.demo()[0]
+            >>> cname_to_cat = None
+            >>> list(self.to_coco())
+        """
+        to_collate = {}
+        if 'boxes' in self.data:
+            to_collate['bbox'] = list(self.data['boxes'].to_coco())
+
+        if 'class_idxs' in self.data:
+            if 'classes' in self.meta:
+                classes = self.meta['classes']
+                catnames = [classes[cidx] for cidx in self.class_idxs]
+                if cname_to_cat is not None:
+                    pass
+                to_collate['category_name'] = catnames
+            else:
+                to_collate['category_index'] = self.data['class_idxs']
+
+        if 'keypoints' in self.data:
+            to_collate['keypoints'] = list(self.data['keypoints'].to_coco())
+
+        if 'segmentations' in self.data:
+            to_collate['segmentation'] = list(self.data['segmentations'].to_coco())
+
+        # coco_extra_keys = ['scores', 'weights', 'probs']
+        # for key in coco_extra_keys:
+        #     if key in self.data:
+        #         to_collate[key] = self.data[key].tolist()
+
+        keys = list(to_collate.keys())
+        # annotations = []
+        for item_vals in zip(*to_collate.values()):
+            ann = ub.dzip(keys, item_vals)
+            yield ann
+            # annotations.append(ann)
+        # return annotations
+
     # --- Data Properties ---
 
     @property
@@ -944,6 +981,18 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return newself
 
     # --- Non-core methods ----
+
+    @classmethod
+    def demo(Detections):
+        import ndsampler
+        sampler = ndsampler.CocoSampler.demo('photos')
+        iminfo, anns = sampler.load_image_with_annots(1)
+        input_dims = iminfo['imdata'].shape[0:2]
+        kp_classes = sampler.dset.keypoint_categories()
+        self = Detections.from_coco_annots(
+            anns, sampler.dset.dataset['categories'],
+            sampler.catgraph, kp_classes, shape=input_dims)
+        return self, iminfo, sampler
 
     @classmethod
     def random(cls, num=10, scale=1.0, rng=None, classes=3, keypoints=False,

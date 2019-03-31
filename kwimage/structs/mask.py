@@ -1017,6 +1017,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             data['counts'] = data['counts'].tolist()
         return data
 
+    def to_coco(self):
+        return self._to_coco()
+
 
 def _coerce_coco_segmentation(data, dims=None):
     """
