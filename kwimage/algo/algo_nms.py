@@ -253,6 +253,12 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         device_id (int): used if impl is gpu, device id to work on. If not
             specified `torch.cuda.current_device()` is used.
 
+    Notes:
+        Using impl='gpu' may result in an CUDA memory error that is not exposed
+        to the python processes. In other words your program will hard crash if
+        impl='gpu', and you feed it too many bounding boxes. Ideally this will
+        be fixed in the future.
+
     References:
         https://github.com/facebookresearch/Detectron/blob/master/detectron/utils/cython_nms.pyx
         https://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/

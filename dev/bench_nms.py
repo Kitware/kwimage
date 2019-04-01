@@ -48,6 +48,8 @@ def benchamrk_det_nms():
     # xdata = [10, 100, 500, 1000, 1500, 2000]
     xdata = [1000, 5000, 10000, 20000, 50000, 100000, 1000000, 10000000 ]
 
+    # NOTE: for large images we may have up to 21,850,753 detections!
+
     thresh = 0.01
 
     from kwimage.algo.algo_nms import available_nms_impls

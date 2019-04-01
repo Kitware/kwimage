@@ -702,8 +702,10 @@ class _HeatmapAlgoMixin(object):
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> import ndsampler
-            >>> self = Heatmap.random(rng=2, dims=(32, 32), diameter=10, offset=0)
-            >>> dets = self.detect(channel=0)
+            >>> self = Heatmap.random(rng=2, dims=(32, 32))
+            >>> dets = self.detect(channel=0, max_dims=10)
+            >>> assert dets.boxes.to_xywh().width.max() <= 10
+            >>> assert dets.boxes.to_xywh().height.max() <= 10
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -1226,12 +1228,14 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     flags = probs > min_score
     if not diameter_is_uniform:
         if max_dims is not None:
+            max_dims = max_dims if ub.iterable(max_dims) else (max_dims, max_dims)
             max_height, max_width = max_dims
             if max_height is not None:
                 flags &= diameter[0] <= max_height
             if max_width is not None:
                 flags &= diameter[1] <= max_width
         if min_dims is not None:
+            min_dims = min_dims if ub.iterable(min_dims) else (min_dims, min_dims)
             min_height, min_width = min_dims
             if min_height is not None:
                 flags &= diameter[0] >= min_height
