@@ -4,7 +4,7 @@ import abc
 import kwarray
 
 
-class Spatial(ub.NiceRepr, abc.ABC):
+class Spatial(ub.NiceRepr):
     """
     Abstract base class defining the spatial annotation API
     """
