@@ -140,11 +140,13 @@ class ObjectList(Spatial):
         newdata = list(ub.take(self.data, indices))
         return self.__class__(newdata, self.meta)
 
+    @xdev.profile
     def draw(self, **kwargs):
         for item in self.data:
             if item is not None:
                 item.draw(**kwargs)
 
+    @xdev.profile
     def draw_on(self, image, **kwargs):
         for item in self.data:
             if item is not None:

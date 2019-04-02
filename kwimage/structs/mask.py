@@ -500,13 +500,17 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
     @classmethod
     def random(Mask, rng=None, shape=(32, 32)):
+        """
+        Example:
+            Mask.random(rng=0).draw()
+        """
         import kwarray
         import kwimage
         rng = kwarray.ensure_rng(rng)
         # Use random heatmap to make some blobs for the mask
-        probs = kwimage.Heatmap.random(
-            dims=shape, rng=rng, classes=2).data['class_probs'][1]
-        c_mask = (probs > .5).astype(np.uint8)
+        heatmap = kwimage.Heatmap.random(dims=shape, rng=rng, classes=2)
+        probs = heatmap.data['class_probs'][1]
+        c_mask = (probs > .2).astype(np.uint8)
         self = Mask(c_mask, MaskFormat.C_MASK)
         return self
 
@@ -530,7 +534,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
-            34
             >>> masks = [m.to_c_mask() for m in masks]
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
@@ -595,7 +598,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.intersection(*masks)
             >>> print(mask.area)
-            8
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
         rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
@@ -632,10 +634,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
-            array([[0, 0, 1, 0, 0, 0, 0, 0],
-                   [1, 1, 1, 1, 0, 0, 0, 0],
-                   [1, 1, 1, 0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0, 0, 1, 1]], dtype=uint8)
         """
         x, y, w, h = self.get_xywh().astype(np.int).tolist()
         output_dims = (h, w)
@@ -655,7 +653,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Example:
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_xywh().tolist()
-            [0.0, 1.0, 8.0, 4.0]
             >>> self = Mask.random(rng=0).translate((10, 10))
             >>> self.get_xywh().tolist()
         """

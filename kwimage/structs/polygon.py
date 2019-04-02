@@ -2,6 +2,7 @@ import ubelt as ub
 import cv2
 import numpy as np
 import torch
+import xdev
 import skimage
 from . import _generic
 
@@ -295,11 +296,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return ub.repr2(self.data, nl=1)
 
     @classmethod
-    def random(cls, n=6, n_holes=0, convex=True, rng=None):
+    def random(cls, n=6, n_holes=0, convex=True, tight=False, rng=None):
         """
         Args:
             n (int): number of points in the polygon (must be more than 4)
             n_holes (int): number of holes
+            tight (bool, default=False): fits the minimum and maximum points
+                between 0 and 1
 
         CommandLine:
             xdoctest -m kwimage.structs.polygon Polygon.random
@@ -363,12 +366,19 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                 interiors.append(interior)
 
         self = cls(exterior=exterior, interiors=interiors)
+
+        if tight:
+            min_xy = self.data['exterior'].data.min(axis=0)
+            max_xy = self.data['exterior'].data.max(axis=0)
+            extent = max_xy - min_xy
+            self = self.translate(-min_xy).scale(1 / extent)
         return self
 
     @ub.memoize_property
     def _impl(self):
         return self.data['exterior']._impl
 
+    @xdev.profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
         """
         Example:
@@ -385,6 +395,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         import kwplot
         import kwimage
         # return shape of contours to openCV contours
+
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         # line_type = cv2.LINE_AA
         line_type = cv2.LINE_8
@@ -403,7 +415,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             image = kwimage.ensure_float01(image)
             image = kwimage.ensure_alpha_channel(image)
             rgba = kwplot.Color(color, alpha=alpha).as01()
-            print('rgba = {!r}'.format(rgba))
+            # print('rgba = {!r}'.format(rgba))
         # print('rgba = {!r}'.format(rgba))
         # print('image = {!r}'.format(image.shape))
         # alpha # TODO
@@ -423,6 +435,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             image = cv2.drawContours(image, contours, contour_idx, rgba,
                                      thickness, line_type)
         image = kwimage.ensure_float01(image)[..., 0:3]
+
+        image = dtype_fixer(image)
         return image
 
     def to_mask(self, dims=None):
@@ -560,10 +574,10 @@ def _order_vertices(verts):
 class MultiPolygon(_generic.ObjectList):
 
     @classmethod
-    def random(self, n=3, rng=None):
+    def random(self, n=3, rng=None, tight=False):
         import kwarray
         rng = kwarray.ensure_rng(rng)
-        data = [Polygon.random(rng=rng) for _ in range(n)]
+        data = [Polygon.random(rng=rng, tight=tight) for _ in range(n)]
         self = MultiPolygon(data)
         return self
 

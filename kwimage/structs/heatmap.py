@@ -658,7 +658,7 @@ class _HeatmapAlgoMixin(object):
 
     @xdev.profile
     def detect(self, channel, invert=False, min_score=0.01, num_min=10,
-               max_dims=None, min_dims=None):
+               max_dims=None, min_dims=None, dim_thresh_space='image'):
         """
         Lossy conversion from a Heatmap to a Detections object.
 
@@ -684,8 +684,17 @@ class _HeatmapAlgoMixin(object):
                 even if they aren't above the `min_score` threshold.
 
             max_dims (Tuple[int, int]): maximum height / width of detections
+                By default these are expected to be in image-space.
 
             min_dims (Tuple[int, int]): minimum height / width of detections
+                By default these are expected to be in image-space.
+
+            dim_thresh_space (str, default='image'):
+                When dim_thresh_space=='native', dimension thresholds (e.g.
+                min_dims and max_dims) are specified in the native heatmap
+                space (i.e.  usually a downsampled space). If
+                dim_thresh_space=='image', then dimension thresholds are
+                interpreted in the original image space.
 
         Returns:
             kwimage.Detections: raw detections.
@@ -703,19 +712,20 @@ class _HeatmapAlgoMixin(object):
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> import ndsampler
             >>> self = Heatmap.random(rng=2, dims=(32, 32))
-            >>> dets = self.detect(channel=0, max_dims=10)
-            >>> assert dets.boxes.to_xywh().width.max() <= 10
-            >>> assert dets.boxes.to_xywh().height.max() <= 10
+            >>> dets = self.detect(channel=0, max_dims=7, num_min=None)
+            >>> img_dets = dets.warp(self.tf_data_to_img)
+            >>> assert img_dets.boxes.to_xywh().width.max() <= 7
+            >>> assert img_dets.boxes.to_xywh().height.max() <= 7
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
-            >>> dets1 = dets.sort().take(range(10))
+            >>> dets1 = dets.sort().take(range(30))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
             >>> dets1.draw()
             >>> # Transform heatmap and detections into image space.
-            >>> colormask2 = self.colorize(0, imgspace=True)
             >>> dets2 = dets1.warp(self.tf_data_to_img)
+            >>> colormask2 = self.colorize(0, imgspace=True)
             >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
             >>> dets2.draw()
 
@@ -727,6 +737,7 @@ class _HeatmapAlgoMixin(object):
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.heirarchical_softmax(class_energy, dim=0)
             >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)
+            >>> print(ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
             >>> self.data['class_probs'] = class_probs.numpy()
             >>> channel = catgraph.index('background')
             >>> dets = self.detect(channel, invert=True)
@@ -752,6 +763,26 @@ class _HeatmapAlgoMixin(object):
             probs = channel
         if invert:
             probs = 1 - probs
+
+        if max_dims is not None:
+            max_dims = max_dims if ub.iterable(max_dims) else (max_dims, max_dims)
+            max_dims = np.array(max_dims)
+
+        elif min_dims is not None:
+            min_dims = min_dims if ub.iterable(min_dims) else (min_dims, min_dims)
+            min_dims = np.array(min_dims)
+
+        # Convert the dims to a native space if necessary
+        if dim_thresh_space == 'image':
+            # convert thresholds to native space
+            # NOT SURE IF WE NEED TO INVERT XY HERE OR NOT
+            scale_dims = self.tf_data_to_img.scale[::-2]
+            if max_dims is not None:
+                max_dims = max_dims / scale_dims
+            if min_dims is not None:
+                min_dims = min_dims / scale_dims
+        elif dim_thresh_space != 'native':
+            raise KeyError(dim_thresh_space)
 
         dets = _prob_to_dets(
             probs, diameter=self.diameter, offset=self.offset,
@@ -801,7 +832,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
             tf_data_to_image (skimage.transform._geometric.GeometricTransform):
                 transformation matrix (typically similarity or affine) that
-                projects the given heatmap onto the image dimensions such that
+                projects the given1.8719898042840075, heatmap onto the image dimensions such that
                 the image and heatmap are spatially aligned.
 
             classes (List[str] | ndsampler.CategoryTree):
@@ -1007,7 +1038,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         else:
             classes = dets.classes
         # assume we have background
-        bg_idx = dets.classes.index('background')
+        # bg_idx = dets.classes.index('background')
 
         # Warp detections into heatmap space
         transform = np.linalg.inv(tf_data_to_img.params)
@@ -1017,9 +1048,15 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         tf_notrans = _remove_translation(tf_data_to_img)
         bg_size = tf_notrans.inverse([100, 100])[0]
 
-        _target = _dets_to_fcmaps(warped_dets, bg_size, dims,
-                                  bg_idx=bg_idx, soft=True)
-        class_probs = _target['class_probs']
+        self = warped_dets.rasterize(bg_size, input_dims=dims, soften=1,
+                                     img_dims=img_dims,
+                                     tf_data_to_img=tf_data_to_img)
+
+        class_probs = self.data['class_probs']
+
+        # _target = _dets_to_fcmaps(warped_dets, bg_size, dims,
+        #                           bg_idx=bg_idx, soft=True)
+        # class_probs = _target['class_probs']
         noise = (rng.randn(*class_probs.shape) * noise)
         class_probs += noise
         np.clip(class_probs, 0, None, out=class_probs)
@@ -1027,24 +1064,33 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         class_probs = np.array([smooth_prob(p) for p in class_probs])
         class_probs = class_probs / np.maximum(class_probs.sum(axis=0), 1e-9)
 
-        if offset is True:
-            offset = _target['dxdy'][[1, 0]]
+        if not offset:
+            self.data.pop('offset')
 
-        if keypoints is True:
-            if 'kp_classes' not in locals():
-                kp_classes = list(range(_target['kpts'].shape[1]))  # HACK
+        if not diameter:
+            self.data.pop('diameter')
 
-            keypoints = _target['kpts'][[1, 0]]
+        # if not keypoints and 'keypoints' in self.data:
+        #     self.data.pop('keypoints')
 
-        if diameter is True:
-            diameter = _target['size'][[1, 0]]
+        # if offset is True:
+        #     offset = _target['dxdy'][[1, 0]]
 
-        self = cls(class_probs=class_probs, offset=offset,
-                   diameter=diameter, img_dims=img_dims, classes=classes,
-                   tf_data_to_img=tf_data_to_img)
+        # if keypoints is True:
+
+        #     keypoints = _target['kpts'][[1, 0]]
+
+        # if diameter is True:
+        #     diameter = _target['size'][[1, 0]]
+
+        # self = cls(class_probs=class_probs, offset=offset,
+        #            diameter=diameter, img_dims=img_dims, classes=classes,
+        #            tf_data_to_img=tf_data_to_img)
 
         if keypoints is not False and keypoints is not None:
-            self.data['keypoints'] = keypoints
+            # self.data['keypoints'] = keypoints
+            if 'kp_classes' not in locals():
+                kp_classes = list(range(self.data['keypoints'].shape[1]))  # HACK
             self.meta['kp_classes'] = kp_classes
 
         return self
@@ -1179,7 +1225,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>>                            heatmap.data['keypoints'],
         >>>                            min_score)
         >>> assert dets.boxes.data.dtype.kind == 'f'
-        >>> assert len(dets) == 9
+        >>> assert 'keypoints' in dets.data
         >>> dets_np = dets
         >>> # Try with torch
         >>> heatmap = heatmap.tensor()
@@ -1188,7 +1234,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>>                            heatmap.data['keypoints'],
         >>>                            min_score)
         >>> assert dets.boxes.data.dtype.is_floating_point
-        >>> assert len(dets) == 9
+        >>> assert len(dets) == len(dets_np)
         >>> dets_torch = dets
         >>> assert np.all(dets_torch.numpy().boxes.data == dets_np.boxes.data)
 
@@ -1218,6 +1264,12 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     offset_is_uniform = tuple(getattr(offset, 'shape', []))[1:] != tuple(probs.shape)
 
     if diameter_is_uniform:
+
+        if hasattr(diameter, 'shape'):
+            if len(diameter.shape) > 2:
+                raise Exception('Trailing diameter shape={} does not agree with probs.shape={}'.format(
+                    diameter.shape, probs.shape))
+
         if not ub.iterable(diameter):
             diameter = [diameter, diameter]
 
@@ -1230,6 +1282,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         if max_dims is not None:
             max_dims = max_dims if ub.iterable(max_dims) else (max_dims, max_dims)
             max_height, max_width = max_dims
+
             if max_height is not None:
                 flags &= diameter[0] <= max_height
             if max_width is not None:

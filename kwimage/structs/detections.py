@@ -44,6 +44,10 @@ class _DetDrawMixin:
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
         """
+        segmentations = self.data.get('segmentations', None)
+        if sseg and segmentations is not None:
+            segmentations.draw(color=color, alpha=.4)
+
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
         self.boxes.draw(labels=labels, color=color, alpha=alpha, fill=fill,
@@ -52,10 +56,6 @@ class _DetDrawMixin:
         keypoints = self.data.get('keypoints', None)
         if kpts and keypoints is not None:
             keypoints.draw(color=color, radius=radius)
-
-        segmentations = self.data.get('segmentations', None)
-        if sseg and segmentations is not None:
-            segmentations.draw(color=color, alpha=.4)
 
         if setlim:
             x1, y1, x2, y2 = self.boxes.to_tlbr().components
@@ -68,6 +68,7 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
+    @xdev.profile
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
                 kpts=True, sseg=True):
         """
@@ -78,6 +79,9 @@ class _DetDrawMixin:
 
         Returns:
             ndarray[uint8]: image with labeled boxes drawn on it
+
+        CommandLine:
+            xdoctest -m kwimage.structs.detections _DetDrawMixin.draw_on:1 --profile --show
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -90,25 +94,42 @@ class _DetDrawMixin:
             >>> kwplot.autompl()
             >>> kwplot.imshow(image2)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(--profile)
+            >>> import kwplot
+            >>> self = Detections.random(num=100, scale=512, rng=0, keypoints=True, segmentations=True)
+            >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
+            >>> image2 = self.draw_on(image, color='blue')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
-        image = self.boxes.draw_on(image, color=color, alpha=alpha,
-                                   labels=labels)
-        import kwimage
+        # import kwimage
 
-        keypoints = self.data.get('keypoints', None)
-        if kpts and keypoints is not None:
-            image = kwimage.ensure_uint255(image)
-            image = keypoints.draw_on(image, radius=radius, color=color)
-            kwimage.ensure_float01(image)
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         segmentations = self.data.get('segmentations', None)
         if sseg and segmentations is not None:
-            image = kwimage.ensure_uint255(image)
+            # image = kwimage.ensure_uint255(image)
             image = segmentations.draw_on(image, color=color, alpha=.4)
-            kwimage.ensure_float01(image)
+            # kwimage.ensure_float01(image)
 
+        image = self.boxes.draw_on(image, color=color, alpha=alpha,
+                                   labels=labels)
+
+        keypoints = self.data.get('keypoints', None)
+        if kpts and keypoints is not None:
+            # image = kwimage.ensure_float01(image)
+            image = keypoints.draw_on(image, radius=radius, color=color)
+            # kwimage.ensure_float01(image)
+
+        image = dtype_fixer(image)
         return image
 
     def _make_alpha(self, alpha):
@@ -210,7 +231,7 @@ class _DetAlgoMixin:
                                        impl=impl, daq=daq)
         return self.take(keep)
 
-    def rasterize(self, bg_size, input_dims, soften=1):
+    def rasterize(self, bg_size, input_dims, soften=1, tf_data_to_img=None, img_dims=None):
         """
         Ambiguous conversion from a Heatmap to a Detections object.
 
@@ -248,10 +269,13 @@ class _DetAlgoMixin:
                                      input_dims=input_dims, bg_idx=bg_idx,
                                      soft=False)
 
-        img_dims = np.array(input_dims)
-        tf_data_to_img = skimage.transform.AffineTransform(
-            scale=(1, 1), translation=(0, 0),
-        )
+        if tf_data_to_img is None:
+            tf_data_to_img = skimage.transform.AffineTransform(
+                scale=(1, 1), translation=(0, 0),
+            )
+
+        if img_dims is None:
+            img_dims = np.array(input_dims)
         # print(fcn_target.keys())
         # print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
 
@@ -996,7 +1020,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     @classmethod
     def random(cls, num=10, scale=1.0, rng=None, classes=3, keypoints=False,
-               tensor=False):
+               tensor=False, segmentations=False):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -1013,6 +1037,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets.data['keypoints'].data[0].data
             >>> dets.data['keypoints'].meta
             >>> dets = kwimage.Detections.random(keypoints='dense')
+            >>> dets = kwimage.Detections.random(keypoints='dense', segmentations=True).scale(1000)
+            >>> # xdoctest:+REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> dets.draw(setlim=True)
         """
         import kwimage
         import kwarray
@@ -1033,6 +1062,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         if keypoints is True:
             keypoints = 'jagged'
+
+        if segmentations:
+            sseg_list = []
+            for xywh in self.boxes.to_xywh().data:
+                scale = xywh[2:]
+                offset = xywh[0:2]
+                sseg = kwimage.MultiPolygon.random(n=1, tight=True).scale(scale).translate(offset)
+                sseg_list.append(sseg)
+            self.data['segmentations'] = kwimage.PolygonList(sseg_list)
 
         if isinstance(keypoints, six.string_types):
             kp_classes = [1, 2, 3, 4]

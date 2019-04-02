@@ -302,6 +302,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
+    @xdev.profile
     def draw_on(self, image, color='white', radius=None):
         """
         CommandLine:
@@ -339,19 +340,25 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         """
         import kwplot
         import kwimage
-        value = kwplot.Color(color).as01()
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         if radius is None:
             image = kwimage.atleast_3channels(image)
             image = kwimage.ensure_float01(image)
+            value = kwplot.Color(color).as01()
             image = self.data['xy'].fill(
                 image, value, coord_axes=[1, 0], interp='bilinear')
         else:
             import cv2
             image = kwimage.atleast_3channels(image)
-            image = kwimage.ensure_float01(image)
+
+            if image.dtype.kind == 'f':
+                value = kwplot.Color(color).as01()
+            else:
+                value = kwplot.Color(color).as255()
+            # image = kwimage.ensure_float01(image)
+
             for xy in self.data['xy'].data.reshape(-1, 2):
                 # center = tuple(map(int, xy.tolist()))
                 center = tuple(xy.tolist())
