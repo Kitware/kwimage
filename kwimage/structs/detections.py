@@ -515,9 +515,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return copy.deepcopy(self)
 
     @classmethod
-    def from_coco_annots(cls, anns, cats, classes=None, kp_classes=None,
-                         shape=None):
+    def from_coco_annots(cls, anns, cats=None, classes=None, kp_classes=None,
+                         shape=None, dset=None):
         """
+        Args:
+            anns (List[Dict]): list of coco-like annotation objects
+            shape (tuple): shape of parent image
+            dset (CocoDataset): if specified, cats, classes, and kp_classes
+                can are ignored.
+
         Example:
             >>> from kwimage.structs.detections import *  # NOQA
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
@@ -563,15 +569,40 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             mask = kwimage.Mask.from_mask(m, offset=(2, 3), shape=(20, 20))
             print(mask.to_bytes_rle().data)
         """
+
+        cnames = None
+        if dset is not None:
+            cats = dset.dataset['categories']
+            kp_classes = dset.keypoint_categories()
+        else:
+            if cats is None:
+                cnames = []
+                for ann in anns:
+                    if 'category_name' in ann:
+                        cnames.append(ann['category_name'])
+                    else:
+                        raise Exception('Specify dset or cats or category_name in each annotation')
+                if classes is None:
+                    classes = sorted(set(cnames))
+                assert set(cnames).issubset(set(classes))
+
+                # make dummy cats
+                cats = [{'name': name, 'id': cid}
+                        for cid, name in enumerate(classes, start=1) ]
+
+        if classes is None:
+            classes = list(ub.oset([cat['name'] for cat in cats]))
+
+        if cnames is None:
+            cids = [ann['category_id'] for ann in anns]
+            cid_to_cat = {c['id']: c for c in cats}  # Hack
+            cnames = [cid_to_cat[cid]['name'] for cid in cids]
+
         import kwimage
         xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
         boxes = kwimage.Boxes(xywh, 'xywh')
-        cids = [ann['category_id'] for ann in anns]
-        cid_to_cat = {c['id']: c for c in cats}  # Hack
-        cnames = [cid_to_cat[cid]['name'] for cid in cids]
-        if classes is None:
-            classes = list([cat['name'] for cat in cid_to_cat.values()])
         class_idxs = [classes.index(cname) for cname in cnames]
+
         dets = Detections(
             boxes=boxes,
             class_idxs=np.array(class_idxs),
@@ -610,8 +641,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     kpcidxs = None
                     if kp_classes is not None:
                         kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
+                    xy = np.array(k).reshape(-1, 3)[:, 0:2]
                     pts = kwimage.Points(
-                        xy=np.array(k).reshape(-1, 3)[:, 0:2],
+                        xy=xy,
                         class_idxs=kpcidxs,
                     )
                     kpts.append(pts)
