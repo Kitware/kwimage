@@ -127,7 +127,6 @@ class ObjectList(Spatial):
             if item is None:
                 yield None
             else:
-                print('item = {!r}'.format(item))
                 yield item.to_coco()
 
     def compress(self, flags, axis=0):
