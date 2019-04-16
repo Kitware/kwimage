@@ -98,7 +98,7 @@ def imread(fpath, space='auto'):
             try:
                 import gdal
             except ImportError:
-                raise ImportError('cannot read NITF images without gdal')
+                raise ImportError('cannot read NITF/PTIF images without gdal')
             try:
                 gdal_dset = gdal.Open(fpath)
                 if gdal_dset.RasterCount == 1:
