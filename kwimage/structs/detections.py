@@ -174,7 +174,7 @@ class _DetDrawMixin:
                     labels = ['{} @ {:.4f}'.format(cid, score)
                               for cid, score in zip(identifers, self.scores)]
                 else:
-                    raise KeyError('unknown labels key {}'.format(labels))
+                    raise KeyError('unknown labels key {!r}'.format(labels))
         return labels
 
 

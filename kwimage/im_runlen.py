@@ -206,7 +206,10 @@ def rle_translate(rle, offset, output_shape=None):
     # These are the flat indices where the value changes:
     #  * even locs are stop-indices for zeros and start indices for ones
     #  * odd locs are stop-indices for ones and start indices for zeros
-    indices = rle['counts'].cumsum()
+    try:
+        indices = rle['counts'].cumsum()
+    except AttributeError:
+        indices = np.array(rle['counts']).cumsum()
 
     if len(indices) % 2 == 1:
         indices = indices[:-1]
