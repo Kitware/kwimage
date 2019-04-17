@@ -94,7 +94,7 @@ def imread(fpath, space='auto'):
         assert int(Image.PILLOW_VERSION.split('.')[0]) > 4
     """
     try:
-        if fpath.lower().endswith(('.ntf', '.nitf', '.ptif')):
+        if fpath.lower().endswith(('.ntf', '.nitf', '.ptif', '.cog.tiff')):
             try:
                 import gdal
             except ImportError:
