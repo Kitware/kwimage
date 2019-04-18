@@ -545,6 +545,32 @@ class _BoxConversionMixins(object):
         for row in self.to_xywh().data.tolist():
             yield [round(x, 4) for x in row]
 
+    def to_polygons(self):
+        """
+        Convert each box to a polygon object
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(5)
+            >>> polys = orig.to_polygons()
+            >>> print('polys = {!r}'.format(polys))
+        """
+        import kwimage
+        poly_list = []
+        for tlbr in self.to_tlbr().data:
+            x1, y1, x2, y2 = tlbr
+            # Exteriors are counterlockwise
+            exterior = np.array([
+                [x1, y1],
+                [x1, y2],
+                [x2, y2],
+                [x2, y1],
+            ])
+            poly = kwimage.Polygon(exterior=exterior)
+            poly_list.append(poly)
+        polys = kwimage.PolygonList(poly_list)
+        return polys
+
 
 class _BoxPropertyMixins(object):
 

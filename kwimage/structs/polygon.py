@@ -247,6 +247,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     Represents a single polygon as set of exterior boundary points and a list
     of internal polygons representing holes.
 
+    By convention exterior boundaries should be counterclockwise and interior
+    holes should be clockwise.
+
     Example:
         >>> data = {
         >>>     'exterior': np.array([[13,  1], [13, 19], [25, 19], [25,  1]]),
