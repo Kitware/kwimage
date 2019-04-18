@@ -502,8 +502,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         import matplotlib as mpl
         from matplotlib.patches import Path
         from matplotlib import pyplot as plt
+        import kwplot
         if ax is None:
             ax = plt.gca()
+
+        color = list(kwplot.Color(color).as01())
 
         data = self.data
 

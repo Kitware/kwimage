@@ -410,6 +410,10 @@ class _MaskDrawMixin(object):
         import kwplot
         import kwimage
 
+        # if color in ['class', 'category', 'label', 'cid', 'cidx']:
+        #     dsets
+        #     pass
+
         mask = self.to_c_mask().data
         rgb01 = list(kwplot.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]

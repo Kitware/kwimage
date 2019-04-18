@@ -23,7 +23,7 @@ class _DetDrawMixin:
     """
     def draw(self, color='blue', alpha=None, labels=True, centers=False, lw=2,
              fill=False, ax=None, radius=5, kpts=True, sseg=True,
-             setlim=False):
+             setlim=False, boxes=True):
         """
         Draws boxes using matplotlib
 
@@ -50,8 +50,9 @@ class _DetDrawMixin:
 
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
-        self.boxes.draw(labels=labels, color=color, alpha=alpha, fill=fill,
-                        centers=centers, ax=ax, lw=lw)
+        if boxes:
+            self.boxes.draw(labels=labels, color=color, alpha=alpha, fill=fill,
+                            centers=centers, ax=ax, lw=lw)
 
         keypoints = self.data.get('keypoints', None)
         if kpts and keypoints is not None:
@@ -70,7 +71,7 @@ class _DetDrawMixin:
 
     @xdev.profile
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
-                kpts=True, sseg=True):
+                kpts=True, sseg=True, boxes=True):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -120,8 +121,9 @@ class _DetDrawMixin:
             image = segmentations.draw_on(image, color=color, alpha=.4)
             # kwimage.ensure_float01(image)
 
-        image = self.boxes.draw_on(image, color=color, alpha=alpha,
-                                   labels=labels)
+        if boxes:
+            image = self.boxes.draw_on(image, color=color, alpha=alpha,
+                                       labels=labels)
 
         keypoints = self.data.get('keypoints', None)
         if kpts and keypoints is not None:
