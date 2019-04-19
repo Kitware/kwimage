@@ -1032,6 +1032,8 @@ class _BoxTransformMixins(object):
             self2 = self
         else:
             self2 = self.to_tlbr(copy=True)
+        if len(self2) == 0:
+            return self2
         if torch.is_tensor(self2.data):
             x1, y1, x2, y2 = self2.data.t()
             x1.clamp_(x_min, x_max)
