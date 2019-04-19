@@ -306,7 +306,7 @@ class _DetAlgoMixin:
             if soften > 1:
                 class_probs = impl.softmax(class_probs, axis=0)
 
-        dims = tuple(class_idx.shape[1:])
+        dims = tuple(class_idx.shape)
 
         kw_heat = {
             'class_idx': class_idx,

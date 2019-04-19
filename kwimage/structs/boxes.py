@@ -552,7 +552,7 @@ class _BoxConversionMixins(object):
         Example:
             >>> import kwimage
             >>> self = kwimage.Boxes.random(5)
-            >>> polys = orig.to_polygons()
+            >>> polys = self.to_polygons()
             >>> print('polys = {!r}'.format(polys))
         """
         import kwimage
