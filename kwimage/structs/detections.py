@@ -233,7 +233,9 @@ class _DetAlgoMixin:
                                        impl=impl, daq=daq)
         return self.take(keep)
 
-    def rasterize(self, bg_size, input_dims, soften=1, tf_data_to_img=None, img_dims=None):
+    @xdev.profile
+    def rasterize(self, bg_size, input_dims, soften=1, tf_data_to_img=None,
+                  img_dims=None, exclude=[]):
         """
         Ambiguous conversion from a Heatmap to a Detections object.
 
@@ -267,9 +269,9 @@ class _DetAlgoMixin:
         classes = self.meta['classes']
 
         bg_idx = classes.index('background')
-        fcn_target = _dets_to_fcmaps(self, bg_size=bg_size,
-                                     input_dims=input_dims, bg_idx=bg_idx,
-                                     soft=False)
+        fcn_target = _dets_to_fcmaps(
+            self, bg_size=bg_size, input_dims=input_dims, bg_idx=bg_idx,
+            soft=False, exclude=exclude)
 
         if tf_data_to_img is None:
             tf_data_to_img = skimage.transform.AffineTransform(
@@ -286,44 +288,51 @@ class _DetAlgoMixin:
         # class_probs = nh.criterions.focal.one_hot_embedding(
         #     fcn_target['cidx'].reshape(-1),
         #     num_classes=len(classes), dim=1)
-        labels = fcn_target['cidx']
-        class_probs = kwarray.one_hot_embedding(
-            labels, num_classes=len(classes), dim=0)
-        # if 0:
-        #     kwil.imshow(fcn_target['cidx'] > 0)
-        #     kwil.imshow(class_probs[0])
 
-        if soften > 0:
-            k = 31
-            sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
-            data = impl.contiguous(class_probs.T)
-            import cv2
-            cv2.GaussianBlur(data, (k, k), sigma, dst=data)
-            class_probs = impl.contiguous(data.T)
+        class_idx = fcn_target['cidx']
 
-        if soften > 1:
-            class_probs = impl.softmax(class_probs, axis=0)
+        if 'class_probs' not in exclude:
+            class_probs = kwarray.one_hot_embedding(
+                class_idx, num_classes=len(classes), dim=0)
 
-        dims = tuple(class_probs.shape[1:])
+            if soften > 0:
+                k = 31
+                sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
+                data = impl.contiguous(class_probs.T)
+                import cv2
+                cv2.GaussianBlur(data, (k, k), sigma, dst=data)
+                class_probs = impl.contiguous(data.T)
+
+            if soften > 1:
+                class_probs = impl.softmax(class_probs, axis=0)
+
+        dims = tuple(class_idx.shape[1:])
 
         kw_heat = {
-            'diameter': fcn_target['size'][[1, 0]],
-            'offset': fcn_target['dxdy'][[1, 0]],
-
-            'class_idx': fcn_target['cidx'],
-            'class_probs': class_probs,
-
+            'class_idx': class_idx,
             'img_dims': img_dims,
             'tf_data_to_img': tf_data_to_img,
             'datakeys': ['kpts_ignore', 'class_idx'],
         }
 
-        if 'kpts' in fcn_target:
-            kp_classes = self.meta['kp_classes']
-            K = len(kp_classes)
-            # TODO: add noise or do some bluring?
-            kw_heat['keypoints'] = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
-            kw_heat['kpts_ignore'] = fcn_target['kpts_ignore']
+        if 'class_probs' not in exclude:
+            kw_heat['class_probs'] = class_probs
+
+        if 'diameter' not in exclude:
+            if 'size' in fcn_target:
+                kw_heat['diameter'] = fcn_target['size'][[1, 0]]
+
+        if 'offset' not in exclude:
+            if 'dxdy' in fcn_target:
+                kw_heat['offset'] = fcn_target['dxdy'][[1, 0]]
+
+        if 'keypoints' not in exclude:
+            if 'kpts' in fcn_target:
+                kp_classes = self.meta['kp_classes']
+                K = len(kp_classes)
+                # TODO: add noise or do some bluring?
+                kw_heat['keypoints'] = impl.view(fcn_target['kpts'], (2, K,) + dims)[[1, 0]]
+                kw_heat['kpts_ignore'] = fcn_target['kpts_ignore']
 
         self = kwimage.Heatmap(**kw_heat)
         # print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
@@ -1135,7 +1144,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
 @xdev.profile
 def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
-                    soft=True):
+                    soft=True, exclude=[]):
     """
     Construct semantic segmentation detection targets from annotations in
     dictionary format.
@@ -1227,16 +1236,20 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
     import cv2
     # In soft mode we made a one-channel segmentation target mask
     cidx_mask = np.full(input_dims, dtype=np.int32, fill_value=bg_idx)
-    if soft:
-        # In soft mode we add per-class channel probability blips
-        num_obj_classes = len(dets.classes)
-        cidx_probs = np.full((num_obj_classes,) + tuple(input_dims),
-                             dtype=np.float32, fill_value=0)
 
-    size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
-    size_mask[:] = np.array(bg_size)[:, None, None]
+    if 'class_probs' not in exclude:
+        if soft:
+            # In soft mode we add per-class channel probability blips
+            num_obj_classes = len(dets.classes)
+            cidx_probs = np.full((num_obj_classes,) + tuple(input_dims),
+                                 dtype=np.float32, fill_value=0)
 
-    dxdy_mask = np.zeros((2,) + tuple(input_dims), dtype=np.float32)
+    if 'diameter' not in exclude:
+        size_mask = np.empty((2,) + tuple(input_dims), dtype=np.float32)
+        size_mask[:] = np.array(bg_size)[:, None, None]
+
+    if 'offset' not in exclude:
+        dxdy_mask = np.zeros((2,) + tuple(input_dims), dtype=np.float32)
 
     dets = dets.numpy()
 
@@ -1251,7 +1264,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         sseg_list = [None] * len(dets)
 
     kpts_mask = None
-    if 'keypoints' in dets.data:
+    if 'keypoints' in dets.data and 'keypoints' not in exclude:
         kp_classes = None
         if 'classes' in dets.data['keypoints'].meta:
             kp_classes = dets.data['keypoints'].meta['classes']
@@ -1316,53 +1329,62 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
             mask = sseg_mask.to_c_mask().data.astype(np.bool)
         # class index
         cidx_mask[mask] = int(cidx)
-        if soft:
-            blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
-            blip = blip / blip.max()
-            subindex = (slice(cy - half_h, cy + half_h),
-                        slice(cx - half_w, cx + half_w))
-            kwimage.subpixel_maximum(cidx_probs[cidx], blip, subindex)
+        if 'class_probs' not in exclude:
+            if soft:
+                blip = kwimage.gaussian_patch((half_h * 2, half_w * 2))
+                blip = blip / blip.max()
+                subindex = (slice(cy - half_h, cy + half_h),
+                            slice(cx - half_w, cx + half_w))
+                kwimage.subpixel_maximum(cidx_probs[cidx], blip, subindex)
 
         # object size
-        size_mask[0][mask] = float(w)
-        size_mask[1][mask] = float(h)
+        if 'diameter' not in exclude:
+            size_mask[0][mask] = float(w)
+            size_mask[1][mask] = float(h)
 
-        assert np.all(size_mask[0][mask] == float(w))
+            assert np.all(size_mask[0][mask] == float(w))
 
         # object offset
-        dx = cx - xcoord[mask]
-        dy = cy - ycoord[mask]
-        dxdy_mask[0][mask] = dx
-        dxdy_mask[1][mask] = dy
+        if 'offset' not in exclude:
+            dx = cx - xcoord[mask]
+            dy = cy - ycoord[mask]
+            dxdy_mask[0][mask] = dx
+            dxdy_mask[1][mask] = dy
 
         if kpts_mask is not None:
-
-            if pts is not None:
-                # Keypoint offsets
-                for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
-                    kp_x, kp_y = xy
-                    kp_dx = kp_x - xcoord[mask]
-                    kp_dy = kp_y - ycoord[mask]
-                    kpts_mask[0, kp_cidx][mask] = kp_dx
-                    kpts_mask[1, kp_cidx][mask] = kp_dy
-                    kpts_ignore_mask[kp_cidx][mask] = 0
+            if 'keypoints' not in exclude:
+                if pts is not None:
+                    # Keypoint offsets
+                    for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
+                        kp_x, kp_y = xy
+                        kp_dx = kp_x - xcoord[mask]
+                        kp_dy = kp_y - ycoord[mask]
+                        kpts_mask[0, kp_cidx][mask] = kp_dx
+                        kpts_mask[1, kp_cidx][mask] = kp_dy
+                        kpts_ignore_mask[kp_cidx][mask] = 0
 
         # SeeAlso:
         # ~/code/ovharn/ovharn/models/mcd_coder.py
 
     fcn_target = {
-        'size': size_mask,
-        'dxdy': dxdy_mask,
         'cidx': cidx_mask,
     }
-    if soft:
-        nonbg_idxs = sorted(set(range(num_obj_classes)) - {bg_idx})
-        cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
-        fcn_target['class_probs'] = cidx_probs
+    if 'diameter' not in exclude:
+        fcn_target['size'] = size_mask
+
+    if 'offset' not in exclude:
+        fcn_target['dxdy'] = dxdy_mask
+
+    if 'class_probs' not in exclude:
+        if soft:
+            nonbg_idxs = sorted(set(range(num_obj_classes)) - {bg_idx})
+            cidx_probs[bg_idx] = 1 - cidx_probs[nonbg_idxs].sum(axis=0)
+            fcn_target['class_probs'] = cidx_probs
 
     if kpts_mask is not None:
-        fcn_target['kpts'] = kpts_mask
-        fcn_target['kpts_ignore'] = kpts_ignore_mask
+        if 'keypoints' not in exclude:
+            fcn_target['kpts'] = kpts_mask
+            fcn_target['kpts_ignore'] = kpts_ignore_mask
     else:
         if 'keypoints' in dets.data:
             if any(kp is not None for kp in dets.data['keypoints']):
