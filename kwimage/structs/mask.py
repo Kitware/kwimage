@@ -765,6 +765,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def to_mask(self, dims=None):
         return self
 
+    def to_boxes(self):
+        """
+        Returns the bounding box of the mask.
+        """
+        import kwimage
+        boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
+        return boxes
+
     @classmethod
     def demo(cls):
         """
