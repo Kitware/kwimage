@@ -1015,7 +1015,7 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> boxes = Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'tlbr')
+            >>> self = boxes = Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'tlbr')
             >>> clipped = boxes.clip(0, 0, 110, 100, inplace=False)
             >>> assert np.any(boxes.data != clipped.data)
             >>> clipped2 = boxes.clip(0, 0, 110, 100, inplace=True)
@@ -1034,18 +1034,27 @@ class _BoxTransformMixins(object):
             self2 = self.to_tlbr(copy=True)
         if len(self2) == 0:
             return self2
-        if torch.is_tensor(self2.data):
-            x1, y1, x2, y2 = self2.data.t()
-            x1.clamp_(x_min, x_max)
-            y1.clamp_(y_min, y_max)
-            x2.clamp_(x_min, x_max)
-            y2.clamp_(y_min, y_max)
-        else:
-            x1, y1, x2, y2 = self2.data.T
+
+        if True:
+            impl = self._impl
+            x1, y1, x2, y2 = impl.T(self2.data)
             np.clip(x1, x_min, x_max, out=x1)
             np.clip(y1, y_min, y_max, out=y1)
             np.clip(x2, x_min, x_max, out=x2)
             np.clip(y2, y_min, y_max, out=y2)
+        else:
+            if torch.is_tensor(self2.data):
+                x1, y1, x2, y2 = self2.data.t()
+                x1.clamp_(x_min, x_max)
+                y1.clamp_(y_min, y_max)
+                x2.clamp_(x_min, x_max)
+                y2.clamp_(y_min, y_max)
+            else:
+                x1, y1, x2, y2 = self2.data.T
+                np.clip(x1, x_min, x_max, out=x1)
+                np.clip(y1, y_min, y_max, out=y1)
+                np.clip(x2, x_min, x_max, out=x2)
+                np.clip(y2, y_min, y_max, out=y2)
         return self2
 
     def transpose(self):

@@ -483,7 +483,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
-    def draw(self, color='blue', ax=None, alpha=1.0, radius=1):
+    def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False):
         """
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -496,11 +496,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> kwplot.autompl()
             >>> from matplotlib import pyplot as plt
             >>> kwplot.figure(fnum=2)
-            >>> self.draw()
-            >>> ax = plt.gca()
-            >>> ax.set_xlim(0, 120)
-            >>> ax.set_ylim(0, 120)
-            >>> ax.invert_yaxis()
+            >>> self.draw(setlim=True)
         """
         import matplotlib as mpl
         from matplotlib.patches import Path
@@ -533,6 +529,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         patch = mpl.patches.PathPatch(path, alpha=alpha, color=color)
         ax.add_patch(patch)
 
+        if setlim:
+            x1, y1, x2, y2 = self.to_boxes().to_tlbr().data[0]
+            ax.set_xlim(x1, x2)
+            ax.set_ylim(y1, y2)
+
     def _to_coco(self):
         interiors = self.data.get('interiors', [])
         if interiors:
@@ -560,6 +561,35 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         boxes = kwimage.Boxes(tlbr, 'tlbr')
         return boxes
         # return MultiPolygon([self])
+
+    def copy(self):
+        self2 = Polygon(self.data)
+        self2.data['exterior'] = self2.data['exterior'].copy()
+        self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
+        return self2
+
+    def clip(self, x_min, y_min, x_max, y_max, inplace=False):
+        """
+        Clip polygon to image boundaries.
+
+        Example:
+            >>> from kwimage.structs.polygon import *
+            >>> self = Polygon.random().scale(10).translate(-1)
+            >>> self2 = self.clip(1, 1, 3, 3)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> self2.draw(setlim=True)
+        """
+        if inplace:
+            self2 = self
+        else:
+            self2 = self.copy()
+        impl = self._impl
+        xs, ys = impl.T(self2.data['exterior'].data)
+        np.clip(xs, x_min, x_max, out=xs)
+        np.clip(ys, y_min, y_max, out=ys)
+        return self2
 
 
 def _order_vertices(verts):
