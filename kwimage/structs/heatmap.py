@@ -84,7 +84,6 @@ import kwarray
 import six
 import functools
 import xdev
-from kwimage.structs.detections import _dets_to_fcmaps
 from . import _generic
 
 
@@ -92,6 +91,30 @@ class _HeatmapDrawMixin(object):
     """
     mixin methods for drawing heatmap details
     """
+
+    def _colorize_class_preds(self):
+        """
+        """
+        cidxs = self.data['class_pred']
+
+        import networkx as nx
+        import kwplot
+        # kwplot.autoplt()
+
+        classes = self.meta['classes']
+        backup_colors = iter(kwplot.Color.distinct(len(classes)))
+
+        name_to_color = {}
+        name_to_color = nx.get_node_attributes(classes.graph, 'color')
+        for node in classes.graph.nodes:
+            color = classes.graph.nodes[node].get('color', None)
+            if color is None:
+                color = next(backup_colors)
+            name_to_color[node] = color
+
+        cx_to_color = np.array([name_to_color[cname] for cname in classes])
+        colorized = cx_to_color[cidxs]
+        return colorized
 
     def colorize(self, channel, invert=False, with_alpha=1.0,
                  interpolation='linear', imgspace=False):
@@ -284,10 +307,15 @@ class _HeatmapDrawMixin(object):
             if np.all(image.shape[0:2] == np.array(self.img_dims)):
                 imgspace = True
 
-        colormask = self.colorize(channel, invert=invert,
-                                  with_alpha=with_alpha,
-                                  interpolation=interpolation,
-                                  imgspace=imgspace)
+        if channel is None or channel == 'pred':
+            # Hack: draw prediction mask
+            colormask = self._colorize_class_preds()
+            colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
+        else:
+            colormask = self.colorize(channel, invert=invert,
+                                      with_alpha=with_alpha,
+                                      interpolation=interpolation,
+                                      imgspace=imgspace)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
@@ -861,7 +889,8 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>> kwplot.show_if_requested()
     """
     # Valid keys for the data dictionary
-    __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints']
+    __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints',
+                    'class_pred']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
@@ -1054,9 +1083,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
         class_probs = self.data['class_probs']
 
-        # _target = _dets_to_fcmaps(warped_dets, bg_size, dims,
-        #                           bg_idx=bg_idx, soft=True)
-        # class_probs = _target['class_probs']
         noise = (rng.randn(*class_probs.shape) * noise)
         class_probs += noise
         np.clip(class_probs, 0, None, out=class_probs)
@@ -1069,23 +1095,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
         if not diameter:
             self.data.pop('diameter')
-
-        # if not keypoints and 'keypoints' in self.data:
-        #     self.data.pop('keypoints')
-
-        # if offset is True:
-        #     offset = _target['dxdy'][[1, 0]]
-
-        # if keypoints is True:
-
-        #     keypoints = _target['kpts'][[1, 0]]
-
-        # if diameter is True:
-        #     diameter = _target['size'][[1, 0]]
-
-        # self = cls(class_probs=class_probs, offset=offset,
-        #            diameter=diameter, img_dims=img_dims, classes=classes,
-        #            tf_data_to_img=tf_data_to_img)
 
         if keypoints is not False and keypoints is not None:
             # self.data['keypoints'] = keypoints
