@@ -92,10 +92,10 @@ class _HeatmapDrawMixin(object):
     mixin methods for drawing heatmap details
     """
 
-    def _colorize_class_preds(self):
+    def _colorize_class_idx(self):
         """
         """
-        cidxs = self.data['class_pred']
+        cidxs = self.data['class_idx']
 
         import networkx as nx
         import kwplot
@@ -307,9 +307,9 @@ class _HeatmapDrawMixin(object):
             if np.all(image.shape[0:2] == np.array(self.img_dims)):
                 imgspace = True
 
-        if channel is None or channel == 'pred':
+        if channel is None or channel == 'idx':
             # Hack: draw prediction mask
-            colormask = self._colorize_class_preds()
+            colormask = self._colorize_class_idx()
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
         else:
             colormask = self.colorize(channel, invert=invert,
@@ -769,8 +769,8 @@ class _HeatmapAlgoMixin(object):
             >>> self.data['class_probs'] = class_probs.numpy()
             >>> channel = catgraph.index('background')
             >>> dets = self.detect(channel, invert=True)
-            >>> class_idxs, scores = catgraph.decision(dets.probs, dim=1)
-            >>> dets.data['class_idxs'] = class_idxs
+            >>> class_idx, scores = catgraph.decision(dets.probs, dim=1)
+            >>> dets.data['class_idx'] = class_idx
             >>> dets.data['scores'] = scores
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -890,7 +890,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     """
     # Valid keys for the data dictionary
     __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints',
-                    'class_pred']
+                    'class_idx']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
