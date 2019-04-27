@@ -927,8 +927,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         self.meta = meta
 
     def __nice__(self):
-        shape = None if self.class_probs is None else self.class_probs.shape
-        return '{} on img_dims={}'.format(shape, self.img_dims)
+        return '{} on img_dims={}'.format(self.shape, self.img_dims)
 
     def __getitem__(self, index):
         return self.class_probs[index]
@@ -938,7 +937,16 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
     @property
     def shape(self):
-        return self.class_probs.shape
+        shape = None
+        try:
+            shape = self.class_probs.shape
+        except Exception:
+            for key, value in self.data.items():
+                try:
+                    shape = value.shape
+                except AttributeError:
+                    pass
+        return shape
 
     @property
     def bounds(self):
