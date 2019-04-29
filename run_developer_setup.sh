@@ -3,7 +3,7 @@
 # Install dependency packages
 pip install -r requirements.txt
 
-# Install irharn in developer mode
+# Install in developer mode
 #pip install -e . --verbose
 
 # For some reason there is a bug with using pip and skbuild 
