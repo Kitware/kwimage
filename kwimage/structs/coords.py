@@ -2,7 +2,6 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
-import xdev
 from . import _generic
 
 
@@ -212,7 +211,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         return kwarray.ArrayAPI.coerce(self.data)
 
-    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts numpy to tensors. Does not change memory if possible.
@@ -229,7 +227,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    @xdev.profile
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
@@ -246,7 +243,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    @xdev.profile
     def warp(self, transform, input_shape=None, output_dims=None,
              inplace=False):
         """

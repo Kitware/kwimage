@@ -12,7 +12,6 @@ import six
 import torch
 import numpy as np
 import ubelt as ub
-import xdev
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
 
@@ -69,7 +68,6 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
-    @xdev.profile
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
                 kpts=True, sseg=True, boxes=True):
         """
@@ -233,7 +231,6 @@ class _DetAlgoMixin:
                                        impl=impl, daq=daq)
         return self.take(keep)
 
-    @xdev.profile
     def rasterize(self, bg_size, input_dims, soften=1, tf_data_to_img=None,
                   img_dims=None, exclude=[]):
         """
@@ -745,7 +742,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     # --- Modifiers ---
 
-    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -770,7 +766,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 inplace=inplace)
         return new
 
-    @xdev.profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -793,7 +788,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 factor, output_dims=output_dims, inplace=inplace)
         return new
 
-    @xdev.profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -986,7 +980,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """ is the backend fueled by numpy? """
         return self.boxes.is_numpy()
 
-    @xdev.profile
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
@@ -1015,7 +1008,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         newself = self.__class__(newdata, self.meta)
         return newself
 
-    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts numpy to tensors. Does not change memory if possible.
@@ -1142,7 +1134,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return self
 
 
-@xdev.profile
 def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     soft=True, exclude=[]):
     """

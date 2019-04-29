@@ -82,7 +82,6 @@ import skimage
 import kwarray
 import six
 import functools
-import xdev
 from . import _generic
 
 
@@ -473,7 +472,6 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
-    @xdev.profile
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
              mat_is_xy=True):
@@ -683,7 +681,6 @@ class _HeatmapAlgoMixin(object):
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself
 
-    @xdev.profile
     def detect(self, channel, invert=False, min_score=0.01, num_min=10,
                max_dims=None, min_dims=None, dim_thresh_space='image'):
         """
@@ -1141,7 +1138,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
     # ---
 
-    @xdev.profile
     def numpy(self):
         """
         Converts underlying data to numpy arrays
@@ -1156,7 +1152,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         newself = self.__class__(newdata, self.meta)
         return newself
 
-    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Converts underlying data to torch tensors
@@ -1172,7 +1167,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         return newself
 
 
-@xdev.profile
 def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
                   keypoints=None, min_score=0.01, num_min=10,
                   max_dims=None, min_dims=None):

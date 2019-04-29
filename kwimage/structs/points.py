@@ -3,13 +3,11 @@ import ubelt as ub
 import skimage
 import kwarray
 import torch
-import xdev
 from . import _generic
 
 
 class _PointsWarpMixin:
 
-    @xdev.profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -74,7 +72,6 @@ class _PointsWarpMixin:
         self = cls(xy=xy)
         return self
 
-    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -119,7 +116,6 @@ class _PointsWarpMixin:
                                              output_dims, inplace)
         return new
 
-    @xdev.profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a points by a factor
@@ -140,7 +136,6 @@ class _PointsWarpMixin:
                                               inplace=inplace)
         return new
 
-    @xdev.profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the points up/down left/right
@@ -187,7 +182,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     # Pre-registered keys for the meta dictionary
     __metakeys__ = ['classes']
 
-    @xdev.profile
     def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
                  **kwargs):
         if kwargs:
@@ -273,7 +267,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     def _impl(self):
         return self.data['xy']._impl
 
-    @xdev.profile
     def tensor(self, device=ub.NoParam):
         """
         Example:
@@ -288,7 +281,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    @xdev.profile
     def numpy(self):
         """
         Example:
@@ -302,7 +294,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    @xdev.profile
     def draw_on(self, image, color='white', radius=None):
         """
         CommandLine:

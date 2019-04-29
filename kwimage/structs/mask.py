@@ -37,7 +37,6 @@ import ubelt as ub
 import itertools as it
 from . import _generic
 from kwimage.structs._mask_backend import cython_mask
-import xdev
 
 __all__ = ['Mask', 'MaskList']
 
@@ -299,7 +298,6 @@ class _MaskConstructorMixin(object):
 
 class _MaskTransformMixin(object):
 
-    @xdev.profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Example:
@@ -320,7 +318,6 @@ class _MaskTransformMixin(object):
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
         return new
 
-    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
 
@@ -354,7 +351,6 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
-    @xdev.profile
     def translate(self, offset, output_dims=None):
         """
         Efficiently translate an array_rle in the encoding space

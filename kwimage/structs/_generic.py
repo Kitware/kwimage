@@ -1,5 +1,4 @@
 import ubelt as ub
-import xdev
 import kwarray
 # import abc
 
@@ -88,7 +87,6 @@ class ObjectList(Spatial):
         for index in range(len(self)):
             yield self[index]
 
-    @xdev.profile
     def translate(self, offset, output_dims=None, inplace=False):
         newdata = [None if item is None else
                    item.translate(offset, output_dims=output_dims,
@@ -96,14 +94,12 @@ class ObjectList(Spatial):
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    @xdev.profile
     def scale(self, factor, output_dims=None, inplace=False):
         newdata = [None if item is None else
                    item.scale(factor, output_dims=output_dims, inplace=inplace)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    @xdev.profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         if inplace:
             for item in self.data:
@@ -139,24 +135,20 @@ class ObjectList(Spatial):
         newdata = list(ub.take(self.data, indices))
         return self.__class__(newdata, self.meta)
 
-    @xdev.profile
     def draw(self, **kwargs):
         for item in self.data:
             if item is not None:
                 item.draw(**kwargs)
 
-    @xdev.profile
     def draw_on(self, image, **kwargs):
         for item in self.data:
             if item is not None:
                 image = item.draw_on(image=image, **kwargs)
         return image
 
-    @xdev.profile
     def tensor(self, device=ub.NoParam):
         return self.apply(lambda item: item.tensor(device))
 
-    @xdev.profile
     def numpy(self):
         return self.apply(lambda item: item.numpy())
 

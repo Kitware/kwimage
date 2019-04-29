@@ -2,7 +2,6 @@ import ubelt as ub
 import cv2
 import numpy as np
 import torch
-import xdev
 import skimage
 from . import _generic
 
@@ -21,8 +20,6 @@ class _PolyArrayBackend:
             >>> self = Polygon.random()
             >>> self.tensor()
         """
-        # import xdev
-        # with xdev.embed_on_exception_context:
         impl = self._impl
 
         if True:
@@ -381,7 +378,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def _impl(self):
         return self.data['exterior']._impl
 
-    @xdev.profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
         """
         Example:
