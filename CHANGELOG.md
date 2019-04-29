@@ -18,6 +18,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Tweaked implementation of `Heatmap.random`.
 
 ### Fixed
+* Python2 issues with `Boxes.__repr__`
+* Python2 issues mask shape using List[long] instead of List[int]
 * Zero division in Cython `non-maximum-supression` with zero sized boxes.
 * `Heatmap.shape` now works even if `class_probs` is not set.
 

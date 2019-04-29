@@ -333,6 +333,8 @@ class _BoxConversionMixins(object):
         Returns:
             Boxes : transformed boxes
 
+        CommandLine:
+            xdoctest -m kwimage.structs.boxes _BoxConversionMixins.toformat
 
         Example:
             >>> boxes = Boxes.random(2, scale=10, rng=0)
@@ -1186,7 +1188,7 @@ class _BoxDrawMixins(object):
 
 
 class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
-            _BoxDrawMixins):  # _generic.Spatial
+            _BoxDrawMixins, ub.NiceRepr):  # _generic.Spatial
     """
     Converts boxes between different formats as long as the last dimension
     contains 4 coordinates and the format is specified.
@@ -1300,9 +1302,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         data_repr = repr(self.data)
         if '\n' in data_repr:
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
-        return '{}, {}'.format(self.format, data_repr)
+        nice = '{}, {}'.format(self.format, data_repr)
+        return nice
 
-    __repr__ = ub.NiceRepr.__str__
+    def __repr__(self):
+        return super(Boxes, self).__str__()
 
     @classmethod
     def random(Boxes, num=1, scale=1.0, format=BoxFormat.XYWH, anchors=None,
@@ -1510,6 +1514,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def astype(self, dtype):
         """
+        Changes the type of the internal array used to represent the boxes
+
+        Notes:
+            this operation is not inplace
+
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> Boxes.random(3, 100, rng=0).tensor().astype('int32')

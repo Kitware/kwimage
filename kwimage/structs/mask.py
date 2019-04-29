@@ -122,11 +122,11 @@ class _MaskConversionMixin(object):
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> mask = Mask.demo()
             >>> print(mask.to_bytes_rle().data['counts'])
-            ...'_153L;4EL;1DO10;1DO10;1DO10;4EL;4ELW3b0jL^O60...
+            ..._153L;4EL;1DO10;1DO10;1DO10;4EL;4ELW3b0jL^O60...
             >>> print(mask.to_array_rle().data['counts'].tolist())
             [47, 5, 3, 1, 14, 5, 3, 1, 14, 2, 2, 1, 3, 1, 14, ...
             >>> print(mask.to_array_rle().to_bytes_rle().data['counts'])
-            ...'_153L;4EL;1DO10;1DO10;1DO10;4EL;4ELW3b0jL^O60L0...
+            ..._153L;4EL;1DO10;1DO10;1DO10;4EL;4ELW3b0jL^O60L0...
         """
         if self.format == MaskFormat.BYTES_RLE:
             return self.copy() if copy else self
@@ -140,11 +140,15 @@ class _MaskConversionMixin(object):
         elif self.format == MaskFormat.F_MASK:
             f_masks = self.data[:, :, None]
             encoded = cython_mask.encode(f_masks)[0]
+            if 'size' in encoded:
+                encoded['size'] = list(map(int, encoded['size']))  # python2 fix
             self = Mask(encoded, format=MaskFormat.BYTES_RLE)
         elif self.format == MaskFormat.C_MASK:
             c_mask = self.data
             f_masks = np.asfortranarray(c_mask)[:, :, None]
             encoded = cython_mask.encode(f_masks)[0]
+            if 'size' in encoded:
+                encoded['size'] = list(map(int, encoded['size']))  # python2 fix
             self = Mask(encoded, format=MaskFormat.BYTES_RLE)
         else:
             raise NotImplementedError(self.format)
@@ -230,10 +234,10 @@ class _MaskConstructorMixin(object):
             >>> dims = (9, 5)
             >>> self = Mask.from_polygons(polygons, dims)
             >>> print(self)
-            <Mask({'counts': b'724;MG2MN16', 'size': [9, 5]}, format=bytes_rle)>
+            <Mask({'counts': ...'724;MG2MN16', 'size': [9, 5]}, format=bytes_rle)>
             >>> polygon = polygons[0]
             >>> print(Mask.from_polygons(polygon, dims))
-            <Mask({'counts': b'b04500N2', 'size': [9, 5]}, format=bytes_rle)>
+            <Mask({'counts': ...'b04500N2', 'size': [9, 5]}, format=bytes_rle)>
         """
         h, w = dims
         # TODO: holes? geojson?
@@ -241,6 +245,8 @@ class _MaskConstructorMixin(object):
             polygons = [polygons]
         flat_polys = [np.array(ps).ravel() for ps in polygons]
         encoded = cython_mask.frPoly(flat_polys, h, w)
+        if 'size' in encoded:
+            encoded['size'] = list(map(int, encoded['size']))  # python2 fix
         ccs = [Mask(e, MaskFormat.BYTES_RLE) for e in encoded]
         self = Mask.union(*ccs)
         return self
@@ -581,10 +587,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             elif format == MaskFormat.BYTES_RLE:
                 datas = [item.to_bytes_rle().data for item in items]
                 new_data = cython_mask.merge(datas, intersect=0)
+                if 'size' in new_data:
+                    new_data['size'] = list(map(int, new_data['size']))  # python2 fix
                 new = cls(new_data, MaskFormat.BYTES_RLE)
             else:
                 datas = [item.to_bytes_rle().data for item in items]
                 new_rle = cython_mask.merge(datas, intersect=0)
+                if 'size' in new_rle:
+                    new_rle['size'] = list(map(int, new_rle['size']))  # python2 fix
                 new = cls(new_rle, MaskFormat.BYTES_RLE)
         return new
         # rle_datas = [item.to_bytes_rle().data for item in items]
@@ -601,7 +611,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
         rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
-        return cls(cython_mask.merge(rle_datas, intersect=1), MaskFormat.BYTES_RLE)
+        encoded = cython_mask.merge(rle_datas, intersect=1)
+        if 'size' in encoded:
+            encoded['size'] = list(map(int, encoded['size']))  # python2 fix
+        return cls(encoded, MaskFormat.BYTES_RLE)
 
     @property
     def shape(self):
@@ -819,6 +832,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self = Mask.demo()
             >>> self = self.scale(5)
             >>> multi_poly = self.to_multi_polygon()
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> self.draw(color='red')
             >>> multi_poly.scale(1.1).draw(color='blue')
 

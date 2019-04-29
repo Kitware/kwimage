@@ -668,6 +668,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             xdoctest -m kwimage.structs.detections Detections.to_coco
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.detections import *
             >>> self = Detections.demo()[0]
             >>> cname_to_cat = None

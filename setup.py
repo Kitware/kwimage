@@ -204,6 +204,9 @@ def clean():
     for d in glob.glob(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes*.*so')):
         enqueue(d)
 
+    for d in glob.glob(join(repodir, 'kwimage/structs/_mask_backend/cython_mask*.*so')):
+        enqueue(d)
+
     enqueue(join(repodir, '_skbuild'))
     enqueue(join(repodir, '_cmake_test_compile'))
     enqueue(join(repodir, 'kwimage.egg-info'))
@@ -251,9 +254,11 @@ if __name__ == '__main__':
         version=version,
         author='Jon Crall',
         long_description=parse_description(),
-        install_requires=parse_requirements('requirements.txt'),
-        author_email='erotemic@gmail.com',
-        url='https://kwgitlab.kitware.com/jon.crall/kwimage',
+        install_requires=parse_requirements('requirements/runtime.txt'),
+        extras_require={
+            'all': parse_requirements('requirements.txt'),
+            'tests': parse_requirements('requirements/tests.txt'),
+        },
         packages=find_packages(include='kwimage.*'),
         classifiers=[
             # List of classifiers available at:

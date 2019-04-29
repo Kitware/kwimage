@@ -271,6 +271,7 @@ def draw_text_on_image(img, text, org, **kwargs):
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwimage
         >>> img = kwimage.grab_test_image(space='rgb')
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)

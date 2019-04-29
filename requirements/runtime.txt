@@ -1,9 +1,9 @@
-kwarray
-
 scipy >= 1.2.1
 numpy >= 1.15.2
 pandas >= 0.23.3
 torch >= 1.0.0
+
+shapely
 
 Pillow >= 5.2.0
 opencv-python >= 3.4.1.15
@@ -12,3 +12,5 @@ scikit-learn >= 0.20.1
 
 six >= 1.11.0
 ubelt >= 0.7.1
+
+# kwarray  # NOTE: this is required, but possibly causing issues because it is currently internal

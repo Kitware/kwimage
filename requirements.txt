@@ -2,7 +2,7 @@ cffi
 cmake
 coverage >= 4.3.4
 Cython
-kwarray
+# kwarray
 ninja
 numpy >= 1.15.2
 opencv-python >= 3.4.1.15
@@ -18,3 +18,4 @@ six >= 1.11.0
 torch >= 0.4.1
 ubelt >= 0.7.1
 xdoctest >= 0.3.0
+shapely

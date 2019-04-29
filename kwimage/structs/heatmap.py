@@ -141,6 +141,7 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.show_if_requested()
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize('diameter', imgspace=False)
             >>> colormask2 = self.colorize('diameter', imgspace=True)

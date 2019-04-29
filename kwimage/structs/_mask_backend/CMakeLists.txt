@@ -1,5 +1,5 @@
 
-option(BUILD_MASK_CYTHON "Enable cython masks" True)
+option(BUILD_MASK_CYTHON "Enable cython masks" TRUE)
 if (BUILD_MASK_CYTHON)
 
   set(cython_source "cython_mask.pyx")
