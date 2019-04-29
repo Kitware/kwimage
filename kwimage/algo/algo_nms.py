@@ -19,16 +19,22 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
 
     Args:
         tlbr (ndarray): boxes in (tlx, tly, brx, bry) format
+
         scores (ndarray): scores of each box
+
         diameter (int or Tuple[int, int]): Distance from split point to
             consider rectification. If specified as an integer, then number
             is used for both height and width. If specified as a tuple, then
             dims are assumed to be in [height, width] format.
+
         thresh (float): iou threshold. Boxes are removed if they overlap
             greater than this threshold. 0 is the most strict, resulting in the
             fewest boxes, and 1 is the most permissive resulting in the most.
+
         max_depth (int): maximum number of times we can divide and conquor
+
         stop_size (int): number of boxes that triggers full NMS computation
+
         recsize (int): number of boxes that triggers full NMS recombination
 
     LookInfo:
@@ -133,8 +139,8 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
                 right_tlbr, right_scores, depth=next_depth, dim=next_dim,
                 diameter_wh=diameter_wh)
 
-            # Recombine the results (note that because we have a
-            # diameter_wh, we have to check less results)
+            # Recombine the results (note that because we have a diameter_wh,
+            # we have to check less results)
             rrec = set(right_idxs[sorted(rrec_)])
             lrec = set(left_idxs[sorted(lrec_)])
 
@@ -144,8 +150,16 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
             both_keep = np.hstack([left_keep, right_keep])
             both_keep.sort()
 
-            rectify_flags = np.abs(tlbr[both_keep].T[dim] - middle) < diameter_wh[dim]
-            needs_rectify = set(both_keep[rectify_flags]) | rrec | lrec
+            dist_to_middle = np.abs(tlbr[both_keep].T[dim] - middle)
+
+            # Find all surviving boxes that are close to the midpoint.  We will
+            # need to recheck these because they may overlap, but they also may
+            # have been split into different subproblems.
+            rectify_flags = dist_to_middle < diameter_wh[dim]
+
+            needs_rectify = set(both_keep[rectify_flags])
+            needs_rectify.update(rrec)
+            needs_rectify.update(lrec)
 
             nrec = len(needs_rectify)
             # print('nrec = {!r}'.format(nrec))

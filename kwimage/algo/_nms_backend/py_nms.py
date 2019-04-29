@@ -7,6 +7,7 @@ Written by Ross Girshick
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
+import warnings
 
 
 def py_nms(np_tlbr, np_scores, thresh, bias=1):
@@ -40,31 +41,34 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
     order = np_scores.argsort()[::-1]
 
     keep = []
-    # n_conflicts = 0
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
 
-        js_remain = order[1:]
-        xx1 = np.maximum(x1[i], x1[js_remain])
-        yy1 = np.maximum(y1[i], y1[js_remain])
-        xx2 = np.minimum(x2[i], x2[js_remain])
-        yy2 = np.minimum(y2[i], y2[js_remain])
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'invalid value .* true_divide')
+        # n_conflicts = 0
+        while order.size > 0:
+            i = order[0]
+            keep.append(i)
 
-        w = np.maximum(0.0, xx2 - xx1 + bias)
-        h = np.maximum(0.0, yy2 - yy1 + bias)
-        inter = w * h
-        ovr = inter / (areas[i] + areas[js_remain] - inter)
-        ovr = np.nan_to_num(ovr)
+            js_remain = order[1:]
+            xx1 = np.maximum(x1[i], x1[js_remain])
+            yy1 = np.maximum(y1[i], y1[js_remain])
+            xx2 = np.minimum(x2[i], x2[js_remain])
+            yy2 = np.minimum(y2[i], y2[js_remain])
 
-        # Remove any indices that (significantly) overlap with this item
-        # NOTE: We are using following convention:
-        #     * suppress if overlap > thresh
-        #     * consider if overlap <= thresh
-        # This convention has the property that when thresh=0, we dont just
-        # remove everything.
-        flags = ovr <= thresh
-        inds = np.where(flags)[0]
-        order = order[inds + 1]
+            w = np.maximum(0.0, xx2 - xx1 + bias)
+            h = np.maximum(0.0, yy2 - yy1 + bias)
+            inter = w * h
+            ovr = inter / (areas[i] + areas[js_remain] - inter)
+            ovr = np.nan_to_num(ovr)
+
+            # Remove any indices that (significantly) overlap with this item
+            # NOTE: We are using following convention:
+            #     * suppress if overlap > thresh
+            #     * consider if overlap <= thresh
+            # This convention has the property that when thresh=0, we dont just
+            # remove everything.
+            flags = ovr <= thresh
+            inds = np.where(flags)[0]
+            order = order[inds + 1]
 
     return keep

@@ -657,7 +657,8 @@ class _HeatmapAlgoMixin(object):
         return newself
 
     @xdev.profile
-    def detect(self, channel, invert=False, min_score=0.01, num_min=10):
+    def detect(self, channel, invert=False, min_score=0.01, num_min=10,
+               max_dims=None, min_dims=None):
         """
         Lossy conversion from a Heatmap to a Detections object.
 
@@ -681,6 +682,10 @@ class _HeatmapAlgoMixin(object):
             num_min (int, default=10):
                 always return at least `nmin` of the highest scoring detections
                 even if they aren't above the `min_score` threshold.
+
+            max_dims (Tuple[int, int]): maximum height / width of detections
+
+            min_dims (Tuple[int, int]): minimum height / width of detections
 
         Returns:
             kwimage.Detections: raw detections.
@@ -751,6 +756,7 @@ class _HeatmapAlgoMixin(object):
             class_probs=self.class_probs,
             keypoints=self.data.get('keypoints', None),
             min_score=min_score, num_min=num_min,
+            max_dims=max_dims, min_dims=min_dims,
         )
         if dets.data.get('keypoints', None) is not None:
             kp_classes = self.meta['kp_classes']
@@ -1104,7 +1110,8 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
 @xdev.profile
 def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
-                  keypoints=None, min_score=0.01, num_min=10):
+                  keypoints=None, min_score=0.01, num_min=10,
+                  max_dims=None, min_dims=None):
     """
     Directly convert a one-channel probability map into a Detections object.
 
@@ -1217,18 +1224,32 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             offset = impl.asarray([offset, offset])
 
     flags = probs > min_score
+    if not diameter_is_uniform:
+        if max_dims is not None:
+            max_height, max_width = max_dims
+            if max_height is not None:
+                flags &= diameter[0] <= max_height
+            if max_width is not None:
+                flags &= diameter[1] <= max_width
+        if min_dims is not None:
+            min_height, min_width = min_dims
+            if min_height is not None:
+                flags &= diameter[0] >= min_height
+            if min_width is not None:
+                flags &= diameter[1] >= min_width
 
     # Ensure that some detections are returned even if none are above the
     # threshold.
-    numel = impl.numel(flags)
-    if flags.sum() < num_min:
-        if impl.is_tensor:
-            topxs = probs.view(-1).argsort()[max(0, numel - num_min):numel]
-            flags.view(-1)[topxs] = 1
-        else:
-            idxs = kwarray.argmaxima(probs, num=num_min, ordered=False)
-            # idxs = probs.argsort(axis=None)[-num_min:]
-            flags.ravel()[idxs] = True
+    if num_min is not None:
+        numel = impl.numel(flags)
+        if flags.sum() < num_min:
+            if impl.is_tensor:
+                topxs = probs.view(-1).argsort()[max(0, numel - num_min):numel]
+                flags.view(-1)[topxs] = 1
+            else:
+                idxs = kwarray.argmaxima(probs, num=num_min, ordered=False)
+                # idxs = probs.argsort(axis=None)[-num_min:]
+                flags.ravel()[idxs] = True
 
     yc, xc = impl.nonzero(flags)
     yc_ = impl.astype(yc, np.float32)

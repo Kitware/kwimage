@@ -1,9 +1,10 @@
 import ubelt as ub
 import xdev
-import abc
 import kwarray
+# import abc
 
 
+# class Spatial(ub.NiceRepr, abc.ABC):
 class Spatial(ub.NiceRepr):
     """
     Abstract base class defining the spatial annotation API

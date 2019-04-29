@@ -32,8 +32,10 @@ def benchamrk_det_nms():
         https://gitlab.com/EAVISE/lightnet/blob/master/lightnet/data/transform/_postprocess.py#L116
     """
 
-    N = 200
-    bestof = 50
+    # N = 200
+    # bestof = 50
+    N = 1
+    bestof = 1
 
     ydata = ub.ddict(list)
     # xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 1500, 2000]
@@ -44,7 +46,7 @@ def benchamrk_det_nms():
     xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 1500, max_boxes]
     # xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500]
     # xdata = [10, 100, 500, 1000, 1500, 2000]
-    xdata = [10, 100, 500, 1000, 5000, 10000 ]
+    xdata = [1000, 5000, 10000, 20000, 50000, 100000, 1000000, 10000000 ]
 
     thresh = 0.01
 
@@ -54,9 +56,11 @@ def benchamrk_det_nms():
 
     measure_gpu = True and torch.cuda.is_available()
     measure_cpu = True
-    measure_daq = False
+    measure_daq = True
     measure_auto = False
 
+    measure_cython_gpu = False
+    measure_cython_cpu = False
     measure_torch = False
     measure_torch_cpu = False
 
@@ -67,17 +71,28 @@ def benchamrk_det_nms():
 
         outputs = {}
 
-        ti = ub.Timerit(N, bestof=bestof)
+        ti = ub.Timerit(N, bestof=bestof, verbose=1)
 
         # Build random test boxes and scores
-        np_dets1 = kwimage.Detections.random(num // 2, scale=10.0, rng=0)
+        np_dets1 = kwimage.Detections.random(num // 2, scale=1000.0, rng=0)
+        np_dets1.data['boxes'] = np_dets1.boxes.to_xywh()
+
+        SMALL_BOXES = True
+        if SMALL_BOXES:
+            max_dim = 100
+            np_dets1.boxes.data[..., 2] = np.minimum(np_dets1.boxes.width, max_dim).ravel()
+            np_dets1.boxes.data[..., 3] = np.minimum(np_dets1.boxes.height, max_dim).ravel()
+
         np_dets2 = copy.deepcopy(np_dets1)
-        np_dets2.boxes.translate(.1, inplace=True)
+        np_dets2.boxes.translate(10, inplace=True)
         # add boxes that will definately be removed
         np_dets = kwimage.Detections.concatenate([np_dets1, np_dets2])
 
         # make all scores unique to ensure comparability
         np_dets.scores[:] = np.linspace(0, 1, np_dets.num_boxes())
+
+        np_dets.data['scores'] = np_dets.scores.astype(np.float32)
+        np_dets.boxes.data = np_dets.boxes.data.astype(np.float32)
 
         # ----------------------------------
 
@@ -98,13 +113,21 @@ def benchamrk_det_nms():
                 ydata[ti.label].append(ti.min())
                 outputs[ti.label] = ensure_numpy_indices(keep)
 
+            if 'py' in valid_impls:
+                for timer in ti.reset('daq_cython(py)'):
+                    with timer:
+                        keep = np_dets.non_max_supression(thresh=thresh, daq=True, impl='py')
+                        torch.cuda.synchronize()
+                ydata[ti.label].append(ti.min())
+                outputs[ti.label] = ensure_numpy_indices(keep)
+
             if measure_auto:
                 for timer in ti.reset('daq_cython(auto)'):
                     with timer:
                         keep = np_dets.non_max_supression(thresh=thresh, daq=True, impl='auto')
                         torch.cuda.synchronize()
-            ydata[ti.label].append(ti.min())
-            outputs[ti.label] = ensure_numpy_indices(keep)
+                ydata[ti.label].append(ti.min())
+                outputs[ti.label] = ensure_numpy_indices(keep)
 
         if measure_cpu:
             if 'torch' in valid_impls and measure_torch_cpu and measure_torch:
@@ -126,7 +149,7 @@ def benchamrk_det_nms():
                 ydata[ti.label].append(ti.min())
                 outputs[ti.label] = ensure_numpy_indices(keep)
 
-            if 'gpu' in valid_impls:
+            if 'gpu' in valid_impls and measure_cython_gpu:
                 for timer in ti.reset('cython(gpu)'):
                     with timer:
                         keep = np_dets.non_max_supression(thresh=thresh, impl='gpu')
@@ -135,7 +158,7 @@ def benchamrk_det_nms():
                 outputs[ti.label] = ensure_numpy_indices(keep)
 
         if True:
-            if 'cpu' in valid_impls:
+            if 'cpu' in valid_impls and measure_cython_cpu:
                 for timer in ti.reset('cython(cpu)'):
                     with timer:
                         keep = np_dets.non_max_supression(thresh=thresh, impl='cpu')
@@ -185,3 +208,11 @@ def benchamrk_det_nms():
         # yscale='symlog', xscale='symlog',
     )
     kwplot.show_if_requested()
+
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python ~/code/kwimage/dev/bench_nms.py  --show
+    """
+    benchamrk_det_nms()
