@@ -9,7 +9,6 @@ CommandLine:
 Example:
     >>> # xdoctest: +REQUIRES(module:ndsampler)
     >>> from kwimage.structs.heatmap import *  # NOQA
-    >>> from kwimage.structs.heatmap import _dets_to_fcmaps
     >>> import kwimage
     >>> import ndsampler
     >>> sampler = ndsampler.CocoSampler.demo('shapes')
@@ -32,7 +31,7 @@ Example:
 Example:
     >>> # xdoctest: +REQUIRES(module:ndsampler)
     >>> from kwimage.structs.heatmap import *  # NOQA
-    >>> from kwimage.structs.heatmap import _dets_to_fcmaps
+    >>> from kwimage.structs.detections import _dets_to_fcmaps
     >>> import kwimage
     >>> import ndsampler
     >>> sampler = ndsampler.CocoSampler.demo('shapes')
