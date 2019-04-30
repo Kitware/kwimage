@@ -1,6 +1,6 @@
 ---
 kind: pipeline
-name: "Test kwplot in 3.6"
+name: "Test in 3.6"
 
 platform:
   os: linux
@@ -51,7 +51,7 @@ steps:
       - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
       - pip install -r requirements.txt -U
 
-      #- ./run_developer_setup.sh
+      # - ./run_developer_setup.sh
       # - ./run_tests.py
       
       # using pyargs tests the installed package instead of the source one
@@ -65,10 +65,10 @@ steps:
 trigger:
   event:
     - pull_request
-    - push
     - tag
 
 volumes:
   - name: ssh
     host:
       path: /home/vigilant-robot/.ssh
+
