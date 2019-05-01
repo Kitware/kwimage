@@ -1134,10 +1134,11 @@ class _BoxDrawMixins(object):
             return tuple(map(int, map(round, (x, y))))
 
         # Parameters for drawing the box rectangles
+        rect_color = kwplot.Color(color).as255('rgb')
         rectkw = {
             'thickness': int(2),
+            'color': rect_color,
         }
-        rect_color = kwplot.Color(color).as255('rgb')
 
         # Parameters for drawing the label text
         fontkw = {
@@ -1167,7 +1168,7 @@ class _BoxDrawMixins(object):
             # Note cv2.rectangle does work inplace
             if alpha_ < 1.0:
                 background = image.copy()
-            image = cv2.rectangle(image, pt1, pt2, rect_color, **rectkw)
+            image = cv2.rectangle(image, pt1, pt2, **rectkw)
             if label:
                 image = kwimage.draw_text_on_image(
                     image, text=label, org=org, **fontkw)
