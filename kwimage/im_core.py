@@ -49,6 +49,12 @@ def ensure_float01(img, dtype=np.float32, copy=True):
         img (ndarray): an image in uint255 or float01 format.
             Other formats will raise errors.
 
+    Returns:
+        ndarray: an array of floats in the range 0-1
+
+    Raises:
+        ValueError : if the image type is integer and not in [0-255]
+
     Example:
         >>> ensure_float01(np.array([[0, .5, 1.0]]))
         array([[0. , 0.5, 1. ]], dtype=float32)
@@ -56,7 +62,12 @@ def ensure_float01(img, dtype=np.float32, copy=True):
         array([[0..., 0.0039..., 0.784...]], dtype=float32)
     """
     if img.dtype.kind in ('i', 'u'):
-        assert img.max() <= 255
+        if img.min() < 0 or img.max() > 255:
+            import kwarray
+            raise ValueError(
+                'The image type is int, but its values are not '
+                'between 0 and 255. Image stats are {}'.format(
+                    kwarray.stats_dict(img)))
         img_ = img.astype(dtype, copy=copy) / 255.0
     else:
         img_ = img.astype(dtype, copy=copy)
@@ -65,11 +76,18 @@ def ensure_float01(img, dtype=np.float32, copy=True):
 
 def ensure_uint255(img, copy=True):
     """
-    Ensure that an image is encoded using a uint8 properly
+    Ensure that an image is encoded using a uint8 properly. Either
 
     Args:
         img (ndarray): an image in uint255 or float01 format.
             Other formats will raise errors.
+
+    Returns:
+        ndarray: an array of bytes in the range 0-255
+
+    Raises:
+        ValueError : if the image type is float and not in [0-1]
+        ValueError : if the image type is integer and not in [0-255]
 
     Example:
         >>> ensure_uint255(np.array([[0, .5, 1.0]]))
@@ -80,13 +98,24 @@ def ensure_uint255(img, copy=True):
     if img.dtype.kind == 'u':
         img_ = img.astype(np.uint8, copy=copy)
     elif img.dtype.kind == 'i':
-        assert img.min() >= 0 and img.max() <= 255
+        if img.min() < 0 or img.max() > 255:
+            import kwarray
+            raise AssertionError(
+                'The image type is signed int, but its values are not '
+                'between 0 and 255. Image stats are {}'.format(
+                    kwarray.stats_dict(img)))
         img_ = img.astype(np.uint8, copy=copy)
     else:
-        # If the image is a float check that it is between 0 and 1 and then
-        # convert.
-        assert img.min() >= 0 and img.max() <= 1
-        img_ = (img * 255).astype(np.uint8, copy=copy)
+        # If the image is a float check that it is between 0 and 1
+        # Use a +- epsilon of 1e-3 to account for floating errors
+        eps = 1e-3
+        if (img.min() < (0 - eps) or img.max() > (1 + eps)):
+            import kwarray
+            raise ValueError(
+                'The image type is float, but its values are not '
+                'between 0 and 1. Image stats are {}'.format(
+                    kwarray.stats_dict(img)))
+        img_ = (img.clip(0, 1) * 255).astype(np.uint8, copy=copy)
     return img_
 
 

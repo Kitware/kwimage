@@ -1,0 +1,146 @@
+"""
+What is the best way to read a common tiff image?
+
+
+Ignore:
+        du -sh ~/data/sample_ptif.ptif
+        du -sh ~/data/sample_cog.cog.tif
+        gdal_translate ~/data/sample_ptif.ptif ~/data/sample_cog.cog.tif -co TILED=YES -co COMPRESS=LZW -co COPY_SRC_OVERVIEWS=YES
+        gdal_translate ~/data/sample_ptif.ptif ~/data/sample_cog.cog.tif -co TILED=YES -co COMPRESS=JPEG -co COPY_SRC_OVERVIEWS=YES -co PHOTOMETRIC=YCBCR
+
+        gdal_translate foo.png test.cog.tif -co TILED=YES -co COMPRESS=JPEG -co COPY_SRC_OVERVIEWS=YES -co PHOTOMETRIC=YCBCR
+        gdal_translate foo.png test1.cog.tif -co TILED=YES -co COMPRESS=JPEG -co COPY_SRC_OVERVIEWS=YES
+        gdal_translate foo.png test2.cog.tif -co TILED=YES -co COMPRESS=LZW -co COPY_SRC_OVERVIEWS=YES
+
+        python -m ndsampler.validate_cog --verbose test.cog.tif
+        python -m ndsampler.validate_cog --verbose foo.png
+"""
+import numpy as np
+
+
+def _read_gdal_v1(fpath):
+    import gdal
+    try:
+        gdal_dset = gdal.Open(fpath)
+        if gdal_dset.RasterCount == 1:
+            band = gdal_dset.GetRasterBand(1)
+
+            color_table = band.GetColorTable()
+            if color_table is None:
+                image = np.array(band.ReadAsArray())
+            else:
+                raise Exception
+        elif gdal_dset.RasterCount == 3:
+            bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
+            channels = [np.array(band.ReadAsArray()) for band in bands]
+            image = np.dstack(channels)
+        else:
+            raise NotImplementedError(
+                'Can only read 1 or 3 channel NTF images. '
+                'Got {}'.format(gdal_dset.RasterCount))
+    except Exception:
+        raise
+    finally:
+        gdal_dset = None
+    return image
+
+
+def _read_gdal_v2(fpath):
+    import gdal
+    try:
+        gdal_dset = gdal.Open(fpath)
+        if gdal_dset.RasterCount == 1:
+            band = gdal_dset.GetRasterBand(1)
+
+            color_table = band.GetColorTable()
+            if color_table is None:
+                image = np.array(band.ReadAsArray())
+            else:
+                raise Exception('cant handle color tables yet')
+        elif gdal_dset.RasterCount == 3:
+            _gdal_dtype_lut = {
+                1: np.uint8,     2: np.uint16,
+                3: np.int16,     4: np.uint32,      5: np.int32,
+                6: np.float32,   7: np.float64,     8: np.complex_,
+                9: np.complex_,  10: np.complex64,  11: np.complex128
+            }
+            bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
+            gdal_type_code = bands[0].DataType
+            dtype = _gdal_dtype_lut[gdal_type_code]
+            shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize, gdal_dset.RasterCount)
+            # Preallocate and populate image
+            image = np.empty(shape, dtype=dtype)
+            for i, band in enumerate(bands):
+                image[:, :, i] = band.ReadAsArray()
+        else:
+            raise NotImplementedError(
+                'Can only read 1 or 3 channel NTF images. '
+                'Got {}'.format(gdal_dset.RasterCount))
+    except Exception:
+        raise
+    finally:
+        gdal_dset = None
+    return image
+
+
+def _read_rasterio(fpath):
+    import rasterio
+    dataset = rasterio.open(fpath)
+    image = dataset.read().transpose((1, 2, 0))
+    return image
+
+
+def _read_pil(fpath):
+    from PIL import Image
+    pil_img = Image.open(fpath)
+    image = np.asarray(pil_img)
+    return image
+
+
+def bench_imread():
+    import ubelt as ub
+
+    fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
+
+    # A color-table geotiff
+    # https://download.osgeo.org/geotiff/samples/
+    fpath = ub.grabdata('https://download.osgeo.org/geotiff/samples/usgs/c41078a1.tif')
+
+    ti = ub.Timerit(4, bestof=2, verbose=2)
+
+    results = {}
+
+    fpath = '/home/joncrall/data/sample_ptif.ptif'
+    fpath = '/home/joncrall/data/sample_cog.cog.tif'
+
+    for timer in ti.reset('gdal-v1'):
+        with timer:
+            image = _read_gdal_v1(fpath)
+    results[ti.label] = image.sum()
+
+    for timer in ti.reset('gdal-v2'):
+        with timer:
+            image = _read_gdal_v2(fpath)
+    results[ti.label] = image.sum()
+
+    for timer in ti.reset('rasterio'):
+        with timer:
+            image = _read_rasterio(fpath)
+    results[ti.label] = image.sum()
+
+    import skimage.io
+    """
+    pip install tifffile
+    pip install imagecodecs
+
+    """
+    for timer in ti.reset('skimage'):
+        with timer:
+            image = skimage.io.imread(fpath)
+    results[ti.label] = image.sum()
+
+    import cv2
+    for timer in ti.reset('cv2'):
+        with timer:
+            image = cv2.imread(fpath)
+    results[ti.label] = image.sum()

@@ -95,29 +95,7 @@ def imread(fpath, space='auto'):
     """
     try:
         if fpath.lower().endswith(('.ntf', '.nitf', '.ptif', '.cog.tiff')):
-            try:
-                import gdal
-            except ImportError:
-                raise ImportError('cannot read NITF/PTIF images without gdal')
-            try:
-                gdal_dset = gdal.Open(fpath)
-                if gdal_dset.RasterCount == 1:
-                    band = gdal_dset.GetRasterBand(1)
-                    image = np.array(band.ReadAsArray())
-                    src_space = 'gray'
-                elif gdal_dset.RasterCount == 3:
-                    bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
-                    channels = [np.array(band.ReadAsArray()) for band in bands]
-                    image = np.dstack(channels)
-                    src_space = 'rgb'  # note this isn't a very safe assumption
-                else:
-                    raise NotImplementedError(
-                        'Can only read 1 or 3 channel NTF images. '
-                        'Got {}'.format(gdal_dset.RasterCount))
-            except Exception:
-                raise
-            finally:
-                gdal_dset = None
+            image, src_space = _imread_gdal(fpath)
             auto_dst_space = src_space
         elif fpath.lower().endswith(('.tif', '.tiff')):
             import skimage.io
@@ -173,6 +151,48 @@ def imread(fpath, space='auto'):
     except Exception as ex:
         print('Error reading fpath = {!r}'.format(fpath))
         raise
+
+
+def _imread_gdal(fpath):
+    """ gdal imread backend """
+    import gdal
+    try:
+        gdal_dset = gdal.Open(fpath)
+        if gdal_dset.RasterCount == 1:
+            band = gdal_dset.GetRasterBand(1)
+
+            color_table = band.GetColorTable()
+            if color_table is None:
+                image = np.array(band.ReadAsArray())
+                src_space = 'gray'
+            else:
+                # src_space = 'rgb'
+                raise Exception('cant handle color tables yet')
+        elif gdal_dset.RasterCount == 3:
+            _gdal_dtype_lut = {
+                1: np.uint8,     2: np.uint16,
+                3: np.int16,     4: np.uint32,      5: np.int32,
+                6: np.float32,   7: np.float64,     8: np.complex_,
+                9: np.complex_,  10: np.complex64,  11: np.complex128
+            }
+            bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
+            gdal_type_code = bands[0].DataType
+            dtype = _gdal_dtype_lut[gdal_type_code]
+            shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize, gdal_dset.RasterCount)
+            # Preallocate and populate image
+            image = np.empty(shape, dtype=dtype)
+            for i, band in enumerate(bands):
+                image[:, :, i] = band.ReadAsArray()
+            src_space = 'rgb'  # note this isn't a very safe assumption
+        else:
+            raise NotImplementedError(
+                'Can only read 1 or 3 channel NTF images. '
+                'Got {}'.format(gdal_dset.RasterCount))
+    except Exception:
+        raise
+    finally:
+        gdal_dset = None
+    return image, src_space
 
 
 def imwrite(fpath, image, space='auto'):
