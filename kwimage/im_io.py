@@ -8,17 +8,21 @@ from . import im_cv2
 from . import im_core
 
 
-def imread(fpath, space='auto'):
+def imread(fpath, space='auto', backend='auto'):
     """
     Reads image data in a specified format using some backend implementation.
 
     Args:
-        space (str): the desired colorspace of the image. Can by any colorspace
-            accepted by `convert_colorspace`, or it can be 'auto', in which
-            case the colorspace of the image is unmodified (except in the case
-            where a color image is read by opencv, in which case we convert BGR
-            to RGB by default). If None, then no modification is made to
-            whaveter backend is used to read the image.
+        space (str, default='auto'): the desired colorspace of the image. Can
+            by any colorspace accepted by `convert_colorspace`, or it can be
+            'auto', in which case the colorspace of the image is unmodified
+            (except in the case where a color image is read by opencv, in which
+            case we convert BGR to RGB by default). If None, then no
+            modification is made to whaveter backend is used to read the image.
+
+        backend (str, default='auto'): which backend reader to use. By default
+            the file extension is used to determine this, but it can be
+            manually overridden. Valid backends are gdal, skimage, and cv2.
 
     Note:
         if space is something non-standard like HSV or LAB, then the file must
@@ -93,49 +97,25 @@ def imread(fpath, space='auto'):
         pil_img = Image.open(tif_fpath)
         assert int(Image.PILLOW_VERSION.split('.')[0]) > 4
     """
-    try:
-        if fpath.lower().endswith(('.ntf', '.nitf', '.ptif', '.cog.tiff')):
-            image, src_space = _imread_gdal(fpath)
-            auto_dst_space = src_space
-        elif fpath.lower().endswith(('.tif', '.tiff')):
-            import skimage.io
-            # with warnings.catch_warnings():
-            #     warnings.simplefilter("ignore")
-            # skimage reads color in RGB by default
-            image = skimage.io.imread(fpath)
-            n_channels = im_core.num_channels(image)
-            if n_channels == 3:
-                src_space = 'rgb'
-            elif n_channels == 4:
-                src_space = 'rgba'
-            elif n_channels == 1:
-                src_space = 'gray'
-            else:
-                raise NotImplementedError('unknown number of channels')
-            auto_dst_space = src_space
+    if backend == 'auto':
+        # Determine the backend reader using the file extension
+        _fpath_lower = fpath.lower()
+        if _fpath_lower.endswith(('.ntf', '.nitf', '.ptif', '.cog.tiff')):
+            backend = 'gdal'
+        elif _fpath_lower.endswith(('.tif', '.tiff')):
+            backend = 'skimage'
         else:
-            # opencv reads color in BGR by default
-            image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
-            if image is None:
-                if exists(fpath):
-                    raise IOError('OpenCV cannot read this image: "{}", '
-                                  'but it exists'.format(fpath))
-                else:
-                    raise IOError('OpenCV cannot read this image: "{}", '
-                                  'because it does not exist'.format(fpath))
+            backend = 'cv2'
 
-            n_channels = im_core.num_channels(image)
-            if n_channels == 3:
-                src_space = 'bgr'
-                auto_dst_space = 'rgb'
-            elif n_channels == 4:
-                src_space = 'bgra'
-                auto_dst_space = 'rgba'
-            elif n_channels == 1:
-                src_space = 'gray'
-                auto_dst_space = 'gray'
-            else:
-                raise NotImplementedError('unknown number of channels')
+    try:
+        if backend == 'gdal':
+            image, src_space, auto_dst_space = _imread_gdal(fpath)
+        elif backend == 'skimage':
+            image, src_space, auto_dst_space = _imread_skimage(fpath)
+        elif backend == 'cv2':
+            image, src_space, auto_dst_space = _imread_cv2(fpath)
+        else:
+            raise KeyError('Unknown imread backend={!r}'.format(backend))
 
         if space == 'auto':
             dst_space = auto_dst_space
@@ -151,6 +131,51 @@ def imread(fpath, space='auto'):
     except Exception as ex:
         print('Error reading fpath = {!r}'.format(fpath))
         raise
+
+
+def _imread_skimage(fpath):
+    import skimage.io
+    # with warnings.catch_warnings():
+    #     warnings.simplefilter("ignore")
+    # skimage reads color in RGB by default
+    image = skimage.io.imread(fpath)
+    n_channels = im_core.num_channels(image)
+    if n_channels == 3:
+        src_space = 'rgb'
+    elif n_channels == 4:
+        src_space = 'rgba'
+    elif n_channels == 1:
+        src_space = 'gray'
+    else:
+        raise NotImplementedError('unknown number of channels')
+    auto_dst_space = src_space
+    return image, src_space, auto_dst_space
+
+
+def _imread_cv2(fpath):
+    # opencv reads color in BGR by default
+    image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
+    if image is None:
+        if exists(fpath):
+            raise IOError('OpenCV cannot read this image: "{}", '
+                          'but it exists'.format(fpath))
+        else:
+            raise IOError('OpenCV cannot read this image: "{}", '
+                          'because it does not exist'.format(fpath))
+
+    n_channels = im_core.num_channels(image)
+    if n_channels == 3:
+        src_space = 'bgr'
+        auto_dst_space = 'rgb'
+    elif n_channels == 4:
+        src_space = 'bgra'
+        auto_dst_space = 'rgba'
+    elif n_channels == 1:
+        src_space = 'gray'
+        auto_dst_space = 'gray'
+    else:
+        raise NotImplementedError('unknown number of channels')
+    return image, src_space, auto_dst_space
 
 
 def _imread_gdal(fpath):
@@ -192,7 +217,8 @@ def _imread_gdal(fpath):
         raise
     finally:
         gdal_dset = None
-    return image, src_space
+    auto_dst_space = src_space
+    return image, src_space, auto_dst_space
 
 
 def imwrite(fpath, image, space='auto'):
