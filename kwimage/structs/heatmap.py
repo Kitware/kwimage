@@ -163,6 +163,8 @@ class _HeatmapDrawMixin(object):
                 mask = np.linalg.norm(a.offset, axis=0)
             elif channel == 'diameter':
                 mask = np.linalg.norm(a.diameter, axis=0)
+            elif channel == 'class_probs_max':
+                mask = a.class_probs.max(axis=0)
             else:
                 raise KeyError(channel)
             mask = mask / np.maximum(mask.max(), 1e-9)
@@ -232,6 +234,9 @@ class _HeatmapDrawMixin(object):
         return stacked
 
     def draw(self, image=None, **kwargs):
+        """
+        Accepts same args as draw_on, but uses maplotlib
+        """
         # If draw doesnt exist use draw_on
         import numpy as np
         if image is None:

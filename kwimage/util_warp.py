@@ -346,6 +346,11 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 def subpixel_align(dst, src, index, interp_axes=None):
     """
     Returns an aligned version of the source tensor and destination index.
+
+    Used as the backend to implement other subpixel functions like:
+        subpixel_accum, subpixel_maximum.
+
+
     """
     if interp_axes is None:
         # Assume spatial dimensions are trailing
@@ -703,6 +708,10 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
 
         output_shape (tuple, default=None):
             if specified the output is returned with this shape, otherwise
+
+    Notes:
+        This function powers most other functions in this file.
+        Speedups here can go a long way.
 
     Example:
         >>> inputs = np.arange(5) + 1
