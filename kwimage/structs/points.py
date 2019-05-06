@@ -55,11 +55,14 @@ class _PointsWarpMixin:
             >>> kpoi = pts.to_imgaug(input_dims)
         """
         import imgaug
-        if imgaug.__version__ == '0.2.8':
+        if imgaug.__version__ in ['0.2.8', '0.2.9']:
             # Hack to fix imgaug bug
             h, w = input_dims
             input_dims = (h + 1.0, w + 1.0)
         else:
+            # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
+            # comment: "is this still correct with float keypoints?  Seems like
+            # the -1 should be dropped"
             raise Exception('WAS THE BUG FIXED IN A NEW VERSION?')
         kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
         kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)

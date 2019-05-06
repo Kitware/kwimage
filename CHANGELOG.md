@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * The `imread` function now accepts a `backend` kwarg, which allows the user to control how an image is loaded.
 * Add `clip` method to `Polygon`
 * Add `class_idx` data-key to `Heatmap` for semantic segmentation support.
+* Add `class_energy` data-key to `Heatmap` for non-probabilistic output support.
 * Add `Detections.from_coco_annots`, to create detections from COCO-style annotations.
 * Add `to_coco` methods to all structures.
 

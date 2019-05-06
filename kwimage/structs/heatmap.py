@@ -892,7 +892,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     """
     # Valid keys for the data dictionary
     __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints',
-                    'class_idx']
+                    'class_idx', 'class_energy']
 
     # Valid keys for the meta dictionary
     __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
