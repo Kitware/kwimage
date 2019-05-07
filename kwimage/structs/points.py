@@ -489,13 +489,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     @classmethod
     def _from_coco(cls, coco_kpts):
+        """
+        """
         if coco_kpts is None:
             return None
         kp = np.array(coco_kpts).reshape(-1, 3)
-        xy = kp.T[0:2]
-        flags = kp.T[2]
-        xy = xy[flags == 2].T
-        return cls(xy=xy)
+        xy = kp[:, 0:2]
+        visible = kp[:, 2]
+        return cls(xy=xy, visible=visible)
 
 
 class PointsList(_generic.ObjectList):
