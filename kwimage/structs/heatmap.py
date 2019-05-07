@@ -156,7 +156,7 @@ class _HeatmapDrawMixin(object):
         if isinstance(channel, six.string_types):
             # TODO: this is a bit hacky / inefficient, probably needs minor cleanup
             if imgspace:
-                a = self.warp()
+                a = self.warp().numpy()
             else:
                 a = self
             if channel == 'offset':
@@ -165,6 +165,9 @@ class _HeatmapDrawMixin(object):
                 mask = np.linalg.norm(a.diameter, axis=0)
             elif channel == 'class_probs_max':
                 mask = a.class_probs.max(axis=0)
+            elif channel == 'class_energy_max':
+                mask = a.data['class_energy'].max(axis=0)
+                mask -= mask.min()
             else:
                 raise KeyError(channel)
             mask = mask / np.maximum(mask.max(), 1e-9)
@@ -233,17 +236,20 @@ class _HeatmapDrawMixin(object):
         stacked = kwimage.stack_images(colorized, overlap=-3, axis=1)
         return stacked
 
-    def draw(self, image=None, **kwargs):
+    def draw(self, image=None, imgspace=None, **kwargs):
         """
         Accepts same args as draw_on, but uses maplotlib
         """
         # If draw doesnt exist use draw_on
         import numpy as np
         if image is None:
-            dims = self.bounds
+            if imgspace:
+                dims = self.img_dims
+            else:
+                dims = self.bounds
             shape = tuple(dims) + (4,)
             image = np.zeros(shape, dtype=np.float32)
-        image = self.draw_on(image, **kwargs)
+        image = self.draw_on(image, imgspace=imgspace, **kwargs)
         import kwplot
         kwplot.imshow(image)
 
@@ -952,12 +958,14 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
     @property
     def bounds(self):
-        return self.class_probs.shape[1:]
+        return self.shape[-2:]
+        # return self.class_probs.shape[1:]
 
     @property
     def dims(self):
         """ space-time dimensions of this heatmap """
-        return self.class_probs.shape[1:]
+        return self.shape[-2:]
+        # return self.class_probs.shape[1:]
 
     def is_numpy(self):
         return self._impl.is_numpy
