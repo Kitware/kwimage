@@ -243,7 +243,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def warp(self, transform, input_shape=None, output_dims=None,
+    def warp(self, transform, input_dims=None, output_dims=None,
              inplace=False):
         """
         Generalized coordinate transform.
@@ -253,7 +253,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 scikit-image tranform, a transformation matrix, or
                 an imgaug Augmenter.
 
-            input_shape (Tuple): shape of the image these objects correspond to
+            input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
 
             output_dims (Tuple): unused in non-raster structures, only exists
@@ -288,9 +288,78 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params
         else:
+            try:
+                import imgaug
+            except ImportError:
+                import warnings
+                warnings.warn('imgaug is not installed')
+                raise TypeError(type(transform))
+            if isinstance(transform, imgaug.augmenters.Augmenter):
+                return new._warp_imgaug(transform, input_dims, inplace=True)
             raise TypeError(type(transform))
         new.data = kwimage.warp_points(matrix, new.data)
         return new
+
+    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
+        """
+        Warps by applying an augmenter from the imgaug library
+
+        Args:
+            augmenter (imgaug.augmenters.Augmenter):
+            input_dims (Tuple): h/w of the input image
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> import imgaug
+            >>> input_dims = (10, 10)
+            >>> self = Coords.random(10).scale(input_dims)
+            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> from matplotlib import pyplot as pl
+            >>> ax = plt.gca()
+            >>> ax.set_xlim(0, 10)
+            >>> ax.set_ylim(0, 10)
+            >>> self.draw(color='red', alpha=.4, radius=0.1)
+            >>> new.draw(color='blue', alpha=.4, radius=0.1)
+        """
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        kpoi = new.to_imgaug(input_dims=input_dims)
+        new_kpoi = augmenter.augment_keypoints(kpoi)
+        dtype = new.data.dtype
+        xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
+        new.data = xy
+        return new
+
+    def to_imgaug(self, input_dims):
+        """
+        Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10)
+            >>> input_dims = (10, 10)
+            >>> kpoi = self.to_imgaug(input_dims)
+        """
+        import imgaug
+        from distutils.version import LooseVersion
+        if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
+            # Hack to fix imgaug bug
+            h, w = input_dims
+            input_dims = (h + 1.0, w + 1.0)
+        else:
+            # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
+            # comment: "is this still correct with float keypoints?  Seems like
+            # the -1 should be dropped"
+            raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
+                            'imgaug.__version__={}'.format(imgaug.__version__))
+        kps = [imgaug.Keypoint(x, y) for x, y in self.data]
+        kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
+        return kpoi
 
     def scale(self, factor, output_dims=None, inplace=False):
         """

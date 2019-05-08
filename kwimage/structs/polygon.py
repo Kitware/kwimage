@@ -113,12 +113,24 @@ class _PolyWarpMixin:
         cs = [0] + np.cumsum(np.array(list(map(len, parts)))).tolist()
         flat_kps = list(ub.flatten(parts))
 
-        if imgaug.__version__ == '0.2.8':
+        # if imgaug.__version__ == '0.2.8':
+        #     # Hack to fix imgaug bug
+        #     h, w = input_dims
+        #     input_dims = (h + 1.0, w + 1.0)
+        # else:
+        #     raise Exception('WAS THE BUG FIXED IN A NEW VERSION?')
+        import imgaug
+        from distutils.version import LooseVersion
+        if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
             # Hack to fix imgaug bug
             h, w = input_dims
             input_dims = (h + 1.0, w + 1.0)
         else:
-            raise Exception('WAS THE BUG FIXED IN A NEW VERSION?')
+            # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
+            # comment: "is this still correct with float keypoints?  Seems like
+            # the -1 should be dropped"
+            raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
+                            'imgaug.__version__={}'.format(imgaug.__version__))
         kpoi = imgaug.KeypointsOnImage(flat_kps, shape=tuple(input_dims))
 
         kpoi = augmenter.augment_keypoints(kpoi)

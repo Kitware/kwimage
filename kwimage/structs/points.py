@@ -27,8 +27,8 @@ class _PointsWarpMixin:
             >>> new = self._warp_imgaug(augmenter, input_dims)
 
             >>> # xdoc: +REQUIRES(--show)
-            >>> kwil.autompl()
-            >>> kwil.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
             >>> from matplotlib import pyplot as pl
             >>> ax = plt.gca()
             >>> ax.set_xlim(0, 10)
