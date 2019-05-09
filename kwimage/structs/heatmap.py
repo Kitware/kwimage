@@ -559,6 +559,9 @@ class _HeatmapWarpMixin(object):
         if mat is None:
             mat = self.tf_data_to_img.params
 
+        if isinstance(mat, skimage.transform.AffineTransform):
+            mat = mat.params
+
         if output_dims is None:
             output_dims = self.img_dims
 
