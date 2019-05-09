@@ -253,14 +253,14 @@ class _HeatmapDrawMixin(object):
         import kwplot
         kwplot.imshow(image)
 
-    def draw_on(self, image, channel=0, invert=False, with_alpha=1.0,
+    def draw_on(self, image, channel=None, invert=False, with_alpha=1.0,
                 interpolation='linear', vecs=False, kpts=None, imgspace=None):
         """
         Overlays a heatmap channel on top of an image
 
         Args:
             image (ndarray): image to draw on
-            channel (int): category to visualize
+            channel (int | str): category index to visualize, or special key
             imgspace (bool, default=False): colorize the image after
                 warping into the image space.
 
@@ -312,6 +312,16 @@ class _HeatmapDrawMixin(object):
         """
         import kwimage
         import kwplot
+
+        if channel is None:
+            if 'class_probs' in self.data:
+                channel = 0
+            elif 'class_energy' in self.data:
+                channel = 'class_energy_max'
+            elif 'class_idx' in self.data:
+                channel = 'idx'
+            else:
+                raise Exception('unsure how to default channel')
 
         if imgspace is None:
             if np.all(image.shape[0:2] == np.array(self.img_dims)):
@@ -821,8 +831,10 @@ class _HeatmapAlgoMixin(object):
             raise KeyError(dim_thresh_space)
 
         dets = _prob_to_dets(
-            probs, diameter=self.diameter, offset=self.offset,
-            class_probs=self.class_probs,
+            probs,
+            diameter=self.data.get('diameter', None),
+            offset=self.data.get('offset', None),
+            class_probs=self.data.get('class_probs', None),
             keypoints=self.data.get('keypoints', None),
             min_score=min_score, num_min=num_min,
             max_dims=max_dims, min_dims=min_dims,
