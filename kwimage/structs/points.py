@@ -475,7 +475,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         if visible is None:
             visible = np.full((len(self), 1), fill_value=2)
         else:
-            raise NotImplementedError
+            visible = visible.reshape(-1, 1)
 
         # TODO: ensure these are in the right order for the classes
         flat_pts = np.hstack([self.xy, visible]).reshape(-1)
