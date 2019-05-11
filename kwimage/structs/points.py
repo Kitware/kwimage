@@ -325,13 +325,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> s = 128
             >>> image = np.zeros((s, s))
             >>> self = Points.random(10).scale(s)
-            >>> image = self.draw_on(image, radius=3)
+            >>> image = self.draw_on(image, radius=3, color='distinct')
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
-            >>> self.draw(radius=3, alpha=.5)
+            >>> self.draw(radius=3, alpha=.5, color='classes')
             >>> kwplot.show_if_requested()
         """
         import kwplot
@@ -340,6 +340,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         if radius is None:
+            if color == 'distinct':
+                raise Exception
             image = kwimage.atleast_3channels(image)
             image = kwimage.ensure_float01(image)
             value = kwplot.Color(color).as01()
@@ -349,13 +351,29 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             import cv2
             image = kwimage.atleast_3channels(image)
 
-            if image.dtype.kind == 'f':
-                value = kwplot.Color(color).as01()
-            else:
-                value = kwplot.Color(color).as255()
-            # image = kwimage.ensure_float01(image)
+            xy_pts = self.data['xy'].data.reshape(-1, 2)
 
-            for xy in self.data['xy'].data.reshape(-1, 2):
+            if color == 'distinct':
+                colors = kwplot.Color.distinct(len(xy_pts))
+            elif color == 'classes':
+                # TODO: read colors from categories if they exist
+                class_idxs = self.data['class_idxs']
+                _keys, _vals = kwarray.group_indices(class_idxs)
+                cls_colors = kwplot.Color.distinct(len(self.meta['classes']))
+                colors = list(ub.take(cls_colors, class_idxs))
+                if image.dtype.kind == 'f':
+                    colors = [kwplot.Color(c).as01() for c in colors]
+                else:
+                    colors = [kwplot.Color(c).as255() for c in colors]
+            else:
+                if image.dtype.kind == 'f':
+                    value = kwplot.Color(color).as01()
+                else:
+                    value = kwplot.Color(color).as255()
+                colors = [value] * len(xy_pts)
+                # image = kwimage.ensure_float01(image)
+
+            for xy, color_ in zip(xy_pts, colors):
                 # center = tuple(map(int, xy.tolist()))
                 center = tuple(xy.tolist())
                 axes = (radius / 2, radius / 2)
@@ -365,7 +383,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 # print('axes = {!r}'.format(axes))
                 image = cv2.ellipse(image, center, axes, angle=0.0,
                                     startAngle=0.0, endAngle=360.0,
-                                    color=value, thickness=-1)
+                                    color=color_, thickness=-1)
 
         image = dtype_fixer(image)
         return image
@@ -377,6 +395,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
             >>> pts.draw(radius=0.01)
+
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10, classes=['a', 'b', 'c'])
+            >>> self.draw(radius=0.01, color='classes')
         """
         import kwplot
         import matplotlib as mpl
@@ -391,7 +413,21 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         elif not ub.iterable(alpha):
             alpha = [alpha] * len(xy)
 
-        ptcolors = [kwplot.Color(color, alpha=a).as01('rgba') for a in alpha]
+        if color == 'distinct':
+            colors = kwplot.Color.distinct(len(alpha))
+        elif color == 'classes':
+            # TODO: read colors from categories if they exist
+            try:
+                class_idxs = self.data['class_idxs']
+                cls_colors = kwplot.Color.distinct(len(self.meta['classes']))
+            except KeyError:
+                raise Exception('cannot draw class colors without class_idxs and classes')
+            _keys, _vals = kwarray.group_indices(class_idxs)
+            colors = list(ub.take(cls_colors, class_idxs))
+        else:
+            colors = [color] * len(alpha)
+
+        ptcolors = [kwplot.Color(c, alpha=a).as01('rgba') for c, a in zip(colors, alpha)]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
         default_centerkw = {

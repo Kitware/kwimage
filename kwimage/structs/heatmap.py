@@ -496,7 +496,7 @@ class _HeatmapWarpMixin(object):
 
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
-             mat_is_xy=True):
+             mat_is_xy=True, version=None):
         """
         Warp all spatial maps. If the map contains spatial data, that data is
         also warped (ignoring the translation component).
@@ -570,9 +570,25 @@ class _HeatmapWarpMixin(object):
 
         impl = kwarray.ArrayAPI.coerce('tensor')
 
-        if mat_is_xy:
-            # If the matrix is in X/Y coords, modify it to be in Y/X coords
-            mat = mat[[1, 0, 2], :][:, [1, 0, 2]]
+        if version is None:
+            import warnings
+            warnings.warn(ub.paragraph(
+                '''
+                The old mat_is_xy logic has changed. Please ensure your
+                application works with the old logic. Then set version='old'
+                or 'new'. Both disable this warning message.
+                '''))
+            version = 'old'
+
+        # Change if matrix is in X/Y or Y/X coords.
+        if version == 'new':
+            if not mat_is_xy:
+                mat = mat[[1, 0, 2], :][:, [1, 0, 2]]
+        elif version == 'old':
+            if mat_is_xy:
+                mat = mat[[1, 0, 2], :][:, [1, 0, 2]]
+        else:
+            raise KeyError(version)
 
         mat = impl.asarray(mat)
 
@@ -1134,6 +1150,8 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             if 'kp_classes' not in locals():
                 kp_classes = list(range(self.data['keypoints'].shape[1]))  # HACK
             self.meta['kp_classes'] = kp_classes
+
+        self.meta['classes'] = classes
 
         return self
 

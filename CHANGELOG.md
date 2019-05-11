@@ -19,12 +19,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `imread` now read ptif and tiff files using GDAL by default
 * Tweaked implementation of `Heatmap.random`.
 * `ensure_uint255` and `ensure_float01` now raise proper `ValueErrors` instead of using assert statements.
+* `Points` draw methods now accept 'classes' as a color arg
 
 ### Fixed
 * Python2 issues with `Boxes.__repr__`
 * Python2 issues mask shape using List[long] instead of List[int]
 * Zero division in Cython `non-maximum-supression` with zero sized boxes.
 * `Heatmap.shape` now works even if `class_probs` is not set.
+
+### Issues
+* Heatmap.warp may have some odd behavior and emit warnings. 
 
 
 ## Version 0.3.0
