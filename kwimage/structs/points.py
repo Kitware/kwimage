@@ -524,15 +524,83 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             raise NotImplementedError('dim > 2, dense case todo')
 
     @classmethod
-    def _from_coco(cls, coco_kpts):
+    def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):
         """
+
+        Args:
+            coco_kpts (list | dict): either the original list keypoint encoding
+                or the new dict keypoint encoding.
+
+            class_idxs (list): only needed if using old style
+
+            classes (list | CategoryTree): list of all keypoint category names
+
+        Example:
+            >>> classes = ['mouth', 'left-hand', 'right-hand']
+            >>> coco_kpts = [
+            >>>     {'xy': (0, 0), 'visible': 2, 'keypoint_category': 'left-hand'},
+            >>>     {'xy': (1, 2), 'visible': 2, 'keypoint_category': 'mouth'},
+            >>> ]
+            >>> Points._from_coco(coco_kpts, classes=classes)
+
+            >>> coco_kpts = [0, 0, 2, 0, 1, 2]
+            >>> Points._from_coco(coco_kpts)
+
         """
         if coco_kpts is None:
             return None
-        kp = np.array(coco_kpts).reshape(-1, 3)
-        xy = kp[:, 0:2]
-        visible = kp[:, 2]
-        return cls(xy=xy, visible=visible)
+
+        if len(coco_kpts) and isinstance(ub.peek(coco_kpts), dict):
+            # new style
+            xy = []
+            visible = []
+            cidx_list = []
+
+            if class_idxs is not None:
+                raise ValueError(
+                    'class_idxs should not be specified for new-style')
+
+            # raise NotImplementedError(
+            #     '''
+            #     Needs to have extra information available to map
+            #     between keypoint category ids and idxs.
+            #     ''')
+
+            for kpdict in coco_kpts:
+                if 'keypoint_category_id' in kpdict:
+                    cid = kpdict['keypoint_category_id']
+                    try:
+                        cidx = classes.id_to_idx[cid]
+                    except AttributeError:
+                        print('classes needs to be a ndsampler.CategoryTree')
+                elif 'keypoint_category' in kpdict:
+                    assert classes is not None
+                    cname = kpdict['keypoint_category']
+                    cidx = classes.index(cname)
+
+                cidx_list.append(cidx)
+                xy.append(kpdict['xy'])
+                visible.append(kpdict.get('visible', 2))
+
+            if cidx_list:
+                assert len(cidx_list) == len(xy), 'missing category indices'
+            else:
+                cidx_list = None
+
+            xy = np.array(xy)
+            visible = np.array(visible)
+            self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
+                       classes=classes)
+            return self
+        else:
+            # original style
+            kp = np.array(coco_kpts).reshape(-1, 3)
+            xy = kp[:, 0:2]
+            visible = kp[:, 2]
+            if class_idxs is not None:
+                assert len(class_idxs) == len(xy)
+            return cls(xy=xy, visible=visible, class_idxs=class_idxs,
+                       classes=classes)
 
 
 class PointsList(_generic.ObjectList):
