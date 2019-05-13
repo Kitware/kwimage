@@ -598,7 +598,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             xy = kp[:, 0:2]
             visible = kp[:, 2]
             if class_idxs is not None:
-                assert len(class_idxs) == len(xy)
+                if len(class_idxs) == 0:
+                    class_idxs = None
+                else:
+                    assert len(class_idxs) == len(xy), '{} {}'.format(
+                        len(class_idxs), len(xy))
             return cls(xy=xy, visible=visible, class_idxs=class_idxs,
                        classes=classes)
 
