@@ -591,7 +591,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             visible = np.array(visible)
             self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
                        classes=classes)
-            return self
         else:
             # original style
             kp = np.array(coco_kpts).reshape(-1, 3)
@@ -599,12 +598,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             visible = kp[:, 2]
             if class_idxs is not None:
                 if len(class_idxs) == 0:
-                    class_idxs = None
+                    if len(kp) > 0:
+                        import warnings
+                        warnings.warn('Creating keypoints with unknown class information')
+                        class_idxs = [-1] * len(xy)
+                    else:
+                        class_idxs = []
                 else:
                     assert len(class_idxs) == len(xy), '{} {}'.format(
                         len(class_idxs), len(xy))
-            return cls(xy=xy, visible=visible, class_idxs=class_idxs,
+            self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
                        classes=classes)
+        return self
 
 
 class PointsList(_generic.ObjectList):

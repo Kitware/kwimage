@@ -649,11 +649,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     kpcidxs = None
                     if kp_classes is not None:
                         kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
-                    xy = np.array(k).reshape(-1, 3)[:, 0:2]
-                    pts = kwimage.Points(
-                        xy=xy,
-                        class_idxs=kpcidxs,
-                    )
+                    if 1:
+                        pts = kwimage.Points._from_coco(
+                            k, class_idxs=kpcidxs, classes=kp_classes)
+                    else:
+                        xy = np.array(k).reshape(-1, 3)[:, 0:2]
+                        pts = kwimage.Points(
+                            xy=xy,
+                            class_idxs=kpcidxs,
+                        )
                     kpts.append(pts)
             dets.data['keypoints'] = kwimage.PointsList(kpts)
 
@@ -1348,12 +1352,16 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                 if pts is not None:
                     # Keypoint offsets
                     for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
-                        kp_x, kp_y = xy
-                        kp_dx = kp_x - xcoord[mask]
-                        kp_dy = kp_y - ycoord[mask]
-                        kpts_mask[0, kp_cidx][mask] = kp_dx
-                        kpts_mask[1, kp_cidx][mask] = kp_dy
-                        kpts_ignore_mask[kp_cidx][mask] = 0
+                        if kp_cidx < 0:
+                            import warnings
+                            warnings.warn('Cannot rasterize keypoints with unknown classes')
+                        else:
+                            kp_x, kp_y = xy
+                            kp_dx = kp_x - xcoord[mask]
+                            kp_dy = kp_y - ycoord[mask]
+                            kpts_mask[0, kp_cidx][mask] = kp_dx
+                            kpts_mask[1, kp_cidx][mask] = kp_dy
+                            kpts_ignore_mask[kp_cidx][mask] = 0
 
         # SeeAlso:
         # ~/code/ovharn/ovharn/models/mcd_coder.py
