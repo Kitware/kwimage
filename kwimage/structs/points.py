@@ -43,6 +43,10 @@ class _PointsWarpMixin:
         xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
         import kwimage
         new.data['xy'] = kwimage.Coords(xy)
+        if 'tf_data_to_img' in self.meta:
+            # warping via imgaug invalidates the tf_data_to_img transform
+            self.meta = self.meta.copy()
+            self.meta.pop('tf_data_to_img')
         return new
 
     def to_imgaug(self, input_dims):
@@ -119,6 +123,15 @@ class _PointsWarpMixin:
                 raise TypeError(type(transform))
         new.data['xy'] = new.data['xy'].warp(transform, input_dims,
                                              output_dims, inplace)
+        if 'tf_data_to_img' in new.meta:
+            # if we are maintaining a transform to img space, we need to update it
+            new.meta = new.meta.copy()
+            tf = transform
+            if isinstance(tf, np.ndarray):
+                tf = skimage.transform.AffineTransform(matrix=transform)
+            inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
+            # new.meta['tf_data_to_img'] = new.meta['tf_data_to_img'] + inv_tf
+            new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
 
     def scale(self, factor, output_dims=None, inplace=False):
@@ -139,6 +152,12 @@ class _PointsWarpMixin:
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = new.data['xy'].scale(factor, output_dims=output_dims,
                                               inplace=inplace)
+        if 'tf_data_to_img' in new.meta:
+            # if we are maintaining a transform to img space, we need to update it
+            new.meta = new.meta.copy()
+            tf = skimage.transform.AffineTransform(scale=factor)
+            inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
+            new.meta['tf_data_to_img'] = (inv_tf + new.meta['tf_data_to_img'])
         return new
 
     def translate(self, offset, output_dims=None, inplace=False):
@@ -159,6 +178,12 @@ class _PointsWarpMixin:
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = new.data['xy'].translate(offset, output_dims, inplace)
+        if 'tf_data_to_img' in new.meta:
+            # if we are maintaining a transform to img space, we need to update it
+            new.meta = new.meta.copy()
+            tf = skimage.transform.AffineTransform(translation=offset)
+            inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
+            new.meta['tf_data_to_img'] = (inv_tf + new.meta['tf_data_to_img'])
         return new
 
 

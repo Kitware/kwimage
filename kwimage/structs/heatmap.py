@@ -600,7 +600,12 @@ class _HeatmapWarpMixin(object):
         # Modify data_to_img so the new heatmap will also properly upscale to
         # the image coordinates.
         inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
-        newmeta['tf_data_to_img'] = self.tf_data_to_img + inv_tf
+        # newmeta['tf_data_to_img'] = self.tf_data_to_img + inv_tf
+        # NOTE: The old models were working with the above code, but I think
+        # thats because there was no translation factor. I'm pretty sure the
+        # code on the bottom is correct. Obviously if something messes up, it
+        # should probably be reverted. Left-vs-right is hard.
+        newmeta['tf_data_to_img'] = inv_tf + self.tf_data_to_img
 
         for k, v in self.data.items():
             if v is not None:
