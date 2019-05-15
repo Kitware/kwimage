@@ -274,6 +274,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> import kwimage
             >>> self = kwimage.Points.random(classes=[1, 2, 3])
             >>> self.data
+            >>> print('self.data = {!r}'.format(self.data))
         """
         rng = kwarray.ensure_rng(rng)
         if ub.iterable(num):
@@ -281,6 +282,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             shape = (num, 2)
         self = Points(xy=rng.rand(*shape))
+        self.data['visible'] = np.full(len(self), fill_value=2)
         if classes is not None:
             class_idxs = (rng.rand(len(self)) * len(classes)).astype(np.int)
             self.data['class_idxs'] = class_idxs
@@ -525,22 +527,58 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def _to_coco(self):
+    def _to_coco(self, style='orig'):
         """
         Example:
             >>> from kwimage.structs.points import *  # NOQA
-            >>> self = Points.random(4)
+            >>> self = Points.random(4, classes=['a', 'b'])
+            >>> orig = self._to_coco(style='orig')
+            >>> print('orig = {!r}'.format(orig))
+            >>> new_name = self._to_coco(style='new-name')
+            >>> print('new_name = {}'.format(ub.repr2(new_name, nl=-1)))
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> import ndsampler
+            >>> self.meta['classes'] = ndsampler.CategoryTree.coerce(self.meta['classes'])
+            >>> new_id = self._to_coco(style='new-id')
+            >>> print('new_id = {}'.format(ub.repr2(new_id, nl=-1)))
         """
-        visible = self.data.get('visible', None)
-        assert len(self.xy.shape) == 2
-        if visible is None:
-            visible = np.full((len(self), 1), fill_value=2)
-        else:
-            visible = visible.reshape(-1, 1)
+        if style == 'orig':
+            visible = self.data.get('visible', None)
+            assert len(self.xy.shape) == 2
+            if visible is None:
+                visible = np.full((len(self), 1), fill_value=2)
+            else:
+                visible = visible.reshape(-1, 1)
 
-        # TODO: ensure these are in the right order for the classes
-        flat_pts = np.hstack([self.xy, visible]).reshape(-1)
-        return flat_pts
+            # TODO: ensure these are in the right order for the classes
+            flat_pts = np.hstack([self.xy, visible]).reshape(-1)
+            return flat_pts
+        elif style.startswith('new'):
+
+            if style == 'new-id':
+                use_id = True
+            elif style == 'new-name':
+                use_id = False
+            else:
+                raise KeyError(style)
+
+            new_kpts = []
+            for i, xy in enumerate(self.data['xy'].data.tolist()):
+                kpdict = {'xy': xy}
+                if 'visible' in self.data:
+                    kpdict['visible'] = int(self.data['visible'][i])
+                if 'class_idxs' in self.data:
+                    cidx = self.data['class_idxs'][i]
+                    if use_id:
+                        cid = self.meta['classes'].idx_to_id[cidx]
+                        kpdict['keypoint_category_id'] = int(cid)
+                    else:
+                        cname = self.meta['classes'][cidx]
+                        kpdict['keypoint_category'] = cname
+                new_kpts.append(kpdict)
+            return new_kpts
+        else:
+            raise KeyError(style)
 
     def to_coco(self):
         if len(self.xy.shape) == 2:
