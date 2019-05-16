@@ -70,6 +70,7 @@ class _PointsWarpMixin:
             # the -1 should be dropped"
             raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
                             'imgaug.__version__={}'.format(imgaug.__version__))
+        input_dims = tuple(map(int, input_dims))
         kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
         kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi

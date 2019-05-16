@@ -358,6 +358,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
                             'imgaug.__version__={}'.format(imgaug.__version__))
         kps = [imgaug.Keypoint(x, y) for x, y in self.data]
+        input_dims = tuple(map(int, input_dims))
         kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi
 
