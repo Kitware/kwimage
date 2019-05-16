@@ -350,7 +350,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
             # Hack to fix imgaug bug
             h, w = input_dims
-            input_dims = (h + 1.0, w + 1.0)
+            input_dims = (int(h + 1.0), int(w + 1.0))
         else:
             # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
             # comment: "is this still correct with float keypoints?  Seems like
