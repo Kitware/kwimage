@@ -651,9 +651,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             else:
                 cidx_list = None
 
+            cidx_list = np.array(cidx_list)
+
             xy = np.array(xy)
             visible = np.array(visible)
-            self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
+            self = cls(xy=xy, visible=visible, class_idxs=cidx_list,
                        classes=classes)
         else:
             # original style
