@@ -631,18 +631,24 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             #     ''')
 
             for kpdict in coco_kpts:
-                if 'keypoint_category_id' in kpdict:
-                    cid = kpdict['keypoint_category_id']
-                    try:
-                        cidx = classes.id_to_idx[cid]
-                    except AttributeError:
-                        print('classes needs to be a ndsampler.CategoryTree')
-                elif 'keypoint_category' in kpdict:
-                    assert classes is not None
-                    cname = kpdict['keypoint_category']
-                    cidx = classes.index(cname)
 
-                cidx_list.append(cidx)
+                if classes is not None:
+                    if 'keypoint_category_id' in kpdict:
+                        cid = kpdict['keypoint_category_id']
+                        try:
+                            cidx = classes.id_to_idx[cid]
+                        except AttributeError:
+                            raise TypeError('classes needs to be a ndsampler.CategoryTree to parse keypoint_category_id')
+                    elif 'keypoint_category' in kpdict:
+                        assert classes is not None
+                        cname = kpdict['keypoint_category']
+                        cidx = classes.index(cname)
+                    cidx_list.append(cidx)
+                else:
+                    if 'keypoint_category_id' in kpdict or 'keypoint_category' in kpdict:
+                        import warnings
+                        raise warnings.warn('classes should be specified for new-style')
+
                 xy.append(kpdict['xy'])
                 visible.append(kpdict.get('visible', 2))
 
