@@ -760,7 +760,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> assert new != self
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        new.data['boxes'] = new.data['boxes'].warp(transform, inplace=inplace)
+        new.data['boxes'] = new.data['boxes'].warp(transform,
+                                                   input_dims=input_dims,
+                                                   inplace=inplace)
         if 'keypoints' in new.data:
             new.data['keypoints'] = new.data['keypoints'].warp(
                 transform, input_dims=input_dims, output_dims=output_dims,
