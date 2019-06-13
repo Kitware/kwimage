@@ -673,6 +673,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     if len(kp) > 0:
                         import warnings
                         warnings.warn('Creating keypoints with unknown class information')
+                        # raise Exception('Creating keypoints with unknown class information')
                         class_idxs = [-1] * len(xy)
                     else:
                         class_idxs = []
