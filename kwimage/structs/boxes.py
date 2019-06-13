@@ -501,9 +501,8 @@ class _BoxConversionMixins(object):
             raise ValueError('data must be 2d got {}d'.format(len(self.data.shape)))
 
         tlbr = self.to_tlbr(copy=False).data
-        bboi = imgaug.BoundingBoxesOnImage(
-            [imgaug.BoundingBox(x1, y1, x2, y2)
-             for x1, y1, x2, y2 in tlbr], shape=shape)
+        bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in tlbr]
+        bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
         return bboi
 
     def to_shapley(self):
@@ -823,7 +822,8 @@ class _BoxTransformMixins(object):
                     warnings.warn('imgaug is not installed')
                     raise TypeError(type(transform))
                 if isinstance(transform, imgaug.augmenters.Augmenter):
-                    return new._warp_imgaug(transform, input_dims, inplace=True)
+                    aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)
+                    return aug
                 else:
                     raise TypeError(type(transform))
 
