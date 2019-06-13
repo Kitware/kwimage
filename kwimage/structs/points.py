@@ -530,6 +530,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     def _to_coco(self, style='orig'):
         """
+        Converts to an mscoco-like representation
+
+        Note:
+            items that are usually id-references to other objects may need to
+            be rectified.
+
+        Args:
+            style (str): either orig, new-id, or new-name
+
+        Returns:
+            Dict: mscoco-like representation
+
         Example:
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(4, classes=['a', 'b'])
@@ -559,6 +571,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             if style == 'new-id':
                 use_id = True
             elif style == 'new-name':
+                use_id = False
+            elif style == 'new':
                 use_id = False
             else:
                 raise KeyError(style)
@@ -621,8 +635,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             cidx_list = []
 
             if class_idxs is not None:
-                raise ValueError(
-                    'class_idxs should not be specified for new-style')
+                import warnings
+                warnings.warn('class_idxs should not be specified for new-style')
+                class_idxs = None
 
             # raise NotImplementedError(
             #     '''
@@ -630,8 +645,19 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             #     between keypoint category ids and idxs.
             #     ''')
 
-            for kpdict in coco_kpts:
+            if classes is None:
+                # See if we can infer the classes.
+                # This may cause compatiblity issues.
+                inferred_classes = [kpdict.get('keypoint_category', None)
+                                    for kpdict in coco_kpts]
+                if all(inferred_classes):
+                    import warnings
+                    warnings.warn(
+                        'Inferring keypoint classes in _from_coco. '
+                        'It would be better to specify them explicitly')
+                    classes = sorted(set(inferred_classes))
 
+            for kpdict in coco_kpts:
                 if classes is not None:
                     if 'keypoint_category_id' in kpdict:
                         cid = kpdict['keypoint_category_id']
@@ -646,8 +672,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     cidx_list.append(cidx)
                 else:
                     if 'keypoint_category_id' in kpdict or 'keypoint_category' in kpdict:
-                        import warnings
-                        raise warnings.warn('classes should be specified for new-style')
+                        # import warnings
+                        # warnings.warn('classes should be specified for new-style')
+                        raise Exception('classes should be specified for new-style')
 
                 xy.append(kpdict['xy'])
                 visible.append(kpdict.get('visible', 2))

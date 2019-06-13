@@ -188,7 +188,14 @@ def _imread_gdal(fpath):
 
             color_table = band.GetColorTable()
             if color_table is None:
-                image = np.array(band.ReadAsArray())
+                buf = band.ReadAsArray()
+                if buf is None:
+                    # Sometimes this works if you try again. I don't know why.
+                    # It spits out annoying messages, not sure how to supress.
+                    buf = band.ReadAsArray()
+                    if buf is None:
+                        raise IOError('GDal was unable to read this band')
+                image = np.array(buf)
                 src_space = 'gray'
             else:
                 # src_space = 'rgb'
