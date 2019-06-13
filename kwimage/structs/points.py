@@ -27,9 +27,8 @@ class _PointsWarpMixin:
             >>> new = self._warp_imgaug(augmenter, input_dims)
 
             >>> # xdoc: +REQUIRES(--show)
-            >>> kwplot.autompl()
+            >>> plt = kwplot.autoplt()
             >>> kwplot.figure(fnum=1, doclf=True)
-            >>> from matplotlib import pyplot as pl
             >>> ax = plt.gca()
             >>> ax.set_xlim(0, 10)
             >>> ax.set_ylim(0, 10)
@@ -67,9 +66,11 @@ class _PointsWarpMixin:
         else:
             # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
             # comment: "is this still correct with float keypoints?  Seems like
-            # the -1 should be dropped"
-            raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
-                            'imgaug.__version__={}'.format(imgaug.__version__))
+            # the -1 should be dropped".
+            # raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
+            #                 'imgaug.__version__={}'.format(imgaug.__version__))
+            # Yes, the bug was fixed. I fixed it.
+            pass
         input_dims = tuple(map(int, input_dims))
         kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
         kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
