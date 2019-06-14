@@ -151,12 +151,44 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.imshow(colormask1, pnum=(1, 2, 1), fnum=1, title='output space')
             >>> kwplot.imshow(colormask2, pnum=(1, 2, 2), fnum=1, title='image space')
             >>> kwplot.show_if_requested()
+
+        Ignore:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> self = Heatmap.random(rng=0, dims=(32, 32))
+            >>> self.data['class_energy'] = (self.data['class_probs'] - .5) * 10
+            >>> colormask1 = self.colorize('class_energy_color', imgspace=False)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(colormask1, fnum=1, title='output space')
+            >>> kwplot.show_if_requested()
         """
         import kwplot
+
+        def _per_channel_color(data, with_alpha):
+            # Another hacky mode
+            # data = a.data['class_energy']
+            import kwplot
+            import kwimage
+            # TODO: read colors from classes CategoryTree
+            colors = kwplot.Color.distinct(len(data))
+            # Each class gets its own color, and modulates the alpha
+            layers = []
+            for cidx, chan in enumerate(data):
+                color = colors[cidx]
+                layer = np.empty(tuple(chan.shape) + (4,))
+                layer[..., 3] = chan
+                layer[..., 0:3] = color
+                layers.append(layer)
+            colormask = kwimage.overlay_alpha_layers(layers)
+            colormask[..., 3] *= with_alpha
+            return colormask
+
         if isinstance(channel, six.string_types):
             # TODO: this is a bit hacky / inefficient, probably needs minor cleanup
             if imgspace:
-                a = self.warp().numpy()
+                mat = self.tf_data_to_img.params
+                a = self.warp(mat, version='old').numpy()
             else:
                 a = self
             if channel == 'offset':
@@ -168,6 +200,20 @@ class _HeatmapDrawMixin(object):
             elif channel == 'class_energy_max':
                 mask = a.data['class_energy'].max(axis=0)
                 mask -= mask.min()
+            elif channel == 'class_energy_color':
+                # Another hacky mode
+                import scipy
+                import scipy.special
+                data = a.data['class_energy']
+                if 1:
+                    # Assume 0-1 range, but stretch beyond if needed
+                    low = min(0, data.min())
+                    high = max(1, data.max())
+                    data = (data - low) / (high - low)
+                else:
+                    data = scipy.special.softmax(data, axis=0)
+                colormask = _per_channel_color(data, with_alpha)
+                return colormask
             else:
                 raise KeyError(channel)
             mask = mask / np.maximum(mask.max(), 1e-9)
@@ -572,7 +618,7 @@ class _HeatmapWarpMixin(object):
 
         if version is None:
             import warnings
-            warnings.warn(ub.paragraph(
+            raise warnings.warn(ub.paragraph(
                 '''
                 The old mat_is_xy logic has changed. Please ensure your
                 application works with the old logic. Then set version='old'
@@ -636,6 +682,7 @@ class _HeatmapWarpMixin(object):
             [ 0,  0, 1.],
         ])
         return self.warp(mat, output_dims=output_dims,
+                         version='old',
                          interpolation=interpolation)
 
     def translate(self, offset, output_dims=None, interpolation='linear'):
@@ -649,6 +696,7 @@ class _HeatmapWarpMixin(object):
             [0, 0, 1.],
         ])
         return self.warp(mat, output_dims=output_dims,
+                         version='old',
                          interpolation=interpolation)
 
 
