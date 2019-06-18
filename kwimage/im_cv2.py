@@ -192,8 +192,8 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
     """
     Draws boxes on an image.
 
-    TODO:
-        - [ ] Move to kwplot?
+    Note:
+        This function also exists in kwplot
 
     Args:
         img (ndarray): image to copy and draw on
@@ -240,8 +240,8 @@ def draw_text_on_image(img, text, org, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
-    TODO:
-        - [ ] Move to kwplot?
+    Note:
+        This function also exists in kwplot
 
     Args:
         img (ndarray): image to draw on
