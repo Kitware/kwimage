@@ -1108,9 +1108,10 @@ def _coerce_coco_segmentation(data, dims=None):
             else:
                 self = kwimage.Mask(data, MaskFormat.ARRAY_RLE)
         elif 'exterior' in data:
-            raise NotImplementedError('explicit polygon coerce')
+            self = kwimage.Polygon(data)
+            # raise NotImplementedError('explicit polygon coerce')
         else:
-            raise TypeError
+            raise TypeError(type(data))
     elif isinstance(data, list):
         # THIS IS NOT AN IDEAL FORMAT. IDEALLY WE WILL MODIFY COCO TO USE
         # DICTIONARIES FOR POLYGONS, WHICH ARE UNAMBIGUOUS
@@ -1138,9 +1139,9 @@ def _coerce_coco_segmentation(data, dims=None):
                 else:
                     self = kwimage.MultiPolygon(poly_list)
             else:
-                raise TypeError
+                raise TypeError(type(data))
     else:
-        raise TypeError
+        raise TypeError(type(data))
     return self
 
 

@@ -103,7 +103,10 @@ def imread(fpath, space='auto', backend='auto'):
         if _fpath_lower.endswith(('.ntf', '.nitf', '.ptif', '.cog.tiff')):
             backend = 'gdal'
         elif _fpath_lower.endswith(('.tif', '.tiff')):
-            backend = 'skimage'
+            if _have_gdal():
+                backend = 'gdal'
+            else:
+                backend = 'skimage'
         else:
             backend = 'cv2'
 
@@ -200,14 +203,15 @@ def _imread_gdal(fpath):
             else:
                 # src_space = 'rgb'
                 raise Exception('cant handle color tables yet')
-        elif gdal_dset.RasterCount == 3:
+        elif gdal_dset.RasterCount in [3, 4]:
             _gdal_dtype_lut = {
                 1: np.uint8,     2: np.uint16,
                 3: np.int16,     4: np.uint32,      5: np.int32,
                 6: np.float32,   7: np.float64,     8: np.complex_,
                 9: np.complex_,  10: np.complex64,  11: np.complex128
             }
-            bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
+            bands = [gdal_dset.GetRasterBand(i)
+                     for i in range(1, gdal_dset.RasterCount + 1)]
             gdal_type_code = bands[0].DataType
             dtype = _gdal_dtype_lut[gdal_type_code]
             shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize, gdal_dset.RasterCount)
@@ -215,7 +219,12 @@ def _imread_gdal(fpath):
             image = np.empty(shape, dtype=dtype)
             for i, band in enumerate(bands):
                 image[:, :, i] = band.ReadAsArray()
-            src_space = 'rgb'  # note this isn't a very safe assumption
+
+            # note this isn't a very safe assumption
+            if gdal_dset.RasterCount == 3:
+                src_space = 'rgb'
+            elif gdal_dset.RasterCount == 4:
+                src_space = 'rgba'
         else:
             raise NotImplementedError(
                 'Can only read 1 or 3 channel NTF images. '
@@ -340,3 +349,12 @@ def imwrite(fpath, image, space='auto'):
                     '(e.g. png/jpg)'.format(fpath))
             else:
                 raise
+
+
+def _have_gdal():
+    try:
+        import gdal  # NOQA
+    except ImportError:
+        return False
+    else:
+        return True
