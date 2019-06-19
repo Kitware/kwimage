@@ -1108,7 +1108,7 @@ def _coerce_coco_segmentation(data, dims=None):
             else:
                 self = kwimage.Mask(data, MaskFormat.ARRAY_RLE)
         elif 'exterior' in data:
-            self = kwimage.Polygon(data)
+            self = kwimage.Polygon(**data)
             # raise NotImplementedError('explicit polygon coerce')
         else:
             raise TypeError(type(data))

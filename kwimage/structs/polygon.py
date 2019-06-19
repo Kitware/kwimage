@@ -282,12 +282,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
             import kwimage
             if 'exterior' in data:
-                if isinstance(data['exterior'], (np.ndarray, torch.Tensor)):
+                if isinstance(data['exterior'], (list, tuple)):
+                    data['exterior'] = kwimage.Coords(np.array(data['exterior']))
+                elif isinstance(data['exterior'], (np.ndarray, torch.Tensor)):
                     data['exterior'] = kwimage.Coords(data['exterior'])
             if 'interiors' in data:
                 holes = []
                 for hole in data['interiors']:
-                    if isinstance(hole, (np.ndarray, torch.Tensor)):
+                    if isinstance(hole, (list, tuple)):
+                        hole = kwimage.Coords(np.array(hole))
+                    elif isinstance(hole, (np.ndarray, torch.Tensor)):
                         hole = kwimage.Coords(hole)
                     holes.append(hole)
                 data['interiors'] = holes
