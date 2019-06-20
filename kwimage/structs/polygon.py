@@ -491,6 +491,25 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
+    def to_shapely(self):
+        """
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(module:shapely)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(n_holes=1)
+            >>> self = self.scale(100)
+            >>> geom = self.to_shapely()
+            >>> print('geom = {!r}'.format(geom))
+        """
+        import shapely
+        import shapely.geometry
+        geom = shapely.geometry.Polygon(
+            shell=self.data['exterior'].data,
+            holes=[c.data for c in self.data['interiors']]
+        )
+        return geom
+
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False):
         """
         Example:
@@ -664,6 +683,22 @@ class MultiPolygon(_generic.ObjectList):
         self = _coerce_coco_segmentation(data, dims=dims)
         self = self.to_multi_polygon()
         return self
+
+    def to_shapely(self):
+        """
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(module:shapely)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = MultiPolygon.random(rng=0)
+            >>> geom = self.to_shapely()
+            >>> print('geom = {!r}'.format(geom))
+        """
+        import shapely
+        import shapely.geometry
+        polys = [p.to_shapely() for p in self.data]
+        geom = shapely.geometry.MultiPolygon(polys)
+        return geom
 
     def _to_coco(self):
         """
