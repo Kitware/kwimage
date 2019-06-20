@@ -618,7 +618,7 @@ class _HeatmapWarpMixin(object):
 
         if version is None:
             import warnings
-            raise warnings.warn(ub.paragraph(
+            warnings.warn(ub.paragraph(
                 '''
                 The old mat_is_xy logic has changed. Please ensure your
                 application works with the old logic. Then set version='old'
