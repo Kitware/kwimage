@@ -439,6 +439,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             else:
                 offset_ = offset
             assert offset_.shape == (dim,)
+            offset_ = impl.astype(offset_, data.dtype)
             data += offset_
         return new
 
