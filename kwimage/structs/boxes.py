@@ -1103,6 +1103,10 @@ class _BoxDrawMixins(object):
         """
         import kwplot
         boxes = self.to_xywh()
+        if len(boxes.shape) == 1 and boxes.shape[0] == 4:
+            # Hack to draw non-2d boxes
+            boxes = boxes[None, :]
+
         kwplot.draw_boxes(boxes, color=color, labels=labels, alpha=alpha,
                           centers=centers, fill=fill, lw=lw, ax=ax)
 

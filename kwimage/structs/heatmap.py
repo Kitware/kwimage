@@ -165,17 +165,35 @@ class _HeatmapDrawMixin(object):
         """
         import kwplot
 
-        def _per_channel_color(data, with_alpha):
+        def _per_channel_color(data, with_alpha, classes=None):
             # Another hacky mode
             # data = a.data['class_energy']
             import kwplot
             import kwimage
-            # TODO: read colors from classes CategoryTree
-            colors = kwplot.Color.distinct(len(data))
+
+            # Define default colors
+            default_cidx_to_color = kwplot.Color.distinct(len(data))
+
+            # try and read colors from classes CategoryTree
+            try:
+                cidx_to_color = []
+                for cidx in range(len(data)):
+                    node = classes[cidx]
+                    color = classes.graph.nodes[node].get('color', None)
+                    if color is None:
+                        # fallback, ignore conflicts
+                        color = default_cidx_to_color[cidx]
+                    else:
+                        color = kwplot.Color(color).as01()
+                    cidx_to_color.append(color)
+            except Exception as ex:
+                # fallback on default colors
+                cidx_to_color = default_cidx_to_color
+
             # Each class gets its own color, and modulates the alpha
             layers = []
             for cidx, chan in enumerate(data):
-                color = colors[cidx]
+                color = cidx_to_color[cidx]
                 layer = np.empty(tuple(chan.shape) + (4,))
                 layer[..., 3] = chan
                 layer[..., 0:3] = color
@@ -212,7 +230,8 @@ class _HeatmapDrawMixin(object):
                     data = (data - low) / (high - low)
                 else:
                     data = scipy.special.softmax(data, axis=0)
-                colormask = _per_channel_color(data, with_alpha)
+                classes = self.classes
+                colormask = _per_channel_color(data, with_alpha, classes)
                 return colormask
             else:
                 raise KeyError(channel)
