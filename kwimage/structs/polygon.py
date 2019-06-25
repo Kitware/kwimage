@@ -520,7 +520,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
-    def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False):
+    def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,
+             border=False):
         """
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -563,7 +564,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         verts = np.array(verts)
         path = Path(verts, codes)
-        patch = mpl.patches.PathPatch(path, alpha=alpha, color=color)
+
+        kw = {}
+        if border:
+            kw['linewidth'] = 2
+            try:
+                edgecolor = list(kwplot.Color(border).as01())
+            except Exception:
+                edgecolor = list(color)
+                # hack to darken
+                edgecolor[0] -= .1
+                edgecolor[1] -= .1
+                edgecolor[2] -= .1
+                edgecolor = [min(1, max(0, c)) for c in edgecolor]
+            kw['edgecolor'] = edgecolor
+
+        patch = mpl.patches.PathPatch(path, alpha=alpha, facecolor=color, **kw)
         ax.add_patch(patch)
 
         if setlim:
