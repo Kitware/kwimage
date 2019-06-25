@@ -196,8 +196,8 @@ class _PolyWarpMixin:
                 raise TypeError(type(transform))
             if isinstance(transform, imgaug.augmenters.Augmenter):
                 return new._warp_imgaug(transform, input_dims, inplace=True)
-            else:
-                raise TypeError(type(transform))
+            # else:
+            #     raise TypeError(type(transform))
         new.data['exterior'] = new.data['exterior'].warp(transform, input_dims,
                                                          output_dims, inplace)
         new.data['interiors'] = [
@@ -510,6 +510,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         )
         return geom
 
+    @classmethod
+    def from_shapely(Polygon, geom):
+        """
+        Convert a shapely polygon to a kwimage.Polygon
+        """
+        exterior = np.array(geom.exterior.coords.xy).T
+        interiors = [np.array(g.coords.xy).T for g in geom.interiors]
+        self = Polygon(exterior=exterior, interiors=interiors)
+        return self
+
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False):
         """
         Example:
@@ -561,20 +571,23 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             ax.set_xlim(x1, x2)
             ax.set_ylim(y1, y2)
 
-    def _to_coco(self):
+    def _to_coco(self, style='orig'):
         interiors = self.data.get('interiors', [])
-        if interiors:
-            raise NotImplementedError('no holes yet')
+        if style == 'orig':
+            if interiors:
+                raise ValueError('Original coco does not support holes')
+            return self.data['exterior'].data.ravel().tolist()
+        elif style == 'new':
             _new = {
-                'exterior': self.data['exterior'].data.ravel().tolist(),
-                'interiors': [item.data.ravel().tolist() for item in interiors]
+                'exterior': self.data['exterior'].data.tolist(),
+                'interiors': [item.data.tolist() for item in interiors]
             }
             return _new
         else:
-            return self.data['exterior'].data.ravel().tolist()
+            raise KeyError(style)
 
-    def to_coco(self):
-        return self._to_coco()
+    def to_coco(self, style='orig'):
+        return self._to_coco(style=style)
 
     def to_multi_polygon(self):
         return MultiPolygon([self])
@@ -699,6 +712,18 @@ class MultiPolygon(_generic.ObjectList):
         polys = [p.to_shapely() for p in self.data]
         geom = shapely.geometry.MultiPolygon(polys)
         return geom
+
+    @classmethod
+    def from_shapely(MultiPolygon, geom):
+        """
+        Convert a shapely polygon or multipolygon to a kwimage.MultiPolygon
+        """
+        if geom.type == 'Polygon':
+            polys = [Polygon.from_shapely(geom)]
+        else:
+            polys = [Polygon.from_shapely(g) for g in geom.geoms]
+        self = MultiPolygon(polys)
+        return self
 
     def _to_coco(self):
         """
