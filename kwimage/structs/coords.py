@@ -280,6 +280,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> self = Coords.random(10, rng=0)
             >>> assert np.all(self.warp(np.eye(3)).data == self.data)
             >>> assert np.all(self.warp(np.eye(2)).data == self.data)
+
+        Ignore:
+            >>> # xdoctest: +SKIP
+            >>> # xdoctest: +REQUIRES(module:osr)
+            >>> wgs84_crs = osr.SpatialReference()
+            >>> wgs84_crs.ImportFromEPSG(4326)
+            >>> transform = osr.CoordinateTransformation(wgs84_crs, wgs84_crs)
+            >>> self = Coords.random(10, rng=0)
+            >>> new = self.warp(transform)
+            >>> assert np.all(new.data == self.data)
         """
         import kwimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
@@ -288,6 +298,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params
         else:
+
+            ### Try to accept imgaug tranforms ###
             try:
                 import imgaug
             except ImportError:
@@ -296,6 +308,22 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 raise TypeError(type(transform))
             if isinstance(transform, imgaug.augmenters.Augmenter):
                 return new._warp_imgaug(transform, input_dims, inplace=True)
+
+            ### Try to accept GDAL tranforms ###
+            try:
+                import osr
+            except ImportError:
+                import warnings
+                warnings.warn('gdal/osr is not installed')
+            else:
+                if isinstance(transform, osr.CoordinateTransformation):
+                    new_pts = []
+                    for x, y in new.data:
+                        x, y, z = transform.TransformPoint(x, y, 0)
+                        assert z == 0
+                        new_pts.append((x, y))
+                    new.data = np.array(new_pts, dtype=new.data.dtype)
+                    return new
             raise TypeError(type(transform))
         new.data = kwimage.warp_points(matrix, new.data)
         return new

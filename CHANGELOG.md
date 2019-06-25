@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add `to_coco` methods to all structures.
 
 ### Changed
+* `Coords.warp` now tentatively supports OSR transforms.
 * Continue improvements of annotation structures
 * Increased efficiency of Cython CPU non-max-suppression
 * `imread` now read ptif and tiff files using GDAL by default
