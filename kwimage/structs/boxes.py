@@ -1135,7 +1135,11 @@ class _BoxDrawMixins(object):
         import kwplot
         import kwimage
         def _coords(x, y):
+            x = min(max(x, 0), w - 1)
+            y = min(max(y, 0), h - 1)
             return tuple(map(int, map(round, (x, y))))
+
+        h, w = image.shape[0:2]
 
         # Parameters for drawing the box rectangles
         rect_color = kwplot.Color(color).as255('rgb')
