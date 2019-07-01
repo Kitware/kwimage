@@ -1172,7 +1172,9 @@ class _BoxDrawMixins(object):
             # Note cv2.rectangle does work inplace
             if alpha_ < 1.0:
                 background = image.copy()
-            image = cv2.rectangle(image, pt1, pt2, **rectkw)
+            import xdev
+            with xdev.embed_on_exception_context:
+                image = cv2.rectangle(image, pt1, pt2, **rectkw)
             if label:
                 image = kwimage.draw_text_on_image(
                     image, text=label, org=org, **fontkw)
