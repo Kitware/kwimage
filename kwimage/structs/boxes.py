@@ -1135,6 +1135,7 @@ class _BoxDrawMixins(object):
         import kwplot
         import kwimage
         def _coords(x, y):
+            # ensure coords don't go out of bounds or cv2 throws weird error
             x = min(max(x, 0), w - 1)
             y = min(max(y, 0), h - 1)
             return tuple(map(int, map(round, (x, y))))
@@ -1176,9 +1177,8 @@ class _BoxDrawMixins(object):
             # Note cv2.rectangle does work inplace
             if alpha_ < 1.0:
                 background = image.copy()
-            import xdev
-            with xdev.embed_on_exception_context:
-                image = cv2.rectangle(image, pt1, pt2, **rectkw)
+
+            image = cv2.rectangle(image, pt1, pt2, **rectkw)
             if label:
                 image = kwimage.draw_text_on_image(
                     image, text=label, org=org, **fontkw)
