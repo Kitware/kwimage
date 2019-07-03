@@ -108,7 +108,7 @@ class _HeatmapDrawMixin(object):
             color = classes.graph.nodes[node].get('color', None)
             if color is None:
                 color = next(backup_colors)
-            name_to_color[node] = color
+            name_to_color[node] = kwplot.Color(color).as01()
 
         cx_to_color = np.array([name_to_color[cname] for cname in classes])
         colorized = cx_to_color[cidxs]
@@ -165,6 +165,13 @@ class _HeatmapDrawMixin(object):
         """
         import kwplot
 
+        if channel == 'idx':
+            # HACK
+            import kwimage
+            colormask = self._colorize_class_idx()
+            colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
+            return colormask
+
         def _per_channel_color(data, with_alpha, classes=None):
             # Another hacky mode
             # data = a.data['class_energy']
@@ -180,6 +187,8 @@ class _HeatmapDrawMixin(object):
                 for cidx in range(len(data)):
                     node = classes[cidx]
                     color = classes.graph.nodes[node].get('color', None)
+                    if True:
+                        assert color is not None
                     if color is None:
                         # fallback, ignore conflicts
                         color = default_cidx_to_color[cidx]
@@ -218,6 +227,11 @@ class _HeatmapDrawMixin(object):
             elif channel == 'class_energy_max':
                 mask = a.data['class_energy'].max(axis=0)
                 mask -= mask.min()
+            elif channel == 'class_probs_color':
+                data = a.data['class_probs']
+                classes = self.classes
+                colormask = _per_channel_color(data, with_alpha, classes)
+                return colormask
             elif channel == 'class_energy_color':
                 # Another hacky mode
                 import scipy
@@ -392,15 +406,14 @@ class _HeatmapDrawMixin(object):
             if np.all(image.shape[0:2] == np.array(self.img_dims)):
                 imgspace = True
 
-        if channel is None or channel == 'idx':
+        if channel is None:
             # Hack: draw prediction mask
-            colormask = self._colorize_class_idx()
-            colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
-        else:
-            colormask = self.colorize(channel, invert=invert,
-                                      with_alpha=with_alpha,
-                                      interpolation=interpolation,
-                                      imgspace=imgspace)
+            channel = 'idx'
+
+        colormask = self.colorize(channel, invert=invert,
+                                  with_alpha=with_alpha,
+                                  interpolation=interpolation,
+                                  imgspace=imgspace)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 

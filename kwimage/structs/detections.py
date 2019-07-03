@@ -307,6 +307,7 @@ class _DetAlgoMixin:
 
         kw_heat = {
             'class_idx': class_idx,
+            'classes': classes,
             'img_dims': img_dims,
             'tf_data_to_img': tf_data_to_img,
             'datakeys': ['kpts_ignore', 'class_idx'],
