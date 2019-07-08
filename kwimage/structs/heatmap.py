@@ -121,7 +121,9 @@ class _HeatmapDrawMixin(object):
         visualization
 
         Args:
-            channel (int): category to visualize
+            channel (int | str): index of category to visualize, or a special
+                code indicating how to visualize multiple classes.
+
             imgspace (bool, default=False): colorize the image after
                 warping into the image space.
 
@@ -165,13 +167,6 @@ class _HeatmapDrawMixin(object):
         """
         import kwplot
 
-        if channel == 'idx':
-            # HACK
-            import kwimage
-            colormask = self._colorize_class_idx()
-            colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
-            return colormask
-
         def _per_channel_color(data, with_alpha, classes=None):
             # Another hacky mode
             # data = a.data['class_energy']
@@ -211,6 +206,13 @@ class _HeatmapDrawMixin(object):
             colormask[..., 3] *= with_alpha
             return colormask
 
+        if channel == 'idx' or channel == 'class_idx':
+            # HACK
+            import kwimage
+            colormask = self._colorize_class_idx()
+            colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
+            return colormask
+
         if isinstance(channel, six.string_types):
             # TODO: this is a bit hacky / inefficient, probably needs minor cleanup
             if imgspace:
@@ -227,12 +229,12 @@ class _HeatmapDrawMixin(object):
             elif channel == 'class_energy_max':
                 mask = a.data['class_energy'].max(axis=0)
                 mask -= mask.min()
-            elif channel == 'class_probs_color':
+            elif channel == 'class_probs_color' or channel == 'class_probs':
                 data = a.data['class_probs']
                 classes = self.classes
                 colormask = _per_channel_color(data, with_alpha, classes)
                 return colormask
-            elif channel == 'class_energy_color':
+            elif channel == 'class_energy_color' or channel == 'class_energy':
                 # Another hacky mode
                 import scipy
                 import scipy.special
