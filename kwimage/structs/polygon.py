@@ -741,17 +741,17 @@ class MultiPolygon(_generic.ObjectList):
         self = MultiPolygon(polys)
         return self
 
-    def _to_coco(self):
+    def _to_coco(self, style='orig'):
+        return self.to_coco(style=style)
+
+    def to_coco(self, style='orig'):
         """
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = MultiPolygon.random(1, rng=0)
-            >>> self._to_coco()
+            >>> self.to_coco()
         """
-        return [item._to_coco() for item in self.data]
-
-    def to_coco(self):
-        return [item.to_coco() for item in self.data]
+        return [item.to_coco(style=style) for item in self.data]
 
 
 class PolygonList(_generic.ObjectList):

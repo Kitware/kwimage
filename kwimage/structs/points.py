@@ -596,16 +596,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             raise KeyError(style)
 
-    def to_coco(self):
+    def to_coco(self, style='orig'):
+        """
+        See _to_coco
+        """
         if len(self.xy.shape) == 2:
-            return self._to_coco()
+            return self._to_coco(style=style)
         else:
             raise NotImplementedError('dim > 2, dense case todo')
 
     @classmethod
-    def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):
+    def from_coco(cls, coco_kpts, class_idxs=None, classes=None):
         """
-
         Args:
             coco_kpts (list | dict): either the original list keypoint encoding
                 or the new dict keypoint encoding.
@@ -620,12 +622,16 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>>     {'xy': (0, 0), 'visible': 2, 'keypoint_category': 'left-hand'},
             >>>     {'xy': (1, 2), 'visible': 2, 'keypoint_category': 'mouth'},
             >>> ]
-            >>> Points._from_coco(coco_kpts, classes=classes)
+            >>> Points.from_coco(coco_kpts, classes=classes)
 
             >>> coco_kpts = [0, 0, 2, 0, 1, 2]
-            >>> Points._from_coco(coco_kpts)
-
+            >>> Points.from_coco(coco_kpts)
         """
+        return cls._from_coco(coco_kpts, class_idxs=class_idxs,
+                              classes=classes)
+
+    @classmethod
+    def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):
         if coco_kpts is None:
             return None
 

@@ -115,7 +115,7 @@ class _HeatmapDrawMixin(object):
         return colorized
 
     def colorize(self, channel, invert=False, with_alpha=1.0,
-                 interpolation='linear', imgspace=False):
+                 interpolation='linear', imgspace=False, cmap=None):
         """
         Creates a colorized version of a heatmap channel suitable for
         visualization
@@ -260,7 +260,10 @@ class _HeatmapDrawMixin(object):
 
             if invert:
                 mask = 1 - mask
-        colormask = kwplot.make_heatmask(mask, with_alpha=with_alpha)
+
+        if cmap is None:
+            cmap = 'plasma'
+        colormask = kwplot.make_heatmask(mask, with_alpha=with_alpha, cmap=cmap)
         return colormask
 
     def draw_stacked(self, image=None, dsize=(224, 224), ignore_class_idxs={},
@@ -550,6 +553,12 @@ class _HeatmapWarpMixin(object):
         if self.tf_data_to_img is None and self.img_dims is None:
             aligned = chw.cpu().numpy()
         else:
+            if self.tf_data_to_img is None:
+                # If img dims are the same then we dont need a transform we
+                # know its identity
+                if self.img_dims == self.dims:
+                    return chw.cpu().numpy()
+
             output_dims = self.img_dims
             mat = torch.Tensor(self.tf_data_to_img.params[0:3])
             outputs = kwimage.warp_tensor(
