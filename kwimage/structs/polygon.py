@@ -36,7 +36,7 @@ class _PolyArrayBackend:
             newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
                        else impl.tensor(v, device)
                        for k, v in self.data.items()}
-        new = self.__class__(newdata)
+        new = self.__class__(newdata, self.meta)
         return new
 
     def numpy(self):
@@ -61,7 +61,7 @@ class _PolyArrayBackend:
             # newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
             newdata = {k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
                        for k, v in self.data.items()}
-        new = self.__class__(newdata)
+        new = self.__class__(newdata, self.meta)
         return new
 
 
@@ -265,17 +265,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         >>> self = Polygon(**data)
     """
     __datakeys__ = ['exterior', 'interiors']
+    __metakeys__ = ['classes']
 
-    def __init__(self, data=None, datakeys=None, **kwargs):
+    def __init__(self, data=None, meta=None, datakeys=None, metakeys=None, **kwargs):
         if kwargs:
-            if data:
-                raise ValueError('Cannot specify kwargs AND data dict')
+            if data or meta:
+                raise ValueError('Cannot specify kwargs AND data/meta dicts')
             _datakeys = self.__datakeys__
-            # Allow the user to specify custom data keys
+            _metakeys = self.__metakeys__
+            # Allow the user to specify custom data and meta keys
             if datakeys is not None:
                 _datakeys = _datakeys + list(datakeys)
+            if metakeys is not None:
+                _metakeys = _metakeys + list(metakeys)
             # Perform input checks whenever kwargs is given
             data = {key: kwargs.pop(key) for key in _datakeys if key in kwargs}
+            meta = {key: kwargs.pop(key) for key in _metakeys if key in kwargs}
             if kwargs:
                 raise ValueError(
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
@@ -301,8 +306,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data is explicitly specified
+            meta = data.meta
             data = data.data
+        if meta is None:
+            meta = {}
         self.data = data
+        self.meta = meta
 
     def __nice__(self):
         return ub.repr2(self.data, nl=1)
@@ -619,7 +628,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         # return MultiPolygon([self])
 
     def copy(self):
-        self2 = Polygon(self.data)
+        self2 = Polygon(self.data, self.meta)
         self2.data['exterior'] = self2.data['exterior'].copy()
         self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
         return self2

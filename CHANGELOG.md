@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add `class_energy` data-key to `Heatmap` for non-probabilistic output support.
 * Add `Detections.from_coco_annots`, to create detections from COCO-style annotations.
 * Add `to_coco` methods to all structures.
+* Add `meta` to `Polygons`
 
 ### Changed
 * `Coords.warp` now tentatively supports OSR transforms.
