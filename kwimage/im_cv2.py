@@ -51,13 +51,36 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     Resizes an image by a scale factor.
 
     Because the result image must have an integer number of pixels, the scale
-    factor is rounded, and the rounded scale factor is returnedG
+    factor is rounded, and the rounded scale factor is optionaly returned.
 
     Args:
-        dsize (ndarray): an image
-        scale (float or tuple): desired floating point scale factor
+        img (ndarray): image to resize
+
+        scale (float or Tuple[float, float]):
+            desired floating point scale factor. If a tuple, the dimension
+            ordering is x,y.
+
+        interpolation (str | int): interpolation key or code (e.g. linear lanczos)
+
+        return_scale (bool, default=False):
+            if True returns both the new image and the actual scale factor used
+            to achive the new integer image size.
+
+    SeeAlso:
+        imresize
+
+    Example:
+        >>> import kwimage
+        >>> import numpy as np
+        >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
+        >>> new_img, new_scale = kwimage.imscale(img, scale=.85,
+        >>>                                      interpolation='nearest',
+        >>>                                      return_scale=True)
+        >>> assert new_scale == (.8, .8)
+        >>> assert new_img.shape == (8, 8, 3)
     """
     dsize = img.shape[0:2][::-1]
+
     try:
         sx, sy = scale
     except TypeError:
@@ -65,6 +88,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     w, h = dsize
     new_w = int(round(w * sx))
     new_h = int(round(h * sy))
+
     new_scale = new_w / w, new_h / h
     new_dsize = (new_w, new_h)
 
@@ -73,6 +97,130 @@ def imscale(img, scale, interpolation=None, return_scale=False):
 
     if return_scale:
         return new_img, new_scale
+    else:
+        return new_img
+
+
+def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
+             interpolation=None, return_info=False):
+    """
+    Resize an image based on a scale factor, final size, or size and aspect
+    ratio.
+
+    Slightly more general than cv2.resize and kwimage.imscale, allows for
+    specification of either a scale factor, a final size, or the final size for
+    a particular dimension.
+
+    Args:
+        img (ndarray): image to resize
+
+        scale (float or Tuple[float, float]):
+            desired floating point scale factor. If a tuple, the dimension
+            ordering is x,y. Mutually exclusive with dsize, max_dim, and
+            min_dim.
+
+        dsize (Tuple[None | int, None | int]): the desired with and height
+            of the new image. If a dimension is None, then it is automatically
+            computed to preserve aspect ratio. Mutually exclusive with size,
+            max_dim, and min_dim.
+
+        max_dim (int): new size of the maximum dimension, the other
+            dimension is scaled to maintain aspect ratio. Mutually exclusive
+            with size, dsize, and min_dim.
+
+        min_dim (int): new size of the minimum dimension, the other
+            dimension is scaled to maintain aspect ratio.Mutually exclusive
+            with size, dsize, and max_dim.
+
+        interpolation (str | int): interpolation key or code (e.g. linear lanczos)
+
+        return_info (bool, default=False):
+            if True returns information about the final transformation in a
+            dictionary.
+
+    Returns:
+        ndarray | Tuple[ndarray, Dict] :
+            the new image and optionally an info dictionary
+
+    Example:
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Test scale
+        >>> img = np.zeros((16, 10, 3), dtype=np.uint8)
+        >>> new_img, info = kwimage.imresize(img, scale=.85,
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> assert info['scale'].tolist() == [.8, 0.875]
+        >>> # Test dsize without None
+        >>> new_img, info = kwimage.imresize(img, dsize=(5, 12),
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> assert info['scale'].tolist() == [0.5 , 0.75]
+        >>> # Test dsize with None
+        >>> new_img, info = kwimage.imresize(img, dsize=(6, None),
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> assert info['scale'].tolist() == [0.6, 0.625]
+        >>> # Test max_dim
+        >>> new_img, info = kwimage.imresize(img, max_dim=6,
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> assert info['scale'].tolist() == [0.4  , 0.375]
+        >>> # Test min_dim
+        >>> new_img, info = kwimage.imresize(img, min_dim=6,
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> assert info['scale'].tolist() == [0.6  , 0.625]
+    """
+    old_w, old_h = img.shape[0:2][::-1]
+
+    _mutex_args = [scale, dsize, max_dim, min_dim]
+    if sum(a is not None for a in _mutex_args) != 1:
+        raise ValueError(
+            'Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim')
+
+    if scale is not None:
+        try:
+            sx, sy = scale
+        except TypeError:
+            sx = sy = scale
+        new_w = old_w * sx
+        new_h = old_h * sy
+    elif dsize is not None:
+        new_w, new_h = dsize
+    elif max_dim is not None:
+        if old_w > old_h:
+            new_w, new_h = max_dim, None
+        else:
+            new_w, new_h = None, max_dim
+    elif min_dim is not None:
+        if old_w > old_h:
+            new_w, new_h = None, min_dim
+        else:
+            new_w, new_h = min_dim, None
+    else:
+        raise AssertionError('impossible')
+
+    if new_w is None:
+        assert new_h is not None
+        new_w = new_h * old_w / old_h
+    elif new_h is None:
+        assert new_w is not None
+        new_h = new_w * old_h / old_w
+
+    new_dsize = (int(round(new_w)), int(round(new_h)))
+
+    interpolation = _rectify_interpolation(interpolation)
+    new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
+
+    if return_info:
+        old_dsize = (old_w, old_h)
+        new_scale = np.array(new_dsize) / np.array(old_dsize)
+        info = {
+            'scale': new_scale,
+            'dsize': new_dsize,
+        }
+        return new_img, info
     else:
         return new_img
 
