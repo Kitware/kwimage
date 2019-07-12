@@ -1044,6 +1044,9 @@ def _coerce_coco_segmentation(data, dims=None):
     """
     Attempts to auto-inspect the format of segmentation data
 
+    TODO:
+        [ ] - Create general Segmentation class that has multiple backends
+
     Args:
         data : the data to coerce
 
@@ -1120,7 +1123,8 @@ def _coerce_coco_segmentation(data, dims=None):
         else:
             first = ub.peek(data)
             if isinstance(first, dict):
-                raise NotImplementedError('MultiPolygon')
+                self = kwimage.MultiPolygon(
+                    [kwimage.Polygon(**item) for item in data])
             elif isinstance(first, int):
                 exterior = np.array(data).reshape(-1, 2)
                 self = kwimage.Polygon(exterior=exterior)
