@@ -320,20 +320,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def random(cls, n=6, n_holes=0, convex=True, tight=False, rng=None):
         """
         Args:
-            n (int): number of points in the polygon (must be more than 4)
+            n (int): number of points in the polygon (must be 3 or more)
             n_holes (int): number of holes
             tight (bool, default=False): fits the minimum and maximum points
                 between 0 and 1
+            convex (bool, default=True): force resulting polygon will be convex
+               (may remove exterior points)
 
         CommandLine:
             xdoctest -m kwimage.structs.polygon Polygon.random
 
         Example:
-            >>> rng = 0
-            >>> n = 20
-            >>> n_holes = 2
+            >>> rng = None
+            >>> n = 4
+            >>> n_holes = 1
             >>> cls = Polygon
-            >>> self = Polygon.random(n=n, rng=rng, n_holes=n_holes)
+            >>> self = Polygon.random(n=n, rng=rng, n_holes=n_holes, convex=1)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -344,16 +346,95 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             https://gis.stackexchange.com/questions/207731/random-multipolygon
             https://stackoverflow.com/questions/8997099/random-polygon
             https://stackoverflow.com/questions/27548363/from-voronoi-tessellation-to-shapely-polygons
+            https://stackoverflow.com/questions/8997099/algorithm-to-generate-random-2d-polygon
         """
         import kwarray
-
         import scipy
         rng = kwarray.ensure_rng(rng)
-        points = rng.rand(n, 2)
+
+        def _gen_polygon2(n, irregularity, spikeyness):
+            """
+            Creates the polygon by sampling points on a circle around the centre.
+            Randon noise is added by varying the angular spacing between sequential points,
+            and by varying the radial distance of each point from the centre.
+
+            Based on original code by Mike Ounsworth
+
+            Args:
+                n (int): number of vertices
+                irregularity (float): [0,1] indicating how much variance there
+                    is in the angular spacing of vertices. [0,1] will map to
+                    [0, 2pi/numberOfVerts]
+                spikeyness (float): [0,1] indicating how much variance there is
+                    in each vertex from the circle of radius aveRadius. [0,1] will
+                    map to [0, aveRadius]
+
+            Returns:
+                a list of vertices, in CCW order.
+
+            Example:
+                n = 4
+                irregularity = 0
+                spikeyness = 0
+            """
+            # Generate around the unit circle
+            cx, cy = (0.0, 0.0)
+            radius = 1
+
+            tau = np.pi * 2
+
+            irregularity = np.clip(irregularity, 0, 1) * 2 * np.pi / n
+            spikeyness = np.clip(spikeyness, 1e-9, 1)
+
+            # generate n angle steps
+            lower = (tau / n) - irregularity
+            upper = (tau / n) + irregularity
+            angle_steps = rng.uniform(lower, upper, n)
+
+            # normalize the steps so that point 0 and point n+1 are the same
+            k = angle_steps.sum() / (2 * np.pi)
+            angles = (angle_steps / k).cumsum() + rng.uniform(0, tau)
+
+            from kwarray import distributions
+            tnorm = distributions.TruncNormal(radius, spikeyness,
+                                              low=0, high=2 * radius, rng=rng)
+
+            # now generate the points
+            radii = tnorm.sample(n)
+            x_pts = cx + radii * np.cos(angles)
+            y_pts = cy + radii * np.sin(angles)
+
+            points = np.hstack([x_pts[:, None], y_pts[:, None]])
+
+            # Scale to 0-1 space
+            points = points - points.min(axis=0)
+            points = points / points.max(axis=0)
+
+            # Randomly place within 0-1 space
+            points = points * (rng.rand() * .8 + .2)
+            min_pt = points.min(axis=0)
+            max_pt = points.max(axis=0)
+
+            high = (1 - max_pt)
+            low = (0 - min_pt)
+            offset = (rng.rand(2) * (high - low)) + low
+            points = points + offset
+            return points
+
+        # points = rng.rand(n, 2)
+        points = _gen_polygon2(n, 0.9, 0.1 if convex else 0.9)
 
         if convex:
+            points = _order_vertices(points)
             hull = scipy.spatial.ConvexHull(points)
             exterior = hull.points[hull.vertices]
+
+            # hack
+            if len(exterior) != n:
+                points = _gen_polygon2(n, 1.0, 0)
+                points = _order_vertices(points)
+                hull = scipy.spatial.ConvexHull(points)
+                exterior = hull.points[hull.vertices]
         else:
             exterior = points
         exterior = _order_vertices(exterior)
