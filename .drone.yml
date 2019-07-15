@@ -16,9 +16,9 @@ steps:
       - . $HOME/.local/conda/etc/profile.d/conda.sh
       - conda activate py3.6
       #- conda install gdal -y
-      - /bin/bash -l -c "pip install pip setuptools -U"
-      - /bin/bash -l -c "pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray"
-      - /bin/bash -l -c "pip install -r requirements.txt -U"
+      - pip install pip setuptools -U
+      - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
+      - pip install -r requirements.txt -U
 
       # - ./run_developer_setup.sh
       # - ./run_tests.py
