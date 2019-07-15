@@ -150,26 +150,31 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> new_img, info = kwimage.imresize(img, scale=.85,
         >>>                                  interpolation='area',
         >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
         >>> assert info['scale'].tolist() == [.8, 0.875]
         >>> # Test dsize without None
         >>> new_img, info = kwimage.imresize(img, dsize=(5, 12),
         >>>                                  interpolation='area',
         >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
         >>> assert info['scale'].tolist() == [0.5 , 0.75]
         >>> # Test dsize with None
         >>> new_img, info = kwimage.imresize(img, dsize=(6, None),
         >>>                                  interpolation='area',
         >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
         >>> assert info['scale'].tolist() == [0.6, 0.625]
         >>> # Test max_dim
         >>> new_img, info = kwimage.imresize(img, max_dim=6,
         >>>                                  interpolation='area',
         >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
         >>> assert info['scale'].tolist() == [0.4  , 0.375]
         >>> # Test min_dim
         >>> new_img, info = kwimage.imresize(img, min_dim=6,
         >>>                                  interpolation='area',
         >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
         >>> assert info['scale'].tolist() == [0.6  , 0.625]
     """
     old_w, old_h = img.shape[0:2][::-1]
@@ -208,7 +213,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         assert new_w is not None
         new_h = new_w * old_h / old_w
 
-    new_dsize = (int(round(new_w)), int(round(new_h)))
+    # Use np.round over python round, which has incompatible behavior
+    new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
 
     interpolation = _rectify_interpolation(interpolation)
     new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
