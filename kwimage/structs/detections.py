@@ -652,10 +652,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     if kp_classes is not None:
                         kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
                     if 1:
-                        import xdev
-                        with xdev.embed_on_exception_context:
-                            pts = kwimage.Points._from_coco(
-                                k, class_idxs=kpcidxs, classes=kp_classes)
+                        pts = kwimage.Points._from_coco(
+                            k, class_idxs=kpcidxs, classes=kp_classes)
                     else:
                         xy = np.array(k).reshape(-1, 3)[:, 0:2]
                         pts = kwimage.Points(

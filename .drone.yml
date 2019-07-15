@@ -8,13 +8,14 @@ platform:
 
 steps:
   - name: "Test python 3.6"
-    image: continuumio/miniconda3
+    #image: continuumio/miniconda3
+    image: erotemic/research:PY_VER_3.6
     #image: python:3.6
     commands:
-      - conda init bash && . ~/.bashrc
-      - conda create -y -n py36 python=3.6
-      - conda activate py36
-      - conda install gdal -y
+      #- conda init bash && . ~/.bashrc
+      #- conda create -y -n py36 python=3.6
+      #- conda activate py36
+      #- conda install gdal -y
       - pip install pip setuptools -U
       - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
       - pip install -r requirements.txt -U
@@ -50,12 +51,13 @@ platform:
   
 steps:
   - name: "Test python 2.x"
-    image: continuumio/miniconda2
+    #image: continuumio/miniconda2
+    image: erotemic/research:PY_VER_2.7
     commands:
-      - conda init bash && . ~/.bashrc
-      - conda create -y -n py27 python=2.7
-      - conda activate py27
-      - conda install gdal -y
+      #- conda init bash && . ~/.bashrc
+      #- conda create -y -n py27 python=2.7
+      #- conda activate py27
+      #- conda install gdal -y
       - pip install pip setuptools -U
       - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
       - pip install -r requirements.txt -U
