@@ -24,8 +24,8 @@ steps:
       # - ./run_tests.py
       
       # using pyargs tests the installed package instead of the source one
-      - /bin/bash -l -c "pip install -v --no-use-pep517 ."
-      - /bin/bash -l -c "pytest ./tests/ --pyargs kwimage"
+      - pip install -v --no-use-pep517 .
+      - pytest ./tests/ --pyargs kwimage
 
     volumes:
       - name: ssh
@@ -54,21 +54,22 @@ steps:
     #image: continuumio/miniconda2
     image: erotemic/research:PY_VER_2.7
     commands:
-      - echo "$SHELL"
+      - . $HOME/.local/conda/etc/profile.d/conda.sh
+      - conda activate py2.7
       #- conda init bash && . ~/.bashrc
       #- conda create -y -n py27 python=2.7
       #- conda activate py27
       #- conda install gdal -y
-      - bash -l -c "pip install pip setuptools -U"
-      - bash -l -c "pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray"
-      - bash -l -c "pip install -r requirements.txt -U"
+      - pip install pip setuptools -U
+      - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
+      - pip install -r requirements.txt -U
 
       # - ./run_developer_setup.sh
       # - ./run_tests.py
       
       # using pyargs tests the installed package instead of the source one
-      - bash -l -c "pip install -v --no-use-pep517 ."
-      - bash -l -c "pytest ./tests/ --pyargs kwimage"
+      - pip install -v --no-use-pep517 .
+      - pytest ./tests/ --pyargs kwimage
 
     volumes:
       - name: ssh
