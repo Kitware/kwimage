@@ -13,21 +13,20 @@ steps:
     #image: python:3.6
     commands:
       - echo "$SHELL"
-      - . $HOME/.bashrc
       #- conda init bash && . ~/.bashrc
       #- conda create -y -n py36 python=3.6
       #- conda activate py36
       #- conda install gdal -y
-      - pip install pip setuptools -U
-      - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
-      - pip install -r requirements.txt -U
+      - bash -c "pip install pip setuptools -U"
+      - bash -c "pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray"
+      - bash -c "pip install -r requirements.txt -U"
 
       # - ./run_developer_setup.sh
       # - ./run_tests.py
       
       # using pyargs tests the installed package instead of the source one
-      - pip install -v --no-use-pep517 .
-      - pytest ./tests/ --pyargs kwimage
+      - bash -c "pip install -v --no-use-pep517 ."
+      - bash -c "pytest ./tests/ --pyargs kwimage"
 
     volumes:
       - name: ssh
