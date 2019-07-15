@@ -86,8 +86,8 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     except TypeError:
         sx = sy = scale
     w, h = dsize
-    new_w = int(round(w * sx))
-    new_h = int(round(h * sy))
+    new_w = int(np.round(w * sx))
+    new_h = int(np.round(h * sy))
 
     new_scale = new_w / w, new_h / h
     new_dsize = (new_w, new_h)
