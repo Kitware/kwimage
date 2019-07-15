@@ -12,7 +12,9 @@ steps:
     image: erotemic/research:PY_VER_3.6
     #image: python:3.6
     commands:
-      - conda init bash && . ~/.bashrc
+      - echo "$SHELL"
+      - . $HOME/.bashrc
+      #- conda init bash && . ~/.bashrc
       #- conda create -y -n py36 python=3.6
       #- conda activate py36
       #- conda install gdal -y
@@ -54,7 +56,9 @@ steps:
     #image: continuumio/miniconda2
     image: erotemic/research:PY_VER_2.7
     commands:
-      - conda init bash && . ~/.bashrc
+      - echo "$SHELL"
+      - . $HOME/.bashrc
+      #- conda init bash && . ~/.bashrc
       #- conda create -y -n py27 python=2.7
       #- conda activate py27
       #- conda install gdal -y
