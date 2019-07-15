@@ -14,8 +14,7 @@ steps:
     commands:
       #- conda init bash && . ~/.bashrc
       - . $HOME/.local/conda/etc/profile.d/conda.sh
-      - conda create -y -n py36 python=3.6
-      - conda activate py36
+      - conda activate py3.6
       #- conda install gdal -y
       - /bin/bash -l -c "pip install pip setuptools -U"
       - /bin/bash -l -c "pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray"
