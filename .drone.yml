@@ -8,25 +8,28 @@ platform:
 
 steps:
   - name: "Test python 3.6"
-    #image: continuumio/miniconda3
-    image: erotemic/research:PY_VER_3.6
+    image: continuumio/miniconda3
+    #image: erotemic/research:PY_VER_3.6
     #image: python:3.6
     commands:
+      - echo $0
       - echo "$SHELL"
-      #- conda init bash && . ~/.bashrc
-      #- conda create -y -n py36 python=3.6
-      #- conda activate py36
-      #- conda install gdal -y
-      - bash -c ". $HOME/.bashrc && pip install pip setuptools -U"
-      - bash -c ". $HOME/.bashrc && pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray"
-      - bash -c ". $HOME/.bashrc && pip install -r requirements.txt -U"
+      - ps -p "$$"
+      #- . ~/.bashrc
+      - conda init bash && . ~/.bashrc
+      - conda create -y -n py36 python=3.6
+      - conda activate py36
+      - conda install gdal -y
+      - pip install pip setuptools -U
+      - pip install git+ssh://git@gitlab.kitware.com/vigilant/kwarray.git@dev/0.4.0#egg=kwarray
+      - pip install -r requirements.txt -U
 
       # - ./run_developer_setup.sh
       # - ./run_tests.py
       
       # using pyargs tests the installed package instead of the source one
-      - bash -c ". $HOME/.bashrc && pip install -v --no-use-pep517 ."
-      - bash -c ". $HOME/.bashrc && pytest ./tests/ --pyargs kwimage"
+      - pip install -v --no-use-pep517 .
+      - pytest ./tests/ --pyargs kwimage
 
     volumes:
       - name: ssh
