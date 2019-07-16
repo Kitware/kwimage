@@ -320,9 +320,13 @@ class _HeatmapDrawMixin(object):
         stacked = kwimage.stack_images(colorized, overlap=-3, axis=1)
         return stacked
 
-    def draw(self, image=None, imgspace=None, **kwargs):
+    def draw(self, channel=None, image=None, imgspace=None, **kwargs):
         """
         Accepts same args as draw_on, but uses maplotlib
+
+        Args:
+            channel (int | str): category index to visualize, or special key
+
         """
         # If draw doesnt exist use draw_on
         import numpy as np
@@ -333,7 +337,8 @@ class _HeatmapDrawMixin(object):
                 dims = self.bounds
             shape = tuple(dims) + (4,)
             image = np.zeros(shape, dtype=np.float32)
-        image = self.draw_on(image, imgspace=imgspace, **kwargs)
+        image = self.draw_on(image, channel=channel, imgspace=imgspace,
+                             **kwargs)
         import kwplot
         kwplot.imshow(image)
 

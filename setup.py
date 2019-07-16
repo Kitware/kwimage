@@ -259,6 +259,7 @@ if __name__ == '__main__':
             'all': parse_requirements('requirements.txt'),
             'tests': parse_requirements('requirements/tests.txt'),
         },
+        license='Apache 2',
         packages=find_packages(include='kwimage.*'),
         classifiers=[
             # List of classifiers available at:
