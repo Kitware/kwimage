@@ -5,10 +5,10 @@ Structure for efficient encoding of per-annotation segmentation masks
 Based on efficient cython/C code in the cocoapi [1].
 
 References:
-    ..[1] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/_mask.pyx
-    ..[2] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.c
-    ..[3] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.h
-    ..[4] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/mask.py
+    .. [1] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/_mask.pyx
+    .. [2] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.c
+    .. [3] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.h
+    .. [4] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/mask.py
 
 Goals:
     The goal of this file is to create a datastructure that lets the developer
@@ -218,7 +218,7 @@ class _MaskConstructorMixin(object):
     @classmethod
     def from_polygons(Mask, polygons, dims):
         """
-        DEPRICATE:
+        DEPRICATE: use kwimage.Polygon.to_mask?
 
         Args:
             polygons (ndarray | List[ndarray]): one or more polygons that
@@ -473,10 +473,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     Manages a single segmentation mask and can convert to and from
     multiple formats including:
 
-        * bytes_rle
-        * array_rle
-        * c_mask
-        * f_mask
+        * bytes_rle - byte encoded run length encoding
+        * array_rle - raw run length encoding
+        * c_mask - c-style binary mask
+        * f_mask - fortran-style binary mask
 
     Example:
         >>> # a ms-coco style compressed bytes rle segmentation
@@ -890,58 +890,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             multi_poly = MultiPolygon([])
         return multi_poly
 
-        # if False:
-        #     import kwil
-        #     kwil.autompl()
-        #     # Note that cv2 draw contours doesnt have the 1-pixel thick problem
-        #     # it seems to just be the way the coco implementation is
-        #     # interpreting polygons.
-
-        #     from matplotlib.patches import Path
-        #     from matplotlib import pyplot as plt
-        #     import matplotlib as mpl
-
-        #     kwil.imshow(self.to_c_mask().data, fnum=2, doclf=True)
-        #     ax = plt.gca()
-        #     patches = []
-
-        #     for i, poly in polys.items():
-        #         exterior = poly['exterior'].tolist()
-        #         exterior.append(exterior[0])
-        #         n = len(exterior)
-        #         verts = []
-        #         verts.extend(exterior)
-        #         codes = [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
-
-        #         interiors = poly['interiors']
-        #         for hole in interiors:
-        #             hole = hole.tolist()
-        #             hole.append(hole[0])
-        #             n = len(hole)
-        #             verts.extend(hole)
-        #             codes += [Path.MOVETO] + ([Path.LINETO] * (n - 2)) + [Path.CLOSEPOLY]
-
-        #         verts = np.array(verts)
-        #         path = Path(verts, codes)
-        #         patch = mpl.patches.PathPatch(path)
-        #         patches.append(patch)
-        #     poly_col = mpl.collections.PatchCollection(patches, 2, alpha=0.4)
-        #     ax.add_collection(poly_col)
-        #     ax.set_xlim(0, 32)
-        #     ax.set_ylim(0, 32)
-
-        #     # line_type = cv2.LINE_AA
-        #     # line_type = cv2.LINE_4
-        #     line_type = cv2.LINE_8
-        #     contour_idx = -1
-        #     thickness = 1
-        #     toshow = np.zeros(self.shape, dtype="uint8")
-        #     toshow = kwil.atleast_3channels(toshow)
-        #     toshow = cv2.drawContours(toshow, _contours, contour_idx, (255, 0, 0), thickness, line_type)
-        #     kwil.imshow(toshow, fnum=2, doclf=True)
-
-        # return polygon
-
     def get_convex_hull(self):
         """
         Returns a list of xy points around the convex hull of this mask
@@ -1111,6 +1059,7 @@ def _coerce_coco_segmentation(data, dims=None):
             else:
                 self = kwimage.Mask(data, MaskFormat.ARRAY_RLE)
         elif 'exterior' in data:
+            # TODO: kwimage.Polygon.from_coco
             self = kwimage.Polygon(**data)
             # raise NotImplementedError('explicit polygon coerce')
         else:
@@ -1123,12 +1072,15 @@ def _coerce_coco_segmentation(data, dims=None):
         else:
             first = ub.peek(data)
             if isinstance(first, dict):
+                # TODO: kwimage.MultiPolygon.from_coco
                 self = kwimage.MultiPolygon(
                     [kwimage.Polygon(**item) for item in data])
             elif isinstance(first, int):
+                # TODO: kwimage.Polygon.from_coco
                 exterior = np.array(data).reshape(-1, 2)
                 self = kwimage.Polygon(exterior=exterior)
             elif isinstance(first, list):
+                # TODO: kwimage.MultiPolygon.from_coco
                 poly_list = [kwimage.Polygon(exterior=np.array(item).reshape(-1, 2))
                              for item in data]
                 if len(poly_list) == 1:

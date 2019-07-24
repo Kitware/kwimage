@@ -1,3 +1,8 @@
+"""
+Coordinates the fundamental "point" datatype. They do not contain metadata,
+only geometry. See the `Points` data type for a structure that maintains
+metadata on top of coordinate data.
+"""
 import numpy as np
 import ubelt as ub
 import skimage

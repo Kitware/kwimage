@@ -480,66 +480,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def _impl(self):
         return self.data['exterior']._impl
 
-    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
-        """
-        Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random(n_holes=1).scale(128)
-            >>> image = np.zeros((128, 128), dtype=np.float32)
-            >>> image = self.draw_on(image)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> import kwplot
-            >>> kwplot.autompl()
-            >>> kwplot.imshow(image, fnum=1)
-        """
-        import kwplot
-        import kwimage
-        # return shape of contours to openCV contours
-
-        dtype_fixer = _generic._consistent_dtype_fixer(image)
-
-        # line_type = cv2.LINE_AA
-        line_type = cv2.LINE_8
-
-        data = self.data
-        coords = [data['exterior']] + data['interiors']
-        contours = [np.expand_dims(c.data.astype(np.int), axis=1) for c in coords]
-
-        # alpha = 1.0
-        if alpha == 1.0:
-            image = kwimage.ensure_uint255(image)
-            image = kwimage.atleast_3channels(image)
-            rgba = kwplot.Color(color).as255()
-        else:
-            # fill = False
-            image = kwimage.ensure_float01(image)
-            image = kwimage.ensure_alpha_channel(image)
-            rgba = kwplot.Color(color, alpha=alpha).as01()
-            # print('rgba = {!r}'.format(rgba))
-        # print('rgba = {!r}'.format(rgba))
-        # print('image = {!r}'.format(image.shape))
-        # alpha # TODO
-
-        if fill:
-            if alpha == 1.0:
-                image = cv2.fillPoly(image, contours, rgba, line_type, shift=0)
-            else:
-                orig = image.copy()
-                mask = np.zeros_like(orig)
-                mask = cv2.fillPoly(mask, contours, rgba, line_type, shift=0)
-                image = kwimage.overlay_alpha_images(mask, orig)
-
-        if border or True:
-            thickness = 4
-            contour_idx = -1
-            image = cv2.drawContours(image, contours, contour_idx, rgba,
-                                     thickness, line_type)
-        image = kwimage.ensure_float01(image)[..., 0:3]
-
-        image = dtype_fixer(image)
-        return image
-
     def to_mask(self, dims=None):
         """
         Convert this polygon to a mask
@@ -560,26 +500,41 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         import kwimage
         if dims is None:
-            raise Exception('REQUIRES DIMS')
-
-        self.to_boxes()
-
+            raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
-        # return shape of contours to openCV contours
-
-        # line_type = cv2.LINE_AA
-        line_type = cv2.LINE_8
-
-        data = self.data
-        coords = [data['exterior']] + data['interiors']
-        contours = [np.expand_dims(c.data.astype(np.int), axis=1) for c in coords]
-
         value = 1
-
-        c_mask = cv2.fillPoly(c_mask, contours, value, line_type, shift=0)
-
+        self.fill(c_mask, value)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
+
+    def fill(self, image, value=1):
+        """
+        Inplace fill in an image based on this polyon.
+        """
+        # line_type = cv2.LINE_AA
+        cv_contours = self._to_cv_countours()
+        line_type = cv2.LINE_8
+        # Modification happens inplace
+        cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+        return image
+
+    def _to_cv_countours(self):
+        """
+        OpenCV polygon representation, which is a list of points.  Holes are
+        implicitly represented. When another polygon is drawn over an existing
+        polyon via cv2.fillPoly
+
+        Returns:
+            List[ndarray]: where each ndarray is of shape [N, 1, 2],
+                where N is the number of points on the boundary, the middle
+                dimension is always 1, and the trailing dimension represents
+                x and y coordinates respectively.
+        """
+        data = self.data
+        coords = [data['exterior']] + data['interiors']
+        cv_contours = [np.expand_dims(c.data.astype(np.int), axis=1)
+                       for c in coords]
+        return cv_contours
 
     def to_shapely(self):
         """
@@ -610,9 +565,95 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
+    @classmethod
+    def from_coco(cls, data, dims=None):
+        """
+        Accepts either new-style or old-style coco polygons
+        """
+        if isinstance(data, list):
+            if len(data) > 0:
+                assert isinstance(ub.peek(data), int)
+                exterior = np.array(data).reshape(-1, 2)
+                self = cls(exterior=exterior)
+            else:
+                self = cls(exterior=[])
+        elif isinstance(data, dict):
+            assert 'exterior' in data
+            self = cls(**data)
+        else:
+            raise TypeError(type(data))
+        return self
+
+    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
+        """
+        Rasterizes a polygon on an image. See `draw` for a vectorized
+        matplotlib version.
+
+        Args:
+            image (ndarray): image to raster polygon on.
+            color (str | tuple): data coercable to a color
+            fill (bool, default=True): draw the center mass of the polygon
+            border (bool, default=False): draw the border of the polygon
+            alpha (float, default=1.0): polygon transparency (setting alpha < 1
+                makes this function much slower).
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(n_holes=1).scale(128)
+            >>> image = np.zeros((128, 128), dtype=np.float32)
+            >>> image = self.draw_on(image)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image, fnum=1)
+        """
+        import kwplot
+        import kwimage
+        # return shape of contours to openCV contours
+
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
+
+        # line_type = cv2.LINE_AA
+        line_type = cv2.LINE_8
+
+        cv_contours = self._to_cv_countours()
+
+        if alpha == 1.0:
+            image = kwimage.ensure_uint255(image)
+            image = kwimage.atleast_3channels(image)
+            rgba = kwplot.Color(color).as255()
+        else:
+            image = kwimage.ensure_float01(image)
+            image = kwimage.ensure_alpha_channel(image)
+            rgba = kwplot.Color(color, alpha=alpha).as01()
+
+        if fill:
+            if alpha == 1.0:
+                # Modification happens inplace
+                image = cv2.fillPoly(image, cv_contours, rgba, line_type, shift=0)
+            else:
+                orig = image.copy()
+                mask = np.zeros_like(orig)
+                mask = cv2.fillPoly(mask, cv_contours, rgba, line_type, shift=0)
+                image = kwimage.overlay_alpha_images(mask, orig)
+
+        if border or True:
+            thickness = 4
+            contour_idx = -1
+            image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
+                                     thickness, line_type)
+        image = kwimage.ensure_float01(image)[..., 0:3]
+
+        image = dtype_fixer(image)
+        return image
+
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,
              border=False):
         """
+        Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
+        modification.
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -706,7 +747,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         tlbr = np.hstack([tl, br])[None, :]
         boxes = kwimage.Boxes(tlbr, 'tlbr')
         return boxes
-        # return MultiPolygon([self])
 
     def copy(self):
         self2 = Polygon(self.data, self.meta)
@@ -768,6 +808,8 @@ class MultiPolygon(_generic.ObjectList):
 
     def to_mask(self, dims=None):
         """
+        Returns a mask object indication regions occupied by this multipolygon
+
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> s = 100
@@ -787,8 +829,13 @@ class MultiPolygon(_generic.ObjectList):
             >>> mask.draw(color='blue', alpha=.4)
         """
         import kwimage
-        masks = [poly.to_mask(dims) for poly in self.data]
-        mask = kwimage.Mask.union(*masks)
+        if dims is None:
+            raise ValueError('Must specify output raster dimensions')
+        c_mask = np.zeros(dims, dtype=np.uint8)
+        for p in self.data:
+            if p is not None:
+                p.fill(c_mask, value=1)
+        mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
     @classmethod
@@ -831,6 +878,19 @@ class MultiPolygon(_generic.ObjectList):
         self = MultiPolygon(polys)
         return self
 
+    @classmethod
+    def from_coco(cls, data, dims=None):
+        """
+        Accepts either new-style or old-style coco multi-polygons
+        """
+        if isinstance(data, list):
+            poly_list = [Polygon.from_coco(item, dims=dims)
+                         for item in data]
+            self = cls(poly_list)
+        else:
+            raise TypeError(type(data))
+        return self
+
     def _to_coco(self, style='orig'):
         return self.to_coco(style=style)
 
@@ -842,6 +902,32 @@ class MultiPolygon(_generic.ObjectList):
             >>> self.to_coco()
         """
         return [item.to_coco(style=style) for item in self.data]
+
+    # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
+    #     """
+    #     Faster version
+    #     """
+    #     import kwimage
+    #     import kwplot
+    #     dtype_fixer = _generic._consistent_dtype_fixer(image)
+
+    #     if alpha == 1.0:
+    #         image = kwimage.ensure_uint255(image)
+    #         image = kwimage.atleast_3channels(image)
+    #         rgba = kwplot.Color(color).as255()
+    #     else:
+    #         image = kwimage.ensure_float01(image)
+    #         image = kwimage.ensure_alpha_channel(image)
+    #         rgba = kwplot.Color(color, alpha=alpha).as01()
+
+    #     kwargs = dict(color=color, fill=fill, border=border, alpha=alpha)
+
+    #     for item in self.data:
+    #         if item is not None:
+    #             image = item.draw_on(image=image, **kwargs)
+
+    #     image = dtype_fixer(image)
+    #     return image
 
 
 class PolygonList(_generic.ObjectList):

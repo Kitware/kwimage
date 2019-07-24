@@ -214,7 +214,7 @@ class _HeatmapDrawMixin(object):
             return colormask
 
         if isinstance(channel, six.string_types):
-            # TODO: this is a bit hacky / inefficient, probably needs minor cleanup
+            # TODO: this is a bit hacky / inefficient, needs cleanup
             if imgspace:
                 mat = self.tf_data_to_img.params
                 a = self.warp(mat, version='old').numpy()
