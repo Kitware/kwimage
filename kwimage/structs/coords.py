@@ -6,6 +6,7 @@ metadata on top of coordinate data.
 import numpy as np
 import ubelt as ub
 import skimage
+import torch
 import kwarray
 from . import _generic
 
@@ -297,8 +298,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(new.data == self.data)
         """
         import kwimage
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        if isinstance(transform, np.ndarray):
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        if isinstance(transform, (np.ndarray, torch.Tensor)):
             matrix = transform
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params
@@ -361,7 +363,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> self.draw(color='red', alpha=.4, radius=0.1)
             >>> new.draw(color='blue', alpha=.4, radius=0.1)
         """
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         kpoi = new.to_imgaug(input_dims=input_dims)
         new_kpoi = augmenter.augment_keypoints(kpoi)
         dtype = new.data.dtype
@@ -417,9 +420,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> new = self.scale(10.0)
             >>> assert new.data.dtype.kind == 'f'
         """
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         data = new.data
-        impl = kwarray.ArrayAPI.coerce(data)
 
         # if not inplace:
         #     data = new.data = impl.copy(data)
@@ -458,9 +461,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> Coords.random(3, dim=3, rng=0)
             >>> Coords.random(3, dim=3, rng=0).translate((1, 2, 3))
         """
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         data = new.data
-        impl = kwarray.ArrayAPI.coerce(data)
         if not inplace:
             data = new.data = impl.copy(data)
         if impl.numel(data) > 0:

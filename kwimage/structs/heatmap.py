@@ -656,9 +656,6 @@ class _HeatmapWarpMixin(object):
         if isinstance(mat, skimage.transform.AffineTransform):
             mat = mat.params
 
-        if output_dims is None:
-            output_dims = self.img_dims
-
         newdata = {}
         newmeta = self.meta.copy()
 
@@ -691,6 +688,32 @@ class _HeatmapWarpMixin(object):
         tf_notrans = _remove_translation(tf)
         mat_notrans = torch.Tensor(tf_notrans.params)
 
+        if output_dims is None:
+            # If output dimensions are not specified warp the existing dims
+            # according to scale. NOTE: old behavior was to use the img_dims
+            # but this has problems when we are making something smaller.
+            def _auto_select_warped_output_shape(mat):
+                h, w = self.dims
+                # Warp corners of the box and determine a new output shape
+                corners = kwimage.Coords(np.array([
+                    [0., 0], [w, 0], [w, h], [0, h],
+                ]))
+                corners2 = corners.warp(mat.numpy())
+                wh2 = corners2.data.clip(1, None).max(axis=0)
+                w2, h2 = np.ceil(wh2).astype(np.int).tolist()
+                output_dims = (w2, h2)
+                return output_dims
+            output_dims = _auto_select_warped_output_shape(mat_notrans)
+            if self.img_dims is not None:
+                import warnings
+                warnings.warn(
+                    'NOTE: automatic selection of output_dims has changed. '
+                    'Previously it would use the img_dims, but now it calculates '
+                    'the output_dims based on mat and the current dims. '
+                    'Please check that your code still works and specify '
+                    'output_dims explicitly to supress this message.')
+                # output_dims = self.img_dims
+
         # Modify data_to_img so the new heatmap will also properly upscale to
         # the image coordinates.
         inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
@@ -699,7 +722,8 @@ class _HeatmapWarpMixin(object):
         # thats because there was no translation factor. I'm pretty sure the
         # code on the bottom is correct. Obviously if something messes up, it
         # should probably be reverted. Left-vs-right is hard.
-        newmeta['tf_data_to_img'] = inv_tf + self.tf_data_to_img
+        if self.tf_data_to_img is not None:
+            newmeta['tf_data_to_img'] = inv_tf + self.tf_data_to_img
 
         for k, v in self.data.items():
             if v is not None:
@@ -720,6 +744,9 @@ class _HeatmapWarpMixin(object):
         return newself
 
     def scale(self, factor, output_dims=None, interpolation='linear'):
+        """
+        Scale the heatmap
+        """
         if not ub.iterable(factor):
             s1 = s2 = factor
         else:
