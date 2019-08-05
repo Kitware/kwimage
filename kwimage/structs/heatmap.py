@@ -114,7 +114,7 @@ class _HeatmapDrawMixin(object):
         colorized = cx_to_color[cidxs]
         return colorized
 
-    def colorize(self, channel, invert=False, with_alpha=1.0,
+    def colorize(self, channel=None, invert=False, with_alpha=1.0,
                  interpolation='linear', imgspace=False, cmap=None):
         """
         Creates a colorized version of a heatmap channel suitable for
@@ -167,6 +167,16 @@ class _HeatmapDrawMixin(object):
         """
         import kwplot
 
+        if channel is None:
+            if 'class_idx' in self.data:
+                channel = 'class_idx'
+            elif 'class_probs' in self.data:
+                channel = 'class_probs'
+            elif 'class_energy' in self.data:
+                channel = 'class_energy'
+            else:
+                raise Exception('unsure how to default channel')
+
         def _per_channel_color(data, with_alpha, classes=None):
             # Another hacky mode
             # data = a.data['class_energy']
@@ -206,7 +216,7 @@ class _HeatmapDrawMixin(object):
             colormask[..., 3] *= with_alpha
             return colormask
 
-        if channel == 'idx' or channel == 'class_idx':
+        if channel in ['class_idx', 'idx']:
             # HACK
             import kwimage
             colormask = self._colorize_class_idx()
@@ -269,6 +279,8 @@ class _HeatmapDrawMixin(object):
     def draw_stacked(self, image=None, dsize=(224, 224), ignore_class_idxs={},
                      top=None, chosen_cxs=None):
         """
+        Draws per-class probabilities and stacks them into a single image
+
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
@@ -280,8 +292,11 @@ class _HeatmapDrawMixin(object):
         """
         import kwimage
         import matplotlib as mpl
-        tf = self.tf_data_to_img
-        mat = np.linalg.inv(tf.params)
+
+        if image is not None:
+            tf = self.tf_data_to_img
+            mat = np.linalg.inv(tf.params)
+
         cmap = mpl.cm.get_cmap('magma')
 
         level_dsize = self.class_probs.shape[-2:][::-1]
@@ -403,22 +418,18 @@ class _HeatmapDrawMixin(object):
         import kwplot
 
         if channel is None:
-            if 'class_probs' in self.data:
-                channel = 0
+            if 'class_idx' in self.data:
+                channel = 'class_idx'
+            elif 'class_probs' in self.data:
+                channel = 'class_probs'
             elif 'class_energy' in self.data:
-                channel = 'class_energy_max'
-            elif 'class_idx' in self.data:
-                channel = 'idx'
+                channel = 'class_energy'
             else:
                 raise Exception('unsure how to default channel')
 
         if imgspace is None:
             if np.all(image.shape[0:2] == np.array(self.img_dims)):
                 imgspace = True
-
-        if channel is None:
-            # Hack: draw prediction mask
-            channel = 'idx'
 
         colormask = self.colorize(channel, invert=invert,
                                   with_alpha=with_alpha,
