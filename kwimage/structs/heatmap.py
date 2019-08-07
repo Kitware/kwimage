@@ -93,7 +93,7 @@ class _HeatmapDrawMixin(object):
     def _colorize_class_idx(self):
         """
         """
-        cidxs = self.data['class_idx']
+        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(np.int)
 
         import networkx as nx
         import kwplot
