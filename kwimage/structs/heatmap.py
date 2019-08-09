@@ -293,9 +293,11 @@ class _HeatmapDrawMixin(object):
         import kwimage
         import matplotlib as mpl
 
+        mat = None
         if image is not None:
             tf = self.tf_data_to_img
-            mat = np.linalg.inv(tf.params)
+            if tf is not None:
+                mat = np.linalg.inv(tf.params)
 
         cmap = mpl.cm.get_cmap('magma')
 
@@ -312,9 +314,12 @@ class _HeatmapDrawMixin(object):
                 chosen_cxs = np.arange(self.class_probs.shape[0])
 
         if image is not None:
-            small_img = cv2.warpAffine(image, mat[0:2], dsize=level_dsize)
-            small_img = cv2.resize(small_img, dsize)
-            # small_img = cv2.resize(image, dsize)
+            if mat is not None:
+                # warp image into dataspace
+                dataspace_img = cv2.warpAffine(image, mat[0:2], dsize=level_dsize)
+            else:
+                dataspace_img = image
+            small_img = cv2.resize(dataspace_img, dsize)
             colorized = [small_img]
         else:
             colorized = []

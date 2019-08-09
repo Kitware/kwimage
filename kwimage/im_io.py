@@ -100,7 +100,12 @@ def imread(fpath, space='auto', backend='auto'):
     if backend == 'auto':
         # Determine the backend reader using the file extension
         _fpath_lower = fpath.lower()
-        if _fpath_lower.endswith(('.ntf', '.nitf', '.ptif', '.cog.tiff')):
+        # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
+        GDAL_EXTENSIONS = (
+            '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
+            '.r0', '.r1', '.r2', '.r3', '.r4', '.r5',
+        )
+        if _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
         elif _fpath_lower.endswith(('.tif', '.tiff')):
             if _have_gdal():
