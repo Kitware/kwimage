@@ -709,6 +709,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                 edgecolor[2] -= .1
                 edgecolor = [min(1, max(0, c)) for c in edgecolor]
             kw['edgecolor'] = edgecolor
+        else:
+            kw['linewidth'] = 0
 
         patch = mpl.patches.PathPatch(path, alpha=alpha, facecolor=color, **kw)
         ax.add_patch(patch)
@@ -735,6 +737,20 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     def to_coco(self, style='orig'):
         return self._to_coco(style=style)
+
+    def to_geojson(self):
+        """
+        Converts polygon to a geojson structure
+        """
+        coords = [self.data['exterior'].data.tolist()]
+        holes = [interior.data.tolist() for interior in self.data['interiors']]
+        if holes:
+            coords.extend(holes)
+        geojson = {
+            'type': 'Polygon',
+            'coordinates': coords,
+        }
+        return geojson
 
     def to_multi_polygon(self):
         return MultiPolygon([self])

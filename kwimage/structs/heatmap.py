@@ -606,7 +606,7 @@ class _HeatmapWarpMixin(object):
 
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
-             mat_is_xy=True, version=None):
+             int_interpolation='nearest', mat_is_xy=True, version=None):
         """
         Warp all spatial maps. If the map contains spatial data, that data is
         also warped (ignoring the translation component).
@@ -616,6 +616,7 @@ class _HeatmapWarpMixin(object):
             input_dims (tuple): unused, only exists for compatibility
             output_dims (tuple): size of the output heatmap
             interpolation (str): see `kwimage.warp_tensor`
+            int_interpolation (str): interpolation used for interger types (should be nearest)
             mat_is_xy (bool, default=True): set to false if the matrix
                 is in yx space instead of xy space
 
@@ -744,16 +745,26 @@ class _HeatmapWarpMixin(object):
         for k, v in self.data.items():
             if v is not None:
                 v = kwarray.ArrayAPI.tensor(v)
-                # For spatial keys we need to transform the underlying values as well
+                # For spatial keys we need to transform the underlying values
+                # in addition to where those values are located.
                 if modify_spatial_coords:
                     if k in self.__spatialkeys__:
                         pts = impl.contiguous(impl.T(v))
                         pts = kwimage.warp_points(mat_notrans, pts)
                         v = impl.contiguous(impl.T(pts))
 
-                new_v = kwimage.warp_tensor(
-                    v[None, :].float(), mat, output_dims=output_dims,
-                    mode=interpolation)[0]
+                if kwarray.ArrayAPI.dtype_kind(v) == 'i':
+                    # use different interpolation for integer types
+                    if int_interpolation != 'nearest':
+                        warnings.warn('Using non-nearest int interpolation')
+                    new_v = kwimage.warp_tensor(
+                        v[None, :].float(), mat, output_dims=output_dims,
+                        mode=int_interpolation)[0]
+                else:
+                    new_v = kwimage.warp_tensor(
+                        v[None, :].float(), mat, output_dims=output_dims,
+                        mode=interpolation)[0]
+
                 newdata[k] = impl.asarray(new_v)
 
         newself = self.__class__(newdata, newmeta)
@@ -1152,6 +1163,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     def _impl(self):
         """
         Returns the internal tensor/numpy ArrayAPI implementation
+
+        Returns:
+            kwarray.ArrayAPI
         """
         return kwarray.ArrayAPI.coerce(self.data['class_probs'])
 

@@ -190,7 +190,10 @@ def _imread_gdal(fpath):
     """ gdal imread backend """
     import gdal
     try:
-        gdal_dset = gdal.Open(fpath)
+        gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+        if gdal_dset is None:
+            raise IOError('GDAL cannot read: {!r}'.format(fpath))
+
         if gdal_dset.RasterCount == 1:
             band = gdal_dset.GetRasterBand(1)
 

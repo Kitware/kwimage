@@ -32,6 +32,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Zero division in Cython `non-maximum-supression` with zero sized boxes.
 * `Heatmap.shape` now works even if `class_probs` is not set.
 * `Coords.warp` now works with tensors.
+* `Coords.warp` uses nearest neighbor interpolation for integer warping.
 
 ### Issues
 * Heatmap.warp may have some odd behavior and emit warnings. 
