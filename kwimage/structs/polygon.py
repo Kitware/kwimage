@@ -649,7 +649,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return image
 
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,
-             border=False):
+             border=False, linewidth=2):
         """
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
@@ -698,7 +698,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         kw = {}
         if border:
-            kw['linewidth'] = 2
+            kw['linewidth'] = linewidth
             try:
                 edgecolor = list(kwplot.Color(border).as01())
             except Exception:
