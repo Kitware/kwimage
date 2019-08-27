@@ -464,13 +464,16 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             'fill': True
         }
         centerkw = default_centerkw.copy()
+        collections = []
         for pcolor, idxs in color_groups.items():
             patches = [
                 mpl.patches.Circle((x, y), ec=None, fc=pcolor, **centerkw)
                 for x, y in xy[idxs]
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
+            collections.append(col)
             ax.add_collection(col)
+        return collections
 
     def compress(self, flags, axis=0, inplace=False):
         """

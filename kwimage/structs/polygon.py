@@ -697,6 +697,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         path = Path(verts, codes)
 
         kw = {}
+        # TODO:
+        # depricate border kwarg in favor of standard matplotlib args
         if border:
             kw['linewidth'] = linewidth
             try:
@@ -719,6 +721,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             x1, y1, x2, y2 = self.to_boxes().to_tlbr().data[0]
             ax.set_xlim(x1, x2)
             ax.set_ylim(y1, y2)
+        return patch
 
     def _to_coco(self, style='orig'):
         interiors = self.data.get('interiors', [])

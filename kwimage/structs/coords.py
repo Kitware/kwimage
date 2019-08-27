@@ -561,10 +561,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             'fill': True
         }
         centerkw = default_centerkw.copy()
+        collections = []
         for pcolor, idxs in color_groups.items():
             patches = [
                 mpl.patches.Circle((x, y), ec=None, fc=pcolor, **centerkw)
                 for y, x in data[idxs]
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
+            collections.append(col)
             ax.add_collection(col)
+        return collections

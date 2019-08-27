@@ -1107,8 +1107,9 @@ class _BoxDrawMixins(object):
             # Hack to draw non-2d boxes
             boxes = boxes[None, :]
 
-        kwplot.draw_boxes(boxes, color=color, labels=labels, alpha=alpha,
-                          centers=centers, fill=fill, lw=lw, ax=ax)
+        return kwplot.draw_boxes(boxes, color=color, labels=labels,
+                                 alpha=alpha, centers=centers, fill=fill,
+                                 lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None):
         """
