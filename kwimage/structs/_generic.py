@@ -136,9 +136,12 @@ class ObjectList(Spatial):
         return self.__class__(newdata, self.meta)
 
     def draw(self, **kwargs):
+        patches = []
         for item in self.data:
             if item is not None:
-                item.draw(**kwargs)
+                patch = item.draw(**kwargs)
+                patches.append(patch)
+        return patches
 
     def draw_on(self, image, **kwargs):
         for item in self.data:

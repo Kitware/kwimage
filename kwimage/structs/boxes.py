@@ -726,7 +726,7 @@ class _BoxTransformMixins(object):
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Args:
-            augmenter (imgaug.augmenters.Augmenter):
+            augmenter (imgaug.augmenters.Augmenter): an imgaug augmenter
             input_dims (Tuple): h/w of the input image
             inplace (bool, default=False): if True, modifies data inplace
 
