@@ -131,6 +131,13 @@ def imread(fpath, space='auto', backend='auto'):
             dst_space = space
 
         if dst_space is not None:
+            if src_space is None:
+                raise ValueError((
+                    'Cannot convert to destination colorspace ({}) because'
+                    ' the source colorspace could not be determined. Use '
+                    ' space=None to return the raw data.'
+                ).format(dst_space))
+
             image = im_cv2.convert_colorspace(image, src_space=src_space,
                                               dst_space=dst_space,
                                               implicit=False)
@@ -194,7 +201,9 @@ def _imread_gdal(fpath):
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
-        if gdal_dset.RasterCount == 1:
+        num_channels = gdal_dset.RasterCount
+
+        if num_channels == 1:
             band = gdal_dset.GetRasterBand(1)
 
             color_table = band.GetColorTable()
@@ -209,9 +218,8 @@ def _imread_gdal(fpath):
                 image = np.array(buf)
                 src_space = 'gray'
             else:
-                # src_space = 'rgb'
-                raise Exception('cant handle color tables yet')
-        elif gdal_dset.RasterCount in [3, 4]:
+                raise NotImplementedError('cant handle color tables yet')
+        else:
             _gdal_dtype_lut = {
                 1: np.uint8,     2: np.uint16,
                 3: np.int16,     4: np.uint32,      5: np.int32,
@@ -219,24 +227,26 @@ def _imread_gdal(fpath):
                 9: np.complex_,  10: np.complex64,  11: np.complex128
             }
             bands = [gdal_dset.GetRasterBand(i)
-                     for i in range(1, gdal_dset.RasterCount + 1)]
+                     for i in range(1, num_channels + 1)]
             gdal_type_code = bands[0].DataType
             dtype = _gdal_dtype_lut[gdal_type_code]
-            shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize, gdal_dset.RasterCount)
+            shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize,
+                     gdal_dset.RasterCount)
             # Preallocate and populate image
             image = np.empty(shape, dtype=dtype)
             for i, band in enumerate(bands):
                 image[:, :, i] = band.ReadAsArray()
 
-            # note this isn't a very safe assumption
-            if gdal_dset.RasterCount == 3:
+            # note this isn't a safe assumption, but it is an OK default
+            # hueristic
+            if num_channels == 3:
                 src_space = 'rgb'
-            elif gdal_dset.RasterCount == 4:
+            elif num_channels == 4:
                 src_space = 'rgba'
-        else:
-            raise NotImplementedError(
-                'Can only read 1 or 3 channel NTF images. '
-                'Got {}'.format(gdal_dset.RasterCount))
+            else:
+                # We have no hint of the source color space in this instance
+                src_space = None
+
     except Exception:
         raise
     finally:
@@ -308,12 +318,14 @@ def imwrite(fpath, image, space='auto'):
         elif n_channels == 1:
             auto_src_space = 'gray'
         else:
+            # TODO: allow writing of arbitrary num channels using gdal
             raise NotImplementedError('unknown number of channels')
         src_space = auto_src_space
     else:
         src_space = space
 
     if fpath.endswith(('.tif', '.tiff')):
+        # TODO: allow writing of tiff images using gdal (allow COGS)
 
         if space is not None:
             # skimage writes images in RGB(A)/ grayscale
