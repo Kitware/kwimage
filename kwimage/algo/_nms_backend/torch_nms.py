@@ -2,6 +2,9 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import torch
 import numpy as np
+from distutils.version import LooseVersion
+
+_TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
@@ -86,7 +89,11 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
     #     * consider if overlap <= thresh
     # This convention has the property that when thresh=0, we dont just
     # remove everything.
-    conflicting = (ious > thresh).triu(1)
+    if _TORCH_HAS_BOOL_COMP:
+        conflicting = (ious > thresh).byte().triu(1).bool()
+    else:
+        # Old way
+        conflicting = (ious > thresh).triu(1)
 
     if classes is not None:
         ordered_classes = classes[order]

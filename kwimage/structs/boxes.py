@@ -71,6 +71,7 @@ except ImportError:
     _bbox_ious_c = None
 
 _TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0')
+_TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 class NeedsWarpCorners(AssertionError):
@@ -1823,8 +1824,12 @@ def _compress(data, flags, axis=None):
         return data.compress(flags, axis=axis)
     elif torch.is_tensor(data):
         if not torch.is_tensor(flags):
-            flags = np.asarray(flags).astype(np.uint8)
-            flags = torch.ByteTensor(flags).to(data.device)
+            if _TORCH_HAS_BOOL_COMP:
+                flags = np.asarray(flags, dtype=np.bool)
+                flags = torch.BoolTensor(flags).to(data.device)
+            else:
+                flags = np.asarray(flags).astype(np.uint8)
+                flags = torch.ByteTensor(flags).to(data.device)
         if flags.ndimension() != 1:
             raise ValueError('condition must be a 1-d tensor')
         if axis is None:

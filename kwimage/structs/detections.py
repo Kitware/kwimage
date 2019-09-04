@@ -14,6 +14,10 @@ import numpy as np
 import ubelt as ub
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
+from distutils.version import LooseVersion
+
+
+_TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 class _DetDrawMixin:
@@ -920,7 +924,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if isinstance(flags, np.ndarray):
                 if flags.dtype.kind == 'b':
                     flags = flags.astype(np.uint8)
-            flags = torch.ByteTensor(flags).to(self.device)
+            if _TORCH_HAS_BOOL_COMP:
+                flags = torch.BoolTensor(flags).to(self.device)
+            else:
+                flags = torch.ByteTensor(flags).to(self.device)
         newdata = {k: _generic._safe_compress(v, flags, axis)
                    for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
