@@ -7,12 +7,16 @@ import numpy as np
 import kwarray
 
 
-def _coordinate_grid(dims):
+def _coordinate_grid(dims, align_corners=False):
     """
     Creates a homogenous coordinate system.
 
     Args:
         dims (Tuple[int*]): height / width or depth / height / width
+
+        align_corners (bool):
+            returns a grid where the left and right corners assigned to the
+            extreme values and intermediate values are interpolated.
 
     Returns:
         Tensor[shape=(3, *DIMS)]
@@ -30,18 +34,35 @@ def _coordinate_grid(dims):
                 [[1., 1.],
                  [1., 1.]]])
         >>> _coordinate_grid((2, 2, 2))
+        >>> _coordinate_grid((2, 2), align_corners=True)
+        tensor([[[0., 1.],
+                 [0., 1.]],
+                [[0., 0.],
+                 [1., 1.]],
+                [[1., 1.],
+                 [1., 1.]]])
+
     """
+    if align_corners:
+        def _corner_grid(d):
+            return torch.linspace(0, d, d)
+        _grid_fn = _corner_grid
+    else:
+        def _disc_grid(d):
+            return torch.arange(0, d)
+        _grid_fn = _disc_grid
+
     if len(dims) == 2:
         h, w = dims
-        h_range = torch.arange(0, h).view(h, 1).expand(h, w).float()  # [H, W]
-        w_range = torch.arange(0, w).view(1, w).expand(h, w).float()  # [H, W]
+        h_range = _grid_fn(h).view(h, 1).expand(h, w).float()  # [H, W]
+        w_range = _grid_fn(w).view(1, w).expand(h, w).float()  # [H, W]
         ones = torch.ones(h, w)
         pixel_coords = torch.stack((w_range, h_range, ones), dim=0)  # [3, H, W]
     elif len(dims) == 3:
         d, h, w = dims
-        d_range = torch.arange(0, d).view(d, 1, 1).expand(d, h, w).float()  # [D, H, W]
-        h_range = torch.arange(0, h).view(1, h, 1).expand(d, h, w).float()  # [D, H, W]
-        w_range = torch.arange(0, w).view(1, 1, w).expand(d, h, w).float()  # [D, H, W]
+        d_range = _grid_fn(d).view(d, 1, 1).expand(d, h, w).float()  # [D, H, W]
+        h_range = _grid_fn(h).view(1, h, 1).expand(d, h, w).float()  # [D, H, W]
+        w_range = _grid_fn(w).view(1, 1, w).expand(d, h, w).float()  # [D, H, W]
         ones = torch.ones(d, h, w)
         pixel_coords = torch.stack((w_range, h_range, d_range, ones), dim=0)  # [4, D, H, W]
         pass
@@ -51,7 +72,8 @@ def _coordinate_grid(dims):
 
 
 def warp_tensor(inputs, mat, output_dims, mode='bilinear',
-                padding_mode='zeros', isinv=False, ishomog=None):
+                padding_mode='zeros', isinv=False, ishomog=None,
+                align_corners=False):
     r"""
     A pytorch implementation of warp affine that works similarly to
     cv2.warpAffine / cv2.warpPerspective.
@@ -75,16 +97,27 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
                 (W,), (H, W), or (D, H, W).
 
         mode (str):
-            see `torch.nn.functional.grid_sample`
+            Can be bilinear or nearest.
+            See `torch.nn.functional.grid_sample`
 
         padding_mode (str):
-            see `torch.nn.functional.grid_sample`
+            Can be zeros, border, or reflection.
+            See `torch.nn.functional.grid_sample`.
 
         isinv (bool, default=False):
             Set to true if `mat` is the inverse transform
 
         ishomog (bool, default=None):
             Set to True if the matrix is non-affine
+
+        align_corners (bool, default=False):
+            Note the default of False does not work correctly with grid_sample
+            in torch <= 1.2, but using align_corners=True isnt typically what
+            you want either. We will be stuck with buggy functionality until
+            torch 1.3 is released.
+
+            However, using align_corners=0 does seem to reasonably correspond
+            with opencv behavior.
 
     Notes:
         Also, it may be possible to speed up the code with `F.affine_grid`
@@ -106,7 +139,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> # Create a relatively simple affine matrix
         >>> import skimage
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
-        >>>     translation=[1, -1], scale=[.5, 2],
+        >>>     translation=[1, -1], scale=[.532, 2],
         >>>     rotation=0, shear=0,
         >>> ).params)
         >>> # Create inputs and an output dimension
@@ -114,7 +147,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
         >>> output_dims = (11, 7)
         >>> # Warp with our code
-        >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims)
+        >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims, align_corners=0)
         >>> print('result1 =\n{}'.format(ub.repr2(result1.cpu().numpy()[0, 0], precision=2)))
         >>> # Warp with opencv
         >>> import cv2
@@ -164,7 +197,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
         >>> output_dims = (3, 11)
         >>> # Warp with our code
-        >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims)
+        >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims, align_corners=0)
         >>> print('result1 =\n{}'.format(ub.repr2(result1.cpu().numpy()[0, 0], precision=2)))
         >>> # Warp with opencv
         >>> import cv2
@@ -174,7 +207,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> result2 = cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR)
         >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
         >>> # Ensure the results are the same (up to floating point errors)
-        >>> # NOTE: The floating point errors seem to be significant for rotation / shear
+        >>> # NOTE: The errors seem to be significant for rotation / shear
         >>> assert np.all(np.isclose(result1[0, 0].cpu().numpy(), result2, atol=1, rtol=1e-2))
 
     Example:
@@ -200,7 +233,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> output_dims = (2, 3, 3)
         >>> input_shape = [1, 1] + input_dims
         >>> inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
-        >>> result = warp_tensor(inputs, mat, output_dims=output_dims)
+        >>> result = warp_tensor(inputs, mat, output_dims=output_dims, align_corners=0)
         >>> print('result =\n{}'.format(ub.repr2(result.cpu().numpy()[0, 0], precision=2)))
         result =
         np.array([[[ 0.  ,  1.25,  1.  ],
@@ -232,6 +265,31 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>>      result = warp_tensor(inputs, mat, output_dims=output_dims)
         >>>      #print('result =\n{}'.format(ub.repr2(result.cpu().numpy(), precision=2)))
         >>>      print(result.shape)
+
+    Ignore:
+        import xdev
+        globals().update(xdev.get_func_kwargs(warp_tensor))
+        >>> # FIXME THIS DOESNT SEEM RIGHT
+        >>> inputs = torch.arange(9).view(1, 1, 3, 3).float()
+        >>> input_dims = inputs.shape[2:]
+        >>> output_dims = (6, 6)
+        >>> mat = torch.FloatTensor([[2, 0, 0], [0, 2, 0], [0, 0, 1]])
+        >>> inv = mat.inverse()
+        >>> warp_tensor(inputs, mat, output_dims)
+        >>> print(inputs)
+        >>> print('----')
+        >>> print(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=True))
+        >>> print(F.interpolate(inputs, (6, 6), mode='bilinear', align_corners=True))
+        >>> print('----')
+        >>> print(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=False))
+        >>> print(F.interpolate(inputs, (6, 6), mode='bilinear', align_corners=False))
+        >>> print(ub.repr2(F.interpolate(inputs, scale_factor=2, mode='bilinear', align_corners=False).numpy(), precision=2))
+        >>> cv2_M = mat.cpu().numpy()[0:2]
+        >>> src = inputs[0, 0].cpu().numpy()
+        >>> dsize = tuple(output_dims[::-1])
+        >>> result2 = (cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR))
+        >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
+
     """
 
     if mode == 'linear':
@@ -263,8 +321,10 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     else:
         inputs_ = inputs
 
+    device = inputs.device
+
     input_size = torch.Tensor(np.array(input_dims[::-1]))[None, :, None]
-    input_size = input_size.to(inputs.device)  # [1, ndims, 1]
+    input_size = input_size.to(device)  # [1, ndims, 1]
 
     if len(mat.shape) not in [2, 3]:
         raise ValueError('Invalid mat shape')
@@ -296,15 +356,17 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     if len(inv.shape) == 2:
         inv = inv[None, :]
 
-    if inv.device != inputs.device:
-        inv = inv.to(inputs.device)
+    if inv.device != device:
+        inv = inv.to(device)
 
     # Construct a homogenous coordinate system in the output frame where the
     # input is aligned with the top left corner.
     # X = ndims + 1 if ishomog else ndims
     X = ndims + 1
-    unwarped_coords = _coordinate_grid(output_dims)     # [X, *DIMS]
-    unwarped_coords = unwarped_coords.to(inputs.device)
+
+    # NOTE: grid_sample does not support align_corners=False correctly
+    unwarped_coords = _coordinate_grid(output_dims, align_corners=align_corners)     # [X, *DIMS]
+    unwarped_coords = unwarped_coords.to(device)
 
     unwarped_coords_ = unwarped_coords.view(1, X, -1)  # [1, X, prod(DIMS)]
     warped_coords = inv.matmul(unwarped_coords_)
@@ -316,9 +378,23 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         warped_coords = warped_coords[:, 0:ndims]
 
     # Normalized the warped coordinates that align with the input to [-1, +1]
-    # Anything outside of the input range is mappd outside of [-1, +1]
-    warped_coords *= 2.0 / (input_size - 1.0)  # normalize from [0, 2]
-    warped_coords -= 1.0                       # normalize from [-1, +1]
+    # Anything outside of the input range is mapped outside of [-1, +1]
+    if align_corners:
+        grid_coords = warped_coords * (2.0 / (input_size))  # normalize from [0, 2]
+        grid_coords -= 1.0                                  # normalize from [-1, +1]
+    else:
+        grid_coords = warped_coords * (2.0 / (input_size - 1.0))  # normalize from [0, 2]
+        grid_coords -= 1.0                                        # normalize from [-1, +1]
+
+    # The warped coordinate [-1, -1] will references to the left-top pixel of
+    # the input, analgously [+1, +1] references the right-bottom pixel of the
+    # input.
+    # Note: that -1, -1 refers to the center of the first pixel, not the edge.
+    # See:
+    # https://github.com/pytorch/pytorch/issues/20785
+    # https://github.com/pytorch/pytorch/pull/23923
+    # https://github.com/pytorch/pytorch/pull/24929
+    # https://user-images.githubusercontent.com/9757500/58150486-c5315900-7c34-11e9-9466-24f2bd431fa4.png
 
     # # Note: Was unable to quite figure out how to use F.affine_grid
     # gride_shape = torch.Size((B, C,) + tuple(output_dims))
@@ -327,14 +403,15 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     # return outputs
 
     # Reshape to dimensions compatible with grid_sample
-    warped_coords = warped_coords.transpose(1, 2)  # swap space/coord dims
+    grid_coords = grid_coords.transpose(1, 2)  # swap space/coord dims
     _reshaper = [1] + list(output_dims) + [ndims]
-    warped_coords = warped_coords.reshape(*_reshaper)  # Unpack dims
+    grid_coords = grid_coords.reshape(*_reshaper)  # Unpack dims
     _expander = [inputs_.shape[0]] + list(output_dims) + [ndims]
-    warped_coords = warped_coords.expand(*_expander)
+    grid_coords = grid_coords.expand(*_expander)
 
-    # warped_coords = warped_coords.to(inputs.device)
-    outputs_ = F.grid_sample(inputs_, warped_coords, mode=mode,
+    # grid_coords = grid_coords.to(device)
+    # TODO: pass align_corners when supported in torch 1.3
+    outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
                              padding_mode=padding_mode)
 
     # Unpack outputs to match original input shape
