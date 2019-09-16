@@ -72,11 +72,9 @@ class _PointsWarpMixin:
 
     @classmethod
     def from_imgaug(cls, kpoi):
-        if hasattr(kpoi, 'to_xy_array'):
-            xy = kpoi.keypoints.to_xy_array()
-        else:
-            xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
-        self = cls(xy=xy)
+        import kwimage
+        data = kwimage.Coords.from_imgaug(kpoi)
+        self = cls(data)
         return self
 
     @profile
@@ -161,7 +159,7 @@ class _PointsWarpMixin:
 
     def translate(self, offset, output_dims=None, inplace=False):
         """
-        Shift the points up/down left/right
+        Shift the points
 
         Args:
             factor (float or Tuple[float]):

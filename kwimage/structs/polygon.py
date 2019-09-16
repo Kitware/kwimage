@@ -94,6 +94,8 @@ class _PolyWarpMixin:
             >>> self = Polygon.random(10, n_holes=1, rng=0).scale(input_dims)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
+            >>> assert np.allclose(self.data['exterior'].data[:, 1], new.data['exterior'].data[:, 1])
+            >>> assert np.allclose(input_dims[0] - self.data['exterior'].data[:, 0], new.data['exterior'].data[:, 0])
 
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
@@ -106,7 +108,6 @@ class _PolyWarpMixin:
             >>> self.draw(color='red', alpha=.4)
             >>> new.draw(color='blue', alpha=.4)
         """
-        import imgaug
         import kwimage
         new = self if inplace else self.__class__(self.data.copy())
 
@@ -119,35 +120,13 @@ class _PolyWarpMixin:
         cs = [0] + np.cumsum(np.array(list(map(len, parts)))).tolist()
         flat_kps = np.concatenate(parts, axis=0)
 
-        if LooseVersion(imgaug.__version__) < LooseVersion('0.3.0'):
-            # Hack to fix imgaug bug
-            h, w = input_dims
-            input_dims = (int(h + 1.0), int(w + 1.0))
-
-        # if hasattr(imgaug, 'Keypoints'):
-        #     kps = imgaug.Keypoints(flat_kps)
-        #     kpoi = imgaug.KeypointsOnImage(kps, shape=tuple(input_dims))
-        #     print('kpoi = {!r}'.format(kpoi))
-        # else:
-        kpoi = imgaug.KeypointsOnImage.from_xy_array(flat_kps, shape=tuple(input_dims))
-
-        kpoi = augmenter.augment_keypoints(kpoi)
-        print('kpoi = {!r}'.format(kpoi))
-
-        if hasattr(kpoi, 'to_xy_array'):
-            flat_parts = kpoi.to_xy_array()
-            _new_parts = []
-            for a, b in ub.iter_window(cs, 2):
-                new_part = np.array(flat_parts[a:b], dtype=dtype)
-                _new_parts.append(new_part)
-            new_parts = _new_parts[::-1]
-        else:
-            _new_parts = []
-            for a, b in ub.iter_window(cs, 2):
-                unpacked = [[kp.x, kp.y] for kp in kpoi.keypoints[a:b]]
-                new_part = np.array(unpacked, dtype=dtype)
-                _new_parts.append(new_part)
-            new_parts = _new_parts[::-1]
+        flat_coords = kwimage.Coords(flat_kps)
+        flat_coords = flat_coords._warp_imgaug(augmenter, input_dims, inplace=True)
+        flat_parts = flat_coords.data
+        new_parts = []
+        for a, b in ub.iter_window(cs, 2):
+            new_part = np.array(flat_parts[a:b], dtype=dtype)
+            new_parts.append(new_part)
 
         new_exterior = kwimage.Coords(new_parts[0])
         new_interiors = [kwimage.Coords(p) for p in new_parts[1:]]

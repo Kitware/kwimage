@@ -18,13 +18,28 @@ try:
 except ImportError:
     profile = ub.identity
 
+try:
+    import imgaug
+    _HAS_IMGAUG_FLIP_BUG = LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9') and not hasattr(imgaug.augmenters.size, '_crop_and_pad_kpsoi')
+    _HAS_IMGAUG_XY_ARRAY = LooseVersion(imgaug.__version__) >= LooseVersion('0.2.9')
+except ImportError:
+    _HAS_IMGAUG_FLIP_BUG = None
+    _HAS_IMGAUG_XY_ARRAY = None
+
 
 class Coords(_generic.Spatial, ub.NiceRepr):
     """
-    This stores arbitrary sparse coordinate geometry.
+    This stores arbitrary sparse n-dimensional coordinate geometry.
 
     You can specify data, but you don't have to.
     We dont care what it is, we just warp it.
+
+    NOTE:
+        This class was designed to hold coordinates in r/c format, but in
+        general this class is anostic to dimension ordering as long as you are
+        consistent. However, there are two places where this matters:
+            (1) drawing and (2) gdal/imgaug-warping. In these places we will
+            assume x/y for legacy reasons. This may change in the future.
 
     CommandLine:
         xdoctest -m kwimage.structs.coords Coords
@@ -349,10 +364,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Warps by applying an augmenter from the imgaug library
 
+        NOTE:
+            We are assuming you are using X/Y coordinates here.
+
         Args:
             augmenter (imgaug.augmenters.Augmenter):
             input_dims (Tuple): h/w of the input image
             inplace (bool, default=False): if True, modifies data inplace
+
+        CommandLine:
+            xdoctest -m ~/code/kwimage/kwimage/structs/coords.py Coords._warp_imgaug
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
@@ -362,23 +383,59 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> self = Coords.random(10).scale(input_dims)
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
+            >>> # y coordinate should not change
+            >>> assert np.allclose(self.data[:, 1], new.data[:, 1])
+            >>> assert np.allclose(input_dims[0] - self.data[:, 0], new.data[:, 0])
 
             >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> from matplotlib import pyplot as pl
             >>> ax = plt.gca()
-            >>> ax.set_xlim(0, 10)
-            >>> ax.set_ylim(0, 10)
+            >>> ax.set_xlim(0, input_dims[0])
+            >>> ax.set_ylim(0, input_dims[1])
             >>> self.draw(color='red', alpha=.4, radius=0.1)
             >>> new.draw(color='blue', alpha=.4, radius=0.1)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> import imgaug
+            >>> input_dims = (32, 32)
+            >>> inplace = 0
+            >>> self = Coords.random(1000, rng=142).scale(input_dims).scale(.8)
+            >>> self.data = self.data.astype(np.int32).astype(np.float32)
+            >>> augmenter = imgaug.augmenters.CropAndPad(px=(-4, 4), keep_size=1).to_deterministic()
+            >>> new = self._warp_imgaug(augmenter, input_dims)
+            >>> # Change should be linear
+            >>> norm1 = (self.data - self.data.min(axis=0)) / (self.data.max(axis=0) - self.data.min(axis=0))
+            >>> norm2 = (new.data - new.data.min(axis=0)) / (new.data.max(axis=0) - new.data.min(axis=0))
+            >>> diff = norm1 - norm2
+            >>> assert np.allclose(diff, 0, atol=1e-6, rtol=1e-4)
+            >>> #assert np.allclose(self.data[:, 1], new.data[:, 1])
+            >>> #assert np.allclose(input_dims[0] - self.data[:, 0], new.data[:, 0])
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwimage
+            >>> im = kwimage.imresize(kwimage.grab_test_image(), dsize=input_dims[::-1])
+            >>> new_im = augmenter.augment_image(im)
+            >>> import kwplot
+            >>> plt = kwplot.autoplt()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(im, pnum=(1, 2, 1), fnum=1)
+            >>> self.draw(color='red', alpha=.8, radius=0.5)
+            >>> kwplot.imshow(new_im, pnum=(1, 2, 2), fnum=1)
+            >>> new.draw(color='blue', alpha=.8, radius=0.5, coord_axes=[1, 0])
         """
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         kpoi = new.to_imgaug(input_dims=input_dims)
+        # print('kpoi = {!r}'.format(kpoi))
         new_kpoi = augmenter.augment_keypoints(kpoi)
+        # print('new_kpoi = {!r}'.format(new_kpoi))
         dtype = new.data.dtype
         if hasattr(new_kpoi, 'to_xy_array'):
+            # imgaug.__version__ >= 0.2.9
             xy = new_kpoi.to_xy_array().astype(dtype)
         else:
             xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
@@ -394,30 +451,37 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> self = Coords.random(10)
             >>> input_dims = (10, 10)
             >>> kpoi = self.to_imgaug(input_dims)
+            >>> new = Coords.from_imgaug(kpoi)
+            >>> assert np.allclose(new.data, self.data)
         """
         import imgaug
-        if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
+        if _HAS_IMGAUG_FLIP_BUG:
             # Hack to fix imgaug bug
             h, w = input_dims
             input_dims = (int(h + 1.0), int(w + 1.0))
-        else:
-            # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
-            # comment: "is this still correct with float keypoints?  Seems like
-            # the -1 should be dropped"
-            raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
-                            'imgaug.__version__={}'.format(imgaug.__version__))
+
         input_dims = tuple(map(int, input_dims))
-        # if hasattr(imgaug, 'Keypoints'):
-        #     # make use of new proposal when/if it lands
-        #     kps = imgaug.Keypoints(self.data)
-        #     kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
-        if hasattr(imgaug, 'from_xy_array'):
-            kpoi = imgaug.KeypointsOnImage.from_xy_array(
-                self.data, shape=input_dims)
+        if _HAS_IMGAUG_XY_ARRAY:
+            if hasattr(imgaug, 'Keypoints'):
+                # make use of new proposal when/if it lands
+                kps = imgaug.Keypoints(self.data)
+                kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
+            else:
+                kpoi = imgaug.KeypointsOnImage.from_xy_array(
+                    self.data, shape=input_dims)
         else:
             kps = [imgaug.Keypoint(x, y) for x, y in self.data]
             kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi
+
+    @classmethod
+    def from_imgaug(cls, kpoi):
+        if _HAS_IMGAUG_XY_ARRAY:
+            xy = kpoi.to_xy_array()
+        else:
+            xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
+        self = cls(xy)
+        return self
 
     def scale(self, factor, output_dims=None, inplace=False):
         """
@@ -466,7 +530,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def translate(self, offset, output_dims=None, inplace=False):
         """
-        Shift the coordinates up/down left/right
+        Shift the coordinates
 
         Args:
             offset (float or Tuple[float]):
@@ -506,7 +570,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Args:
             coord_axes (Tuple): specify which image axes each coordinate dim
-                corresponds to.
+                corresponds to.  For 2D images, if you are storing r/c data,
+                set to [0,1], if you are storing x/y data, set to [1,0].
         """
         import kwimage
         index = self.data
@@ -514,19 +579,32 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                                           coord_axes=coord_axes, interp=interp)
         return image
 
-    def draw_on(self, image=None, fill_value=1, coord_axes=None,
+    def draw_on(self, image=None, fill_value=1, coord_axes=[1, 0],
                 interp='bilinear'):
         """
+        Note:
+            unlike other methods, the defaults assume x/y internal data
+
+        Args:
+            coord_axes (Tuple): specify which image axes each coordinate dim
+                corresponds to.  For 2D images, if you are storing r/c data,
+                set to [0,1], if you are storing x/y data, set to [1,0].
+
+                In other words the i-th entry in coord_axes specifies which
+                row-major spatial dimension the i-th column of a coordinate
+                corresponds to. The index is the coordinate dimension and the
+                value is the axes dimension.
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> s = 256
             >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
             >>> self.data[0] = [10, 10]
-            >>> self.data[1] = [20, 30]
+            >>> self.data[1] = [20, 40]
             >>> image = np.zeros((s, s))
             >>> fill_value = 1
-            >>> image = self.draw_on(image, fill_value, coord_axes=[0, 1], interp='bilinear')
+            >>> image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='bilinear')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[0, 1], interp='nearest')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='bilinear')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='nearest')
@@ -535,7 +613,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
-            >>> self.draw(radius=3, alpha=.5)
+            >>> self.draw(radius=3, alpha=.5, coord_axes=[1, 0])
         """
         # import kwimage
         if image is None:
@@ -546,8 +624,18 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                           interp=interp)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=None, radius=1):
+    def draw(self, color='blue', ax=None, alpha=None, coord_axes=[1, 0],
+             radius=1):
         """
+        Note:
+            unlike other methods, the defaults assume x/y internal data
+
+        Args:
+            coord_axes (Tuple): specify which image axes each coordinate dim
+                corresponds to.  For 2D images,
+                    if you are storing r/c data, set to [0,1],
+                    if you are storing x/y data, set to [1,0].
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
@@ -584,9 +672,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         centerkw = default_centerkw.copy()
         collections = []
         for pcolor, idxs in color_groups.items():
+            yx_list = [row[coord_axes] for row in data[idxs]]
             patches = [
                 mpl.patches.Circle((x, y), ec=None, fc=pcolor, **centerkw)
-                for y, x in data[idxs]
+                for y, x in yx_list
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
             collections.append(col)
