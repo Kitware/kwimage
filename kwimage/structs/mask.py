@@ -41,6 +41,13 @@ from kwimage.structs._mask_backend import cython_mask
 __all__ = ['Mask', 'MaskList']
 
 
+try:
+    import xdev
+    profile = xdev.profile
+except ImportError:
+    profile = ub.identity
+
+
 class MaskFormat:
     """
     Defines valid formats and their aliases.
@@ -324,6 +331,7 @@ class _MaskTransformMixin(object):
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
         return new
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
 

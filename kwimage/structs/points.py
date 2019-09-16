@@ -3,11 +3,20 @@ import ubelt as ub
 import skimage
 import kwarray
 import torch
+from distutils.version import LooseVersion
 from . import _generic
+
+
+try:
+    import xdev
+    profile = xdev.profile
+except ImportError:
+    profile = ub.identity
 
 
 class _PointsWarpMixin:
 
+    @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -26,7 +35,12 @@ class _PointsWarpMixin:
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
 
+            >>> self = Points(xy=(np.random.rand(10, 2) * 10).astype(np.int))
+            >>> augmenter = imgaug.augmenters.Fliplr(p=1)
+            >>> new = self._warp_imgaug(augmenter, input_dims)
+
             >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> ax = plt.gca()
@@ -36,18 +50,15 @@ class _PointsWarpMixin:
             >>> new.draw(color='blue', alpha=.4, radius=0.1)
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        kpoi = new.to_imgaug(input_dims=input_dims)
-        new_kpoi = augmenter.augment_keypoints(kpoi)
-        dtype = new.data['xy'].data.dtype
-        xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
-        import kwimage
-        new.data['xy'] = kwimage.Coords(xy)
+        new.data['xy'] = new.data['xy']._warp_imgaug(augmenter, input_dims,
+                                                     inplace=inplace)
         if 'tf_data_to_img' in self.meta:
             # warping via imgaug invalidates the tf_data_to_img transform
             self.meta = self.meta.copy()
             self.meta.pop('tf_data_to_img')
         return new
 
+    @profile
     def to_imgaug(self, input_dims):
         """
         Example:
@@ -57,32 +68,18 @@ class _PointsWarpMixin:
             >>> input_dims = (10, 10)
             >>> kpoi = pts.to_imgaug(input_dims)
         """
-        import imgaug
-        from distutils.version import LooseVersion
-        if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
-            # Hack to fix imgaug bug
-            h, w = input_dims
-            input_dims = (int(h + 1.0), int(w + 1.0))
-        else:
-            # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
-            # comment: "is this still correct with float keypoints?  Seems like
-            # the -1 should be dropped".
-            # raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
-            #                 'imgaug.__version__={}'.format(imgaug.__version__))
-            # Yes, the bug was fixed. I fixed it.
-            pass
-        input_dims = tuple(map(int, input_dims))
-        kps = [imgaug.Keypoint(x, y) for x, y in self.data['xy'].data]
-        kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
-        return kpoi
+        return self.data['xy'].to_imgaug(input_dims)
 
     @classmethod
     def from_imgaug(cls, kpoi):
-        import numpy as np
-        xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
+        if hasattr(kpoi, 'to_xy_array'):
+            xy = kpoi.keypoints.to_xy_array()
+        else:
+            xy = np.array([[kp.x, kp.y] for kp in kpoi.keypoints])
         self = cls(xy=xy)
         return self
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.

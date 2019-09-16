@@ -74,6 +74,13 @@ _TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0'
 _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
+try:
+    import xdev
+    profile = xdev.profile
+except ImportError:
+    profile = ub.identity
+
+
 class NeedsWarpCorners(AssertionError):
     pass
 
@@ -752,6 +759,7 @@ class _BoxTransformMixins(object):
             new = new.tensor()
         return new
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are

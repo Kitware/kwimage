@@ -8,7 +8,15 @@ import ubelt as ub
 import skimage
 import torch
 import kwarray
+from distutils.version import LooseVersion
 from . import _generic
+
+
+try:
+    import xdev
+    profile = xdev.profile
+except ImportError:
+    profile = ub.identity
 
 
 class Coords(_generic.Spatial, ub.NiceRepr):
@@ -249,6 +257,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None,
              inplace=False):
         """
@@ -335,6 +344,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = kwimage.warp_points(matrix, new.data)
         return new
 
+    @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -368,10 +378,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         kpoi = new.to_imgaug(input_dims=input_dims)
         new_kpoi = augmenter.augment_keypoints(kpoi)
         dtype = new.data.dtype
-        xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
+        if hasattr(new_kpoi, 'to_xy_array'):
+            xy = new_kpoi.to_xy_array().astype(dtype)
+        else:
+            xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
         new.data = xy
         return new
 
+    @profile
     def to_imgaug(self, input_dims):
         """
         Example:
@@ -382,7 +396,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> kpoi = self.to_imgaug(input_dims)
         """
         import imgaug
-        from distutils.version import LooseVersion
         if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
             # Hack to fix imgaug bug
             h, w = input_dims
@@ -393,9 +406,17 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             # the -1 should be dropped"
             raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
                             'imgaug.__version__={}'.format(imgaug.__version__))
-        kps = [imgaug.Keypoint(x, y) for x, y in self.data]
         input_dims = tuple(map(int, input_dims))
-        kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
+        # if hasattr(imgaug, 'Keypoints'):
+        #     # make use of new proposal when/if it lands
+        #     kps = imgaug.Keypoints(self.data)
+        #     kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
+        if hasattr(imgaug, 'from_xy_array'):
+            kpoi = imgaug.KeypointsOnImage.from_xy_array(
+                self.data, shape=input_dims)
+        else:
+            kps = [imgaug.Keypoint(x, y) for x, y in self.data]
+            kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi
 
     def scale(self, factor, output_dims=None, inplace=False):

@@ -35,10 +35,10 @@ def _coordinate_grid(dims, align_corners=False):
                  [1., 1.]]])
         >>> _coordinate_grid((2, 2, 2))
         >>> _coordinate_grid((2, 2), align_corners=True)
-        tensor([[[0., 1.],
-                 [0., 1.]],
+        tensor([[[0., 2.],
+                 [0., 2.]],
                 [[0., 0.],
-                 [1., 1.]],
+                 [2., 2.]],
                 [[1., 1.],
                  [1., 1.]]])
 

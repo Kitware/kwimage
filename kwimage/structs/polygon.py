@@ -3,7 +3,15 @@ import cv2
 import numpy as np
 import torch
 import skimage
+from distutils.version import LooseVersion
 from . import _generic
+
+
+try:
+    import xdev
+    profile = xdev.profile
+except ImportError:
+    profile = ub.identity
 
 
 class _PolyArrayBackend:
@@ -67,6 +75,7 @@ class _PolyArrayBackend:
 
 class _PolyWarpMixin:
 
+    @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -78,6 +87,7 @@ class _PolyWarpMixin:
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
+            >>> import ovharn
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> import imgaug
             >>> input_dims = np.array((10, 10))
@@ -96,55 +106,56 @@ class _PolyWarpMixin:
             >>> self.draw(color='red', alpha=.4)
             >>> new.draw(color='blue', alpha=.4)
         """
+        import imgaug
+        import kwimage
         new = self if inplace else self.__class__(self.data.copy())
 
         # current version of imgaug doesnt fully support polygons
         # coerce to and from points instead
         dtype = self.data['exterior'].data.dtype
 
-        import imgaug
-        parts = []
-        kps = [imgaug.Keypoint(x, y) for x, y in self.data['exterior'].data]
-        parts.append(kps)
-        for hole in self.data.get('interiors', []):
-            kps = [imgaug.Keypoint(x, y) for x, y in hole.data]
-            parts.append(kps)
-
+        parts = [self.data['exterior']] + self.data.get('interiors', [])
+        parts = [p.data for p in parts]
         cs = [0] + np.cumsum(np.array(list(map(len, parts)))).tolist()
-        flat_kps = list(ub.flatten(parts))
+        flat_kps = np.concatenate(parts, axis=0)
 
-        import imgaug
-        from distutils.version import LooseVersion
-        if LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9'):
+        if LooseVersion(imgaug.__version__) < LooseVersion('0.3.0'):
             # Hack to fix imgaug bug
             h, w = input_dims
             input_dims = (int(h + 1.0), int(w + 1.0))
-        else:
-            # Note: the bug was in FlipLR._augment_keypoints, denoted by a todo
-            # comment: "is this still correct with float keypoints?  Seems like
-            # the -1 should be dropped"
-            # raise Exception('WAS THE BUG FIXED IN A NEW VERSION? '
-            #                 'imgaug.__version__={}'.format(imgaug.__version__))
-            # Yes, the bug was fixed. I fixed it.
-            pass
-        kpoi = imgaug.KeypointsOnImage(flat_kps, shape=tuple(input_dims))
+
+        # if hasattr(imgaug, 'Keypoints'):
+        #     kps = imgaug.Keypoints(flat_kps)
+        #     kpoi = imgaug.KeypointsOnImage(kps, shape=tuple(input_dims))
+        #     print('kpoi = {!r}'.format(kpoi))
+        # else:
+        kpoi = imgaug.KeypointsOnImage.from_xy_array(flat_kps, shape=tuple(input_dims))
 
         kpoi = augmenter.augment_keypoints(kpoi)
+        print('kpoi = {!r}'.format(kpoi))
 
-        _new_parts = []
-        for a, b in ub.iter_window(cs, 2):
-            unpacked = [[kp.x, kp.y] for kp in kpoi.keypoints[a:b]]
-            new_part = np.array(unpacked, dtype=dtype)
-            _new_parts.append(new_part)
-        new_parts = _new_parts[::-1]
+        if hasattr(kpoi, 'to_xy_array'):
+            flat_parts = kpoi.to_xy_array()
+            _new_parts = []
+            for a, b in ub.iter_window(cs, 2):
+                new_part = np.array(flat_parts[a:b], dtype=dtype)
+                _new_parts.append(new_part)
+            new_parts = _new_parts[::-1]
+        else:
+            _new_parts = []
+            for a, b in ub.iter_window(cs, 2):
+                unpacked = [[kp.x, kp.y] for kp in kpoi.keypoints[a:b]]
+                new_part = np.array(unpacked, dtype=dtype)
+                _new_parts.append(new_part)
+            new_parts = _new_parts[::-1]
 
-        import kwimage
         new_exterior = kwimage.Coords(new_parts[0])
         new_interiors = [kwimage.Coords(p) for p in new_parts[1:]]
         new.data['exterior'] = new_exterior
         new.data['interiors'] = new_interiors
         return new
 
+    @profile
     def to_imgaug(self, shape):
         import imgaug
         ia_exterior = imgaug.Polygon(self.data['exterior'])
@@ -152,6 +163,7 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
