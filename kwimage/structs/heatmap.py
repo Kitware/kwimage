@@ -207,7 +207,7 @@ class _HeatmapDrawMixin(object):
                     else:
                         color = kwplot.Color(color).as01()
                     cidx_to_color.append(color)
-            except Exception as ex:
+            except Exception:
                 # fallback on default colors
                 cidx_to_color = default_cidx_to_color
 
@@ -376,7 +376,8 @@ class _HeatmapDrawMixin(object):
 
         Args:
             image (ndarray): image to draw on
-            channel (int | str): category index to visualize, or special key
+            channel (int | str): category index to visualize, or special key.
+                special keys are: class_idx, class_probs, class_idx
             imgspace (bool, default=False): colorize the image after
                 warping into the image space.
 

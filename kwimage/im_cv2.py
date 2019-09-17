@@ -397,8 +397,11 @@ def draw_text_on_image(img, text, org, **kwargs):
     Note:
         This function also exists in kwplot
 
+        The image is modified inplace. If the image is non-contiguous then this
+        returns a UMat instead of a ndarray, so be carefull with that.
+
     Args:
-        img (ndarray): image to draw on
+        img (ndarray): image to draw on (inplace)
         text (str): text to draw
         org (tuple): x, y location of the text string in the image.
             if bottomLeftOrigin=True this is the bottom-left corner of the text
@@ -417,7 +420,9 @@ def draw_text_on_image(img, text, org, **kwargs):
         >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwimage
         >>> img = kwimage.grab_test_image(space='rgb')
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR', org=(0, 0))
+        >>> img2 = kwimage.draw_text_on_image(img.copy(), 'FOOBAR', org=(0, 0), valign='top')
+        >>> assert img2.shape == img.shape
+        >>> assert np.any(img2 != img)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
