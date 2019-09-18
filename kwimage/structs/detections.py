@@ -1374,9 +1374,6 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                             kpts_mask[1, kp_cidx][mask] = kp_dy
                             kpts_ignore_mask[kp_cidx][mask] = 0
 
-        # SeeAlso:
-        # ~/code/ovharn/ovharn/models/mcd_coder.py
-
     fcn_target = {
         'cidx': cidx_mask,
     }

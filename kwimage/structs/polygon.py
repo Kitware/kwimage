@@ -87,7 +87,6 @@ class _PolyWarpMixin:
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
-            >>> import ovharn
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> import imgaug
             >>> input_dims = np.array((10, 10))

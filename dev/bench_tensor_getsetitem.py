@@ -149,7 +149,7 @@ def _bench_put():
 
 
 def _bench_catgraph_conditional_log_softmax_solution():
-    from ovharn import category_tree
+    from ndsampler import category_tree
 
     graph = nx.generators.gnr_graph(30, 0.3, seed=321).reverse()
     self = category_tree.CategoryTree(graph)
@@ -213,7 +213,7 @@ def _bench_catgraph_conditional_log_softmax_solution():
 
 
 def _bench_catgraph_sink_log_softmax():
-    from ovharn import category_tree
+    from ndsampler import category_tree
     sink_nodes = category_tree.sink_nodes
 
     def sink_log_softmax_method1(self, class_energy, dim):
@@ -273,7 +273,7 @@ def _bench_catgraph_sink_log_softmax():
             populate2(node)
         return class_logits
 
-    from ovharn import category_tree
+    from ndsampler import category_tree
     graph = nx.generators.gnr_graph(30, 0.3, seed=321).reverse()
     self = category_tree.CategoryTree(graph)
     class_energy = torch.randn(16, len(self.idx_to_node), 15, 15)
