@@ -234,7 +234,9 @@ class _HeatmapDrawMixin(object):
             # TODO: this is a bit hacky / inefficient, needs cleanup
             if imgspace:
                 mat = self.tf_data_to_img.params
-                a = self.warp(mat, version='old').numpy()
+                output_dims = self.img_dims
+                a = self.warp(mat, version='old',
+                              output_dims=output_dims).numpy()
             else:
                 a = self
             if channel == 'offset':
