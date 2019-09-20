@@ -144,6 +144,7 @@ def imread(fpath, space='auto', backend='auto'):
 
         return image
     except Exception as ex:
+        print('ex = {!r}'.format(ex))
         print('Error reading fpath = {!r}'.format(fpath))
         raise
 
