@@ -568,16 +568,33 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
         >>> kwplot.imshow(norm)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> import numpy as np
+        >>> shape = (24, 24)
+        >>> sigma = 3.0
+        >>> gausspatch = gaussian_patch(shape, sigma)
+        >>> sum_ = gausspatch.sum()
+        >>> assert np.all(np.isclose(sum_, 1.0))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
+        >>> kwplot.imshow(norm)
+        >>> kwplot.show_if_requested()
     """
     if sigma is None:
         sigma1 = 0.3 * ((shape[0] - 1) * 0.5 - 1) + 0.8
         sigma2 = 0.3 * ((shape[1] - 1) * 0.5 - 1) + 0.8
-    elif isinstance(sigma, float):
+    elif isinstance(sigma, (float, int)):
         sigma1 = sigma2 = sigma
     else:
         sigma1, sigma2 = sigma
     # see hesaff/src/helpers.cpp : computeCircularGaussMask
     kernel_d0 = cv2.getGaussianKernel(shape[0], sigma1)
-    kernel_d1 = cv2.getGaussianKernel(shape[1], sigma2)
+    if shape[0] == shape[1] and sigma2 == sigma1:
+        kernel_d1 = kernel_d0
+    else:
+        kernel_d1 = cv2.getGaussianKernel(shape[1], sigma2)
     gausspatch = kernel_d0.dot(kernel_d1.T)
     return gausspatch

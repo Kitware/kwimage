@@ -615,15 +615,29 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             classes (list | CategoryTree): list of all keypoint category names
 
         Example:
+            >>> ##
             >>> classes = ['mouth', 'left-hand', 'right-hand']
             >>> coco_kpts = [
             >>>     {'xy': (0, 0), 'visible': 2, 'keypoint_category': 'left-hand'},
             >>>     {'xy': (1, 2), 'visible': 2, 'keypoint_category': 'mouth'},
             >>> ]
             >>> Points.from_coco(coco_kpts, classes=classes)
-
+            >>> #
+            >>> # Old style
             >>> coco_kpts = [0, 0, 2, 0, 1, 2]
             >>> Points.from_coco(coco_kpts)
+
+        Example:
+            >>> import ndsampler
+            >>> classes = ndsampler.CategoryTree.from_coco([
+            >>>     {'name': 'mouth', 'id': 2}, {'name': 'left-hand', 'id': 3}, {'name': 'right-hand', 'id': 5}
+            >>> ])
+            >>> coco_kpts = [
+            >>>     {'xy': (0, 0), 'visible': 2, 'keypoint_category_id': 5},
+            >>>     {'xy': (1, 2), 'visible': 2, 'keypoint_category_id': 2},
+            >>> ]
+            >>> pts = Points.from_coco(coco_kpts, classes=classes)
+            >>> assert pts.data['class_idxs'].tolist() == [2, 0]
         """
         return cls._from_coco(coco_kpts, class_idxs=class_idxs,
                               classes=classes)
@@ -674,6 +688,23 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         assert classes is not None
                         cname = kpdict['keypoint_category']
                         cidx = classes.index(cname)
+                    ### Legacy support, these are not prefered names ###
+                    elif 'category_id' in kpdict:
+                        import warnings
+                        warnings.warn('Keypoints got category_id, but we would prefer keypoint_category_id')
+                        cid = kpdict['category_id']
+                        try:
+                            cidx = classes.id_to_idx[cid]
+                        except AttributeError:
+                            raise TypeError('classes needs to be a ndsampler.CategoryTree to parse keypoint_category_id')
+                    elif 'category' in kpdict:
+                        import warnings
+                        warnings.warn('Keypoints got category, but we would prefer keypoint_category')
+                        assert classes is not None
+                        cname = kpdict['category']
+                        cidx = classes.index(cname)
+                    # else:
+                    #     raise Exception('Keypoint category was not specified')
                     cidx_list.append(cidx)
                 else:
                     if 'keypoint_category_id' in kpdict or 'keypoint_category' in kpdict:
