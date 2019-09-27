@@ -642,6 +642,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> Points.from_coco(coco_kpts)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> import ndsampler
             >>> classes = ndsampler.CategoryTree.from_coco([
             >>>     {'name': 'mouth', 'id': 2}, {'name': 'left-hand', 'id': 3}, {'name': 'right-hand', 'id': 5}
