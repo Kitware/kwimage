@@ -3,7 +3,7 @@ import ubelt as ub
 import skimage
 import kwarray
 import torch
-from distutils.version import LooseVersion
+from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
@@ -412,7 +412,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         image = dtype_fixer(image)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=None, radius=1):
+    def draw(self, color='blue', ax=None, alpha=None, radius=1, **kwargs):
         """
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -451,18 +451,32 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             colors = [color] * len(alpha)
 
-        ptcolors = [kwplot.Color(c, alpha=a).as01('rgba') for c, a in zip(colors, alpha)]
+        ptcolors = [kwplot.Color(c, alpha=a).as01('rgba')
+                    for c, a in zip(colors, alpha)]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
-        default_centerkw = {
+        circlekw = {
             'radius': radius,
-            'fill': True
+            'fill': True,
+            'ec': None,
         }
-        centerkw = default_centerkw.copy()
+        if 'fc' in kwargs:
+            import warnings
+            warnings.warning(
+                'Warning: specifying fc to Points.draw overrides '
+                'the color argument. Use color instead')
+        circlekw.update(kwargs)
+        fc = circlekw.pop('fc', None)  # hack
+
         collections = []
         for pcolor, idxs in color_groups.items():
+
+            # hack for fc
+            if fc is not None:
+                pcolor = fc
+
             patches = [
-                mpl.patches.Circle((x, y), ec=None, fc=pcolor, **centerkw)
+                mpl.patches.Circle((x, y), fc=pcolor, **circlekw)
                 for x, y in xy[idxs]
             ]
             col = mpl.collections.PatchCollection(patches, match_original=True)
