@@ -103,7 +103,7 @@ def imread(fpath, space='auto', backend='auto'):
         # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
         GDAL_EXTENSIONS = (
             '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
-            '.r0', '.r1', '.r2', '.r3', '.r4', '.r5',
+            '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
         )
         if _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
