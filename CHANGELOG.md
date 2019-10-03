@@ -26,6 +26,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `Points` draw methods now accept 'classes' as a color arg
 
 ### Fixed
+* `imread` can now handle nsf and color table images.
 * Python2 issues with `Boxes.__repr__`
 * Can now correctly draw 1D `Boxes` objects
 * Python2 issues mask shape using List[long] instead of List[int]

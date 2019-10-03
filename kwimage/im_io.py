@@ -204,6 +204,13 @@ def _imread_gdal(fpath):
 
         num_channels = gdal_dset.RasterCount
 
+        _gdal_dtype_lut = {
+            1: np.uint8,     2: np.uint16,
+            3: np.int16,     4: np.uint32,      5: np.int32,
+            6: np.float32,   7: np.float64,     8: np.complex_,
+            9: np.complex_,  10: np.complex64,  11: np.complex128
+        }
+
         if num_channels == 1:
             band = gdal_dset.GetRasterBand(1)
 
@@ -217,16 +224,29 @@ def _imread_gdal(fpath):
                     if buf is None:
                         raise IOError('GDal was unable to read this band')
                 image = np.array(buf)
-                src_space = 'gray'
+
             else:
-                raise NotImplementedError('cant handle color tables yet')
+                # The buffer is an index into the color table
+                buf = band.ReadAsArray()
+
+                gdal_dtype = color_table.GetPaletteInterpretation()
+                dtype = _gdal_dtype_lut[gdal_dtype]
+
+                num_colors = color_table.GetCount()
+                if num_colors <= 0:
+                    raise AssertionError('invalid color table')
+                idx_to_color = []
+                for idx in range(num_colors):
+                    color = color_table.GetColorEntry(idx)
+                    idx_to_color.append(color)
+
+                # The color table specifies the real number of channels
+                num_channels = len(color)
+
+                idx_to_color = np.array(idx_to_color, dtype=dtype)
+                image = idx_to_color[buf]
+
         else:
-            _gdal_dtype_lut = {
-                1: np.uint8,     2: np.uint16,
-                3: np.int16,     4: np.uint32,      5: np.int32,
-                6: np.float32,   7: np.float64,     8: np.complex_,
-                9: np.complex_,  10: np.complex64,  11: np.complex128
-            }
             bands = [gdal_dset.GetRasterBand(i)
                      for i in range(1, num_channels + 1)]
             gdal_type_code = bands[0].DataType
@@ -238,15 +258,17 @@ def _imread_gdal(fpath):
             for i, band in enumerate(bands):
                 image[:, :, i] = band.ReadAsArray()
 
-            # note this isn't a safe assumption, but it is an OK default
-            # hueristic
-            if num_channels == 3:
-                src_space = 'rgb'
-            elif num_channels == 4:
-                src_space = 'rgba'
-            else:
-                # We have no hint of the source color space in this instance
-                src_space = None
+        # note this isn't a safe assumption, but it is an OK default
+        # hueristic
+        if num_channels == 1:
+            src_space = 'gray'
+        elif num_channels == 3:
+            src_space = 'rgb'
+        elif num_channels == 4:
+            src_space = 'rgba'
+        else:
+            # We have no hint of the source color space in this instance
+            src_space = None
 
     except Exception:
         raise
