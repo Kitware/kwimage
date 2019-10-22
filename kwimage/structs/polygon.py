@@ -556,6 +556,21 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return self
 
     @classmethod
+    def from_geojson(MultiPolygon, data_geojson):
+        """
+        Convert a geojson polygon to a kwimage.Polygon
+
+        Example:
+            >>> self = kwimage.Polygon.random(n_holes=2)
+            >>> data_geojson = self.to_geojson()
+            >>> new = kwimage.Polygon.from_geojson(data_geojson)
+        """
+        exterior = np.array(data_geojson['coordinates'][0])
+        interiors = [np.array(h) for h in data_geojson['coordinates'][1:]]
+        self = Polygon(exterior=exterior, interiors=interiors)
+        return self
+
+    @classmethod
     def from_coco(cls, data, dims=None):
         """
         Accepts either new-style or old-style coco polygons
@@ -886,6 +901,39 @@ class MultiPolygon(_generic.ObjectList):
             polys = [Polygon.from_shapely(g) for g in geom.geoms]
         self = MultiPolygon(polys)
         return self
+
+    @classmethod
+    def from_geojson(MultiPolygon, data_geojson):
+        """
+        Convert a geojson polygon or multipolygon to a kwimage.MultiPolygon
+
+        Example:
+            >>> import kwimage
+            >>> orig = kwimage.MultiPolygon.random()
+            >>> data_geojson = orig.to_geojson()
+            >>> self = kwimage.MultiPolygon.from_geojson(data_geojson)
+        """
+        if data_geojson['type'] == 'Polygon':
+            polys = [Polygon.from_geojson(data_geojson)]
+        else:
+            polys = [
+                Polygon.from_geojson(
+                    {'type': 'Polygon', 'coordinates': coords})
+                for coords in data_geojson['coordinates']
+            ]
+        self = MultiPolygon(polys)
+        return self
+
+    def to_geojson(self):
+        """
+        Converts polygon to a geojson structure
+        """
+        coords = [poly.to_geojson()['coordinates'] for poly in self.data]
+        data_geojson = {
+            'type': 'MultiPolygon',
+            'coordinates': coords,
+        }
+        return data_geojson
 
     @classmethod
     def from_coco(cls, data, dims=None):
