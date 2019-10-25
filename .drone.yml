@@ -12,6 +12,7 @@ steps:
     image: erotemic/research:PY_VER_3.6
     #image: python:3.6
     commands:
+      - apt install net-tools
       - ifconfig
       - . $HOME/.local/conda/etc/profile.d/conda.sh
       - conda activate py3.6
