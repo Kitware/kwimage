@@ -684,6 +684,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> cname_to_cat = None
             >>> list(self.to_coco())
         """
+        import kwarray
         to_collate = {}
         if 'boxes' in self.data:
             to_collate['bbox'] = list(self.data['boxes'].to_coco())
@@ -704,18 +705,19 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if 'segmentations' in self.data:
             to_collate['segmentation'] = list(self.data['segmentations'].to_coco())
 
-        # coco_extra_keys = ['scores', 'weights', 'probs']
-        # for key in coco_extra_keys:
-        #     if key in self.data:
-        #         to_collate[key] = self.data[key].tolist()
+        if 'scores' in self.data:
+            to_collate['score'] = kwarray.ArrayAPI.tolist(self.data['scores'])
+
+        if 'weights' in self.data:
+            to_collate['weight'] = kwarray.ArrayAPI.tolist(self.data['weights'])
+
+        if 'probs' in self.data:
+            to_collate['prob'] = kwarray.ArrayAPI.tolist(self.data['probs'])
 
         keys = list(to_collate.keys())
-        # annotations = []
         for item_vals in zip(*to_collate.values()):
             ann = ub.dzip(keys, item_vals)
             yield ann
-            # annotations.append(ann)
-        # return annotations
 
     # --- Data Properties ---
 
