@@ -360,10 +360,10 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         return []
 
     if impl == 'auto':
-        # if torch.is_tensor(tlbr):
-        #     impl = 'torch'
-        # else:
-        impl = _impls._automode
+        if _impls._automode == 'py' and torch.is_tensor(tlbr):
+            impl = 'torch'  # hack, not the most elegant way fallback on torch
+        else:
+            impl = _impls._automode
     elif ub.iterable(impl):
         # if impl is iterable, it is a preference order
         found = False

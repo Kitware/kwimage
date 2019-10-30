@@ -36,7 +36,10 @@ import numpy as np
 import ubelt as ub
 import itertools as it
 from . import _generic
-from kwimage.structs._mask_backend import cython_mask
+try:
+    from kwimage.structs._mask_backend import cython_mask
+except ImportError:
+    cython_mask = None
 
 __all__ = ['Mask', 'MaskList']
 
