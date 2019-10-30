@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import torch
 import skimage
-from distutils.version import LooseVersion
+from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
@@ -561,9 +561,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Convert a geojson polygon to a kwimage.Polygon
 
         Example:
-            >>> self = kwimage.Polygon.random(n_holes=2)
+            >>> self = Polygon.random(n_holes=2)
             >>> data_geojson = self.to_geojson()
-            >>> new = kwimage.Polygon.from_geojson(data_geojson)
+            >>> new = Polygon.from_geojson(data_geojson)
         """
         exterior = np.array(data_geojson['coordinates'][0])
         interiors = [np.array(h) for h in data_geojson['coordinates'][1:]]
