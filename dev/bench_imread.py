@@ -99,14 +99,16 @@ def _read_pil(fpath):
 
 def bench_imread():
     import ubelt as ub
+    # fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
 
-    fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
+    import kwimage
+    fpath = kwimage.grab_test_image_fpath('airport')
 
     # A color-table geotiff
     # https://download.osgeo.org/geotiff/samples/
-    fpath = ub.grabdata('https://download.osgeo.org/geotiff/samples/usgs/c41078a1.tif')
+    # fpath = ub.grabdata('https://download.osgeo.org/geotiff/samples/usgs/c41078a1.tif')
 
-    ti = ub.Timerit(4, bestof=2, verbose=2)
+    ti = ub.Timerit(100, bestof=5, verbose=2)
 
     results = {}
 
@@ -139,8 +141,27 @@ def bench_imread():
             image = skimage.io.imread(fpath)
     results[ti.label] = image.sum()
 
+    import kwimage
+    for timer in ti.reset('kwimage'):
+        with timer:
+            image = kwimage.imread(fpath)
+    results[ti.label] = image.sum()
+
     import cv2
     for timer in ti.reset('cv2'):
         with timer:
             image = cv2.imread(fpath)
     results[ti.label] = image.sum()
+
+    for timer in ti.reset('pil'):
+        with timer:
+            image = _read_pil(fpath)
+    results[ti.label] = image.sum()
+
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python ~/code/kwimage/dev/bench_imread.py
+    """
+    bench_imread()
