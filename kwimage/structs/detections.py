@@ -531,11 +531,27 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     def from_coco_annots(cls, anns, cats=None, classes=None, kp_classes=None,
                          shape=None, dset=None):
         """
+        Create a Detections object from coco-like annotations.
+
         Args:
             anns (List[Dict]): list of coco-like annotation objects
-            shape (tuple): shape of parent image
+
             dset (CocoDataset): if specified, cats, classes, and kp_classes
                 can are ignored.
+
+            cats (List[Dict]): coco-format category information.
+                Used only if `dset` is not specified.
+
+            classes (ndsampler.CategoryTree): category tree with coco class
+                info. Used only if `dset` is not specified.
+
+            kp_classes (ndsampler.CategoryTree): keypoint category tree with
+                coco keypoint class info. Used only if `dset` is not specified.
+
+            shape (tuple): shape of parent image
+
+        Returns:
+            Detections: a detections object
 
         Example:
             >>> from kwimage.structs.detections import *  # NOQA
@@ -575,14 +591,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets = kwimage.Detections.from_coco_annots(
             >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph,
             >>>     kp_classes, shape=shape)
-
-        Ignore:
-            import skimage
-            m = skimage.morphology.disk(4)
-            mask = kwimage.Mask.from_mask(m, offset=(2, 3), shape=(20, 20))
-            print(mask.to_bytes_rle().data)
         """
-
+        import kwimage
         cnames = None
         if dset is not None:
             cats = dset.dataset['categories']
@@ -611,7 +621,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             cid_to_cat = {c['id']: c for c in cats}  # Hack
             cnames = [cid_to_cat[cid]['name'] for cid in cids]
 
-        import kwimage
         xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
         boxes = kwimage.Boxes(xywh, 'xywh')
         class_idxs = [classes.index(cname) for cname in cnames]
@@ -621,6 +630,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             class_idxs=np.array(class_idxs),
             classes=classes,
         )
+
+        if len(anns):
+            if 'score' in anns[0]:
+                dets.data['scores'] = np.array([ann.get('score', np.nan) for ann in anns])
+
+            if 'prob' in anns[0]:
+                dets.data['probs'] = np.array([ann.get('prob', np.nan) for ann in anns])
+
+            if 'weight' in anns[0]:
+                dets.data['weights'] = np.array([ann.get('weight', np.nan) for ann in anns])
+
         if True:
             ss = [ann.get('segmentation', None) for ann in anns]
             masks = [
@@ -653,17 +673,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 else:
                     kpcidxs = None
                     # TODO: correctly handle newstyle keypoints
-                    if kp_classes is not None:
+                    if dset is not None:
+                        pass
+                    if kp_classes is None:
                         kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
-                    if 1:
-                        pts = kwimage.Points._from_coco(
-                            k, class_idxs=kpcidxs, classes=kp_classes)
-                    else:
-                        xy = np.array(k).reshape(-1, 3)[:, 0:2]
-                        pts = kwimage.Points(
-                            xy=xy,
-                            class_idxs=kpcidxs,
-                        )
+
+                    pts = kwimage.Points.from_coco(
+                        k, class_idxs=kpcidxs, classes=kp_classes)
                     kpts.append(pts)
             dets.data['keypoints'] = kwimage.PointsList(kpts)
 
@@ -674,8 +690,25 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     def to_coco(self, cname_to_cat=None):
         """
-        CommandLine:
-            xdoctest -m kwimage.structs.detections Detections.to_coco
+        Converts this set of detections into coco-like annotation dictionaries.
+
+        Notes:
+            Not all aspects of the MS-COCO format can be accurately
+            represented, so some liberties are taken. The MS-COCO standard
+            defines that annotations should specifiy a category_id field, but
+            in some cases this information is not available so we will populate
+            a 'category_name' field if possible and in the worst case fall back
+            to 'category_index'.
+
+            Additionally, detections may contain additional information beyond
+            the MS-COCO standard, and this information (e.g. weight, prob,
+            score) is added as forign fields.
+
+        Args:
+            cname_to_cat: currently ignored.
+
+        Yields:
+            dict: coco-like annotation structures
 
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
@@ -697,7 +730,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     pass
                 to_collate['category_name'] = catnames
             else:
-                to_collate['category_index'] = self.data['class_idxs']
+                to_collate['category_index'] = kwarray.ArrayAPI.tolist(
+                    self.data['class_idxs'])
 
         if 'keypoints' in self.data:
             to_collate['keypoints'] = list(self.data['keypoints'].to_coco())
