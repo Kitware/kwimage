@@ -5,6 +5,10 @@ import ubelt as ub
 import torch
 import numpy as np
 import kwarray
+from distutils.version import LooseVersion
+
+
+TORCH_GRID_SAMPLE_HAS_ALIGN = LooseVersion(torch.__version__) >= LooseVersion('1.3.0')
 
 
 def _coordinate_grid(dims, align_corners=False):
@@ -270,23 +274,29 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         import xdev
         globals().update(xdev.get_func_kwargs(warp_tensor))
         >>> # FIXME THIS DOESNT SEEM RIGHT
+        >>> import cv2
         >>> inputs = torch.arange(9).view(1, 1, 3, 3).float()
         >>> input_dims = inputs.shape[2:]
-        >>> output_dims = (6, 6)
-        >>> mat = torch.FloatTensor([[2, 0, 0], [0, 2, 0], [0, 0, 1]])
+        >>> #output_dims = (6, 6)
+        >>> s = 1
+        >>> output_dims = tuple((np.array(input_dims) * s).tolist())
+        >>> mat = torch.FloatTensor([[s, 0, 0], [0, s, 0], [0, 0, 1]])
         >>> inv = mat.inverse()
         >>> warp_tensor(inputs, mat, output_dims)
         >>> print(inputs)
+        >>> print('\nalign_corners=True')
         >>> print('----')
         >>> print(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=True))
-        >>> print(F.interpolate(inputs, (6, 6), mode='bilinear', align_corners=True))
+        >>> print(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=True))
+        >>> print('\nalign_corners=False')
         >>> print('----')
         >>> print(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=False))
-        >>> print(F.interpolate(inputs, (6, 6), mode='bilinear', align_corners=False))
-        >>> print(ub.repr2(F.interpolate(inputs, scale_factor=2, mode='bilinear', align_corners=False).numpy(), precision=2))
+        >>> print(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=False))
+        >>> print(ub.repr2(F.interpolate(inputs, scale_factor=s, mode='bilinear', align_corners=False).numpy(), precision=2))
         >>> cv2_M = mat.cpu().numpy()[0:2]
         >>> src = inputs[0, 0].cpu().numpy()
         >>> dsize = tuple(output_dims[::-1])
+        >>> print('\nOpen CV warp Result')
         >>> result2 = (cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR))
         >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
 
@@ -411,8 +421,13 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     # grid_coords = grid_coords.to(device)
     # TODO: pass align_corners when supported in torch 1.3
-    outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
-                             padding_mode=padding_mode)
+    if TORCH_GRID_SAMPLE_HAS_ALIGN:
+        outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
+                                 padding_mode=padding_mode,
+                                 align_corners=align_corners)
+    else:
+        outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
+                                 padding_mode=padding_mode)
 
     # Unpack outputs to match original input shape
     final_dims = list(prefix_dims) + list(output_dims)
