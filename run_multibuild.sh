@@ -107,10 +107,13 @@ export PIP_CACHE_DIR="$VENV_DIR/cache_pip"
 pip install pip -U
 pip install pip setuptools -U
 
-pip install numpy==1.15
-pip install pandas==0.23.2  # hack for python2
+#pip install numpy==1.15
+#pip install pandas==0.23.2  # hack for python2
 
-pip install -r requirements.txt
+#pip install -r requirements.txt
+
+# we only need build requirements to make the wheel
+pip install -r requirements/build.txt
 
 chmod -R o+rw $VENV_DIR
 
