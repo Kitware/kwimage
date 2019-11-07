@@ -19,15 +19,20 @@
         - PYEXE=${PYPREFIX}/bin/python
         - $PYEXE --version  # Print out python version for debugging
         - $PYEXE -m pip install virtualenv
-        - rm -rf venv
         - $PYEXE -m virtualenv venv
         - source venv/bin/activate
+        # Hacks
+        - LD_LIBRARY_PATH=venv/lib:$LD_LIBRARY_PATH 
+        - CPATH=venv/include:$LD_LIBRARY_PATH 
         - pip install pip -U
         - pip install pip setuptools -U
         - pip install -r requirements.txt
 
     script: 
         # Setup the correct version of python on this manylinux instance
+        # Hacks
+        - LD_LIBRARY_PATH=venv/lib:$LD_LIBRARY_PATH 
+        - CPATH=venv/include:$LD_LIBRARY_PATH 
         - python setup.py develop
         - ./run_tests.py
 
