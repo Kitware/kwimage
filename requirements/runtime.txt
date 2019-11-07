@@ -14,3 +14,4 @@ six >= 1.11.0
 ubelt >= 0.7.1
 
 # kwarray  # NOTE: this is required, but possibly causing issues because it is currently internal
+kwarray >= 0.4.0
