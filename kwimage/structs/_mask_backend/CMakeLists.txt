@@ -20,7 +20,7 @@ if (BUILD_MASK_CYTHON)
         ${PYTHON_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}
   )
-  target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
+  #target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
 
   target_compile_definitions(${module_name} PUBLIC
     "NPY_NO_DEPRECATED_API"

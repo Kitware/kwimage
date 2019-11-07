@@ -11,7 +11,7 @@ if (BUILD_BOXES_CYTHON)
   # Create C++ library. Specify include dirs and link libs as normal
   add_library(${module_name} MODULE ${sources})
   target_include_directories(${module_name} PUBLIC ${NumPy_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS})
-  target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
+  #target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
 
   target_compile_definitions(${module_name} PUBLIC
     "NPY_NO_DEPRECATED_API"
