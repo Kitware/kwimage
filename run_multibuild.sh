@@ -59,7 +59,7 @@ if [ "$_INSIDE_DOCKER" != "YES" ]; then
         -v $PWD:/io \
         -e _INSIDE_DOCKER="YES" \
         -e MB_PYTHON_TAG="$MB_PYTHON_TAG" \
-        $DOCKER_IMAGE /io/run_multibuild.sh
+        $DOCKER_IMAGE bash -c 'cd /io && ./run_multibuild.sh'
 
     __interactive__='''
     docker run --rm \
@@ -79,7 +79,7 @@ fi
 set -x
 set -e
 
-cd /io
+#cd /io
 #ls
 
 PYPREFIX=/opt/python/$MB_PYTHON_TAG
