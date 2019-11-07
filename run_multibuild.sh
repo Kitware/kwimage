@@ -1,6 +1,29 @@
 #!/bin/bash
 __heredoc__="""
 
+
+notes:
+
+    # TODO: use dind as the base image,
+    # Then run the multibuild in docker followed by a test in a different
+    # docker container
+    docker run --rm -it --entrypoint="" docker:dind sh
+
+    docker run --rm -v $PWD:/io -it python:2.7 bash
+     
+        cd /io
+        pip install -r requirements.txt
+        pip install pygments
+        pip install wheelhouse/kwimage-0.5.0-cp27-cp27mu-manylinux1_x86_64.whl
+
+        cd /
+        xdoctest kwimage
+        pytest io/tests
+
+        cd /io
+        python run_tests.py
+
+
 MB_PYTHON_TAG=cp37-cp37m ./run_multibuild.sh
 
 MB_PYTHON_TAG=cp36-cp36m ./run_multibuild.sh
@@ -61,7 +84,7 @@ $PYEXE --version  # Print out python version for debugging
 $PYEXE -m pip install virtualenv
 $PYEXE -m virtualenv $VENV_DIR
 
-chmod -R 777 $VENV_DIR
+chmod -R o+rw $VENV_DIR
 #setfacl -d -m g::rwx $VENV_DIR
 #setfacl -d -m o::rwx $VENV_DIR
 
@@ -81,7 +104,7 @@ pip install pandas==0.23.2  # hack for python2
 
 pip install -r requirements.txt
 
-chmod -R 777 $VENV_DIR
+chmod -R o+rw $VENV_DIR
 
 # virtualenv doesn't correctly set library_path and ld_library_path
 # ACTUALLY: we shouldnt be linking against libpython anyway
@@ -93,13 +116,13 @@ chmod -R 777 $VENV_DIR
 #CPATH=$PYPREFIX/include:$LD_LIBRARY_PATH 
 
 python setup.py bdist_wheel
-chmod -R 777 _skbuild
-chmod -R 777 dist
+chmod -R o+rw _skbuild
+chmod -R o+rw dist
 
 auditwheel repair dist/kwimage-*-$MB_PYTHON_TAG-*.whl
-chmod -R 777 wheelhouse
+chmod -R o+rw wheelhouse
 
-chmod -R 777 kwimage.egg-info
+chmod -R o+rw kwimage.egg-info
 
 
 _debug_torch_issue(){
