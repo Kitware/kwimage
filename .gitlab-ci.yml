@@ -89,7 +89,7 @@ stages:
 # Define the actual jobs
 
 
-build/cp27-cp27m-manylinux2010:
+build/cp27-cp27mu-manylinux2010:
     <<: 
         - *multibuild_template
 
