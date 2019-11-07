@@ -7,6 +7,10 @@ notes:
     # TODO: use dind as the base image,
     # Then run the multibuild in docker followed by a test in a different
     # docker container
+
+    # BETTER TODO: 
+    # Use a build stage to build in the multilinux environment and then
+    # use a test stage with a different image to test and deploy the wheel
     docker run --rm -it --entrypoint="" docker:dind sh
     docker run --rm -it --entrypoint="" docker:latest sh
     docker run --rm -v $PWD:/io -it --entrypoint="" docker:latest sh
@@ -49,6 +53,8 @@ MB_PYTHON_TAG=${MB_PYTHON_TAG:="cp36-cp36m"}
 
 
 if [ "$_INSIDE_DOCKER" != "YES" ]; then
+
+    set -e
     docker run --rm \
         -v $PWD:/io \
         -e _INSIDE_DOCKER="YES" \
