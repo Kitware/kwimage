@@ -11,30 +11,33 @@
     <<: 
         - *common_template
 
-    image: quay.io/pypa/manylinux2010_x86_64
+    #image: quay.io/pypa/manylinux2010_x86_64
+    image: docker:dind
 
-    before_script:
-        # Setup the correct version of python on this manylinux instance
-        - PYPREFIX=/opt/python/$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - PYEXE=${PYPREFIX}/bin/python
-        - $PYEXE --version  # Print out python version for debugging
-        - $PYEXE -m pip install virtualenv
-        - $PYEXE -m virtualenv venv
-        - source venv/bin/activate
-        # Hacks
-        - pip install numpy==1.15
-        - pip install pandas==0.23.2  # hack for python2
-        # 
-        - pip install pip -U
-        - pip install pip setuptools -U
-        - pip install -r requirements.txt
+    #before_script:
+    #    # Setup the correct version of python on this manylinux instance
+    #    - PYPREFIX=/opt/python/$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+    #    - PYEXE=${PYPREFIX}/bin/python
+    #    - $PYEXE --version  # Print out python version for debugging
+    #    - $PYEXE -m pip install virtualenv
+    #    - $PYEXE -m virtualenv venv
+    #    - source venv/bin/activate
+    #    # Hacks
+    #    - pip install numpy==1.15
+    #    - pip install pandas==0.23.2  # hack for python2
+    #    # 
+    #    - pip install pip -U
+    #    - pip install pip setuptools -U
+    #    - pip install -r requirements.txt
 
     script: 
-        - python setup.py develop
-        - ./run_tests.py
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - MB_PYTHON_TAG=$MB_PYTHON_TAG ./run_multibuild.sh
+        #- python setup.py develop
+        #- ./run_tests.py
 
     # Coverage is a regex that will parse the coverage from the test stdout
-    coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+    #coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
 
     variables:
         # Change pip's cache directory to be inside the project directory since we can
@@ -50,13 +53,13 @@
     #    paths:
     #        - dist/*.whl
 
-.deploy_template: &deploy_template
+#.deploy_template: &deploy_template
 
-    script:
-        - python bdist_wheel
-    #sudo apt update
-    #sudo apt install snapd
-    #sudo snap install patchelf --edge --classic
+#    script:
+#        - python bdist_wheel
+#    #sudo apt update
+#    #sudo apt install snapd
+#    #sudo snap install patchelf --edge --classic
       
 
 
