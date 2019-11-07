@@ -1398,17 +1398,20 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
             if 'keypoints' not in exclude:
                 if pts is not None:
                     # Keypoint offsets
-                    for xy, kp_cidx in zip(pts.data['xy'].data, pts.data['class_idxs']):
-                        if kp_cidx < 0:
-                            import warnings
-                            warnings.warn('Cannot rasterize keypoints with unknown classes')
-                        else:
-                            kp_x, kp_y = xy
-                            kp_dx = kp_x - xcoord[mask]
-                            kp_dy = kp_y - ycoord[mask]
-                            kpts_mask[0, kp_cidx][mask] = kp_dx
-                            kpts_mask[1, kp_cidx][mask] = kp_dy
-                            kpts_ignore_mask[kp_cidx][mask] = 0
+                    _xys = pts.data['xy'].data
+                    if len(_xys) > 0:
+                        _cidxs = pts.data['class_idxs']
+                        for xy, kp_cidx in zip(_xys, _cidxs):
+                            if kp_cidx < 0:
+                                import warnings
+                                warnings.warn('Cannot rasterize keypoints with unknown classes')
+                            else:
+                                kp_x, kp_y = xy
+                                kp_dx = kp_x - xcoord[mask]
+                                kp_dy = kp_y - ycoord[mask]
+                                kpts_mask[0, kp_cidx][mask] = kp_dx
+                                kpts_mask[1, kp_cidx][mask] = kp_dy
+                                kpts_ignore_mask[kp_cidx][mask] = 0
 
     fcn_target = {
         'cidx': cidx_mask,

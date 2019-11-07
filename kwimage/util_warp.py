@@ -421,10 +421,12 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     # grid_coords = grid_coords.to(device)
     # TODO: pass align_corners when supported in torch 1.3
-    if TORCH_GRID_SAMPLE_HAS_ALIGN:
+    # Note: enabling this breaks tests and backwards compat, so
+    # verify there are no problems before enabling this.
+    if False and TORCH_GRID_SAMPLE_HAS_ALIGN:
         outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
                                  padding_mode=padding_mode,
-                                 align_corners=align_corners)
+                                 align_corners=bool(align_corners))
     else:
         outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
                                  padding_mode=padding_mode)
