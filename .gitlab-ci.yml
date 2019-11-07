@@ -18,7 +18,7 @@
 
     script: 
         - pip install -r requirements.txt
-        - pip install .  
+        - python setup.py develop
         - ./run_tests.py
 
     # Coverage is a regex that will parse the coverage from the test stdout
