@@ -19,6 +19,7 @@
         - PYEXE=${PYPREFIX}/bin/python
         - $PYEXE --version  # Print out python version for debugging
         - $PYEXE -m pip install virtualenv
+        - rm -rf venv
         - $PYEXE -m virtualenv venv
         - source venv/bin/activate
         - pip install pip -U
@@ -38,14 +39,14 @@
         # only cache local items.
         PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
-    cache:
-        paths:
-            - .cache/pip
-            - venv/
+    #cache:
+    #    paths:
+    #        - .cache/pip
+    #        - venv/
 
-    artifacts:
-        paths:
-            - dist/*.whl
+    #artifacts:
+    #    paths:
+    #        - dist/*.whl
 
 .deploy_template: &deploy_template
 
