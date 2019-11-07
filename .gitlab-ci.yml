@@ -1,23 +1,36 @@
 ### TEMPLATES ###
 # Define common templates using YAML anchors
 
-.python_job_template: &python_job_template
-    # Tags define which runners will accept which jobs
-    
+.common_template: &common_template
     tags:
+        # Tags define which runners will accept which jobs
         - docker
         - linux
 
+.build_test_template: &build_test_template
+    <<: 
+        - *common_template
+
+    image: quay.io/pypa/manylinux2010_x86_64
+
     before_script:
+        # Setup the correct version of python on this manylinux instance
+        - export PATH=/opt/python/$PY_DPATH/bin:$PATH
+        - export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
+        - export CPATH=/opt/python/$PY_DPATH/include:$PATH
         - python -V  # Print out python version for debugging
         - pip install virtualenv
         - virtualenv venv
         - source venv/bin/activate
         - pip install pip -U
         - pip install pip setuptools -U
+        - pip install -r requirements.txt
 
     script: 
-        - pip install -r requirements.txt
+        # Setup the correct version of python on this manylinux instance
+        - export PATH=/opt/python/$PY_DPATH/bin:$PATH
+        - export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
+        - export CPATH=/opt/python/$PY_DPATH/include:$PATH
         - python setup.py develop
         - ./run_tests.py
 
@@ -38,8 +51,14 @@
         paths:
             - dist/*.whl
 
-.build_install_test: &build_install_test
-    - pip install -r requirements.txt -U
+.deploy_template: &deploy_template
+
+    script:
+        - python bdist_wheel
+    #sudo apt update
+    #sudo apt install snapd
+    #sudo snap install patchelf --edge --classic
+      
 
 
 ### JOBS ###
@@ -47,23 +66,36 @@
 
 build:python2.7:
     <<: 
-        - *python_job_template
-    image: python:2.7
+        - *build_test_template
+
+    variables:
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+        PY_DPATH: cp27-27m
 
 
 build:python3.5:
     <<: 
-        - *python_job_template
-    image: python:3.5
+        - *build_test_template
+
+    variables:
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+        PY_DPATH: cp35-cp35m
 
 
 build:python3.6:
     <<: 
-        - *python_job_template
-    image: python:3.6
+        - *build_test_template
+
+    variables:
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+        PY_DPATH: cp36-cp36m
 
 
 build:python3.7:
     <<: 
-        - *python_job_template
-    image: python:3.7
+        - *build_test_template
+    image: quay.io/pypa/manylinux2010_x86_64
+
+    variables:
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+        PY_DPATH: cp37-cp37m
