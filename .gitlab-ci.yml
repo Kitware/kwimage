@@ -56,8 +56,12 @@ stages:
 
     script: 
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - pip install wheelhouse/*.whpython setup.py develop
-        #- ./run_tests.py
+        - ls wheelhouse
+        - pip install wheelhouse/*-{MB_PYTHON_TAG}-*.whl setup.py develop
+        - xdoctest -m kwimage
+        - mkdir foo && cd foo && pytest --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+        - ./run_tests.py
+          
 
     # Coverage is a regex that will parse the coverage from the test stdout
     #coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
