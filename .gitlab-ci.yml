@@ -15,9 +15,11 @@
 
     before_script:
         # Setup the correct version of python on this manylinux instance
+        - echo "PY_DPATH = $PY_DPATH"
         - export PATH=/opt/python/$PY_DPATH/bin:$PATH
         - export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
         - export CPATH=/opt/python/$PY_DPATH/include:$PATH
+        - which python
         - python -V  # Print out python version for debugging
         - pip install virtualenv
         - virtualenv venv
@@ -28,9 +30,9 @@
 
     script: 
         # Setup the correct version of python on this manylinux instance
-        - export PATH=/opt/python/$PY_DPATH/bin:$PATH
-        - export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
-        - export CPATH=/opt/python/$PY_DPATH/include:$PATH
+        - #export PATH=/opt/python/$PY_DPATH/bin:$PATH
+        - #export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
+        - #export CPATH=/opt/python/$PY_DPATH/include:$PATH
         - python setup.py develop
         - ./run_tests.py
 
