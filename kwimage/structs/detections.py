@@ -675,7 +675,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     # TODO: correctly handle newstyle keypoints
                     if dset is not None:
                         pass
-                    if kp_classes is None:
+                    if kp_classes is not None:
                         kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
 
                     pts = kwimage.Points.from_coco(
@@ -1401,6 +1401,9 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     _xys = pts.data['xy'].data
                     if len(_xys) > 0:
                         _cidxs = pts.data['class_idxs']
+                        if _cidxs is None:
+                            raise ValueError(
+                                'cannot rasterize keypoints with undefined categories')
                         for xy, kp_cidx in zip(_xys, _cidxs):
                             if kp_cidx < 0:
                                 import warnings
