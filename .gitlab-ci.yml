@@ -15,14 +15,11 @@
 
     before_script:
         # Setup the correct version of python on this manylinux instance
-        - echo "PY_DPATH = $PY_DPATH"
-        - export PATH=/opt/python/$PY_DPATH/bin:$PATH
-        - export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
-        - export CPATH=/opt/python/$PY_DPATH/include:$PATH
-        - which python
-        - python -V  # Print out python version for debugging
-        - pip install virtualenv
-        - virtualenv venv
+        - PYPREFIX=/opt/python/$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - PYEXE=${PYPREFIX}/bin/python
+        - $PYEXE --version  # Print out python version for debugging
+        - $PYEXE -m pip install virtualenv
+        - $PYEXE -m virtualenv venv
         - source venv/bin/activate
         - pip install pip -U
         - pip install pip setuptools -U
@@ -30,19 +27,16 @@
 
     script: 
         # Setup the correct version of python on this manylinux instance
-        - #export PATH=/opt/python/$PY_DPATH/bin:$PATH
-        - #export LD_LIBRARY_PATH=/opt/python/$PY_DPATH/lib:$PATH
-        - #export CPATH=/opt/python/$PY_DPATH/include:$PATH
         - python setup.py develop
         - ./run_tests.py
 
     # Coverage is a regex that will parse the coverage from the test stdout
     coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
 
-    #variables:
-    #    # Change pip's cache directory to be inside the project directory since we can
-    #    # only cache local items.
-    #    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+    variables:
+        # Change pip's cache directory to be inside the project directory since we can
+        # only cache local items.
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
     cache:
         paths:
@@ -66,37 +60,21 @@
 ### JOBS ###
 # Define the actual jobs
 
-build:python2.7:
+wheel/cp27-cp27m-manylinux2010:
     <<: 
         - *build_test_template
 
-    variables:
-        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-        PY_DPATH: cp27-27m
 
-
-build:python3.5:
+wheel/cp35-cp35m-manylinux2010:
     <<: 
         - *build_test_template
 
-    variables:
-        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-        PY_DPATH: cp35-cp35m
 
-
-build:python3.6:
+wheel/cp36-cp36m-manylinux2010:
     <<: 
         - *build_test_template
 
-    variables:
-        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-        PY_DPATH: cp36-cp36m
 
-
-build:python3.7:
+wheel/cp37-cp37m-manylinux2010:
     <<: 
         - *build_test_template
-
-    variables:
-        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-        PY_DPATH: cp37-cp37m
