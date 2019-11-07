@@ -33,6 +33,7 @@
 
     script: 
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - ls
         - MB_PYTHON_TAG=$MB_PYTHON_TAG ./run_multibuild.sh
         #- python setup.py develop
         #- ./run_tests.py

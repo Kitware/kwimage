@@ -8,6 +8,8 @@ notes:
     # Then run the multibuild in docker followed by a test in a different
     # docker container
     docker run --rm -it --entrypoint="" docker:dind sh
+    docker run --rm -it --entrypoint="" docker:latest sh
+    docker run --rm -v $PWD:/io -it --entrypoint="" docker:latest sh
 
     docker run --rm -v $PWD:/io -it python:2.7 bash
      
@@ -46,7 +48,7 @@ DOCKER_IMAGE=${DOCKER_IMAGE:="quay.io/pypa/manylinux2010_x86_64"}
 MB_PYTHON_TAG=${MB_PYTHON_TAG:="cp36-cp36m"}
 
 
-if [[ "$_INSIDE_DOCKER" != "YES" ]]; then
+if [ "$_INSIDE_DOCKER" != "YES" ]; then
     docker run --rm \
         -v $PWD:/io \
         -e _INSIDE_DOCKER="YES" \
