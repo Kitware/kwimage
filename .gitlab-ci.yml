@@ -158,10 +158,12 @@ stages:
         #- # $GPG_EXECUTABLE --list-keys
         - echo "Signing wheels"
         - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - ls wheelhouse
         - echo "Verifying wheels"
-        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack return code"
         - echo "Verified wheels"
         - ls wheelhouse
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
 
     artifacts:
         paths:
