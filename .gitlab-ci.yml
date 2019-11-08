@@ -224,7 +224,6 @@ stages:
 #    image:
 #        python:3.7
 
-
 gpgsign/cp37-cp37m-manylinux2010:
     <<: 
         - *gpgsign_template
