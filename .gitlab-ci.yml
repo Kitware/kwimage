@@ -151,6 +151,9 @@ stages:
         - echo "CUSTOM_TEST_VAR = \"$CUSTOM_TEST_VAR\""
         - echo "CI_KITWARE_SECRET = \"$CI_KITWARE_SECRET\""
         - echo "$CI_KITWARE_SECRET" | sha512sum
+        - echo "$CI_KITWARE_SECRET2" | sha512sum
+        - echo "$CUSTOM_TEST_VAR2" | sha512sum
+        - echo "$CUSTOM_TEST_VAR" | sha512sum
         - echo "" | sha512sum
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
