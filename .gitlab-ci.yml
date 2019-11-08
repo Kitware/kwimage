@@ -193,9 +193,10 @@ stages:
         - VERSION=$(python -c "import setup; print(setup.version)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
-        - pip install requests[security] twine --user
+        - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
+        - pip install requests[security] twine 
         - echo "Checking wheels"
+        - ls -al ${BDIST_WHEEL_PATH}*
         - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
         - echo "Uploading wheels"
         # todo, can we tag the branch here as well?
