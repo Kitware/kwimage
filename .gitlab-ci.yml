@@ -12,8 +12,8 @@
 # (4) finally if we are on the release branch we will push the signed wheels to pypi
 
 stages:
-  #- build
-  #- test
+  - build
+  - test
   - gpgsign
   - deploy
 
@@ -71,9 +71,11 @@ stages:
         - pip install -r requirements.txt
 
     script: 
-        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - ls wheelhouse
-        - pip install wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl 
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
         - pip install pygments
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
@@ -96,6 +98,11 @@ stages:
             # encrypt relevant travis variables
             # ADD RELEVANT VARIABLES TO GITLAB SECRET VARIABLES
             # https://gitlab.kitware.com/computer-vision/kwimage/-/settings/ci_cd
+            # Note that it is important to make sure that these variables are
+            # only decrpyted on protected branches by selecting the protected
+            # and masked option.
+            #
+            # On travis we would do:
             #gitlab encrypt CI_KITWARE_SECRET=$CI_KITWARE_SECRET
             #gitlab encrypt TWINE_PASSWORD=$TWINE_PASSWORD  
             #gitlab encrypt TWINE_USERNAME=$TWINE_USERNAME 
@@ -136,38 +143,29 @@ stages:
         gpgsign
 
     script: 
-        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
-        - mkdir -p wheelhouse && touch $BDIST_WHEEL_PATH
         - ls wheelhouse
-        - echo "WRTIE AND EXECUTE THE PUBLISH SCRIPT"
-        - | 
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=D297D757
         - $GPG_EXECUTABLE --version
         - openssl version
         - $GPG_EXECUTABLE --list-keys
-        - echo "CUSTOM_TEST_VAR = \"$CUSTOM_TEST_VAR\""
-        - echo "CI_KITWARE_SECRET = \"$CI_KITWARE_SECRET\""
-        - echo "CI_KITWARE_SECRET2 = \"$CI_KITWARE_SECRET2\""
-        - echo "$CI_KITWARE_SECRET" | sha512sum
-        - echo "$CI_KITWARE_SECRET2" | sha512sum
-        - echo "$CUSTOM_TEST_VAR2" | sha512sum
-        - echo "$CUSTOM_TEST_VAR" | sha512sum
-        - echo "" | sha512sum
         # note CI_KITWARE_SECRET is a protected variables only available on master and release branch
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
-        - $GPG_EXECUTABLE --list-keys
-        - | 
-            echo "Signing wheels"
-            GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
-            $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - | 
-            echo "Verifying wheels"
-            $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
+        #- # $GPG_EXECUTABLE --list-keys
+        - echo "Signing wheels"
+        - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - ls wheelhouse
+        - echo "Verifying wheels"
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - echo "Verified wheels"
 
     artifacts:
         paths:
@@ -190,18 +188,19 @@ stages:
         deploy
 
     script: 
+        - ls wheelhouse
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
         - pip install requests[security] twine --user
-        - | 
-            echo "Checking wheels"
-            twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - | 
-            echo "Uploading wheels"
-            # todo, can we tag the branch here as well?
-            # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
-            twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - echo "Checking wheels"
+        - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - echo "Uploading wheels"
+        # todo, can we tag the branch here as well?
+        # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
+        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
             
     only:
         refs:
@@ -214,15 +213,15 @@ stages:
 # ---------------
 # Python 3.7 Jobs
 
-#build/cp37-cp37m-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp37-cp37m-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp37-cp37m-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:3.7
+test/cp37-cp37m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.7
 
 gpgsign/cp37-cp37m-manylinux2010:
     <<: 
@@ -240,15 +239,15 @@ deploy/cp37-cp37m-manylinux2010:
 # ---------------
 # Python 3.6 Jobs
 
-#build/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp36-cp36m-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:3.6
+test/cp36-cp36m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.6
 
 gpgsign/cp36-cp36m-manylinux2010:
     <<: 
@@ -266,15 +265,15 @@ deploy/cp36-cp36m-manylinux2010:
 # ---------------
 # Python 3.5 Jobs
 
-#build/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp35-cp35m-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:3.5
+test/cp35-cp35m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.5
 
 gpgsign/cp35-cp35m-manylinux2010:
     <<: 
@@ -292,15 +291,15 @@ deploy/cp35-cp35m-manylinux2010:
 # ---------------
 # Python 2.7 Jobs
 
-#build/cp27-cp27mu-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp27-cp27mu-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:2.7
+test/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:2.7
 
 gpgsign/cp27-cp27mu-manylinux2010:
     <<: 
