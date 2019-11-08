@@ -12,8 +12,8 @@
 # (4) finally if we are on the release branch we will push the signed wheels to pypi
 
 stages:
-  #- build
-  #- test
+  - build
+  - test
   - gpgsign
   - deploy
 
@@ -96,6 +96,11 @@ stages:
             # encrypt relevant travis variables
             # ADD RELEVANT VARIABLES TO GITLAB SECRET VARIABLES
             # https://gitlab.kitware.com/computer-vision/kwimage/-/settings/ci_cd
+            # Note that it is important to make sure that these variables are
+            # only decrpyted on protected branches by selecting the protected
+            # and masked option.
+            #
+            # On travis we would do:
             #gitlab encrypt CI_KITWARE_SECRET=$CI_KITWARE_SECRET
             #gitlab encrypt TWINE_PASSWORD=$TWINE_PASSWORD  
             #gitlab encrypt TWINE_USERNAME=$TWINE_USERNAME 
@@ -138,24 +143,13 @@ stages:
     script: 
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - BDIST_WHEEL_PATH=wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
-        - mkdir -p wheelhouse && touch $BDIST_WHEEL_PATH
         - ls wheelhouse
-        - echo "WRTIE AND EXECUTE THE PUBLISH SCRIPT"
-        - | 
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=D297D757
         - $GPG_EXECUTABLE --version
         - openssl version
         - $GPG_EXECUTABLE --list-keys
-        - echo "CUSTOM_TEST_VAR = \"$CUSTOM_TEST_VAR\""
-        - echo "CI_KITWARE_SECRET = \"$CI_KITWARE_SECRET\""
-        - echo "CI_KITWARE_SECRET2 = \"$CI_KITWARE_SECRET2\""
-        - echo "$CI_KITWARE_SECRET" | sha512sum
-        - echo "$CI_KITWARE_SECRET2" | sha512sum
-        - echo "$CUSTOM_TEST_VAR2" | sha512sum
-        - echo "$CUSTOM_TEST_VAR" | sha512sum
-        - echo "" | sha512sum
         # note CI_KITWARE_SECRET is a protected variables only available on master and release branch
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
@@ -214,15 +208,15 @@ stages:
 # ---------------
 # Python 3.7 Jobs
 
-#build/cp37-cp37m-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp37-cp37m-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp37-cp37m-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:3.7
+test/cp37-cp37m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.7
 
 gpgsign/cp37-cp37m-manylinux2010:
     <<: 
@@ -240,76 +234,76 @@ deploy/cp37-cp37m-manylinux2010:
 # ---------------
 # Python 3.6 Jobs
 
-#build/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp36-cp36m-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:3.6
+test/cp36-cp36m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.6
 
-#gpgsign/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *gpgsign_template
-#    image:
-#        python:3.6
+gpgsign/cp36-cp36m-manylinux2010:
+    <<: 
+        - *gpgsign_template
+    image:
+        python:3.6
 
-#deploy/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *deploy_template
-#    image:
-#        python:3.6
+deploy/cp36-cp36m-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:3.6
 
 
 # ---------------
 # Python 3.5 Jobs
 
-#build/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp35-cp35m-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:3.5
+test/cp35-cp35m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.5
 
-#gpgsign/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *gpgsign_template
-#    image:
-#        python:3.5
+gpgsign/cp35-cp35m-manylinux2010:
+    <<: 
+        - *gpgsign_template
+    image:
+        python:3.5
 
-#deploy/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *deploy_template
-#    image:
-#        python:3.5
+deploy/cp35-cp35m-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:3.5
 
 
 # ---------------
 # Python 2.7 Jobs
 
-#build/cp27-cp27mu-manylinux2010:
-#    <<: 
-#        - *multibuild_template
+build/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *multibuild_template
 
-#test/cp27-cp27mu-manylinux2010:
-#    <<: 
-#        - *test_template
-#    image:
-#        python:2.7
+test/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:2.7
 
-#gpgsign/cp27-cp27mu-manylinux2010:
-#    <<: 
-#        - *gpgsign_template
-#    image:
-#        python:2.7
+gpgsign/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *gpgsign_template
+    image:
+        python:2.7
 
-#deploy/cp27-cp27mu-manylinux2010:
-#    <<: 
-#        - *deploy_template
-#    image:
-#        python:2.7
+deploy/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:2.7
