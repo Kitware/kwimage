@@ -156,6 +156,7 @@ stages:
         - echo "$CUSTOM_TEST_VAR2" | sha512sum
         - echo "$CUSTOM_TEST_VAR" | sha512sum
         - echo "" | sha512sum
+        # note CI_KITWARE_SECRET is a protected variables only available on master and release branch
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
@@ -171,6 +172,14 @@ stages:
     artifacts:
         paths:
             - wheelhouse/*.asc
+
+    only:
+        refs:
+            # Gitlab will only expose protected variables on protected branches
+            # (which I've set to be master and release), so only run this stage
+            # there.
+            - master
+            - release
 
 
 .deploy_template: &deploy_template
@@ -191,6 +200,7 @@ stages:
         - | 
             echo "Uploading wheels"
             # todo, can we tag the branch here as well?
+            # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
             twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
             
     only:
