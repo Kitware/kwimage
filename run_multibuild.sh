@@ -82,9 +82,15 @@ set -e
 #cd /io
 #ls
 
+# Define multibuild workdir where we will try to store all temporary files
+MB_WORKDIR=mb_work
+mkdir -p $MB_WORKDIR
+chmod -R o+rw $MB_WORKDIR
+
+
 PYPREFIX=/opt/python/$MB_PYTHON_TAG
 PYEXE=${PYPREFIX}/bin/python
-VENV_DIR=venv_$MB_PYTHON_TAG
+VENV_DIR=$MB_WORKDIR/venv_$MB_PYTHON_TAG
 
 echo "VENV_DIR = $VENV_DIR"
 
@@ -102,7 +108,7 @@ source $VENV_DIR/bin/activate
 echo "activated virtualenv"
 set -x
 
-export PIP_CACHE_DIR="$VENV_DIR/cache_pip"
+export PIP_CACHE_DIR="$MB_WORKDIR/cache_pip"
 
 pip install pip -U
 pip install pip setuptools -U
