@@ -59,6 +59,7 @@ stages:
         - ls wheelhouse
         - pip install wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl 
         - xdoctest -m kwimage
+        - pip install pygments
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           

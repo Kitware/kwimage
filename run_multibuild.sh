@@ -79,8 +79,6 @@ fi
 set -x
 set -e
 
-#cd /io
-#ls
 
 # Define multibuild workdir where we will try to store all temporary files
 MB_WORKDIR=mb_work
@@ -113,26 +111,14 @@ export PIP_CACHE_DIR="$MB_WORKDIR/cache_pip"
 pip install pip -U
 pip install pip setuptools -U
 
-#pip install numpy==1.15
-#pip install pandas==0.23.2  # hack for python2
-
 #pip install -r requirements.txt
-
 # we only need build requirements to make the wheel
 pip install -r requirements/build.txt
 
 chmod -R o+rw $VENV_DIR
 
-# virtualenv doesn't correctly set library_path and ld_library_path
-# ACTUALLY: we shouldnt be linking against libpython anyway
-#LD_LIBRARY_PATH=$VENV_DIR/lib:$LD_LIBRARY_PATH 
-#LIBRARY_PATH=$VENV_DIR/lib:$LIBRARY_PATH
-#CPATH=$VENV_DIR/include:$LD_LIBRARY_PATH 
-#LD_LIBRARY_PATH=$PYPREFIX/lib:$LD_LIBRARY_PATH 
-#LIBRARY_PATH=$PYPREFIX/lib:$LIBRARY_PATH
-#CPATH=$PYPREFIX/include:$LD_LIBRARY_PATH 
-
 python setup.py bdist_wheel
+
 chmod -R o+rw _skbuild
 chmod -R o+rw dist
 
