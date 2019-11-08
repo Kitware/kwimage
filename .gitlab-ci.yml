@@ -1,6 +1,8 @@
 # Note: expand yaml
 # yaml merge-expand .gitlab-ci.yml _expandyml && cat _expandyml
-# curl --header "Content-Type: application/json" https://gitlab.com/api/v4/ci/lint --data "$(cat .gitlab-ci.yml)"
+# 
+# GITLAB LINTER
+# https://gitlab.kitware.com/computer-vision/kwimage/-/ci/lint
 
 
 # This CI file has 4 types of jobs:
@@ -194,15 +196,15 @@ stages:
 # ---------------
 # Python 3.7 Jobs
 
-build/cp37-cp37m-manylinux2010:
-    <<: 
-        - *multibuild_template
+#build/cp37-cp37m-manylinux2010:
+#    <<: 
+#        - *multibuild_template
 
-test/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_template
-    image:
-        python:3.7
+#test/cp37-cp37m-manylinux2010:
+#    <<: 
+#        - *test_template
+#    image:
+#        python:3.7
 
 gpgsign/cp37-cp37m-manylinux2010:
     <<: 
@@ -220,15 +222,15 @@ deploy/cp37-cp37m-manylinux2010:
 # ---------------
 # Python 3.6 Jobs
 
-build/cp36-cp36m-manylinux2010:
-    <<: 
-        - *multibuild_template
+#build/cp36-cp36m-manylinux2010:
+#    <<: 
+#        - *multibuild_template
 
-test/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_template
-    image:
-        python:3.6
+#test/cp36-cp36m-manylinux2010:
+#    <<: 
+#        - *test_template
+#    image:
+#        python:3.6
 
 gpgsign/cp36-cp36m-manylinux2010:
     <<: 
@@ -246,15 +248,15 @@ deploy/cp36-cp36m-manylinux2010:
 # ---------------
 # Python 3.5 Jobs
 
-build/cp35-cp35m-manylinux2010:
-    <<: 
-        - *multibuild_template
+#build/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *multibuild_template
 
-test/cp35-cp35m-manylinux2010:
-    <<: 
-        - *test_template
-    image:
-        python:3.5
+#test/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *test_template
+#    image:
+#        python:3.5
 
 gpgsign/cp35-cp35m-manylinux2010:
     <<: 
@@ -272,15 +274,15 @@ deploy/cp35-cp35m-manylinux2010:
 # ---------------
 # Python 2.7 Jobs
 
-build/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *multibuild_template
+#build/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *multibuild_template
 
-test/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *test_template
-    image:
-        python:2.7
+#test/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *test_template
+#    image:
+#        python:2.7
 
 gpgsign/cp27-cp27mu-manylinux2010:
     <<: 
