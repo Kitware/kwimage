@@ -13,12 +13,16 @@ from setuptools import find_packages
 import sys
 from os.path import dirname
 
-if '--disable-c-extensions' in sys.argv:
-    # Hack to disable all compiled extensions
-    sys.argv.remove('--disable-c-extensions')
-    from setuptools import setup
-else:
-    from skbuild import setup
+
+try:
+    if '--disable-c-extensions' in sys.argv:
+        # Hack to disable all compiled extensions
+        sys.argv.remove('--disable-c-extensions')
+        from setuptools import setup
+    else:
+        from skbuild import setup
+except ImportError:
+    setup = None
 
 
 repodir = dirname(__file__)
@@ -234,6 +238,8 @@ if __name__ == '__main__':
         # hack
         clean()
         # sys.exit(0)
+    if setup is None:
+        raise ImportError('skbuild or setuptools failed to import')
     setup(
         name='kwimage',
         version=version,
@@ -244,13 +250,14 @@ if __name__ == '__main__':
         extras_require={
             'all': parse_requirements('requirements.txt'),
             'tests': parse_requirements('requirements/tests.txt'),
+            'build': parse_requirements('requirements/build.txt'),
         },
         license='Apache 2',
         packages=find_packages(include='kwimage.*'),
         classifiers=[
             # List of classifiers available at:
             # https://pypi.python.org/pypi?%3Aaction=list_classifiers
-            'Development Status :: 3 - Alpha',
+            'Development Status :: 4 - Beta',
             # This should be interpreted as Apache License v2.0
             'License :: OSI Approved :: Apache Software License',
             # Supported Python versions

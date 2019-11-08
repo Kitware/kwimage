@@ -71,9 +71,11 @@ stages:
         - pip install -r requirements.txt
 
     script: 
-        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - ls wheelhouse
-        - pip install wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl 
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
         - pip install pygments
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
@@ -141,9 +143,10 @@ stages:
         gpgsign
 
     script: 
-        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - ls wheelhouse
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=D297D757
@@ -160,10 +163,9 @@ stages:
         - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
         - ls wheelhouse
         - echo "Verifying wheels"
-        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack return code"
-        - echo "Verified wheels"
-        - ls wheelhouse
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - echo "Verified wheels"
 
     artifacts:
         paths:
@@ -186,8 +188,11 @@ stages:
         deploy
 
     script: 
+        - ls wheelhouse
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
         - pip install requests[security] twine --user
         - echo "Checking wheels"
