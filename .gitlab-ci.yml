@@ -150,8 +150,9 @@ stages:
         - $GPG_EXECUTABLE --list-keys
         - echo "CUSTOM_TEST_VAR = \"$CUSTOM_TEST_VAR\""
         - echo "CI_KITWARE_SECRET = \"$CI_KITWARE_SECRET\""
-        - echo "$CI_KITWARE_SECRET" | sha512sum
+        - echo "CI_KITWARE_SECRET2 = \"$CI_KITWARE_SECRET2\""
         - echo "$CI_KITWARE_SECRET2" | sha512sum
+        - echo "$CI_KITWARE_SECRET" | sha512sum
         - echo "$CUSTOM_TEST_VAR2" | sha512sum
         - echo "$CUSTOM_TEST_VAR" | sha512sum
         - echo "" | sha512sum
