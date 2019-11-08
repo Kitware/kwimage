@@ -4,6 +4,7 @@
 stages:
   - build
   - test
+  - deploy
 
 .common_template: &common_template
     tags:
@@ -71,32 +72,27 @@ stages:
         # only cache local items.
         PIP_CACHE_DIR: "$CI_PROJECT_DIR/mb_work/cache_pip"
 
-    #cache:
-    #    paths:
-    #        - .cache/pip
-    #        - venv/
 
-    #artifacts:
-    #    paths:
-    #        - dist/*.whl
-
-#.deploy_template: &deploy_template
-#    script:
-#        - python bdist_wheel
-#    #sudo apt update
-#    #sudo apt install snapd
-#    #sudo snap install patchelf --edge --classic
-      
-
+.deploy_template: &deploy_template
+    stage: 
+        deploy
+    script: 
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - ls wheelhouse
+        - sha512sum wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
+        - pip install requests[security] twine --user
+        - echo "TODO: WRTIE AND EXECUTE THE PUBLISH SCRIPT"
+    only:
+        refs:
+            release
 
 ### JOBS ###
 # Define the actual jobs
 
 
-build/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *multibuild_template
-
+# ---------------
+# Python 3.7 Jobs
 
 build/cp37-cp37m-manylinux2010:
     <<: 
@@ -108,22 +104,71 @@ test/cp37-cp37m-manylinux2010:
     image:
         python:3.7
 
-
-#wheel/cp27-cp27m-manylinux2010:
-#    <<: 
-#        - *build_test_template
-
-
-#wheel/cp35-cp35m-manylinux2010:
-#    <<: 
-#        - *build_test_template
+deploy/cp37-cp37m-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:3.7
 
 
-#wheel/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *build_test_template
+# ---------------
+# Python 3.6 Jobs
+
+build/cp36-cp36m-manylinux2010:
+    <<: 
+        - *multibuild_template
+
+test/cp36-cp36m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.6
+
+deploy/cp36-cp36m-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:3.6
 
 
-#wheel/cp37-cp37m-manylinux2010:
-#    <<: 
-#        - *build_test_template
+# ---------------
+# Python 3.5 Jobs
+
+build/cp35-cp35m-manylinux2010:
+    <<: 
+        - *multibuild_template
+
+test/cp35-cp35m-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:3.5
+
+deploy/cp35-cp35m-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:3.5
+
+
+# ---------------
+# Python 2.7 Jobs
+
+build/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *multibuild_template
+
+test/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *test_template
+    image:
+        python:2.7
+
+
+deploy/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:2.7
+
+
