@@ -105,3 +105,5 @@ kwimage/structs/_mask_backend/cython_mask.c
 kwimage/structs/_mask_backend/cython_mask.html
 
 _skbuild
+wheelhouse
+mb_work
