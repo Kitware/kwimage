@@ -11,7 +11,9 @@ function(cpu_cython_module cython_source module_name)
       ${NumPy_INCLUDE_DIRS}
       ${PYTHON_INCLUDE_DIRS}
   )
-  target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
+  #target_link_libraries(${module_name} ${PYTHON_LIBRARIES})
+  #target_link_libraries(${module_name})
+  #${PYTHON_LIBRARIES})
 
   target_compile_definitions(${module_name} PUBLIC
     "NPY_NO_DEPRECATED_API"
@@ -64,7 +66,8 @@ if (USE_CUDA AND BUILD_GPU_NMS)
     ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     ${CMAKE_CURRENT_SOURCE_DIR}
   )
-  target_link_libraries(${module_name} ${CUDA_LIBRARIES} ${PYTHON_LIBRARIES})
+  #target_link_libraries(${module_name} ${CUDA_LIBRARIES} ${PYTHON_LIBRARIES})
+  target_link_libraries(${module_name} ${CUDA_LIBRARIES})
 
   target_compile_definitions(${module_name} PUBLIC
     "NPY_NO_DEPRECATED_API"
