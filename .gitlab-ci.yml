@@ -154,14 +154,12 @@ stages:
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
-        - $GPG_EXECUTABLE --list-keys
-        - | 
-            echo "Signing wheels"
-            GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
-            $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - | 
-            echo "Verifying wheels"
-            $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
+        #- # $GPG_EXECUTABLE --list-keys
+        - echo "Signing wheels"
+        - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - echo "Verifying wheels"
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
 
     artifacts:
         paths:
@@ -188,14 +186,12 @@ stages:
         - BDIST_WHEEL_PATH=wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
         - pip install requests[security] twine --user
-        - | 
-            echo "Checking wheels"
-            twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - | 
-            echo "Uploading wheels"
-            # todo, can we tag the branch here as well?
-            # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
-            twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - echo "Checking wheels"
+        - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - echo "Uploading wheels"
+        # todo, can we tag the branch here as well?
+        # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
+        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
             
     only:
         refs:
