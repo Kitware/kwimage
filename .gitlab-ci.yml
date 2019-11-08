@@ -160,6 +160,8 @@ stages:
         - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
         - echo "Verifying wheels"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - echo "Verified wheels"
+        - ls wheelhouse
 
     artifacts:
         paths:
