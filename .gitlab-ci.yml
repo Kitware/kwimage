@@ -59,12 +59,11 @@ stages:
         - ls wheelhouse
         - pip install wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl 
         - xdoctest -m kwimage
-        - mkdir foo && cd foo && pytest --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
-        - ./run_tests.py
+        # Hack to test the installed wheel. TODO: make run_tests work better in this case.
+        - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           
-
     # Coverage is a regex that will parse the coverage from the test stdout
-    #coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+    coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
 
     variables:
         # Change pip's cache directory to be inside the project directory since we can
