@@ -3,8 +3,13 @@ __heredoc__='''
 Script to publish a new version of this library on PyPI
 
 NOTE: 
+    THIS SCRIPT IS CURRENTLY UNUSED
+
+    THE GITLAB-CI SCRIPT CONTAINS THIS LOGIC EXPLICITLY. 
+
     THIS REPO CONTAINS A BINARY DEPENDENCIES AS SUCH THIS PUBLISH SCRIPT WORKS
     A BIT DIFFERENT AND REQUIRES YOU TO EXECUTE run_multibuild.sh BEFORE HAND.
+    
 
 Args:
     # These environment variables must / should be set
@@ -111,8 +116,8 @@ if [ "$USE_GPG" == "True" ]; then
     twine check $SDIST_PATH.asc $SDIST_PATH
 
     echo "Verifying wheels"
-    gpg --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
-    gpg --verify $SDIST_PATH.asc $SDIST_PATH 
+    $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+    $GPG_EXECUTABLE --verify $SDIST_PATH.asc $SDIST_PATH 
 else
     echo "USE_GPG=False, Skipping GPG sign"
 fi
