@@ -1,5 +1,6 @@
 # Note: expand yaml
 # yaml merge-expand .gitlab-ci.yml _expandyml && cat _expandyml
+# curl --header "Content-Type: application/json" https://gitlab.com/api/v4/ci/lint --data "$(cat .gitlab-ci.yml)"
 
 
 ### TEMPLATES ###
@@ -89,11 +90,11 @@ stages:
         - sha512sum wheelhouse/kwimage*-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
         - pip install requests[security] twine --user
-        - echo "TODO: WRTIE AND EXECUTE THE PUBLISH SCRIPT"
+        - echo "WRTIE AND EXECUTE THE PUBLISH SCRIPT"
 
     only:
         refs:
-            release
+            - release
 
 ### JOBS ###
 # Define the actual jobs
