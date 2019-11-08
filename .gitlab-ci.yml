@@ -1,3 +1,7 @@
+# Note: expand yaml
+# yaml merge-expand .gitlab-ci.yml _expandyml && cat _expandyml
+
+
 ### TEMPLATES ###
 # Define common templates using YAML anchors
 
@@ -74,8 +78,12 @@ stages:
 
 
 .deploy_template: &deploy_template
+    <<: 
+        - *common_template
+
     stage: 
         deploy
+
     script: 
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - ls wheelhouse
@@ -83,6 +91,7 @@ stages:
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U --user
         - pip install requests[security] twine --user
         - echo "TODO: WRTIE AND EXECUTE THE PUBLISH SCRIPT"
+
     only:
         refs:
             release
@@ -170,5 +179,3 @@ deploy/cp27-cp27mu-manylinux2010:
         - *deploy_template
     image:
         python:2.7
-
-
