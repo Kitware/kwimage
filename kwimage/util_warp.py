@@ -77,7 +77,7 @@ def _coordinate_grid(dims, align_corners=False):
 
 def warp_tensor(inputs, mat, output_dims, mode='bilinear',
                 padding_mode='zeros', isinv=False, ishomog=None,
-                align_corners=False):
+                align_corners=False, new_mode=False):
     r"""
     A pytorch implementation of warp affine that works similarly to
     cv2.warpAffine / cv2.warpPerspective.
@@ -273,25 +273,34 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Ignore:
         import xdev
         globals().update(xdev.get_func_kwargs(warp_tensor))
-        >>> # FIXME THIS DOESNT SEEM RIGHT
         >>> import cv2
-        >>> inputs = torch.arange(9).view(1, 1, 3, 3).float()
+        >>> inputs = torch.arange(9).view(1, 1, 3, 3).float() + 2
         >>> input_dims = inputs.shape[2:]
         >>> #output_dims = (6, 6)
-        >>> s = 1
-        >>> output_dims = tuple((np.array(input_dims) * s).tolist())
+        >>> def fmt(a):
+        >>>     return ub.repr2(a.numpy(), precision=2)
+        >>> s = 2.5
+        >>> output_dims = tuple(np.round((np.array(input_dims) * s)).astype(np.int).tolist())
         >>> mat = torch.FloatTensor([[s, 0, 0], [0, s, 0], [0, 0, 1]])
         >>> inv = mat.inverse()
         >>> warp_tensor(inputs, mat, output_dims)
-        >>> print(inputs)
+        >>> print('## INPUTS')
+        >>> print(fmt(inputs))
         >>> print('\nalign_corners=True')
         >>> print('----')
-        >>> print(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=True))
-        >>> print(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=True))
+        >>> print('## warp_tensor, align_corners=True')
+        >>> print(fmt(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=True)))
+        >>> print('## interpolate, align_corners=True')
+        >>> print(fmt(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=True)))
         >>> print('\nalign_corners=False')
         >>> print('----')
-        >>> print(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=False))
-        >>> print(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=False))
+        >>> print('## warp_tensor, align_corners=False, new_mode=False')
+        >>> print(fmt(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=False)))
+        >>> print('## warp_tensor, align_corners=False, new_mode=True')
+        >>> print(fmt(warp_tensor(inputs, inv, output_dims, isinv=True, align_corners=False, new_mode=True)))
+        >>> print('## interpolate, align_corners=False')
+        >>> print(fmt(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=False)))
+        >>> print('## interpolate (scale), align_corners=False')
         >>> print(ub.repr2(F.interpolate(inputs, scale_factor=s, mode='bilinear', align_corners=False).numpy(), precision=2))
         >>> cv2_M = mat.cpu().numpy()[0:2]
         >>> src = inputs[0, 0].cpu().numpy()
@@ -299,7 +308,6 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> print('\nOpen CV warp Result')
         >>> result2 = (cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR))
         >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
-
     """
 
     if mode == 'linear':
@@ -374,7 +382,12 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     # X = ndims + 1 if ishomog else ndims
     X = ndims + 1
 
-    # NOTE: grid_sample does not support align_corners=False correctly
+    if not TORCH_GRID_SAMPLE_HAS_ALIGN:
+        import warnings
+        warnings.warn('cannot use new mode in warp_tensor when torch < 1.3')
+        new_mode = False
+
+    # NOTE: grid_sample in torch<1.3 does not support align_corners=False correctly
     unwarped_coords = _coordinate_grid(output_dims, align_corners=align_corners)     # [X, *DIMS]
     unwarped_coords = unwarped_coords.to(device)
 
@@ -395,6 +408,47 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     else:
         grid_coords = warped_coords * (2.0 / (input_size - 1.0))  # normalize from [0, 2]
         grid_coords -= 1.0                                        # normalize from [-1, +1]
+        if new_mode:
+            # HACK: For whatever reason the -1,+1 extremes doesn't point to the
+            # extreme pixels, but applying this squish factor seems to help.
+            # The idea seems to be that if the input dims are D x D the
+            # ((D - 1) / D)-th value is what points to the middle of the bottom
+            # right input pixel and not (+1, +1).
+            # Need to figure out what's going on in a more principled way.
+            input_dims_ = torch.FloatTensor(list(input_dims))
+            squish = ((input_dims_ - 1.0) / (input_dims_))
+            grid_coords = grid_coords * squish[None, :, None]
+
+    if False:
+        # Debug output coords
+        print('### unwarped')
+        print(unwarped_coords[0:2])
+        print('### warped')
+        print(warped_coords.view(2, *output_dims))
+        print('### grid')
+        print(grid_coords.view(2, *output_dims))
+
+        F.grid_sample(inputs_, torch.FloatTensor(
+            [[[[-1.0, -1.0]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(inputs_, torch.FloatTensor(
+            [[[[-2 / 3, -2 / 3]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(inputs_, torch.FloatTensor(
+            [[[[0.0, 0.0]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(inputs_, torch.FloatTensor(
+            [[[[2 / 3, 2 / 3]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(inputs_, torch.FloatTensor(
+            [[[[1.0, 1.0]]]]), mode='bilinear', align_corners=False)
+
+        F.grid_sample(inputs_[:, :, 0:2, 0:2], torch.FloatTensor(
+            [[[[-1 / 2, -1 / 2]]]]), mode='bilinear', align_corners=False)
+        inputs_ = torch.arange(16).view(1, 1, 4, 4).float() + 1
+        F.grid_sample(inputs_, torch.FloatTensor(
+            [[[[-3 / 4, -3 / 4]]]]), mode='bilinear', align_corners=False)
+
+        for f in np.linspace(0.5, 1.0, 10):
+            print('f = {!r}'.format(f))
+            print(F.grid_sample(inputs_, torch.FloatTensor(
+                [[[[f, f]]]]), mode='bilinear', align_corners=False))
 
     # The warped coordinate [-1, -1] will references to the left-top pixel of
     # the input, analgously [+1, +1] references the right-bottom pixel of the
@@ -423,13 +477,17 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     # TODO: pass align_corners when supported in torch 1.3
     # Note: enabling this breaks tests and backwards compat, so
     # verify there are no problems before enabling this.
-    if False and TORCH_GRID_SAMPLE_HAS_ALIGN:
+    if new_mode and TORCH_GRID_SAMPLE_HAS_ALIGN:
+        # the new grid sample allows you to set align_corners, but I don't
+        # remember if the previous logic depends on the old behavior.
         outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
                                  padding_mode=padding_mode,
                                  align_corners=bool(align_corners))
     else:
+        # The old grid sample always had align_corners=True
         outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
-                                 padding_mode=padding_mode)
+                                 padding_mode=padding_mode,
+                                 align_corners=True)
 
     # Unpack outputs to match original input shape
     final_dims = list(prefix_dims) + list(output_dims)

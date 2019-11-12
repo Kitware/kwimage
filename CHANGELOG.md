@@ -4,6 +4,19 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
+## Version 0.5.2
+
+
+### Fixed
+* Using the new (correct) torch defaults for `align_corners` in `warp_tensor` when possible.
+
+
+## Version 0.5.1
+
+### Changed
+* First public release
+
+
 ## Version 0.5.0
 
 ### Added 

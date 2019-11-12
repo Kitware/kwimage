@@ -244,6 +244,7 @@ if __name__ == '__main__':
         name='kwimage',
         version=version,
         author='Jon Crall',
+        author_email='jon.crall@kitware.com',
         long_description=parse_description(),
         long_description_content_type='text/x-rst',
         install_requires=parse_requirements('requirements/runtime.txt'),
