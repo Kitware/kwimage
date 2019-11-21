@@ -40,6 +40,9 @@ The top-level API is:
                             warp_points, warp_tensor,)
 
 
+NOTE: THE KWIMAGE STRUCTS WILL EVENTUALLY MOVE TO THE KWANNOT REPO
+
+
 The most notable feature of the `kwimage` module are the `kwimage.structs`
 objects. This includes the primitive `Boxes`, `Mask`, and `Coords` objects, The
 semi-primitive `Points`, `Polygon` structures, and the composite `Heatmap` and
