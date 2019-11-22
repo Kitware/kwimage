@@ -416,6 +416,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         """
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(--show)
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
             >>> pts.draw(radius=0.01)

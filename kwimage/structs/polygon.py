@@ -549,6 +549,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def from_shapely(Polygon, geom):
         """
         Convert a shapely polygon to a kwimage.Polygon
+
+        Args:
+            geom (shapely.geometry.polygon.Polygon): a shapely polygon
         """
         exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
@@ -556,9 +559,30 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return self
 
     @classmethod
+    def from_wkt(Polygon, data):
+        """
+        Convert a WKT string to a kwimage.Polygon
+
+        Args:
+            data (str): a WKT polygon string
+
+        Example:
+            data = kwimage.Polygon.random().to_shapely().to_wkt()
+            data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
+            self = Polygon.from_wkt(data)
+        """
+        from shapely import wkt
+        geom = wkt.loads(data)
+        self = Polygon.from_shapely(geom)
+        return self
+
+    @classmethod
     def from_geojson(MultiPolygon, data_geojson):
         """
         Convert a geojson polygon to a kwimage.Polygon
+
+        Args:
+            data_geojson (dict): geojson data
 
         Example:
             >>> self = Polygon.random(n_holes=2)
