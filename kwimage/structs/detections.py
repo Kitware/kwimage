@@ -40,7 +40,7 @@ class _DetDrawMixin:
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(image)
-            >>> # xdoc: -REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(--show)
             >>> self.draw(color='blue', alpha=None)
             >>> # xdoc: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
