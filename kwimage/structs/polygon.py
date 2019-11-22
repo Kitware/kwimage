@@ -688,8 +688,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1)
             >>> self = self.scale(100)
-            >>> self.draw()
             >>> # xdoc: +REQUIRES(--show)
+            >>> self.draw()
             >>> import kwplot
             >>> kwplot.autompl()
             >>> from matplotlib import pyplot as plt
