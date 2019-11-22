@@ -195,6 +195,15 @@ class _NMS_Impls():
         _impls['py'] = py_nms.py_nms
         _impls['torch'] = torch_nms.torch_nms
         _automode = 'py'
+
+        # TODO: torchvision impl
+        # try:
+        #     import torchvision
+        #     _impls['torchvision'] = torchvision.ops.nms
+        #     _automode = 'torchvision'
+        # except Exception:
+        #     pass
+
         try:
             from kwimage.algo._nms_backend import cpu_nms
             _impls['cpu'] = cpu_nms.cpu_nms
