@@ -541,7 +541,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def _to_coco(self, style='orig'):
+    def to_coco(self, style='orig'):
         """
         Converts to an mscoco-like representation
 
@@ -550,7 +550,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             be rectified.
 
         Args:
-            style (str): either orig, new-id, or new-name
+            style (str): either orig, new, new-id, or new-name
 
         Returns:
             Dict: mscoco-like representation
@@ -567,6 +567,15 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.meta['classes'] = ndsampler.CategoryTree.coerce(self.meta['classes'])
             >>> new_id = self._to_coco(style='new-id')
             >>> print('new_id = {}'.format(ub.repr2(new_id, nl=-1)))
+        """
+        if len(self.xy.shape) == 2:
+            return self._to_coco(style=style)
+        else:
+            raise NotImplementedError('dim > 2, dense case todo')
+
+    def _to_coco(self, style='orig'):
+        """
+        See to_coco
         """
         if style == 'orig':
             visible = self.data.get('visible', None)
@@ -607,15 +616,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             return new_kpts
         else:
             raise KeyError(style)
-
-    def to_coco(self, style='orig'):
-        """
-        See _to_coco
-        """
-        if len(self.xy.shape) == 2:
-            return self._to_coco(style=style)
-        else:
-            raise NotImplementedError('dim > 2, dense case todo')
 
     @classmethod
     def from_coco(cls, coco_kpts, class_idxs=None, classes=None):
