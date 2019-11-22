@@ -844,6 +844,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self = self.scale(5)
             >>> multi_poly = self.to_multi_polygon()
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(--show)
             >>> self.draw(color='red')
             >>> multi_poly.scale(1.1).draw(color='blue')
 
