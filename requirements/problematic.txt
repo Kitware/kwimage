@@ -1,0 +1,2 @@
+# This should be optional, but it doesn't pip install cleanly, so we keep it separate
+gdal

@@ -1,3 +1,2 @@
 pyqt5>= 5.11.2;python_version>'2.7'  # 
-gdal 
 matplotlib
