@@ -640,8 +640,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10)
-            >>> self.draw(radius=3.0)
             >>> # xdoc: +REQUIRES(--show)
+            >>> self.draw(radius=3.0)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> self.draw(radius=3.0)
