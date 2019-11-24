@@ -193,12 +193,17 @@ class _NMS_Impls():
     def _lazy_init(self):
         _funcs = {}
 
+        import os
+        val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
+        DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
+
         # These are pure python and should always be available
         from kwimage.algo._nms_backend import py_nms
         from kwimage.algo._nms_backend import torch_nms
         _funcs['numpy'] = py_nms.py_nms
         _funcs['torch'] = torch_nms.torch_nms
 
+        # if not DISABLE_C_EXTENSIONS:
         try:
             # TODO: torchvision impl might be the best, need to test
             from torchvision import _C as C  # NOQA
@@ -208,18 +213,19 @@ class _NMS_Impls():
             pass
 
         try:
-            from kwimage.algo._nms_backend import cpu_nms
-            _funcs['cython_cpu'] = cpu_nms.cpu_nms
-
+            if not DISABLE_C_EXTENSIONS:
+                from kwimage.algo._nms_backend import cpu_nms
+                _funcs['cython_cpu'] = cpu_nms.cpu_nms
         except Exception as ex:
             warnings.warn('cpu_nms is not available: {}'.format(str(ex)))
         try:
-            if torch.cuda.is_available():
-                from kwimage.algo._nms_backend import gpu_nms
-                _funcs['cython_gpu'] = gpu_nms.gpu_nms
-                # NOTE: GPU is not the fastests on all systems.
-                # See the benchmarks for more info.
-                # ~/code/kwimage/dev/bench_nms.py
+            if not DISABLE_C_EXTENSIONS:
+                if torch.cuda.is_available():
+                    from kwimage.algo._nms_backend import gpu_nms
+                    _funcs['cython_gpu'] = gpu_nms.gpu_nms
+                    # NOTE: GPU is not the fastests on all systems.
+                    # See the benchmarks for more info.
+                    # ~/code/kwimage/dev/bench_nms.py
         except Exception as ex:
             warnings.warn('gpu_nms is not available: {}'.format(str(ex)))
         self._funcs = _funcs

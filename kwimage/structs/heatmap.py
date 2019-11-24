@@ -85,11 +85,11 @@ import functools
 from . import _generic
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 
 class _HeatmapDrawMixin(object):
@@ -612,7 +612,7 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
-    @profile
+    # @profile
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
              int_interpolation='nearest', mat_is_xy=True, version=None):

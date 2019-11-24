@@ -7,16 +7,16 @@ from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 
 class _PointsWarpMixin:
 
-    @profile
+    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -58,7 +58,7 @@ class _PointsWarpMixin:
             self.meta.pop('tf_data_to_img')
         return new
 
-    @profile
+    # @profile
     def to_imgaug(self, input_dims):
         """
         Example:
@@ -85,7 +85,7 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    @profile
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.

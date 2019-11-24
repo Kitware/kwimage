@@ -12,11 +12,11 @@ from distutils.version import LooseVersion
 from . import _generic
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 try:
     import imgaug
@@ -276,7 +276,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    @profile
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None,
              inplace=False):
         """
@@ -363,7 +363,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = kwimage.warp_points(matrix, new.data)
         return new
 
-    @profile
+    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -446,7 +446,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = xy
         return new
 
-    @profile
+    # @profile
     def to_imgaug(self, input_dims):
         """
         Example:

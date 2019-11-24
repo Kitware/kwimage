@@ -7,11 +7,11 @@ from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 
 class _PolyArrayBackend:
@@ -75,7 +75,7 @@ class _PolyArrayBackend:
 
 class _PolyWarpMixin:
 
-    @profile
+    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -133,7 +133,7 @@ class _PolyWarpMixin:
         new.data['interiors'] = new_interiors
         return new
 
-    @profile
+    # @profile
     def to_imgaug(self, shape):
         import imgaug
         ia_exterior = imgaug.Polygon(self.data['exterior'])
@@ -141,7 +141,7 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    @profile
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.

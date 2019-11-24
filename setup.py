@@ -15,9 +15,19 @@ from os.path import dirname
 
 
 try:
+    import os
+    val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
+    flag = val in {'true', 'on', 'yes', '1'}
+
+    if '--universal' in sys.argv:
+        flag = True
+
     if '--disable-c-extensions' in sys.argv:
-        # Hack to disable all compiled extensions
         sys.argv.remove('--disable-c-extensions')
+        flag = True
+
+    if flag:
+        # Hack to disable all compiled extensions
         from setuptools import setup
     else:
         from skbuild import setup

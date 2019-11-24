@@ -65,20 +65,27 @@ from . import _generic  # NOQA
 
 __all__ = ['Boxes']
 
-try:
-    from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
-except ImportError:
+import os
+val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
+DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
+
+if not DISABLE_C_EXTENSIONS:
+    try:
+        from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
+    except ImportError:
+        _bbox_ious_c = None
+else:
     _bbox_ious_c = None
 
 _TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0')
 _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 
 class NeedsWarpCorners(AssertionError):
@@ -763,7 +770,7 @@ class _BoxTransformMixins(object):
             new = new.tensor()
         return new
 
-    @profile
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
