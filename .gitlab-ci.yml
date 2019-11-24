@@ -101,13 +101,15 @@ stages:
         # 
         - pip install pip -U
         - pip install pip setuptools -U
-        - pip install -r requirements.txt
+        - pip install -r requirements/runtime.txt
+        - pip install -r requirements/tests.txt
+        #- pip install -r requirements/build.txt
 
     script: 
         - ls wheelhouse
         - MB_PYTHON_TAG=py2.py3-none-any
         - VERSION=$(python -c "import setup; print(setup.version)")
-        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
+        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
         - pip install pygments
