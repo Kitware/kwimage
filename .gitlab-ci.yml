@@ -98,7 +98,6 @@ stages:
         - python -m pip install virtualenv
         - python -m virtualenv venv
         - source venv/bin/activate
-        # 
         - pip install pip -U
         - pip install pip setuptools -U
         - pip install -r requirements/runtime.txt
@@ -115,6 +114,7 @@ stages:
         - pip install pygments
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1
+        - pip install -r requirements/tests.txt
         - mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           
     # Coverage is a regex that will parse the coverage from the test stdout
@@ -361,7 +361,6 @@ build/py2.py3-none-any:
         - source venv/bin/activate
         - pip install pip -U
         - pip install pip setuptools -U
-        - pip install -r requirements/build.txt
 
     script: 
         - python setup.py bdist_wheel --universal
