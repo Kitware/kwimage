@@ -264,6 +264,9 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
 
         python ~/code/kwimage/dev/bench_nms.py --show --small-boxes --thresh=0.6
     """
+    if code not in {'tensor0', 'tensor', 'ndarray'}:
+        raise KeyError(code)
+
     if num <= 10:
         if code == 'tensor0':
             # dict(cython_cpu=4118.4, torchvision=3042.5, cython_gpu=2244.4, torch=841.9)
@@ -315,12 +318,10 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
             # dict(cython_gpu=2880.2, cython_cpu=2432.5, torch=511.9, numpy=114.0)
             preference = ['cython_gpu', 'cython_cpu', 'torch', 'numpy']
 
-    import xdev
-    with xdev.embed_on_exception_context:
-        if valid:
-            valid_pref = ub.oset(preference) & valid
-        else:
-            valid_pref = preference
+    if valid:
+        valid_pref = ub.oset(preference) & valid
+    else:
+        valid_pref = preference
 
     if not valid_pref:
         raise Exception('no valid nms algo')
