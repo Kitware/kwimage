@@ -7,12 +7,11 @@ import numpy as np
 import torch
 import ubelt as ub
 import warnings
-from ._nms_backend import py_nms
-from ._nms_backend import torch_nms
+import kwarray
 
 
 def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
-                    stop_size=2048, recsize=2048, impl='auto'):
+                    stop_size=2048, recsize=2048, impl='auto', device_id=None):
     """
     Divide and conquor speedup non-max-supression algorithm for when bboxes
     have a known max size
@@ -36,6 +35,8 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
         stop_size (int): number of boxes that triggers full NMS computation
 
         recsize (int): number of boxes that triggers full NMS recombination
+
+        impl (str): algorithm to use
 
     LookInfo:
         # Didn't read yet but it seems similar
@@ -92,7 +93,7 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
             bk = set(both_keep)
             rectified_keep = non_max_supression(
                 tlbr[nr_arr], scores[nr_arr], thresh=thresh,
-                impl=impl)
+                impl=impl, device_id=device_id)
             rk = set(nr_arr[rectified_keep])
             keep = sorted((bk - nr) | rk)
         return keep
@@ -187,41 +188,42 @@ _impls = None
 class _NMS_Impls():
     # TODO: could make this prettier
     def __init__(self):
-        self._impls = None
-        self._automode = None
+        self._funcs = None
 
-    def _init(self):
-        _impls = {}
-        _impls['py'] = py_nms.py_nms
-        _impls['torch'] = torch_nms.torch_nms
-        _automode = 'py'
+    def _lazy_init(self):
+        _funcs = {}
 
-        # TODO: torchvision impl
-        # try:
-        #     import torchvision
-        #     _impls['torchvision'] = torchvision.ops.nms
-        #     _automode = 'torchvision'
-        # except Exception:
-        #     pass
+        # These are pure python and should always be available
+        from kwimage.algo._nms_backend import py_nms
+        from kwimage.algo._nms_backend import torch_nms
+        _funcs['numpy'] = py_nms.py_nms
+        _funcs['torch'] = torch_nms.torch_nms
+
+        try:
+            # TODO: torchvision impl might be the best, need to test
+            from torchvision import _C as C  # NOQA
+            import torchvision
+            _funcs['torchvision'] = torchvision.ops.nms
+        except ImportError:
+            pass
 
         try:
             from kwimage.algo._nms_backend import cpu_nms
-            _impls['cpu'] = cpu_nms.cpu_nms
-            _automode = 'cpu'
+            _funcs['cython_cpu'] = cpu_nms.cpu_nms
+
         except Exception as ex:
             warnings.warn('cpu_nms is not available: {}'.format(str(ex)))
         try:
             if torch.cuda.is_available():
                 from kwimage.algo._nms_backend import gpu_nms
-                _impls['gpu'] = gpu_nms.gpu_nms
-                # TODO: GPU is not the fastests on all systems.
+                _funcs['cython_gpu'] = gpu_nms.gpu_nms
+                # NOTE: GPU is not the fastests on all systems.
                 # See the benchmarks for more info.
-
-                _automode = 'gpu'  # HACK: lets disable GPU nms for now
+                # ~/code/kwimage/dev/bench_nms.py
         except Exception as ex:
             warnings.warn('gpu_nms is not available: {}'.format(str(ex)))
-        self._automode = _automode
-        self._impls = _impls
+        self._funcs = _funcs
+        self._valid = frozenset(_impls._funcs.keys())
 
 
 _impls = _NMS_Impls()
@@ -236,12 +238,89 @@ def available_nms_impls():
 
     Example:
         >>> impls = available_nms_impls()
-        >>> assert 'py' in impls
+        >>> assert 'numpy' in impls
         >>> print('impls = {!r}'.format(impls))
     """
-    if not _impls._impls:
-        _impls._init()
-    return list(_impls._impls.keys())
+    if not _impls._funcs:
+        _impls._lazy_init()
+    return list(_impls._funcs.keys())
+
+
+# @ub.memoize
+def _heuristic_auto_nms_impl(code, num, valid=None):
+    """
+    Defined with help from ``~/code/kwimage/dev/bench_nms.py``
+
+
+    Ignore:
+        _impls._funcs
+        valid_pref = ub.oset(preference) & set(_impls._funcs.keys())
+
+        python ~/code/kwimage/dev/bench_nms.py --show --small-boxes --thresh=0.6
+    """
+    if num <= 10:
+        if code == 'tensor0':
+            # dict(cython_cpu=4118.4, torchvision=3042.5, cython_gpu=2244.4, torch=841.9)
+            preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch']
+        if code == 'tensor':
+            # dict(torchvision=5857.1, cython_gpu=3058.1)
+            preference = ['torchvision', 'cython_gpu']
+        if code == 'ndarray':
+            # dict(cython_cpu=12226.1, numpy=7759.1, cython_gpu=3679.0, torch=1786.2)
+            preference = ['cython_cpu', 'numpy', 'cython_gpu', 'torch']
+    elif num <= 100:
+        if code == 'tensor0':
+            # dict(cython_cpu=4160.7, torchvision=3089.9, cython_gpu=2261.8, torch=846.8)
+            preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch']
+        if code == 'tensor':
+            # dict(torchvision=5875.3, cython_gpu=3076.9)
+            preference = ['torchvision', 'cython_gpu']
+        if code == 'ndarray':
+            # dict(cython_cpu=12256.7, cython_gpu=3702.9, numpy=2311.3, torch=1738.0)
+            preference = ['cython_cpu', 'cython_gpu', 'numpy', 'torch']
+    elif num <= 200:
+        if code == 'tensor0':
+            # dict(cython_cpu=3460.8, torchvision=2912.9, cython_gpu=2125.2, torch=782.4)
+            preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch']
+        if code == 'tensor':
+            # dict(torchvision=3394.6, cython_gpu=2641.2)
+            preference = ['torchvision', 'cython_gpu']
+        if code == 'ndarray':
+            # dict(cython_cpu=8220.6, cython_gpu=3114.5, torch=1240.7, numpy=309.5)
+            preference = ['cython_cpu', 'cython_gpu', 'torch', 'numpy']
+    elif num <= 300:
+        if code == 'tensor0':
+            # dict(torchvision=2647.1, cython_cpu=2264.9, cython_gpu=1915.5, torch=672.0)
+            preference = ['torchvision', 'cython_cpu', 'cython_gpu', 'torch']
+        if code == 'tensor':
+            # dict(cython_gpu=2496.9, torchvision=1781.1)
+            preference = ['cython_gpu', 'torchvision']
+        if code == 'ndarray':
+            # dict(cython_cpu=4085.6, cython_gpu=2944.4, torch=799.8, numpy=173.0)
+            preference = ['cython_cpu', 'cython_gpu', 'torch', 'numpy']
+    else:
+        if code == 'tensor0':
+            # dict(torchvision=2585.5, cython_gpu=1868.7, cython_cpu=1650.6, torch=623.1)
+            preference = ['torchvision', 'cython_gpu', 'cython_cpu', 'torch']
+        if code == 'tensor':
+            # dict(cython_gpu=2463.1, torchvision=1126.2)
+            preference = ['cython_gpu', 'torchvision']
+        if code == 'ndarray':
+            # dict(cython_gpu=2880.2, cython_cpu=2432.5, torch=511.9, numpy=114.0)
+            preference = ['cython_gpu', 'cython_cpu', 'torch', 'numpy']
+
+    import xdev
+    with xdev.embed_on_exception_context:
+        if valid:
+            valid_pref = ub.oset(preference) & valid
+        else:
+            valid_pref = preference
+
+    if not valid_pref:
+        raise Exception('no valid nms algo')
+
+    impl = valid_pref[0]
+    return impl
 
 
 def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
@@ -252,20 +331,22 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
     Args:
         tlbr (ndarray[float32]): Nx4 boxes in tlbr format
         scores (ndarray[float32]): score for each bbox
-        thresh (float): iou threshold. Boxes are removed if they overlap
-            greater than this threshold. 0 is the most strict, resulting in the
-            fewest boxes, and 1 is the most permissive resulting in the most.
+        thresh (float): iou threshold.
+            Boxes are removed if they overlap greater than this threshold
+            (i.e. Boxes are removed if iou > threshold).
+            Thresh = 0 is the most strict, resulting in the fewest boxes, and 1
+            is the most permissive resulting in the most.
         bias (float): bias for iou computation either 0 or 1
         classes (ndarray[int64] or None): integer classes.
             If specified NMS is done on a perclass basis.
-        impl (str): implementation can be auto, python, cpu, or gpu
+        impl (str): implementation can be auto, python, cython_cpu, or gpu
         device_id (int): used if impl is gpu, device id to work on. If not
             specified `torch.cuda.current_device()` is used.
 
     Notes:
-        Using impl='gpu' may result in an CUDA memory error that is not exposed
+        Using impl='cython_gpu' may result in an CUDA memory error that is not exposed
         to the python processes. In other words your program will hard crash if
-        impl='gpu', and you feed it too many bounding boxes. Ideally this will
+        impl='cython_gpu', and you feed it too many bounding boxes. Ideally this will
         be fixed in the future.
 
     References:
@@ -274,47 +355,54 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         https://github.com/bharatsingh430/soft-nms/blob/master/lib/nms/cpu_nms.pyx <- TODO
 
     CommandLine:
-        xdoctest -m kwimage.algo.algo_nms non_max_supression:0
+        xdoctest -m ~/code/kwimage/kwimage/algo/algo_nms.py non_max_supression
 
     Example:
         >>> from kwimage.algo.algo_nms import *
-        >>> dets = np.array([
+        >>> from kwimage.algo.algo_nms import _impls
+        >>> tlbr = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
         >>>     [10, 10, 100, 100],
         >>>     [50, 50, 100, 100],
         >>> ], dtype=np.float32)
         >>> scores = np.array([.1, .5, .9, .1])
-        >>> thresh = .5
-        >>> keep = non_max_supression(dets, scores, thresh, impl='py')
+        >>> keep = non_max_supression(tlbr, scores, thresh=0.5, impl='numpy')
         >>> print('keep = {!r}'.format(keep))
-        keep = [2, 1, 3]
+        >>> assert keep == [2, 1, 3]
         >>> thresh = 0.0
-        >>> if 'py' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='py')
+        >>> non_max_supression(tlbr, scores, thresh, impl='numpy')
+        >>> if 'numpy' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='numpy')
         >>>     assert list(keep) == [2, 1]
-        >>> if 'cpu' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='cpu')
+        >>> if 'cython_cpu' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_cpu')
         >>>     assert list(keep) == [2, 1]
-        >>> if 'gpu' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='gpu')
+        >>> if 'cython_gpu' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_gpu')
         >>>     assert list(keep) == [2, 1]
         >>> if 'torch' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='torch')
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torch')
         >>>     assert set(keep.tolist()) == {2, 1}
+        >>> if 'torchvision' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torchvision')  # note torchvision has no bias
+        >>>     assert list(keep) == [2]
         >>> thresh = 1.0
-        >>> if 'py' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='py')
+        >>> if 'numpy' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='numpy')
         >>>     assert list(keep) == [2, 1, 3, 0]
-        >>> if 'cpu' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='cpu')
+        >>> if 'cython_cpu' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_cpu')
         >>>     assert list(keep) == [2, 1, 3, 0]
-        >>> if 'gpu' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='gpu')
+        >>> if 'cython_gpu' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_gpu')
         >>>     assert list(keep) == [2, 1, 3, 0]
         >>> if 'torch' in available_nms_impls():
-        >>>     keep = non_max_supression(dets, scores, thresh, impl='torch')
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torch')
         >>>     assert set(keep.tolist()) == {2, 1, 3, 0}
+        >>> if 'torchvision' in available_nms_impls():
+        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torchvision')  # note torchvision has no bias
+        >>>     assert set(kwarray.ArrayAPI.tolist(keep)) == {2, 1, 3, 0}
 
     Example:
         >>> import ubelt as ub
@@ -330,12 +418,12 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         >>> scores = np.linspace(0, 1, len(tlbr))
         >>> thresh = .2
         >>> solutions = {}
-        >>> if not _impls._impls:
-        >>>     _impls._init()
-        >>> for impl in _impls._impls:
+        >>> if not _impls._funcs:
+        >>>     _impls._lazy_init()
+        >>> for impl in _impls._funcs:
         >>>     keep = non_max_supression(tlbr, scores, thresh, impl=impl)
         >>>     solutions[impl] = sorted(keep)
-        >>> assert 'py' in solutions
+        >>> assert 'numpy' in solutions
         >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
 
@@ -353,31 +441,55 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         >>> scores = np.array([1, 2, 3], dtype=np.float32)
         >>> thresh = .2
         >>> solutions = {}
-        >>> if not _impls._impls:
-        >>>     _impls._init()
-        >>> for impl in _impls._impls:
+        >>> if not _impls._funcs:
+        >>>     _impls._lazy_init()
+        >>> for impl in _impls._funcs:
         >>>     keep = non_max_supression(tlbr, scores, thresh, impl=impl)
         >>>     solutions[impl] = sorted(keep)
-        >>> assert 'py' in solutions
+        >>> assert 'numpy' in solutions
         >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
     """
-    if not _impls._impls:
-        _impls._init()
+
+    if impl == 'cpu':
+        import warnings
+        warnings.warn('impl="cpu" is deprecated use impl="cython_cpu" instead', DeprecationWarning)
+        impl = 'cython_impl'
+    elif impl == 'gpu':
+        import warnings
+        warnings.warn('impl="gpu" is deprecated use impl="cython_gpu" instead', DeprecationWarning)
+        impl = 'cython_gpu'
+    elif impl == 'py':
+        import warnings
+        warnings.warn('impl="py" is deprecated use impl="numpy" instead', DeprecationWarning)
+        impl = 'numpy'
+
+    if not _impls._funcs:
+        _impls._lazy_init()
 
     if tlbr.shape[0] == 0:
         return []
 
     if impl == 'auto':
-        if _impls._automode == 'py' and torch.is_tensor(tlbr):
-            impl = 'torch'  # hack, not the most elegant way fallback on torch
+        is_tensor = torch.is_tensor(tlbr)
+        num = len(tlbr)
+        if is_tensor:
+            if tlbr.device.type == 'cuda':
+                code = 'tensor0'
+            else:
+                code = 'tensor'
         else:
-            impl = _impls._automode
+            code = 'ndarray'
+        valid = _impls._valid
+        impl = _heuristic_auto_nms_impl(code, num, valid)
+        # print('impl._valid = {!r}'.format(_impls._valid))
+        # print('impl = {!r}'.format(impl))
+
     elif ub.iterable(impl):
         # if impl is iterable, it is a preference order
         found = False
         for item in impl:
-            if item in _impls._impls:
+            if item in _impls._funcs:
                 impl = item
                 found = True
                 break
@@ -396,28 +508,39 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
             keep.extend(list(ub.take(idxs, cls_keep)))
         return keep
     else:
-        if impl == 'py':
-            func = _impls._impls['py']
+
+        if impl == 'numpy':
+            api = kwarray.ArrayAPI.coerce(tlbr)
+            tlbr = api.numpy(tlbr)
+            scores = api.numpy(scores)
+            func = _impls._funcs['numpy']
             keep = func(tlbr, scores, thresh, bias=float(bias))
-        elif impl == 'torch':
-            was_tensor = torch.is_tensor(tlbr)
-            if not was_tensor:
-                tlbr = torch.Tensor(tlbr)
-                scores = torch.Tensor(scores)
-            func = _impls._impls['torch']
+        elif impl == 'torch' or impl == 'torchvision':
+            api = kwarray.ArrayAPI.coerce(tlbr)
+            tlbr = api.tensor(tlbr).float()
+            scores = api.tensor(scores).float()
             # Default output of torch impl is a mask
-            flags = func(tlbr, scores, thresh=thresh, bias=float(bias))
-            keep = torch.nonzero(flags).view(-1)
+            if impl == 'torchvision':
+                # if bias != 1:
+                #     warnings.warn('torchvision only supports bias==1')
+                func = _impls._funcs['torchvision']
+                # Torchvision returns indices
+                keep = func(tlbr, scores, iou_threshold=thresh)
+            else:
+                func = _impls._funcs['torch']
+                flags = func(tlbr, scores, thresh=thresh, bias=float(bias))
+                keep = torch.nonzero(flags).view(-1)
+
+            # Ensure than input type is the same as output type
+            keep = api.numpy(keep)
         else:
             # TODO: it would be nice to be able to pass torch tensors here
-            nms = _impls._impls[impl]
-            if torch.is_tensor(tlbr):
-                tlbr = tlbr.data.cpu().numpy()
-                scores = scores.data.cpu().numpy()
+            nms = _impls._funcs[impl]
+            tlbr = kwarray.ArrayAPI.numpy(tlbr)
+            scores = kwarray.ArrayAPI.numpy(scores)
             tlbr = tlbr.astype(np.float32)
             scores = scores.astype(np.float32)
-            # dets = np.hstack((tlbr, scores[:, None])).astype(np.float32)
-            if impl == 'gpu':
+            if impl == 'cython_gpu':
                 # TODO: if the data is already on a torch GPU can we just
                 # use it?
                 # HACK: we should parameterize which device is used
@@ -425,8 +548,10 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
                     device_id = torch.cuda.current_device()
                 keep = nms(tlbr, scores, float(thresh), bias=float(bias),
                            device_id=device_id)
-            else:
+            elif impl == 'cython_cpu':
                 keep = nms(tlbr, scores, float(thresh), bias=float(bias))
+            else:
+                raise KeyError(impl)
         return keep
 
 

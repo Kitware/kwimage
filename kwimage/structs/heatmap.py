@@ -103,11 +103,11 @@ class _HeatmapDrawMixin(object):
         cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(np.int)
 
         import networkx as nx
-        import kwplot
+        import kwimage
         # kwplot.autoplt()
 
         classes = self.meta['classes']
-        backup_colors = iter(kwplot.Color.distinct(len(classes)))
+        backup_colors = iter(kwimage.Color.distinct(len(classes)))
 
         name_to_color = {}
         name_to_color = nx.get_node_attributes(classes.graph, 'color')
@@ -115,7 +115,7 @@ class _HeatmapDrawMixin(object):
             color = classes.graph.nodes[node].get('color', None)
             if color is None:
                 color = next(backup_colors)
-            name_to_color[node] = kwplot.Color(color).as01()
+            name_to_color[node] = kwimage.Color(color).as01()
 
         cx_to_color = np.array([name_to_color[cname] for cname in classes])
         colorized = cx_to_color[cidxs]
@@ -187,11 +187,10 @@ class _HeatmapDrawMixin(object):
         def _per_channel_color(data, with_alpha, classes=None):
             # Another hacky mode
             # data = a.data['class_energy']
-            import kwplot
             import kwimage
 
             # Define default colors
-            default_cidx_to_color = kwplot.Color.distinct(len(data))
+            default_cidx_to_color = kwimage.Color.distinct(len(data))
 
             # try and read colors from classes CategoryTree
             try:
@@ -205,7 +204,7 @@ class _HeatmapDrawMixin(object):
                         # fallback, ignore conflicts
                         color = default_cidx_to_color[cidx]
                     else:
-                        color = kwplot.Color(color).as01()
+                        color = kwimage.Color(color).as01()
                     cidx_to_color.append(color)
             except Exception:
                 # fallback on default colors
@@ -430,7 +429,6 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.imshow(toshow)
         """
         import kwimage
-        import kwplot
 
         if channel is None:
             if 'class_idx' in self.data:
@@ -456,7 +454,7 @@ class _HeatmapDrawMixin(object):
         image = kwimage.ensure_float01(image)
         layers = []
 
-        vec_colors = kwplot.Color.distinct(2)
+        vec_colors = kwimage.Color.distinct(2)
         vec_alpha = .5
 
         if kpts is not None:
@@ -469,7 +467,7 @@ class _HeatmapDrawMixin(object):
                 kpts = [kpts]
             print('kpts = {!r}'.format(kpts))
             E = int(bool(vecs))
-            vec_colors = kwplot.Color.distinct(len(kpts) + E)
+            vec_colors = kwimage.Color.distinct(len(kpts) + E)
             print('vec_colors = {!r}'.format(vec_colors))
 
         if vecs:
@@ -478,9 +476,9 @@ class _HeatmapDrawMixin(object):
                 # Visualize center offset vectors
                 dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])
                 color = vec_colors[0]
-                vecmask = kwplot.make_vector_field(dx, dy, stride=4, scale=1.0,
-                                                   alpha=with_alpha * vec_alpha,
-                                                   color=color)
+                vecmask = kwimage.make_vector_field(
+                    dx, dy, stride=4, scale=1.0, alpha=with_alpha * vec_alpha,
+                    color=color)
                 vec_alpha = max(.1, vec_alpha - .1)
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
@@ -497,10 +495,10 @@ class _HeatmapDrawMixin(object):
                     color = vec_colors[i + E]
 
                     dy, dx = kwarray.ArrayAPI.numpy(keypoints[:, k])
-                    vecmask = kwplot.make_vector_field(dx, dy, stride=8,
-                                                       scale=0.5,
-                                                       alpha=with_alpha *
-                                                       vec_alpha, color=color)
+                    vecmask = kwimage.make_vector_field(dx, dy, stride=8,
+                                                        scale=0.5,
+                                                        alpha=with_alpha *
+                                                        vec_alpha, color=color)
                     vec_alpha = max(.1, vec_alpha - .1)
                     chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                     vecalign = self._warp_imgspace(chw, interpolation=interpolation)

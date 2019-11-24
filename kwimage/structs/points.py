@@ -77,6 +77,14 @@ class _PointsWarpMixin:
         self = cls(data)
         return self
 
+    @property
+    def dtype(self):
+        try:
+            return self.data.dtype
+        except Exception:
+            print('kwimage.mask: no dtype for ' + str(type(self.data)))
+            raise
+
     @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
@@ -358,7 +366,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.draw(radius=3, alpha=.5, color='classes')
             >>> kwplot.show_if_requested()
         """
-        import kwplot
         import kwimage
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
@@ -368,7 +375,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 raise Exception
             image = kwimage.atleast_3channels(image)
             image = kwimage.ensure_float01(image)
-            value = kwplot.Color(color).as01()
+            value = kwimage.Color(color).as01()
             image = self.data['xy'].fill(
                 image, value, coord_axes=[1, 0], interp='bilinear')
         else:
@@ -378,22 +385,22 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             xy_pts = self.data['xy'].data.reshape(-1, 2)
 
             if color == 'distinct':
-                colors = kwplot.Color.distinct(len(xy_pts))
+                colors = kwimage.Color.distinct(len(xy_pts))
             elif color == 'classes':
                 # TODO: read colors from categories if they exist
                 class_idxs = self.data['class_idxs']
                 _keys, _vals = kwarray.group_indices(class_idxs)
-                cls_colors = kwplot.Color.distinct(len(self.meta['classes']))
+                cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
                 colors = list(ub.take(cls_colors, class_idxs))
                 if image.dtype.kind == 'f':
-                    colors = [kwplot.Color(c).as01() for c in colors]
+                    colors = [kwimage.Color(c).as01() for c in colors]
                 else:
-                    colors = [kwplot.Color(c).as255() for c in colors]
+                    colors = [kwimage.Color(c).as255() for c in colors]
             else:
                 if image.dtype.kind == 'f':
-                    value = kwplot.Color(color).as01()
+                    value = kwimage.Color(color).as01()
                 else:
-                    value = kwplot.Color(color).as255()
+                    value = kwimage.Color(color).as255()
                 colors = [value] * len(xy_pts)
                 # image = kwimage.ensure_float01(image)
 
@@ -425,7 +432,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = Points.random(10, classes=['a', 'b', 'c'])
             >>> self.draw(radius=0.01, color='classes')
         """
-        import kwplot
+        import kwimage
         import matplotlib as mpl
         from matplotlib import pyplot as plt
         if ax is None:
@@ -439,12 +446,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             alpha = [alpha] * len(xy)
 
         if color == 'distinct':
-            colors = kwplot.Color.distinct(len(alpha))
+            colors = kwimage.Color.distinct(len(alpha))
         elif color == 'classes':
             # TODO: read colors from categories if they exist
             try:
                 class_idxs = self.data['class_idxs']
-                cls_colors = kwplot.Color.distinct(len(self.meta['classes']))
+                cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
             except KeyError:
                 raise Exception('cannot draw class colors without class_idxs and classes')
             _keys, _vals = kwarray.group_indices(class_idxs)
@@ -452,7 +459,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             colors = [color] * len(alpha)
 
-        ptcolors = [kwplot.Color(c, alpha=a).as01('rgba')
+        ptcolors = [kwimage.Color(c, alpha=a).as01('rgba')
                     for c, a in zip(colors, alpha)]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 

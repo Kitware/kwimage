@@ -609,6 +609,10 @@ class _BoxPropertyMixins(object):
         return self.data[..., idx:idx + 1]
 
     @property
+    def dtype(self):
+        return self.data.dtype
+
+    @property
     def shape(self):
         return self.data.shape
 
@@ -1110,15 +1114,15 @@ class _BoxDrawMixins(object):
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
         """
-        import kwplot
+        import kwimage
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:
             # Hack to draw non-2d boxes
             boxes = boxes[None, :]
 
-        return kwplot.draw_boxes(boxes, color=color, labels=labels,
-                                 alpha=alpha, centers=centers, fill=fill,
-                                 lw=lw, ax=ax)
+        return kwimage.draw_boxes(boxes, color=color, labels=labels,
+                                  alpha=alpha, centers=centers, fill=fill,
+                                  lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None):
         """
@@ -1142,7 +1146,6 @@ class _BoxDrawMixins(object):
             >>> kwplot.show_if_requested()
         """
         import cv2
-        import kwplot
         import kwimage
         def _coords(x, y):
             # ensure coords don't go out of bounds or cv2 throws weird error
@@ -1153,7 +1156,7 @@ class _BoxDrawMixins(object):
         h, w = image.shape[0:2]
 
         # Parameters for drawing the box rectangles
-        rect_color = kwplot.Color(color).as255('rgb')
+        rect_color = kwimage.Color(color).as255('rgb')
         rectkw = {
             'thickness': int(2),
             'color': rect_color,
@@ -1161,7 +1164,7 @@ class _BoxDrawMixins(object):
 
         # Parameters for drawing the label text
         fontkw = {
-            'color': kwplot.Color(color).as255('rgb'),
+            'color': kwimage.Color(color).as255('rgb'),
             'thickness': int(2),
             'fontFace': cv2.FONT_HERSHEY_SIMPLEX,
             'fontScale': 0.75,

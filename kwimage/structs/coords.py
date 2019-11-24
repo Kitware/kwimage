@@ -85,6 +85,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return len(self.data)
 
     @property
+    def dtype(self):
+        return self.data.dtype
+
+    @property
     def dim(self):
         return self.data.shape[-1]
 
@@ -646,8 +650,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> kwplot.autompl()
             >>> self.draw(radius=3.0)
         """
-        import kwplot
         import matplotlib as mpl
+        import kwimage
         from matplotlib import pyplot as plt
         if ax is None:
             ax = plt.gca()
@@ -662,7 +666,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         elif not ub.iterable(alpha):
             alpha = [alpha] * len(data)
 
-        ptcolors = [kwplot.Color(color, alpha=a).as01('rgba') for a in alpha]
+        ptcolors = [kwimage.Color(color, alpha=a).as01('rgba') for a in alpha]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
         default_centerkw = {

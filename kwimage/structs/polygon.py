@@ -637,7 +637,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> kwplot.autompl()
             >>> kwplot.imshow(image, fnum=1)
         """
-        import kwplot
         import kwimage
         # return shape of contours to openCV contours
 
@@ -651,11 +650,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if alpha == 1.0:
             image = kwimage.ensure_uint255(image)
             image = kwimage.atleast_3channels(image)
-            rgba = kwplot.Color(color).as255()
+            rgba = kwimage.Color(color).as255()
         else:
             image = kwimage.ensure_float01(image)
             image = kwimage.ensure_alpha_channel(image)
-            rgba = kwplot.Color(color, alpha=alpha).as01()
+            rgba = kwimage.Color(color, alpha=alpha).as01()
 
         if fill:
             if alpha == 1.0:
@@ -699,11 +698,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         import matplotlib as mpl
         from matplotlib.patches import Path
         from matplotlib import pyplot as plt
-        import kwplot
+        import kwimage
         if ax is None:
             ax = plt.gca()
 
-        color = list(kwplot.Color(color).as01())
+        color = list(kwimage.Color(color).as01())
 
         data = self.data
 
@@ -731,7 +730,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if border:
             kw['linewidth'] = linewidth
             try:
-                edgecolor = list(kwplot.Color(border).as01())
+                edgecolor = list(kwimage.Color(border).as01())
             except Exception:
                 edgecolor = list(color)
                 # hack to darken
@@ -989,17 +988,16 @@ class MultiPolygon(_generic.ObjectList):
     #     Faster version
     #     """
     #     import kwimage
-    #     import kwplot
     #     dtype_fixer = _generic._consistent_dtype_fixer(image)
 
     #     if alpha == 1.0:
     #         image = kwimage.ensure_uint255(image)
     #         image = kwimage.atleast_3channels(image)
-    #         rgba = kwplot.Color(color).as255()
+    #         rgba = kwimage.Color(color).as255()
     #     else:
     #         image = kwimage.ensure_float01(image)
     #         image = kwimage.ensure_alpha_channel(image)
-    #         rgba = kwplot.Color(color, alpha=alpha).as01()
+    #         rgba = kwimage.Color(color, alpha=alpha).as01()
 
     #     kwargs = dict(color=color, fill=fill, border=border, alpha=alpha)
 

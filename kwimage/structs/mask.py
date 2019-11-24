@@ -420,7 +420,6 @@ class _MaskDrawMixin(object):
             >>> kwplot.imshow(toshow)
             >>> kwplot.show_if_requested()
         """
-        import kwplot
         import kwimage
 
         # if color in ['class', 'category', 'label', 'cid', 'cidx']:
@@ -428,7 +427,7 @@ class _MaskDrawMixin(object):
         #     pass
 
         mask = self.to_c_mask().data
-        rgb01 = list(kwplot.Color(color).as01())
+        rgb01 = list(kwimage.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]
         alpha_mask[..., 3] = mask * alpha
@@ -440,7 +439,7 @@ class _MaskDrawMixin(object):
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
             toshow = cv2.drawContours((toshow * 255.).astype(np.uint8),
                                       contours, -1,
-                                      kwplot.Color(border_color).as255(),
+                                      kwimage.Color(border_color).as255(),
                                       border_thick, cv2.LINE_AA)
             toshow = toshow.astype(np.float) / 255.
 
@@ -451,20 +450,20 @@ class _MaskDrawMixin(object):
         """
         Draw on the current matplotlib axis
         """
-        import kwplot
+        import kwimage
         if ax is None:
             from matplotlib import pyplot as plt
             ax = plt.gca()
 
         mask = self.to_c_mask().data
-        rgb01 = list(kwplot.Color(color).as01())
+        rgb01 = list(kwimage.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]
         alpha_mask[..., 3] = mask * alpha
 
         if show_border:
             # Add alpha channel to color
-            border_color_tup = kwplot.Color(border_color).as255()
+            border_color_tup = kwimage.Color(border_color).as255()
             border_color_tup = (border_color_tup[0], border_color_tup[1],
                                 border_color_tup[2], 255 * alpha)
 
@@ -506,6 +505,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def __init__(self, data=None, format=None):
         self.data = data
         self.format = format
+
+    @property
+    def dtype(self):
+        try:
+            return self.data.dtype
+        except Exception:
+            print('kwimage.mask: no dtype for ' + str(type(self.data)))
+            raise
 
     def __nice__(self):
         return '{}, format={}'.format(ub.repr2(self.data, nl=0), self.format)
