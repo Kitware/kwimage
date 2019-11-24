@@ -401,12 +401,12 @@ build/py2.py3-none-any:
         - VERSION=$(python -c "import setup; print(setup.version)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install $BDIST_WHEEL_PATH
-        - xdoctest -m kwimage
         - pip install pygments
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1
         - pip install -r requirements/tests.txt
         - mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+        - xdoctest -m kwimage
           
 
     artifacts:
