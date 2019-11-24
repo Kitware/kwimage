@@ -344,43 +344,6 @@ deploy/cp35-cp35m-manylinux2010:
 
 
 # ---------------
-# Universal Python Jobs
-build/py2.py3-none-any:
-    <<: 
-        - *common_template
-
-    stage: 
-        build
-
-    image: python:3.7
-
-    before_script:
-        - python -V  # Print out python version for debugging
-        - pip install virtualenv
-        - virtualenv venv
-        - source venv/bin/activate
-        - pip install pip -U
-        - pip install pip setuptools -U
-
-    script: 
-        - python setup.py bdist_wheel --universal
-        - ls dist
-        - VERSION=$(python -c "import setup; print(setup.version)")
-        - MB_PYTHON_TAG="py2.py3-none-any"
-        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-        - pip install $BDIST_WHEEL_PATH
-        - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=netharn --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
-
-    artifacts:
-        paths:
-            - dist/*.whl
-
-    cache:
-        paths:
-            - .cache/pip
-
-
-# ---------------
 # Python 2.7 Jobs
 
 build/cp27-cp27mu-manylinux2010:
@@ -410,3 +373,46 @@ deploy/cp27-cp27mu-manylinux2010:
         - *deploy_template
     image:
         python:2.7
+
+
+# ---------------
+# Universal Python Jobs
+build/py2.py3-none-any:
+    <<: 
+        - *common_template
+
+    stage: 
+        build
+
+    image: python:3.7
+
+    before_script:
+        - python -V  # Print out python version for debugging
+        - pip install virtualenv
+        - virtualenv venv
+        - source venv/bin/activate
+        - pip install pip -U
+        - pip install pip setuptools -U
+
+    script: 
+        - python setup.py bdist_wheel --universal
+        - ls dist
+        - MB_PYTHON_TAG=py2.py3-none-any
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        - pip install $BDIST_WHEEL_PATH
+        - xdoctest -m kwimage
+        - pip install pygments
+        # Hack to test the installed wheel. TODO: make run_tests work better in this case.
+        - export KWIMAGE_DISABLE_C_EXTENSIONS=1
+        - pip install -r requirements/tests.txt
+        - mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+          
+
+    artifacts:
+        paths:
+            - dist/*.whl
+
+    cache:
+        paths:
+            - .cache/pip
