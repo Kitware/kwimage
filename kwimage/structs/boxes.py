@@ -1101,7 +1101,7 @@ class _BoxDrawMixins(object):
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
              fill=False, lw=2, ax=None):
         """
-        Draws boxes using matplotlib. Wraps around mplutil.draw_boxes
+        Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -1121,15 +1121,15 @@ class _BoxDrawMixins(object):
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
         """
-        import kwimage
+        import kwplot
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:
             # Hack to draw non-2d boxes
             boxes = boxes[None, :]
 
-        return kwimage.draw_boxes(boxes, color=color, labels=labels,
-                                  alpha=alpha, centers=centers, fill=fill,
-                                  lw=lw, ax=ax)
+        return kwplot.draw_boxes(boxes, color=color, labels=labels,
+                                 alpha=alpha, centers=centers, fill=fill,
+                                 lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None):
         """
