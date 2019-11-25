@@ -37,26 +37,61 @@ import ubelt as ub
 import itertools as it
 from . import _generic
 
-import os
-val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
-DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
 
-if not DISABLE_C_EXTENSIONS:
-    try:
-        from kwimage.structs._mask_backend import cython_mask
-    except ImportError:
-        cython_mask = None
-else:
-    cython_mask = None
+class _Mask_Backends():
+    # TODO: could make this prettier
+    def __init__(self):
+        self._funcs = None
+
+    def _lazy_init(self):
+        _funcs = {}
+
+        import os
+        import warnings
+        val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
+        DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
+
+        _funcs = {}
+        try:
+            from pycocotools import _mask
+            _funcs['pycoco'] = _mask
+        except ImportError as ex:
+            warnings.warn('pycoco tools is not available: {}'.format(str(ex)))
+
+        if not DISABLE_C_EXTENSIONS:
+            try:
+                from kwimage.structs._mask_backend import cython_mask
+                _funcs['kwimage'] = cython_mask
+            except ImportError as ex:
+                warnings.warn('mask_backend is not available: {}'.format(str(ex)))
+
+        self._funcs = _funcs
+        self._valid = frozenset(self._funcs.keys())
+
+    def get_backend(self, prefs):
+        if self._funcs is None:
+            self._lazy_init()
+
+        valid = ub.oset(prefs) & set(self._funcs)
+        if not valid:
+            import warnings
+            warnings.warn('no valid mask backend')
+            return None, None
+        key = ub.peek(valid)
+        func = self._funcs[key]
+        return key, func
+
+
+_backends = _Mask_Backends()
+
+# cython_mask = _backends.get_backend(['pycoco', 'kwimage'])
+backend_key, cython_mask = _backends.get_backend(['kwimage', 'pycoco'])
+print('backend_key = {!r}'.format(backend_key))
+# cython_mask = _backends.get_backend([])
+# cython_backend = _backends.get_backend(['pycoco'])
+
 
 __all__ = ['Mask', 'MaskList']
-
-
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except ImportError:
-#     profile = ub.identity
 
 
 class MaskFormat:
@@ -109,6 +144,7 @@ class _MaskConversionMixin(object):
                 the string code for the format you want to transform into.
 
         Example:
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> mask = Mask.random(shape=(8, 8), rng=0)
             >>> # Test that we can convert to and from all formats
@@ -137,6 +173,7 @@ class _MaskConversionMixin(object):
     def to_bytes_rle(self, copy=False):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> mask = Mask.demo()
             >>> print(mask.to_bytes_rle().data['counts'])
@@ -253,6 +290,7 @@ class _MaskConstructorMixin(object):
             dims (Tuple): height / width of the source image
 
         Example:
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> polygons = [
             >>>     np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]]),
             >>>     np.array([[0, 9],[4, 8],[2, 3]]),
@@ -1159,7 +1197,7 @@ class MaskList(_generic.ObjectList):
 if __name__ == '__main__':
     """
     CommandLine:
-        xdoctest -m kwimage.structs.mask all
+        xdoctest -m ~/code/kwimage/kwimage/structs/mask.py
     """
     import xdoctest
     xdoctest.doctest_module(__file__)

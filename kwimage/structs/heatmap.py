@@ -8,6 +8,7 @@ CommandLine:
 
 Example:
     >>> # xdoctest: +REQUIRES(module:ndsampler)
+    >>> # xdoctest: +REQUIRES(--mask)
     >>> from kwimage.structs.heatmap import *  # NOQA
     >>> import kwimage
     >>> import ndsampler
@@ -30,6 +31,7 @@ Example:
 
 Example:
     >>> # xdoctest: +REQUIRES(module:ndsampler)
+    >>> # xdoctest: +REQUIRES(--mask)
     >>> from kwimage.structs.heatmap import *  # NOQA
     >>> from kwimage.structs.detections import _dets_to_fcmaps
     >>> import kwimage

@@ -78,6 +78,7 @@ stages:
         - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
         - pip install pygments
+        - xdoctest kwimage --mask 
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           

@@ -11,18 +11,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import numpy as np
 
 
-import os
-val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
-DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
-if not DISABLE_C_EXTENSIONS:
-    try:
-        from kwimage.structs._mask_backend import cython_mask
-    except ImportError:
-        cython_mask = None
-else:
-    cython_mask = None
-
-
 def encode_run_length(img, binary=False, order='C'):
     """
     Construct the run length encoding (RLE) of an image.
@@ -361,6 +349,7 @@ def _rle_bytes_to_array(s, impl='auto'):
         >>>     with timer:
         >>>         _rle_bytes_to_array(s, impl='python')
         >>> # --- time cython impl ---
+        >>> # xdoctest: +REQUIRES(--mask)
         >>> for timer in ti.reset('cython'):
         >>>     with timer:
         >>>         _rle_bytes_to_array(s, impl='cython')
@@ -368,6 +357,9 @@ def _rle_bytes_to_array(s, impl='auto'):
     # verbatim inefficient impl.
     # It would be nice if this (un/)compression algo could get a better
     # description.
+    from kwimage.structs.mask import _backends
+    key, cython_mask = _backends.get_backend(['kwimage'])
+
     if impl == 'auto':
         if cython_mask is None:
             impl = 'python'
@@ -385,6 +377,7 @@ def _rle_bytes_to_array(s, impl='auto'):
             k = 0
             more = 1
             while more:
+                # c = s[p] - 48
                 c = s[p] - 48
                 x |= (c & 0x1f) << 5 * k
                 more = c & 0x20
@@ -410,6 +403,7 @@ def _rle_array_to_bytes(counts, impl='auto'):
         impl (str): which implementation to use (defaults to cython is possible)
 
     Example:
+        >>> # xdoctest: +REQUIRES(--mask)
         >>> from kwimage.im_runlen import _rle_array_to_bytes
         >>> from kwimage.im_runlen import _rle_bytes_to_array
         >>> arr_counts = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
@@ -418,6 +412,7 @@ def _rle_array_to_bytes(counts, impl='auto'):
         >>> assert np.all(arr_counts2 == arr_counts)
 
     Benchmark:
+        >>> # xdoctest: +REQUIRES(--mask)
         >>> import ubelt as ub
         >>> from kwimage.im_runlen import _rle_array_to_bytes
         >>> from kwimage.im_runlen import _rle_bytes_to_array
@@ -435,6 +430,8 @@ def _rle_array_to_bytes(counts, impl='auto'):
     # verbatim inefficient impl.
     # It would be nice if this (un/)compression algo could get a better
     # description.
+    from kwimage.structs.mask import _backends
+    key, cython_mask = _backends.get_backend(['kwimage'])
     if impl == 'auto':
         if cython_mask is None:
             impl = 'python'
