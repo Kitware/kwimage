@@ -1065,9 +1065,21 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def _to_coco(self):
         """
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.demo()
             >>> data = self._to_coco()
+            >>> print(ub.repr2(data, nl=1))
+        """
+        return self.to_coco()
+
+    def to_coco(self):
+        """
+        Example:
+            >>> # xdoc: +REQUIRES(--mask)
+            >>> from kwimage.structs.mask import *  # NOQA
+            >>> self = Mask.demo()
+            >>> data = self.to_coco()
             >>> print(ub.repr2(data, nl=1))
         """
         if False:
@@ -1080,9 +1092,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             data = self.to_array_rle().data.copy()
             data['counts'] = data['counts'].tolist()
         return data
-
-    def to_coco(self):
-        return self._to_coco()
 
 
 def _coerce_coco_segmentation(data, dims=None):
