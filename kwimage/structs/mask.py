@@ -780,6 +780,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_polygon()
