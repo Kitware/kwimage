@@ -545,6 +545,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         * f_mask - fortran-style binary mask
 
     Example:
+        >>> # xdoc: +REQUIRES(--mask)
         >>> # a ms-coco style compressed bytes rle segmentation
         >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
         >>> mask = Mask(segmentation, 'bytes_rle')
@@ -610,6 +611,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         This can be used as a staticmethod or an instancemethod
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
@@ -683,6 +685,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         This can be used as a staticmethod or an instancemethod
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.intersection(*masks)
             >>> print(mask.area)
@@ -712,6 +715,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Returns the number of non-zero pixels
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.demo()
             >>> self.area
             150
@@ -726,6 +730,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Extract the patch with non-zero data
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
@@ -746,6 +751,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 a general singular version does not yet exist.
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_xywh().tolist()
             >>> self = Mask.random(rng=0).translate((10, 10))
@@ -912,6 +918,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             MultiPolygon: vectorized representation
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.demo()
             >>> self = self.scale(5)
@@ -984,6 +991,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_convex_hull()
             >>> print('polygons = ' + ub.repr2(polygons))
@@ -1007,6 +1015,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             xdoctest -m kwimage.structs.mask Mask.iou
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.demo()
             >>> other = self.translate(1)
             >>> iou = self.iou(other)
@@ -1037,6 +1046,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
             >>> polygon = [
             >>>     [np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]])],
