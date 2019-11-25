@@ -417,3 +417,79 @@ build/py2.py3-none-any:
     cache:
         paths:
             - .cache/pip
+
+
+gpgsign/py2.py3-none-any:
+    <<: 
+        - *common_template
+
+    stage: 
+        gpgsign
+
+    script: 
+        - ls dist
+        - MB_PYTHON_TAG=py2.py3-none-any
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        # Decrypt and import GPG Keys / trust
+        - export GPG_EXECUTABLE=gpg
+        - export GPG_KEYID=D297D757
+        - $GPG_EXECUTABLE --version
+        - openssl version
+        - $GPG_EXECUTABLE --list-keys
+        # note CI_KITWARE_SECRET is a protected variables only available on master and release branch
+        - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
+        - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
+        - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
+        - GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
+        #- # $GPG_EXECUTABLE --list-keys
+        - echo "Signing wheels"
+        - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - ls wheelhouse
+        - echo "Verifying wheels"
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
+        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
+        - echo "Verified wheels"
+
+    artifacts:
+        paths:
+            - wheelhouse/*.asc
+
+    only:
+        refs:
+            # Gitlab will only expose protected variables on protected branches
+            # (which I've set to be master and release), so only run this stage
+            # there.
+            - master
+            - release
+    image:
+        python:3.7
+
+deploy/py2.py3-none-any:
+    <<: 
+        - *common_template
+
+    image:
+        python:3.7
+
+    stage: 
+        deploy
+
+    script: 
+        - ls dist
+        - MB_PYTHON_TAG=py2.py3-none-any
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
+        - pip install requests[security] twine 
+        - echo "Checking wheels"
+        - ls -al ${BDIST_WHEEL_PATH}*
+        - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - echo "Uploading wheels"
+        # todo, can we tag the branch here as well?
+        # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
+        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+            
+    only:
+        refs:
+            - release
