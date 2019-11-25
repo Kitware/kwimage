@@ -445,7 +445,7 @@ gpgsign/py2.py3-none-any:
         #- # $GPG_EXECUTABLE --list-keys
         - echo "Signing wheels"
         - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - ls wheelhouse
+        - ls dist
         - echo "Verifying wheels"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
@@ -453,7 +453,7 @@ gpgsign/py2.py3-none-any:
 
     artifacts:
         paths:
-            - wheelhouse/*.asc
+            - dist/*.asc
 
     only:
         refs:
