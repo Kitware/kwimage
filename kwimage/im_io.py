@@ -86,16 +86,6 @@ def imread(fpath, space='auto', backend='auto'):
         >>> kwplot.autompl()
         >>> kwplot.imshow(png_im / 2 ** 16, pnum=(1, 2, 1), fnum=1)
         >>> kwplot.imshow(tif_im / 2 ** 16, pnum=(1, 2, 2), fnum=1)
-
-    Ignore:
-        import kwplot
-        kwplot.autompl()
-        kwplot.imshow(tif_im / 2 ** 16, pnum=(1, 2, 1), fnum=1)
-        kwplot.imshow(png_im / 2 ** 16, pnum=(1, 2, 2), fnum=1)
-
-        from PIL import Image
-        pil_img = Image.open(tif_fpath)
-        assert int(Image.PILLOW_VERSION.split('.')[0]) > 4
     """
     if backend == 'auto':
         # Determine the backend reader using the file extension
@@ -173,6 +163,8 @@ def _imread_cv2(fpath):
     image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
     if image is None:
         if exists(fpath):
+            # TODO: this could be a permissions error. We could test for that.
+            # and print a better error message in that case.
             raise IOError('OpenCV cannot read this image: "{}", '
                           'but it exists'.format(fpath))
         else:

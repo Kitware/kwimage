@@ -7,16 +7,16 @@ from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 
 class _PointsWarpMixin:
 
-    @profile
+    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -58,7 +58,7 @@ class _PointsWarpMixin:
             self.meta.pop('tf_data_to_img')
         return new
 
-    @profile
+    # @profile
     def to_imgaug(self, input_dims):
         """
         Example:
@@ -77,7 +77,15 @@ class _PointsWarpMixin:
         self = cls(data)
         return self
 
-    @profile
+    @property
+    def dtype(self):
+        try:
+            return self.data.dtype
+        except Exception:
+            print('kwimage.mask: no dtype for ' + str(type(self.data)))
+            raise
+
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -358,7 +366,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.draw(radius=3, alpha=.5, color='classes')
             >>> kwplot.show_if_requested()
         """
-        import kwplot
         import kwimage
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
@@ -368,7 +375,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 raise Exception
             image = kwimage.atleast_3channels(image)
             image = kwimage.ensure_float01(image)
-            value = kwplot.Color(color).as01()
+            value = kwimage.Color(color).as01()
             image = self.data['xy'].fill(
                 image, value, coord_axes=[1, 0], interp='bilinear')
         else:
@@ -378,22 +385,22 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             xy_pts = self.data['xy'].data.reshape(-1, 2)
 
             if color == 'distinct':
-                colors = kwplot.Color.distinct(len(xy_pts))
+                colors = kwimage.Color.distinct(len(xy_pts))
             elif color == 'classes':
                 # TODO: read colors from categories if they exist
                 class_idxs = self.data['class_idxs']
                 _keys, _vals = kwarray.group_indices(class_idxs)
-                cls_colors = kwplot.Color.distinct(len(self.meta['classes']))
+                cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
                 colors = list(ub.take(cls_colors, class_idxs))
                 if image.dtype.kind == 'f':
-                    colors = [kwplot.Color(c).as01() for c in colors]
+                    colors = [kwimage.Color(c).as01() for c in colors]
                 else:
-                    colors = [kwplot.Color(c).as255() for c in colors]
+                    colors = [kwimage.Color(c).as255() for c in colors]
             else:
                 if image.dtype.kind == 'f':
-                    value = kwplot.Color(color).as01()
+                    value = kwimage.Color(color).as01()
                 else:
-                    value = kwplot.Color(color).as255()
+                    value = kwimage.Color(color).as255()
                 colors = [value] * len(xy_pts)
                 # image = kwimage.ensure_float01(image)
 
@@ -418,13 +425,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
+            >>> # xdoc: +REQUIRES(--show)
             >>> pts.draw(radius=0.01)
 
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(10, classes=['a', 'b', 'c'])
             >>> self.draw(radius=0.01, color='classes')
         """
-        import kwplot
+        import kwimage
         import matplotlib as mpl
         from matplotlib import pyplot as plt
         if ax is None:
@@ -438,12 +446,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             alpha = [alpha] * len(xy)
 
         if color == 'distinct':
-            colors = kwplot.Color.distinct(len(alpha))
+            colors = kwimage.Color.distinct(len(alpha))
         elif color == 'classes':
             # TODO: read colors from categories if they exist
             try:
                 class_idxs = self.data['class_idxs']
-                cls_colors = kwplot.Color.distinct(len(self.meta['classes']))
+                cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
             except KeyError:
                 raise Exception('cannot draw class colors without class_idxs and classes')
             _keys, _vals = kwarray.group_indices(class_idxs)
@@ -451,7 +459,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             colors = [color] * len(alpha)
 
-        ptcolors = [kwplot.Color(c, alpha=a).as01('rgba')
+        ptcolors = [kwimage.Color(c, alpha=a).as01('rgba')
                     for c, a in zip(colors, alpha)]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
@@ -541,7 +549,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def _to_coco(self, style='orig'):
+    def to_coco(self, style='orig'):
         """
         Converts to an mscoco-like representation
 
@@ -550,7 +558,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             be rectified.
 
         Args:
-            style (str): either orig, new-id, or new-name
+            style (str): either orig, new, new-id, or new-name
 
         Returns:
             Dict: mscoco-like representation
@@ -567,6 +575,15 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.meta['classes'] = ndsampler.CategoryTree.coerce(self.meta['classes'])
             >>> new_id = self._to_coco(style='new-id')
             >>> print('new_id = {}'.format(ub.repr2(new_id, nl=-1)))
+        """
+        if len(self.xy.shape) == 2:
+            return self._to_coco(style=style)
+        else:
+            raise NotImplementedError('dim > 2, dense case todo')
+
+    def _to_coco(self, style='orig'):
+        """
+        See to_coco
         """
         if style == 'orig':
             visible = self.data.get('visible', None)
@@ -607,15 +624,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             return new_kpts
         else:
             raise KeyError(style)
-
-    def to_coco(self, style='orig'):
-        """
-        See _to_coco
-        """
-        if len(self.xy.shape) == 2:
-            return self._to_coco(style=style)
-        else:
-            raise NotImplementedError('dim > 2, dense case todo')
 
     @classmethod
     def from_coco(cls, coco_kpts, class_idxs=None, classes=None):

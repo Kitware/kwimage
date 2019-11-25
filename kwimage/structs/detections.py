@@ -40,7 +40,7 @@ class _DetDrawMixin:
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(image)
-            >>> # xdoc: -REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(--show)
             >>> self.draw(color='blue', alpha=None)
             >>> # xdoc: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
@@ -188,7 +188,7 @@ class _DetAlgoMixin:
     """
 
     def non_max_supression(self, thresh=0.0, perclass=False, impl='auto',
-                           daq=False):
+                           daq=False, device_id=None):
         """
         Find high scoring minimally overlapping detections
 
@@ -200,11 +200,17 @@ class _DetAlgoMixin:
                 divide and conquor algorithm. If `daq` is a Dict, then
                 it is used as the kwargs to `kwimage.daq_spatial_nms`
 
+            device_id : try not to use. only used if impl is gpu
+
         Returns:
             ndarray[int]: indices of boxes to keep
         """
         import kwimage
         classes = self.class_idxs if perclass else None
+
+        if len(self) <= 0:
+            return []
+
         tlbr = self.boxes.to_tlbr().data
         scores = self.data.get('scores', None)
         if scores is None:
@@ -216,13 +222,18 @@ class _DetAlgoMixin:
             daqkw['max_depth'] = daqkw.get('max_depth', 12)
             daqkw['thresh'] = daqkw.get('thresh', thresh)
             if 'diameter' not in daqkw:
-                daqkw['diameter'] = max(self.boxes.width.max(),
-                                        self.boxes.height.max())
+                if len(self.boxes) > 0:
+                    daqkw['diameter'] = max(self.boxes.width.max(),
+                                            self.boxes.height.max())
+                else:
+                    daqkw['diameter'] = 10  # hack
 
-            keep = kwimage.daq_spatial_nms(tlbr, scores, **daqkw)
+            keep = kwimage.daq_spatial_nms(tlbr, scores, device_id=device_id,
+                                           **daqkw)
         else:
             keep = kwimage.non_max_supression(tlbr, scores, thresh=thresh,
-                                              classes=classes, impl=impl)
+                                              classes=classes, impl=impl,
+                                              device_id=device_id)
         return keep
 
     def non_max_supress(self, thresh=0.0, perclass=False, impl='auto',
@@ -1059,6 +1070,24 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             newdata[key] = newval
         newself = self.__class__(newdata, self.meta)
         return newself
+
+    @property
+    def dtype(self):
+        dtypes = set()
+        for key, val in self.data.items():
+            if val is not None:
+                try:
+                    child_dtype = val.dtype
+                    if isinstance(child_dtype, set):
+                        dtypes.update(child_dtype)
+                    else:
+                        dtypes.add(child_dtype)
+                except AttributeError:
+                    dtypes.add('unknown-for-{}'.format(type(val)))
+        if len(dtypes) == 1:
+            return ub.peek(dtypes)
+        else:
+            return dtypes
 
     def tensor(self, device=ub.NoParam):
         """

@@ -52,7 +52,7 @@ stages:
             - wheelhouse/*.whl
 
 
-.test_template: &test_template
+.test_full_template: &test_full_template
     <<: 
         - *common_template
 
@@ -78,8 +78,45 @@ stages:
         - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
         - pip install pygments
+        - xdoctest kwimage --mask 
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+          
+    # Coverage is a regex that will parse the coverage from the test stdout
+    coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+
+
+.test_basic_template: &test_basic_template
+    <<: 
+        - *common_template
+
+    stage: 
+        test
+
+    before_script:
+        # Setup the correct version of python on this manylinux instance
+        - python --version  # Print out python version for debugging
+        - python -m pip install virtualenv
+        - python -m virtualenv venv
+        - source venv/bin/activate
+        - pip install pip -U
+        - pip install pip setuptools -U
+        - pip install -r requirements/runtime.txt
+        - pip install -r requirements/tests.txt
+        #- pip install -r requirements/build.txt
+
+    script: 
+        - ls wheelhouse
+        - MB_PYTHON_TAG=py2.py3-none-any
+        - VERSION=$(python -c "import setup; print(setup.version)")
+        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        - pip install $BDIST_WHEEL_PATH
+        - xdoctest -m kwimage
+        - pip install pygments
+        # Hack to test the installed wheel. TODO: make run_tests work better in this case.
+        - export KWIMAGE_DISABLE_C_EXTENSIONS=1
+        - pip install -r requirements/tests.txt
+        - mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           
     # Coverage is a regex that will parse the coverage from the test stdout
     coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
@@ -218,9 +255,15 @@ build/cp37-cp37m-manylinux2010:
     <<: 
         - *multibuild_template
 
-test/cp37-cp37m-manylinux2010:
+test_full/cp37-cp37m-manylinux2010:
     <<: 
-        - *test_template
+        - *test_full_template
+    image:
+        python:3.7
+
+test_basic/cp37-cp37m-manylinux2010:
+    <<: 
+        - *test_basic_template
     image:
         python:3.7
 
@@ -244,9 +287,15 @@ build/cp36-cp36m-manylinux2010:
     <<: 
         - *multibuild_template
 
-test/cp36-cp36m-manylinux2010:
+test_full/cp36-cp36m-manylinux2010:
     <<: 
-        - *test_template
+        - *test_full_template
+    image:
+        python:3.6
+
+test_basic/cp36-cp36m-manylinux2010:
+    <<: 
+        - *test_basic_template
     image:
         python:3.6
 
@@ -270,9 +319,15 @@ build/cp35-cp35m-manylinux2010:
     <<: 
         - *multibuild_template
 
-test/cp35-cp35m-manylinux2010:
+test_full/cp35-cp35m-manylinux2010:
     <<: 
-        - *test_template
+        - *test_full_template
+    image:
+        python:3.5
+
+test_basic/cp35-cp35m-manylinux2010:
+    <<: 
+        - *test_basic_template
     image:
         python:3.5
 
@@ -296,9 +351,15 @@ build/cp27-cp27mu-manylinux2010:
     <<: 
         - *multibuild_template
 
-test/cp27-cp27mu-manylinux2010:
+test_full/cp27-cp27mu-manylinux2010:
     <<: 
-        - *test_template
+        - *test_full_template
+    image:
+        python:2.7
+
+test_basic/cp27-cp27mu-manylinux2010:
+    <<: 
+        - *test_basic_template
     image:
         python:2.7
 
@@ -313,3 +374,46 @@ deploy/cp27-cp27mu-manylinux2010:
         - *deploy_template
     image:
         python:2.7
+
+
+# ---------------
+# Universal Python Jobs
+build/py2.py3-none-any:
+    <<: 
+        - *common_template
+
+    stage: 
+        build
+
+    image: python:3.7
+
+    before_script:
+        - python -V  # Print out python version for debugging
+        - pip install virtualenv
+        - virtualenv venv
+        - source venv/bin/activate
+        - pip install pip -U
+        - pip install pip setuptools -U
+
+    script: 
+        - export KWIMAGE_DISABLE_C_EXTENSIONS=1
+        - python setup.py bdist_wheel --universal
+        - ls dist
+        #- MB_PYTHON_TAG=py2.py3-none-any
+        #- # VERSION=$(python -c "import setup; print(setup.version)")
+        #- # BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        #- # pip install $BDIST_WHEEL_PATH
+        #- # pip install pygments
+        ## Hack to test the installed wheel. TODO: make run_tests work better in this case.
+        #- # pip install -r requirements/tests.txt
+        #- # mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+        #- # xdoctest -m kwimage
+          
+
+    artifacts:
+        paths:
+            - dist/*.whl
+
+    cache:
+        paths:
+            - .cache/pip

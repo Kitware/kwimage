@@ -4,6 +4,31 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
+## Version 0.5.2
+
+### Added 
+* "torchvision" nms mode.
+* Ported pure-image drawing functions from kwplot. These are `draw_boxes_on_image`, `draw_clf_on_image`,
+                      `draw_text_on_image`, `make_heatmask`, `make_orimask`,
+                      `make_vector_field`.
+* Ported Color from kwplot
+
+
+### Fixed
+* Using the new (correct) torch defaults for `align_corners` in `warp_tensor` when possible.
+* Fixed bug in "numpy" nms mode.
+
+### Changed
+* reworked nms auto mode
+* nms impl=`cpu` / `gpu` / `py` are now deprecated for `cython_cpu` / `cython_gpu` / `numpy` instead.
+
+
+## Version 0.5.1
+
+### Changed
+* First public release
+
+
 ## Version 0.5.0
 
 ### Added 

@@ -77,6 +77,14 @@ class ObjectList(Spatial):
     def shape(self):
         return (len(self),)
 
+    @property
+    def dtype(self):
+        try:
+            return self.data.dtype
+        except Exception:
+            print('kwimage._generic: no dtype for ' + str(type(self.data)))
+            raise
+
     def __nice__(self):
         return 'n={}'.format(len(self))
 

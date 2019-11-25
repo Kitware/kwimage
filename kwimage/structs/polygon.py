@@ -7,11 +7,11 @@ from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except ImportError:
+#     profile = ub.identity
 
 
 class _PolyArrayBackend:
@@ -75,7 +75,7 @@ class _PolyArrayBackend:
 
 class _PolyWarpMixin:
 
-    @profile
+    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -133,7 +133,7 @@ class _PolyWarpMixin:
         new.data['interiors'] = new_interiors
         return new
 
-    @profile
+    # @profile
     def to_imgaug(self, shape):
         import imgaug
         ia_exterior = imgaug.Polygon(self.data['exterior'])
@@ -141,7 +141,7 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    @profile
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -549,6 +549,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def from_shapely(Polygon, geom):
         """
         Convert a shapely polygon to a kwimage.Polygon
+
+        Args:
+            geom (shapely.geometry.polygon.Polygon): a shapely polygon
         """
         exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
@@ -556,9 +559,30 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return self
 
     @classmethod
+    def from_wkt(Polygon, data):
+        """
+        Convert a WKT string to a kwimage.Polygon
+
+        Args:
+            data (str): a WKT polygon string
+
+        Example:
+            data = kwimage.Polygon.random().to_shapely().to_wkt()
+            data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
+            self = Polygon.from_wkt(data)
+        """
+        from shapely import wkt
+        geom = wkt.loads(data)
+        self = Polygon.from_shapely(geom)
+        return self
+
+    @classmethod
     def from_geojson(MultiPolygon, data_geojson):
         """
         Convert a geojson polygon to a kwimage.Polygon
+
+        Args:
+            data_geojson (dict): geojson data
 
         Example:
             >>> self = Polygon.random(n_holes=2)
@@ -613,7 +637,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> kwplot.autompl()
             >>> kwplot.imshow(image, fnum=1)
         """
-        import kwplot
         import kwimage
         # return shape of contours to openCV contours
 
@@ -627,11 +650,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if alpha == 1.0:
             image = kwimage.ensure_uint255(image)
             image = kwimage.atleast_3channels(image)
-            rgba = kwplot.Color(color).as255()
+            rgba = kwimage.Color(color).as255()
         else:
             image = kwimage.ensure_float01(image)
             image = kwimage.ensure_alpha_channel(image)
-            rgba = kwplot.Color(color, alpha=alpha).as01()
+            rgba = kwimage.Color(color, alpha=alpha).as01()
 
         if fill:
             if alpha == 1.0:
@@ -664,8 +687,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1)
             >>> self = self.scale(100)
-            >>> self.draw()
             >>> # xdoc: +REQUIRES(--show)
+            >>> self.draw()
             >>> import kwplot
             >>> kwplot.autompl()
             >>> from matplotlib import pyplot as plt
@@ -675,11 +698,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         import matplotlib as mpl
         from matplotlib.patches import Path
         from matplotlib import pyplot as plt
-        import kwplot
+        import kwimage
         if ax is None:
             ax = plt.gca()
 
-        color = list(kwplot.Color(color).as01())
+        color = list(kwimage.Color(color).as01())
 
         data = self.data
 
@@ -707,7 +730,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if border:
             kw['linewidth'] = linewidth
             try:
-                edgecolor = list(kwplot.Color(border).as01())
+                edgecolor = list(kwimage.Color(border).as01())
             except Exception:
                 edgecolor = list(color)
                 # hack to darken
@@ -965,17 +988,16 @@ class MultiPolygon(_generic.ObjectList):
     #     Faster version
     #     """
     #     import kwimage
-    #     import kwplot
     #     dtype_fixer = _generic._consistent_dtype_fixer(image)
 
     #     if alpha == 1.0:
     #         image = kwimage.ensure_uint255(image)
     #         image = kwimage.atleast_3channels(image)
-    #         rgba = kwplot.Color(color).as255()
+    #         rgba = kwimage.Color(color).as255()
     #     else:
     #         image = kwimage.ensure_float01(image)
     #         image = kwimage.ensure_alpha_channel(image)
-    #         rgba = kwplot.Color(color, alpha=alpha).as01()
+    #         rgba = kwimage.Color(color, alpha=alpha).as01()
 
     #     kwargs = dict(color=color, fill=fill, border=border, alpha=alpha)
 

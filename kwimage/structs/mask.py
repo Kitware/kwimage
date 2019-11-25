@@ -36,19 +36,62 @@ import numpy as np
 import ubelt as ub
 import itertools as it
 from . import _generic
-try:
-    from kwimage.structs._mask_backend import cython_mask
-except ImportError:
-    cython_mask = None
+
+
+class _Mask_Backends():
+    # TODO: could make this prettier
+    def __init__(self):
+        self._funcs = None
+
+    def _lazy_init(self):
+        _funcs = {}
+
+        import os
+        import warnings
+        val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
+        DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
+
+        _funcs = {}
+        try:
+            from pycocotools import _mask
+            _funcs['pycoco'] = _mask
+        except ImportError as ex:
+            warnings.warn('pycoco tools is not available: {}'.format(str(ex)))
+
+        if not DISABLE_C_EXTENSIONS:
+            try:
+                from kwimage.structs._mask_backend import cython_mask
+                _funcs['kwimage'] = cython_mask
+            except ImportError as ex:
+                warnings.warn('mask_backend is not available: {}'.format(str(ex)))
+
+        self._funcs = _funcs
+        self._valid = frozenset(self._funcs.keys())
+
+    def get_backend(self, prefs):
+        if self._funcs is None:
+            self._lazy_init()
+
+        valid = ub.oset(prefs) & set(self._funcs)
+        if not valid:
+            import warnings
+            warnings.warn('no valid mask backend')
+            return None, None
+        key = ub.peek(valid)
+        func = self._funcs[key]
+        return key, func
+
+
+_backends = _Mask_Backends()
+
+# cython_mask = _backends.get_backend(['pycoco', 'kwimage'])
+backend_key, cython_mask = _backends.get_backend(['kwimage', 'pycoco'])
+print('backend_key = {!r}'.format(backend_key))
+# cython_mask = _backends.get_backend([])
+# cython_backend = _backends.get_backend(['pycoco'])
+
 
 __all__ = ['Mask', 'MaskList']
-
-
-try:
-    import xdev
-    profile = xdev.profile
-except ImportError:
-    profile = ub.identity
 
 
 class MaskFormat:
@@ -101,6 +144,7 @@ class _MaskConversionMixin(object):
                 the string code for the format you want to transform into.
 
         Example:
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> mask = Mask.random(shape=(8, 8), rng=0)
             >>> # Test that we can convert to and from all formats
@@ -129,6 +173,7 @@ class _MaskConversionMixin(object):
     def to_bytes_rle(self, copy=False):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> mask = Mask.demo()
             >>> print(mask.to_bytes_rle().data['counts'])
@@ -144,11 +189,15 @@ class _MaskConversionMixin(object):
             h, w = self.data['size']
             if self.data.get('order', 'F') != 'F':
                 raise ValueError('Expected column-major array RLE')
+            if cython_mask is None:
+                raise NotImplementedError('pure python version')
             newdata = cython_mask.frUncompressedRLE([self.data], h, w)[0]
             self = Mask(newdata, MaskFormat.BYTES_RLE)
 
         elif self.format == MaskFormat.F_MASK:
             f_masks = self.data[:, :, None]
+            if cython_mask is None:
+                raise NotImplementedError('pure python version')
             encoded = cython_mask.encode(f_masks)[0]
             if 'size' in encoded:
                 encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -156,6 +205,8 @@ class _MaskConversionMixin(object):
         elif self.format == MaskFormat.C_MASK:
             c_mask = self.data
             f_masks = np.asfortranarray(c_mask)[:, :, None]
+            if cython_mask is None:
+                raise NotImplementedError('pure python version')
             encoded = cython_mask.encode(f_masks)[0]
             if 'size' in encoded:
                 encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -202,6 +253,8 @@ class _MaskConversionMixin(object):
         else:
             # NOTE: inefficient, could be improved
             self = self.to_bytes_rle(copy=False)
+            if cython_mask is None:
+                raise NotImplementedError('pure python version')
             f_mask = cython_mask.decode([self.data])[:, :, 0]
         self = Mask(f_mask, MaskFormat.F_MASK)
         return self
@@ -237,6 +290,7 @@ class _MaskConstructorMixin(object):
             dims (Tuple): height / width of the source image
 
         Example:
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> polygons = [
             >>>     np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]]),
             >>>     np.array([[0, 9],[4, 8],[2, 3]]),
@@ -254,6 +308,8 @@ class _MaskConstructorMixin(object):
         if isinstance(polygons, np.ndarray):
             polygons = [polygons]
         flat_polys = [np.array(ps).ravel() for ps in polygons]
+        if cython_mask is None:
+            raise NotImplementedError('pure python version')
         encoded = cython_mask.frPoly(flat_polys, h, w)
         if 'size' in encoded:
             encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -334,7 +390,7 @@ class _MaskTransformMixin(object):
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
         return new
 
-    @profile
+    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
 
@@ -420,7 +476,6 @@ class _MaskDrawMixin(object):
             >>> kwplot.imshow(toshow)
             >>> kwplot.show_if_requested()
         """
-        import kwplot
         import kwimage
 
         # if color in ['class', 'category', 'label', 'cid', 'cidx']:
@@ -428,7 +483,7 @@ class _MaskDrawMixin(object):
         #     pass
 
         mask = self.to_c_mask().data
-        rgb01 = list(kwplot.Color(color).as01())
+        rgb01 = list(kwimage.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]
         alpha_mask[..., 3] = mask * alpha
@@ -440,7 +495,7 @@ class _MaskDrawMixin(object):
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
             toshow = cv2.drawContours((toshow * 255.).astype(np.uint8),
                                       contours, -1,
-                                      kwplot.Color(border_color).as255(),
+                                      kwimage.Color(border_color).as255(),
                                       border_thick, cv2.LINE_AA)
             toshow = toshow.astype(np.float) / 255.
 
@@ -451,20 +506,20 @@ class _MaskDrawMixin(object):
         """
         Draw on the current matplotlib axis
         """
-        import kwplot
+        import kwimage
         if ax is None:
             from matplotlib import pyplot as plt
             ax = plt.gca()
 
         mask = self.to_c_mask().data
-        rgb01 = list(kwplot.Color(color).as01())
+        rgb01 = list(kwimage.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]
         alpha_mask[..., 3] = mask * alpha
 
         if show_border:
             # Add alpha channel to color
-            border_color_tup = kwplot.Color(border_color).as255()
+            border_color_tup = kwimage.Color(border_color).as255()
             border_color_tup = (border_color_tup[0], border_color_tup[1],
                                 border_color_tup[2], 255 * alpha)
 
@@ -490,6 +545,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         * f_mask - fortran-style binary mask
 
     Example:
+        >>> # xdoc: +REQUIRES(--mask)
         >>> # a ms-coco style compressed bytes rle segmentation
         >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
         >>> mask = Mask(segmentation, 'bytes_rle')
@@ -506,6 +562,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def __init__(self, data=None, format=None):
         self.data = data
         self.format = format
+
+    @property
+    def dtype(self):
+        try:
+            return self.data.dtype
+        except Exception:
+            print('kwimage.mask: no dtype for ' + str(type(self.data)))
+            raise
 
     def __nice__(self):
         return '{}, format={}'.format(ub.repr2(self.data, nl=0), self.format)
@@ -547,6 +611,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         This can be used as a staticmethod or an instancemethod
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
@@ -597,12 +662,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 new = cls(new_data, MaskFormat.C_MASK)
             elif format == MaskFormat.BYTES_RLE:
                 datas = [item.to_bytes_rle().data for item in items]
+                if cython_mask is None:
+                    raise NotImplementedError('pure python version')
                 new_data = cython_mask.merge(datas, intersect=0)
                 if 'size' in new_data:
                     new_data['size'] = list(map(int, new_data['size']))  # python2 fix
                 new = cls(new_data, MaskFormat.BYTES_RLE)
             else:
                 datas = [item.to_bytes_rle().data for item in items]
+                if cython_mask is None:
+                    raise NotImplementedError('pure python version')
                 new_rle = cython_mask.merge(datas, intersect=0)
                 if 'size' in new_rle:
                     new_rle['size'] = list(map(int, new_rle['size']))  # python2 fix
@@ -616,12 +685,15 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         This can be used as a staticmethod or an instancemethod
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.intersection(*masks)
             >>> print(mask.area)
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
         rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
+        if cython_mask is None:
+            raise NotImplementedError('pure python version')
         encoded = cython_mask.merge(rle_datas, intersect=1)
         if 'size' in encoded:
             encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -643,11 +715,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Returns the number of non-zero pixels
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.demo()
             >>> self.area
             150
         """
         self = self.to_bytes_rle()
+        if cython_mask is None:
+            raise NotImplementedError('pure python version')
         return cython_mask.area([self.data])[0]
 
     def get_patch(self):
@@ -655,6 +730,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Extract the patch with non-zero data
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
@@ -675,6 +751,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 a general singular version does not yet exist.
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_xywh().tolist()
             >>> self = Mask.random(rng=0).translate((10, 10))
@@ -682,6 +759,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         # import kwimage
         self = self.to_bytes_rle()
+        if cython_mask is None:
+            raise NotImplementedError('pure python version')
         xywh = cython_mask.toBbox([self.data])[0]
         # boxes = kwimage.Boxes(xywh, 'xywh')
         # return boxes
@@ -701,6 +780,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_polygon()
@@ -839,11 +919,13 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             MultiPolygon: vectorized representation
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.demo()
             >>> self = self.scale(5)
             >>> multi_poly = self.to_multi_polygon()
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(--show)
             >>> self.draw(color='red')
             >>> multi_poly.scale(1.1).draw(color='blue')
 
@@ -910,6 +992,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_convex_hull()
             >>> print('polygons = ' + ub.repr2(polygons))
@@ -933,6 +1016,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             xdoctest -m kwimage.structs.mask Mask.iou
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.demo()
             >>> other = self.translate(1)
             >>> iou = self.iou(other)
@@ -944,6 +1028,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # I'm not sure what passing `pyiscrowd` actually does here
         # TODO: determine what `pyiscrowd` does, and document it.
         pyiscrowd = np.array([0], dtype=np.uint8)
+        if cython_mask is None:
+            raise NotImplementedError('pure python version')
         iou = cython_mask.iou([item1], [item2], pyiscrowd)[0, 0]
         return iou
 
@@ -961,6 +1047,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask
 
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
             >>> polygon = [
             >>>     [np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]])],
@@ -979,9 +1066,21 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def _to_coco(self):
         """
         Example:
+            >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.demo()
             >>> data = self._to_coco()
+            >>> print(ub.repr2(data, nl=1))
+        """
+        return self.to_coco()
+
+    def to_coco(self):
+        """
+        Example:
+            >>> # xdoc: +REQUIRES(--mask)
+            >>> from kwimage.structs.mask import *  # NOQA
+            >>> self = Mask.demo()
+            >>> data = self.to_coco()
             >>> print(ub.repr2(data, nl=1))
         """
         if False:
@@ -994,9 +1093,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             data = self.to_array_rle().data.copy()
             data['counts'] = data['counts'].tolist()
         return data
-
-    def to_coco(self):
-        return self._to_coco()
 
 
 def _coerce_coco_segmentation(data, dims=None):
@@ -1121,7 +1217,7 @@ class MaskList(_generic.ObjectList):
 if __name__ == '__main__':
     """
     CommandLine:
-        xdoctest -m kwimage.structs.mask all
+        xdoctest -m ~/code/kwimage/kwimage/structs/mask.py
     """
     import xdoctest
     xdoctest.doctest_module(__file__)

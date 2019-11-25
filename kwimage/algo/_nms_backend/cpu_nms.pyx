@@ -9,6 +9,9 @@ NUMPY_INCLUDE=$(python -c "import numpy as np; print(np.get_include())")
 CPATH=$CPATH:$NUMPY_INCLUDE cythonize -a -i ~/code/kwimage/kwimage/algo/_nms_backend/cpu_nms.pyx
 
 python -c "from kwimage.algo._nms_backend import cpu_nms"
+
+References:
+    https://github.com/rbgirshick/fast-rcnn/blob/master/lib/utils/nms.pyx
 """
 from __future__ import absolute_import
 
