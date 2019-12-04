@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Fixed Boxes.draw
+* Fixed error in `draw_clf_on_images`
 
 
 ## Version 0.5.2 - Released 2019-Nov-24
