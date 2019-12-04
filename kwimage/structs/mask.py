@@ -86,7 +86,7 @@ _backends = _Mask_Backends()
 
 # cython_mask = _backends.get_backend(['pycoco', 'kwimage'])
 backend_key, cython_mask = _backends.get_backend(['kwimage', 'pycoco'])
-print('backend_key = {!r}'.format(backend_key))
+# print('backend_key = {!r}'.format(backend_key))
 # cython_mask = _backends.get_backend([])
 # cython_backend = _backends.get_backend(['pycoco'])
 
