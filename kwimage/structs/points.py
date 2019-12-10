@@ -661,6 +661,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> # Old style
             >>> coco_kpts = [0, 0, 2, 0, 1, 2]
             >>> Points.from_coco(coco_kpts)
+            >>> # Fail case
+            >>> coco_kpts4 = [{'xy': [4686.5, 1341.5], 'category': 'dot'}]
+            >>> Points.from_coco(coco_kpts4, classes=[])
 
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
@@ -675,7 +678,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> pts = Points.from_coco(coco_kpts, classes=classes)
             >>> assert pts.data['class_idxs'].tolist() == [2, 0]
         """
-
         if coco_kpts is None:
             return None
 
@@ -696,7 +698,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             #     between keypoint category ids and idxs.
             #     ''')
 
-            if classes is None:
+            if classes is None or not bool(classes):
                 # See if we can infer the classes.
                 # This may cause compatiblity issues.
                 inferred_classes = [kpdict.get('keypoint_category',
