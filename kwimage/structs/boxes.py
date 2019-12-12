@@ -1131,26 +1131,79 @@ class _BoxDrawMixins(object):
                                  alpha=alpha, centers=centers, fill=fill,
                                  lw=lw, ax=ax)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=None):
+    def draw_on(self, image, color='blue', alpha=None, labels=None,
+                copy=False):
         """
         Draws boxes directly on the image using OpenCV
 
         Args:
             image (ndarray): must be in uint8 format
+            copy (bool, default=False): if False only copies if necessary
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.boxes import *  # NOQA
             >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'
-            >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
-            >>> image2 = self.draw_on(image, color=color)
+            >>> image = (np.random.rand(256, 256, 3) * 255).astype(np.uint8)
+            >>> image2 = self.draw_on(image.copy(), color=color)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
-            >>> kwplot.imshow(image2)
+            >>> kwplot.imshow(image, fnum=2000, pnum=(1, 2, 1))
+            >>> kwplot.imshow(image2, fnum=2000, pnum=(1, 2, 2))
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> import kwimage
+            >>> self = Boxes.random(num=10, rng=0).scale(255)
+            >>> self.data[0][:] = [3, 3, 253, 253]
+            >>> color = 'blue'
+            >>> im3 = np.random.rand(256, 256, 3)
+            >>> im1 = kwimage.convert_colorspace(im3, 'rgb', 'gray')
+            >>> im4 = kwimage.convert_colorspace(im3, 'rgb', 'rgba')
+            >>> # Note, the input image may be modified inplace
+            >>> img1 = im1_float01 = kwimage.ensure_float01(im1)
+            >>> img2 = im1_uint255 = kwimage.ensure_uint255(im1)
+            >>> img3 = im3_float01 = kwimage.ensure_float01(im3)
+            >>> img4 = im3_uint255 = kwimage.ensure_uint255(im3)
+            >>> img5 = im4_float01 = kwimage.ensure_float01(im4)
+            >>> img6 = im4_uint255 = kwimage.ensure_uint255(im4)
+            >>> canvas1 = self.draw_on(im1_float01, color=color)
+            >>> canvas2 = self.draw_on(im1_uint255, color=color)
+            >>> canvas3 = self.draw_on(im3_float01, color=color)
+            >>> canvas4 = self.draw_on(im3_uint255, color=color)
+            >>> canvas5 = self.draw_on(im4_float01, color=color)
+            >>> canvas6 = self.draw_on(im4_uint255, color=color)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=6)
+            >>> kwplot.imshow(img1, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(canvas1, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(img2, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(canvas2, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(img3, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(canvas3, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(img4, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(canvas4, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(img5, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(canvas5, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(img6, fnum=2000, pnum=pnum_())
+            >>> kwplot.imshow(canvas6, fnum=2000, pnum=pnum_())
+            >>> kwplot.show_if_requested()
+
+        Ignore:
+            import cv2
+            image = kwimage.ensure_uint255(np.random.rand(128, 128, 3))
+            image = kwimage.ensure_alpha_channel(np.random.rand(128, 128, 3))
+            canvas = cv2.rectangle(image, (10, 10), (100, 100), color=(0, 1.0, 0, 1.0), thickness=10)
+            kwplot.imshow(image, fnum=2000, pnum=(1, 2, 1))
+            kwplot.imshow(canvas, fnum=2000, pnum=(1, 2, 2))
         """
         import cv2
         import kwimage
@@ -1160,10 +1213,19 @@ class _BoxDrawMixins(object):
             y = min(max(y, 0), h - 1)
             return tuple(map(int, map(round, (x, y))))
 
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
         h, w = image.shape[0:2]
 
         # Parameters for drawing the box rectangles
-        rect_color = kwimage.Color(color).as255('rgb')
+        if image.dtype.kind == 'f':
+            rect_color = kwimage.Color(color).as01('rgb')
+            if kwimage.num_channels(image) == 4:
+                rect_color = rect_color + (1,)
+        else:
+            rect_color = kwimage.Color(color).as255('rgb')
+            if kwimage.num_channels(image) == 4:
+                rect_color = rect_color + (255,)
+
         rectkw = {
             'thickness': int(2),
             'color': rect_color,
@@ -1186,7 +1248,7 @@ class _BoxDrawMixins(object):
         if labels is None or labels is False:
             labels = [None] * len(tlbr_list)
 
-        image = kwimage.atleast_3channels(image, copy=True)
+        image = kwimage.atleast_3channels(image, copy=copy)
 
         for tlbr, label, alpha_ in zip(tlbr_list, labels, alpha):
             x1, y1, x2, y2 = tlbr
@@ -1198,6 +1260,8 @@ class _BoxDrawMixins(object):
             if alpha_ < 1.0:
                 background = image.copy()
 
+            # while cv2.rectangle will accept an alpha color it will not do any
+            # blending with the background image.
             image = cv2.rectangle(image, pt1, pt2, **rectkw)
             if label:
                 image = kwimage.draw_text_on_image(
@@ -1211,6 +1275,8 @@ class _BoxDrawMixins(object):
                     src1=image, alpha=alpha_,
                     src2=background, beta=1 - alpha_,
                     gamma=0, dst=image)
+
+        image = dtype_fixer(image, copy=False)
         return image
 
 
@@ -1373,6 +1439,17 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 array([[ 2, 13, 51, 51],
                        [32, 51, 32, 36],
                        [36, 28, 23, 26]]))>
+
+        Example:
+            >>> # Boxes position/shape within 0-1 space should be uniform.
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=True)
+            >>> fig.gca().set_xlim(0, 128)
+            >>> fig.gca().set_ylim(0, 128)
+            >>> import kwimage
+            >>> kwimage.Boxes.random(num=10).scale(128).draw()
         """
         rng = kwarray.ensure_rng(rng)
 

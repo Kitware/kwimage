@@ -36,6 +36,9 @@ _TEST_IMAGES = {
 def grab_test_image(key='astro', space='rgb', dsize=None,
                     interpolation='lanczos'):
     """
+    Ensures that the test image exists (this might use the network), reads it
+    and returns the the image pixels.
+
     Args:
         key (str): which test image to grab. Valid choices are:
             astro - an astronaught
@@ -44,7 +47,14 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
             stars - picture of stars in the sky
             airport - SkySat image of Beijing Capital International Airport on 18 February 2018
 
-        space (str): which colorspace to return in (defaults to RGB)
+        space (str, default='rgb'):
+            which colorspace to return in
+
+        dsize (Tuple[int, int], default=None):
+            if specified resizes image to this size
+
+    Returns:
+        ndarray: the requested image
 
     Example:
         >>> for key in grab_test_image.keys():
@@ -65,12 +75,18 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
 
 def grab_test_image_fpath(key='astro'):
     """
+    Ensures that the test image exists (this might use the network) and returns
+    the cached filepath to the requested image.
+
     Args:
         key (str): which test image to grab. Valid choices are:
             astro - an astronaught
             carl - Carl Sagan
             paraview - ParaView logo
             stars - picture of stars in the sky
+
+    Returns:
+        str: path to the requested image
 
     Example:
         >>> for key in grab_test_image.keys():

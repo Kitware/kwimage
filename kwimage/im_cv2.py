@@ -20,20 +20,40 @@ _CV2_INTERPOLATION_TYPES = {
 }
 
 
-def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4):
+def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
+                           grow_default=cv2.INTER_LANCZOS4,
+                           shrink_default=cv2.INTER_AREA, scale=None):
     """
     Converts interpolation into flags suitable cv2 functions
 
     Args:
         interpolation (int or str): string or cv2-style interpolation type
-        default (int): cv2 flag to use if `interpolation` is None
+
+        default (int): cv2 flag to use if `interpolation` is None and scale is
+            None.
+
+        grow_default (int): cv2 flag to use if `interpolation` is None and
+            scale is greater than or equal to 1.
+
+        shrink_default (int): cv2 flag to use if `interpolation` is None and
+            scale is less than 1.
+
+        scale (float): indicate if the interpolation will be used to scale the
+            image.
 
     Returns:
         int: flag specifying interpolation type that can be passed to
            functions like cv2.resize, cv2.warpAffine, etc...
     """
     if interpolation is None:
-        return default
+        if scale is None:
+            return default
+        else:
+            if scale >= 1:
+                return grow_default
+            else:
+                return shrink_default
+
     elif isinstance(interpolation, six.text_type):
         try:
             return _CV2_INTERPOLATION_TYPES[interpolation]
@@ -101,7 +121,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
 
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
-             interpolation=None, return_info=False):
+             interpolation=None, letterbox=False, return_info=False):
     """
     Resize an image based on a scale factor, final size, or size and aspect
     ratio.
@@ -132,6 +152,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             with size, dsize, and max_dim.
 
         interpolation (str | int): interpolation key or code (e.g. linear lanczos)
+
+        letterbox (bool, default=False): if used in conjunction with
+            dsize, then the image is scaled and translated to fit in the
+            center of the new image while maintaining aspect ratio. Black
+            padding is added if necessary.
 
         return_info (bool, default=False):
             if True returns information about the final transformation in a
@@ -175,6 +200,29 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>>                                  return_info=True)
         >>> print('info = {!r}'.format(info))
         >>> assert info['scale'].tolist() == [0.6  , 0.625]
+
+    Example:
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Test letterbox resize
+        >>> img = np.ones((5, 10, 3), dtype=np.float32)
+        >>> new_img, info = kwimage.imresize(img, dsize=(19, 19),
+        >>>                                  letterbox=True,
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['offset'].tolist() == [0, 4]
+        >>> img = np.ones((10, 5, 3), dtype=np.float32)
+        >>> new_img, info = kwimage.imresize(img, dsize=(19, 19),
+        >>>                                  letterbox=True,
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['offset'].tolist() == [4, 0]
+
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Test letterbox resize
+        >>> img = np.random.rand(100, 200)
+        >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
     """
     old_w, old_h = img.shape[0:2][::-1]
 
@@ -182,6 +230,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     if sum(a is not None for a in _mutex_args) != 1:
         raise ValueError(
             'Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim')
+
+    # TODO: add letterbox flag which can be used in conjunction with dsize
 
     if scale is not None:
         try:
@@ -212,22 +262,60 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         assert new_w is not None
         new_h = new_w * old_h / old_w
 
-    # Use np.round over python round, which has incompatible behavior
-    new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
+    if letterbox:
+        if dsize is None:
+            raise ValueError('letterbox can only be used with dsize')
+        orig_size = np.array(img.shape[0:2][::-1])
+        target_size = np.array(dsize)
+        # Determine to use the x or y scale factor
+        unequal_sxy = (target_size / orig_size)
+        equal_sxy = unequal_sxy.min()
+        # Whats the closest integer size we can resize to?
+        embed_size = np.round(orig_size * equal_sxy).astype(np.int)
+        # Determine how much padding we need for the top/left side
+        # Note: the right/bottom side might need an extra pixel of padding
+        # depending on rounding issues.
+        offset = np.round((target_size - embed_size) / 2).astype(np.int)
+        scale = embed_size / orig_size
 
-    interpolation = _rectify_interpolation(interpolation)
-    new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
+        left, top = offset
+        right, bot = target_size - (embed_size + offset)
 
-    if return_info:
-        old_dsize = (old_w, old_h)
-        new_scale = np.array(new_dsize) / np.array(old_dsize)
-        info = {
-            'scale': new_scale,
-            'dsize': new_dsize,
-        }
-        return new_img, info
+        interpolation = _rectify_interpolation(
+            interpolation, scale=equal_sxy)
+
+        embed_dsize = tuple(embed_size)
+        embed_img = cv2.resize(img, embed_dsize, interpolation=interpolation)
+        new_img = cv2.copyMakeBorder(
+            embed_img, top, bot, left, right, borderType=cv2.BORDER_CONSTANT,
+            value=0)
+        if return_info:
+            info = {
+                'offset': offset,
+                'scale': scale,
+                'dsize': dsize,
+                'embed_size': embed_size,
+            }
+            return new_img, info
+        else:
+            return new_img
+
     else:
-        return new_img
+        # Use np.round over python round, which has incompatible behavior
+        old_dsize = (old_w, old_h)
+        new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
+        new_scale = np.array(new_dsize) / np.array(old_dsize)
+        interpolation = _rectify_interpolation(
+            interpolation, scale=new_scale.min())
+        new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
+        if return_info:
+            info = {
+                'scale': new_scale,
+                'dsize': new_dsize,
+            }
+            return new_img, info
+        else:
+            return new_img
 
 
 def convert_colorspace(img, src_space, dst_space, copy=False,
@@ -237,7 +325,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
     Convinience function around cv2.cvtColor
 
     Args:
-        img (ndarray[uint8_t, ndim=2]): image data
+        img (ndarray): image data with float32 or uint8 precision
 
         src_space (str): input image colorspace. (e.g. BGR, GRAY)
 
@@ -252,7 +340,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
         dst (ndarray[uint8_t, ndim=2], optional): inplace-output array.
 
     Returns:
-        ndarray[uint8_t, ndim=2]: img -  image data
+        ndarray: img -  image data
 
     Note:
         Note the LAB and HSV colorspaces in float do not go into the 0-1 range.
@@ -302,10 +390,10 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
             if dst_space[-1] != 'A':
                 dst_space = dst_space + 'A'
 
-        if img.dtype.kind == 'f':
-            # opencv requires float32 input
-            if img.dtype.itemsize == 8:
-                img = img.astype(np.float32)
+    if img.dtype.kind == 'f':
+        # opencv requires float32 input
+        if img.dtype.itemsize == 8:
+            img = img.astype(np.float32)
 
     if src_space == dst_space:
         img2 = img

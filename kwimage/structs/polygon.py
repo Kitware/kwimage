@@ -307,6 +307,33 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return ub.repr2(self.data, nl=1)
 
     @classmethod
+    def circle(cls, xy, r, resolution=64):
+        """
+        Create a circular polygon
+
+        Example:
+            >>> xy = (0.5, 0.5)
+            >>> r = .3
+            >>> poly = Polygon.circle(xy, r)
+        """
+        tau = 2 * np.pi
+        theta = np.linspace(0, tau, resolution)
+        y_offset = np.sin(theta) * r
+        x_offset = np.cos(theta) * r
+
+        center = np.array(xy)
+        xcoords = center[0] + x_offset
+        ycoords = center[1] + y_offset
+
+        exterior = np.hstack([
+            xcoords.ravel()[:, None],
+            ycoords.ravel()[:, None],
+        ])
+
+        self = cls(exterior=exterior)
+        return self
+
+    @classmethod
     def random(cls, n=6, n_holes=0, convex=True, tight=False, rng=None):
         """
         Args:
