@@ -54,13 +54,21 @@ def draw_text_on_image(img, text, org, **kwargs):
         >>> kwplot.autompl()
         >>> kwplot.imshow(img2, fontScale=10)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Ensure the function works with float01 or uint255 images
+        >>> import kwimage
+        >>> img = kwimage.grab_test_image(space='rgb')
+        >>> img = kwimage.ensure_float01(img)
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
     """
     import kwimage
 
     if 'color' not in kwargs:
-        kwargs['color'] = (255, 0, 0)
+        kwargs['color'] = 'red'
 
-    kwargs['color'] = kwimage.Color(kwargs['color']).as255('rgb')
+    # Get the color that is compatible with the input image encoding
+    kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
 
     if 'thickness' not in kwargs:
         kwargs['thickness'] = 2
@@ -264,7 +272,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
             raise ValueError('specify box_format')
         boxes = kwimage.Boxes(boxes, box_format)
 
-    color = tuple(kwimage.Color(color).as255(colorspace))
+    color = kwimage.Color(color)._forimage(img, colorspace)
     tlbr = boxes.to_tlbr().data
     img2 = img.copy()
     for x1, y1, x2, y2 in tlbr:

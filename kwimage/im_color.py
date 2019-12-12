@@ -75,6 +75,45 @@ class Color(ub.NiceRepr):
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
         return self.space + ': ' + colorpart
 
+    def _forimage(self, image, space='rgb'):
+        """
+        Experimental function.
+
+        Create a numeric color tuple that agrees with the format of the input
+        image (i.e. float or int, with 3 or 4 channels).
+
+        Args:
+            image (ndarray): image to return color for
+            space (str, default=rgb): colorspace of the input image.
+
+        Example:
+            >>> img_f3 = np.zeros([8, 8, 3], dtype=np.float32)
+            >>> img_u3 = np.zeros([8, 8, 3], dtype=np.uint8)
+            >>> img_f4 = np.zeros([8, 8, 4], dtype=np.float32)
+            >>> img_u4 = np.zeros([8, 8, 4], dtype=np.uint8)
+            >>> Color('red')._forimage(img_f3)
+            (1.0, 0.0, 0.0)
+            >>> Color('red')._forimage(img_f4)
+            (1.0, 0.0, 0.0, 1.0)
+            >>> Color('red')._forimage(img_u3)
+            (255, 0, 0)
+            >>> Color('red')._forimage(img_u4)
+            (255, 0, 0, 255)
+            >>> Color('red', alpha=0.5)._forimage(img_f4)
+            (1.0, 0.0, 0.0, 0.5)
+            >>> Color('red', alpha=0.5)._forimage(img_u4)
+            (255, 0, 0, 127)
+        """
+        import kwimage
+        if kwimage.num_channels(image) == 4:
+            if not space.endswith('a'):
+                space = space + 'a'
+        if image.dtype.kind == 'f':
+            color = self.as01(space)
+        else:
+            color = self.as255(space)
+        return color
+
     def ashex(self, space=None):
         c255 = self.as255(space)
         return '#' + ''.join(['{:02x}'.format(c) for c in c255])
@@ -93,6 +132,8 @@ class Color(ub.NiceRepr):
         if space is not None:
             if space == self.space:
                 pass
+            elif space == 'rgb' and self.space == 'rgba':
+                color = color[0:3]
             elif space == 'rgba' and self.space == 'rgb':
                 color = color + (1,)
             elif space == 'bgr' and self.space == 'rgb':
@@ -100,7 +141,8 @@ class Color(ub.NiceRepr):
             elif space == 'rgb' and self.space == 'bgr':
                 color = color[::-1]
             else:
-                assert False
+                # from colormath import color_conversions
+                raise NotImplementedError('{} -> {}'.format(self.space, space))
         return tuple(map(float, color))
 
     @classmethod

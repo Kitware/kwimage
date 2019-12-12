@@ -640,7 +640,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             raise TypeError(type(data))
         return self
 
-    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
+    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
+                copy=False):
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
@@ -652,6 +653,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             border (bool, default=False): draw the border of the polygon
             alpha (float, default=1.0): polygon transparency (setting alpha < 1
                 makes this function much slower).
+            copy (bool, default=False): if False only copies if necessary
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -663,44 +665,96 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(image, fnum=1)
+
+        Example:
+            >>> import kwimage
+            >>> color = 'blue'
+            >>> self = kwimage.Polygon.random(n_holes=1).scale(128)
+            >>> image = np.zeros((128, 128), dtype=np.float32)
+            >>> # Test drawong on all channel + dtype combinations
+            >>> im3 = np.random.rand(128, 128, 3)
+            >>> im_chans = {
+            >>>     'im3': im3,
+            >>>     'im1': kwimage.convert_colorspace(im3, 'rgb', 'gray'),
+            >>>     'im4': kwimage.convert_colorspace(im3, 'rgb', 'rgba'),
+            >>> }
+            >>> inputs = {}
+            >>> for k, im in im_chans.items():
+            >>>     inputs[k + '_01'] = (kwimage.ensure_float01(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_255'] = (kwimage.ensure_uint255(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_01_a'] = (kwimage.ensure_float01(im.copy()), {'alpha': 0.5})
+            >>>     inputs[k + '_255_a'] = (kwimage.ensure_uint255(im.copy()), {'alpha': 0.5})
+            >>> outputs = {}
+            >>> for k, v in inputs.items():
+            >>>     im, kw = v
+            >>>     outputs[k] = self.draw_on(im, color=color, **kw)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2, doclf=True)
+            >>> kwplot.autompl()
+            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=len(inputs))
+            >>> for k in inputs.keys():
+            >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
+            >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
+            >>> kwplot.show_if_requested()
         """
         import kwimage
         # return shape of contours to openCV contours
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
+        print('--- A')
+        print('image.dtype = {!r}'.format(image.dtype))
+        print('image.max() = {!r}'.format(image.max()))
+
         # line_type = cv2.LINE_AA
         line_type = cv2.LINE_8
 
         cv_contours = self._to_cv_countours()
 
-        if alpha == 1.0:
-            image = kwimage.ensure_uint255(image)
-            image = kwimage.atleast_3channels(image)
-            rgba = kwimage.Color(color).as255()
+        if alpha is None or alpha == 1.0:
+            # image = kwimage.ensure_uint255(image)
+            image = kwimage.atleast_3channels(image, copy=copy)
+            rgba = kwimage.Color(color)._forimage(image)
         else:
             image = kwimage.ensure_float01(image)
             image = kwimage.ensure_alpha_channel(image)
-            rgba = kwimage.Color(color, alpha=alpha).as01()
+            rgba = kwimage.Color(color, alpha=alpha)._forimage(image)
+
+        print('--- B')
+        print('image.dtype = {!r}'.format(image.dtype))
+        print('image.max() = {!r}'.format(image.max()))
+        print('rgba = {!r}'.format(rgba))
 
         if fill:
-            if alpha == 1.0:
+            if alpha is None or alpha == 1.0:
                 # Modification happens inplace
                 image = cv2.fillPoly(image, cv_contours, rgba, line_type, shift=0)
             else:
                 orig = image.copy()
                 mask = np.zeros_like(orig)
                 mask = cv2.fillPoly(mask, cv_contours, rgba, line_type, shift=0)
+                # TODO: could use add weighted
                 image = kwimage.overlay_alpha_images(mask, orig)
+                rgba = kwimage.Color(rgba)._forimage(image)
+
+        print('--- C')
+        print('image.dtype = {!r}'.format(image.dtype))
+        print('image.max() = {!r}'.format(image.max()))
+        print('rgba = {!r}'.format(rgba))
 
         if border or True:
             thickness = 4
             contour_idx = -1
             image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
                                      thickness, line_type)
-        image = kwimage.ensure_float01(image)[..., 0:3]
+        # image = kwimage.ensure_float01(image)[..., 0:3]
 
-        image = dtype_fixer(image)
+        print('--- D')
+        print('image.dtype = {!r}'.format(image.dtype))
+        print('image.max() = {!r}'.format(image.max()))
+
+        image = dtype_fixer(image, copy=False)
         return image
 
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,

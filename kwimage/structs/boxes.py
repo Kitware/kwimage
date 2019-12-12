@@ -1159,42 +1159,34 @@ class _BoxDrawMixins(object):
         Example:
             >>> from kwimage.structs.boxes import *  # NOQA
             >>> import kwimage
-            >>> self = Boxes.random(num=10, rng=0).scale(255)
-            >>> self.data[0][:] = [3, 3, 253, 253]
+            >>> self = Boxes.random(num=10, rng=0).scale(128)
+            >>> self.data[0][:] = [3, 3, 100, 100]
             >>> color = 'blue'
-            >>> im3 = np.random.rand(256, 256, 3)
-            >>> im1 = kwimage.convert_colorspace(im3, 'rgb', 'gray')
-            >>> im4 = kwimage.convert_colorspace(im3, 'rgb', 'rgba')
-            >>> # Note, the input image may be modified inplace
-            >>> img1 = im1_float01 = kwimage.ensure_float01(im1)
-            >>> img2 = im1_uint255 = kwimage.ensure_uint255(im1)
-            >>> img3 = im3_float01 = kwimage.ensure_float01(im3)
-            >>> img4 = im3_uint255 = kwimage.ensure_uint255(im3)
-            >>> img5 = im4_float01 = kwimage.ensure_float01(im4)
-            >>> img6 = im4_uint255 = kwimage.ensure_uint255(im4)
-            >>> canvas1 = self.draw_on(im1_float01, color=color)
-            >>> canvas2 = self.draw_on(im1_uint255, color=color)
-            >>> canvas3 = self.draw_on(im3_float01, color=color)
-            >>> canvas4 = self.draw_on(im3_uint255, color=color)
-            >>> canvas5 = self.draw_on(im4_float01, color=color)
-            >>> canvas6 = self.draw_on(im4_uint255, color=color)
+            >>> # Test drawong on all channel + dtype combinations
+            >>> im3 = np.random.rand(128, 128, 3)
+            >>> im_chans = {
+            >>>     'im3': im3,
+            >>>     'im1': kwimage.convert_colorspace(im3, 'rgb', 'gray'),
+            >>>     'im4': kwimage.convert_colorspace(im3, 'rgb', 'rgba'),
+            >>> }
+            >>> inputs = {}
+            >>> for k, im in im_chans.items():
+            >>>     inputs[k + '_01'] = (kwimage.ensure_float01(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_255'] = (kwimage.ensure_uint255(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_01_a'] = (kwimage.ensure_float01(im.copy()), {'alpha': 0.5})
+            >>>     inputs[k + '_255_a'] = (kwimage.ensure_uint255(im.copy()), {'alpha': 0.5})
+            >>> outputs = {}
+            >>> for k, v in inputs.items():
+            >>>     im, kw = v
+            >>>     outputs[k] = self.draw_on(im, color=color, **kw)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
-            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.figure(fnum=2, doclf=True)
             >>> kwplot.autompl()
-            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=6)
-            >>> kwplot.imshow(img1, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(canvas1, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(img2, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(canvas2, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(img3, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(canvas3, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(img4, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(canvas4, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(img5, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(canvas5, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(img6, fnum=2000, pnum=pnum_())
-            >>> kwplot.imshow(canvas6, fnum=2000, pnum=pnum_())
+            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=len(inputs))
+            >>> for k in inputs.keys():
+            >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
+            >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
 
         Ignore:
@@ -1216,16 +1208,10 @@ class _BoxDrawMixins(object):
         dtype_fixer = _generic._consistent_dtype_fixer(image)
         h, w = image.shape[0:2]
 
-        # Parameters for drawing the box rectangles
-        if image.dtype.kind == 'f':
-            rect_color = kwimage.Color(color).as01('rgb')
-            if kwimage.num_channels(image) == 4:
-                rect_color = rect_color + (1,)
-        else:
-            rect_color = kwimage.Color(color).as255('rgb')
-            if kwimage.num_channels(image) == 4:
-                rect_color = rect_color + (255,)
+        # Get the color that is compatible with the input image encoding
+        rect_color = kwimage.Color(color)._forimage(image)
 
+        # Parameters for drawing the box rectangles
         rectkw = {
             'thickness': int(2),
             'color': rect_color,
@@ -1233,7 +1219,7 @@ class _BoxDrawMixins(object):
 
         # Parameters for drawing the label text
         fontkw = {
-            'color': kwimage.Color(color).as255('rgb'),
+            'color': rect_color,
             'thickness': int(2),
             'fontFace': cv2.FONT_HERSHEY_SIMPLEX,
             'fontScale': 0.75,
@@ -1244,6 +1230,8 @@ class _BoxDrawMixins(object):
 
         if alpha is None:
             alpha = [1.0] * len(tlbr_list)
+        elif isinstance(alpha, (float, np.float32, np.float64)):
+            alpha = [alpha] * len(tlbr_list)
 
         if labels is None or labels is False:
             labels = [None] * len(tlbr_list)

@@ -512,7 +512,7 @@ class _HeatmapDrawMixin(object):
         layers.append(image)
 
         overlaid = kwimage.overlay_alpha_layers(layers)
-        overlaid = dtype_fixer(overlaid)
+        overlaid = dtype_fixer(overlaid, copy=False)
         return overlaid
 
 

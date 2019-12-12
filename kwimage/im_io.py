@@ -13,6 +13,8 @@ def imread(fpath, space='auto', backend='auto'):
     Reads image data in a specified format using some backend implementation.
 
     Args:
+        fpath (str): path to the file to be read
+
         space (str, default='auto'): the desired colorspace of the image. Can
             by any colorspace accepted by `convert_colorspace`, or it can be
             'auto', in which case the colorspace of the image is unmodified
