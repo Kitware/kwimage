@@ -59,6 +59,7 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         img2 (ndarray): base image to superimpose on
         keepalpha (bool): if False, the alpha channel is removed after blending
         dtype (np.dtype): format for blending computation (defaults to float32)
+        impl (str, default=inplace): code specifying the backend implementation
 
     Returns:
         ndarray: raster: the blended images
@@ -223,11 +224,25 @@ def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
     return rgb3, alpha3
 
 
-def ensure_alpha_channel(img, alpha=1.0):
+def ensure_alpha_channel(img, alpha=1.0, dtype=np.float32, copy=False):
     """
     Returns the input image with 4 channels.
+
+    Args:
+        img (ndarray): an image with shape [H, W], [H, W, 1], [H, W, 3], or
+            [H, W, 4].
+        alpha (float, default=1.0): default value for missing alpha channel
+        dtype (type, default=np.float32): a numpy floating type
+        copy (bool, default=False): always copy if True, else copy if needed.
+
+    Returns:
+        an image with specified dtype with shape [H, W, 4].
+
+    Raises:
+        ValueError - if the input image does not have 1, 3, or 4 input channels
+            or if the image cannot be converted into a float01 representation
     """
-    img = im_core.ensure_float01(img, copy=False)
+    img = im_core.ensure_float01(img, dtype=dtype, copy=copy)
     c = im_core.num_channels(img)
     if c == 4:
         return img
@@ -241,4 +256,5 @@ def ensure_alpha_channel(img, alpha=1.0):
         elif c == 1:
             return np.dstack([img, img, img, alpha_channel])
         else:
-            raise ValueError('unknown dim')
+            raise ValueError(
+                'Cannot ensure alpha. Input image has c={} channels'.format(c))

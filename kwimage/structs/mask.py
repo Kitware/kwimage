@@ -86,7 +86,7 @@ _backends = _Mask_Backends()
 
 # cython_mask = _backends.get_backend(['pycoco', 'kwimage'])
 backend_key, cython_mask = _backends.get_backend(['kwimage', 'pycoco'])
-print('backend_key = {!r}'.format(backend_key))
+# print('backend_key = {!r}'.format(backend_key))
 # cython_mask = _backends.get_backend([])
 # cython_backend = _backends.get_backend(['pycoco'])
 
@@ -271,6 +271,32 @@ class _MaskConversionMixin(object):
             c_mask = np.ascontiguousarray(f_mask)
         self = Mask(c_mask, MaskFormat.C_MASK)
         return self
+
+    def numpy(self):
+        """
+        Ensure mask is in numpy format (if possible)
+        """
+        import torch
+        data = self.data
+        if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
+            if torch.is_tensor(data):
+                data = data.data.cpu().numpy()
+        newself = self.__class__(data, self.format)
+        return newself
+
+    def tensor(self, device=ub.NoParam):
+        """
+        Ensure mask is in tensor format (if possible)
+        """
+        import torch
+        data = self.data
+        if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
+            if not torch.is_tensor(data):
+                data = torch.from_numpy(data)
+            if device is not ub.NoParam:
+                data = data.to(device)
+        newself = self.__class__(data, self.format)
+        return newself
 
 
 class _MaskConstructorMixin(object):
@@ -463,48 +489,84 @@ class _MaskDrawMixin(object):
         """
         Draws the mask on an image
 
+        Args:
+            image (ndarray): the image to draw on
+            color (str | tuple): color code/rgb of the mask
+            alpha (float): mask alpha value
+            show_border (bool, default=False): draw border around the mask
+
+        Returns:
+            ndarray: the image with data drawn on it
+
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> import kwimage
             >>> image = kwimage.grab_test_image()
             >>> self = Mask.random(shape=image.shape[0:2])
-            >>> toshow = self.draw_on(image)
+            >>> canvas = self.draw_on(image)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
-            >>> kwplot.imshow(toshow)
+            >>> kwplot.imshow(canvas)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # Test the case where the mask and image are different sizes
+            >>> from kwimage.structs.mask import *  # NOQA
+            >>> import kwimage
+            >>> image = kwimage.grab_test_image()
+            >>> self = Mask.random(shape=np.array(image.shape[0:2]) // 2)
+            >>> canvas = self.draw_on(image)
+            >>> self = Mask.random(shape=np.array(image.shape[0:2]) * 2)
+            >>> canvas = self.draw_on(image)
         """
         import kwimage
 
-        # if color in ['class', 'category', 'label', 'cid', 'cidx']:
-        #     dsets
-        #     pass
+        dtype_fixer = _generic._consistent_dtype_fixer(image)
 
+        # Make an alpha mask with the requested color
         mask = self.to_c_mask().data
         rgb01 = list(kwimage.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]
         alpha_mask[..., 3] = mask * alpha
 
-        toshow = kwimage.overlay_alpha_images(alpha_mask, image)
+        mask_shape = tuple(alpha_mask.shape[0:2])
+        canvas_shape = tuple(image.shape[0:2])
+
+        if mask_shape != canvas_shape:
+            # Overlay as much as is possible if the shapes dont match
+            min_shape = list(map(min, zip(mask_shape, canvas_shape)))
+            min_slice = tuple([slice(0, m) for m in min_shape])
+
+            canvas = kwimage.ensure_alpha_channel(image, copy=True)
+            alpha_part = alpha_mask[min_slice]
+            image_part = image[min_slice]
+            canvas_part = kwimage.overlay_alpha_images(alpha_part, image_part)
+            canvas[min_slice] = canvas_part
+        else:
+            canvas = kwimage.overlay_alpha_images(alpha_mask, image)
 
         if show_border:
             # return shape of contours to openCV contours
             contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            toshow = cv2.drawContours((toshow * 255.).astype(np.uint8),
+            canvas = cv2.drawContours((canvas * 255.).astype(np.uint8),
                                       contours, -1,
                                       kwimage.Color(border_color).as255(),
                                       border_thick, cv2.LINE_AA)
-            toshow = toshow.astype(np.float) / 255.
+            canvas = canvas.astype(np.float) / 255.
 
-        return toshow
+        canvas = dtype_fixer(canvas)
+        return canvas
 
     def draw(self, color='blue', alpha=0.5, ax=None, show_border=False,
              border_thick=1, border_color='black'):
         """
         Draw on the current matplotlib axis
+
+        Args:
+            color (str | tuple): color code/rgb of the mask
+            alpha (float): mask alpha value
         """
         import kwimage
         if ax is None:
@@ -856,9 +918,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             # it seems to just be the way the coco implementation is
             # interpreting polygons.
             image = kwil.atleast_3channels(mask)
-            toshow = np.zeros(image.shape, dtype="uint8")
-            cv2.drawContours(toshow, _contours, -1, (255, 0, 0), 1)
-            kwil.imshow(toshow)
+            canvas = np.zeros(image.shape, dtype="uint8")
+            cv2.drawContours(canvas, _contours, -1, (255, 0, 0), 1)
+            kwil.imshow(canvas)
 
         return polygon
 

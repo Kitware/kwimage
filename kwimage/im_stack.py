@@ -18,7 +18,6 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
 
     Args:
         images (Iterable[ndarray[ndim=2]]):  image data
-        img2 (ndarray[ndim=2]):  image data
         axis (int): axis to stack on (either 0 or 1)
         resize (int, str, or None): if None image sizes are not modified,
             otherwise resize resize can be either 0 or 1.  We resize the
@@ -30,6 +29,15 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
             number results in a border.
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
+
+    Returns:
+        ndarray: an image of stacked images side by side
+
+        OR
+
+        Tuple[ndarray, List]: where the first item is the aformentioned stacked
+            image and the second item is a list of transformations for each
+            input image mapping it to its location in the returned image.
 
     Example:
         >>> import kwimage
@@ -88,10 +96,33 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         return img1
 
 
-def stack_images_grid(images, chunksize=None, axis=0, overlap=0, return_info=False, bg_value=None):
+def stack_images_grid(images, chunksize=None, axis=0, overlap=0,
+                      return_info=False, bg_value=None):
     """
     Stacks images in a grid. Optionally return transforms of original image
     positions in the output image.
+
+    Args:
+        images (Iterable[ndarray[ndim=2]]):  image data
+        chunksize (int, default=None): number of rows per column or columns per
+            row depending on the value of `axis`.
+            If unspecified, computes this as `int(sqrt(len(images)))`.
+        axis (int, default=0):
+            If 0, chunksize is columns per row.
+            If 1, chunksize is rows per column.
+        overlap (int): number of pixels to overlap. Using a negative
+            number results in a border.
+        return_info (bool): if True, returns transforms (scales and
+            translations) to map from original image to its new location.
+
+    Returns:
+        ndarray: an image of stacked images in a grid pattern
+
+        OR
+
+        Tuple[ndarray, List]: where the first item is the aformentioned stacked
+            image and the second item is a list of transformations for each
+            input image mapping it to its location in the returned image.
     """
     import ubelt as ub
     if chunksize is None:

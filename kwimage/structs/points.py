@@ -626,6 +626,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             raise KeyError(style)
 
     @classmethod
+    def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):
+        # backwards compatibility
+        return cls.from_coco(coco_kpts, class_idxs=class_idxs, classes=classes)
+
+    @classmethod
     def from_coco(cls, coco_kpts, class_idxs=None, classes=None):
         """
         Args:
@@ -644,10 +649,21 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>>     {'xy': (1, 2), 'visible': 2, 'keypoint_category': 'mouth'},
             >>> ]
             >>> Points.from_coco(coco_kpts, classes=classes)
+            >>> # Test without classes
+            >>> Points.from_coco(coco_kpts)
+            >>> # Test without any category info
+            >>> coco_kpts2 = [ub.dict_diff(d, {'keypoint_category'}) for d in coco_kpts]
+            >>> Points.from_coco(coco_kpts2)
+            >>> # Test without category instead of keypoint_category
+            >>> coco_kpts3 = [ub.map_keys(lambda x: x.replace('keypoint_', ''), d) for d in coco_kpts]
+            >>> Points.from_coco(coco_kpts3)
             >>> #
             >>> # Old style
             >>> coco_kpts = [0, 0, 2, 0, 1, 2]
             >>> Points.from_coco(coco_kpts)
+            >>> # Fail case
+            >>> coco_kpts4 = [{'xy': [4686.5, 1341.5], 'category': 'dot'}]
+            >>> Points.from_coco(coco_kpts4, classes=[])
 
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
@@ -662,11 +678,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> pts = Points.from_coco(coco_kpts, classes=classes)
             >>> assert pts.data['class_idxs'].tolist() == [2, 0]
         """
-        return cls._from_coco(coco_kpts, class_idxs=class_idxs,
-                              classes=classes)
-
-    @classmethod
-    def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):
         if coco_kpts is None:
             return None
 
@@ -687,15 +698,16 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             #     between keypoint category ids and idxs.
             #     ''')
 
-            if classes is None:
+            if classes is None or not bool(classes):
                 # See if we can infer the classes.
                 # This may cause compatiblity issues.
-                inferred_classes = [kpdict.get('keypoint_category', None)
+                inferred_classes = [kpdict.get('keypoint_category',
+                                               kpdict.get('category', None))
                                     for kpdict in coco_kpts]
                 if all(inferred_classes):
                     import warnings
                     warnings.warn(
-                        'Inferring keypoint classes in _from_coco. '
+                        'Inferring keypoint classes in Points.from_coco. '
                         'It would be better to specify them explicitly')
                     classes = sorted(set(inferred_classes))
 

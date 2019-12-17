@@ -22,6 +22,7 @@ def num_channels(img):
         >>> assert num_channels(np.empty((W, H, 1))) == 1
         >>> assert num_channels(np.empty((W, H, 3))) == 3
         >>> assert num_channels(np.empty((W, H, 4))) == 4
+        >>> # xdoctest: +REQUIRES(module:pytest)
         >>> import pytest
         >>> with pytest.raises(ValueError):
         ...     num_channels(np.empty((W, H, 2)))
@@ -48,6 +49,8 @@ def ensure_float01(img, dtype=np.float32, copy=True):
     Args:
         img (ndarray): an image in uint255 or float01 format.
             Other formats will raise errors.
+        dtype (type, default=np.float32): a numpy floating type
+        copy (bool, default=False): always copy if True, else copy if needed.
 
     Returns:
         ndarray: an array of floats in the range 0-1
@@ -81,6 +84,7 @@ def ensure_uint255(img, copy=True):
     Args:
         img (ndarray): an image in uint255 or float01 format.
             Other formats will raise errors.
+        copy (bool, default=False): always copy if True, else copy if needed.
 
     Returns:
         ndarray: an array of bytes in the range 0-255
@@ -129,6 +133,12 @@ def ensure_uint255(img, copy=True):
 def make_channels_comparable(img1, img2, atleast3d=False):
     """
     Broadcasts image arrays so they can have elementwise operations applied
+
+    Args:
+        img1 (ndarray): first image
+        img2 (ndarray): second image
+        atleast3d (bool, default=False): if true we ensure that the channel
+            dimension exists (only relevant for 1-channel images)
 
     Example:
         >>> import itertools as it

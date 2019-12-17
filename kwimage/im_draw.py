@@ -185,7 +185,7 @@ def draw_clf_on_image(im, classes, tcx, probs=None, pcx=None, border=1):
     """
     import kwimage
     im_ = kwimage.atleast_3channels(im)
-    h, w = im.shape[0:2][::-1]
+    w, h = im.shape[0:2][::-1]
 
     if pcx is None and probs is not None:
         pcx = probs.argmax()

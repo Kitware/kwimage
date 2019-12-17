@@ -119,9 +119,7 @@ class _DetDrawMixin:
 
         segmentations = self.data.get('segmentations', None)
         if sseg and segmentations is not None:
-            # image = kwimage.ensure_uint255(image)
             image = segmentations.draw_on(image, color=color, alpha=.4)
-            # kwimage.ensure_float01(image)
 
         if boxes:
             image = self.boxes.draw_on(image, color=color, alpha=alpha,
@@ -133,7 +131,7 @@ class _DetDrawMixin:
             image = keypoints.draw_on(image, radius=radius, color=color)
             # kwimage.ensure_float01(image)
 
-        image = dtype_fixer(image)
+        image = dtype_fixer(image, copy=False)
         return image
 
     def _make_alpha(self, alpha):
@@ -1158,6 +1156,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> import kwplot
             >>> kwplot.autompl()
             >>> dets.draw(setlim=True)
+
+        Example:
+            >>> # Boxes position/shape within 0-1 space should be uniform.
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=True)
+            >>> fig.gca().set_xlim(0, 128)
+            >>> fig.gca().set_ylim(0, 128)
+            >>> import kwimage
+            >>> kwimage.Detections.random(num=10, segmentations=True).scale(128).draw()
         """
         import kwimage
         import kwarray
@@ -1182,9 +1191,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if segmentations:
             sseg_list = []
             for xywh in self.boxes.to_xywh().data:
-                scale = xywh[2:]
-                offset = xywh[0:2]
-                sseg = kwimage.MultiPolygon.random(n=1, tight=True).scale(scale).translate(offset)
+                box_scale = xywh[2:]
+                box_offset = xywh[0:2]
+                sseg = kwimage.MultiPolygon.random(n=1, tight=True, rng=rng)
+                sseg = sseg.scale(box_scale).translate(box_offset)
                 sseg_list.append(sseg)
             self.data['segmentations'] = kwimage.PolygonList(sseg_list)
 
@@ -1195,7 +1205,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 kpts_list = kwimage.PointsList([
                     kwimage.Points.random(
                         num=rng.randint(len(kp_classes)),
-                        classes=kp_classes,
+                        classes=kp_classes, rng=rng,
                     )
                     for _ in range(len(boxes))
                 ])
@@ -1203,7 +1213,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 self.data['keypoints'] = kpts_list
             elif keypoints == 'dense':
                 keypoints = kwimage.Points.random(
-                    num=(len(boxes), len(kp_classes)),
+                    num=(len(boxes), len(kp_classes)), rng=rng,
                     classes=kp_classes,)
                 self.data['keypoints'] = keypoints
 

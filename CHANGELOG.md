@@ -4,7 +4,26 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.2
+## Version 0.5.3
+
+### Added
+* `imresize` now accepts `letterbox` flag.
+* add `numpy` and `tensor` methods to `Mask`
+
+### Changed
+* `ensure_alpha_channel` now accepts `dtype` and `copy` kwargs.
+* `Mask.draw_on` will now draw on images larger or smaller than the mask itself
+
+
+### Fixed
+* Fixed Boxes.draw
+* `Boxes.draw_on` now works correctly on uint8 and float32 images with 1, 3, or 4 channels
+* `Masks.draw_on` now works correctly uint8 or float32 images 
+* Fixed error in `draw_clf_on_images`
+* Fixed scale error in `Detections.random` when `segmentations=True`
+
+
+## Version 0.5.2 - Released 2019-Nov-24
 
 ### Added 
 * "torchvision" nms mode.
