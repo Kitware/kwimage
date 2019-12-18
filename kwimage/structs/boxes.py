@@ -81,13 +81,6 @@ _TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0'
 _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except ImportError:
-#     profile = ub.identity
-
-
 class NeedsWarpCorners(AssertionError):
     pass
 

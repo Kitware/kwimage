@@ -3,15 +3,7 @@ import cv2
 import numpy as np
 import torch
 import skimage
-from distutils.version import LooseVersion  # NOQA
 from . import _generic
-
-
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except ImportError:
-#     profile = ub.identity
 
 
 class _PolyArrayBackend:

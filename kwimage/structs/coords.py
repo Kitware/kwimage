@@ -12,12 +12,6 @@ from distutils.version import LooseVersion
 from . import _generic
 
 
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except ImportError:
-#     profile = ub.identity
-
 try:
     import imgaug
     _HAS_IMGAUG_FLIP_BUG = LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9') and not hasattr(imgaug.augmenters.size, '_crop_and_pad_kpsoi')
