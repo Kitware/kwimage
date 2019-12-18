@@ -485,7 +485,7 @@ class _MaskDrawMixin(object):
 
     def draw_on(self, image, color='blue', alpha=0.5,
                 show_border=False, border_thick=1,
-                border_color='white'):
+                border_color='white', copy=False):
         """
         Draws the mask on an image
 
@@ -519,10 +519,44 @@ class _MaskDrawMixin(object):
             >>> canvas = self.draw_on(image)
             >>> self = Mask.random(shape=np.array(image.shape[0:2]) * 2)
             >>> canvas = self.draw_on(image)
+
+        Example:
+            >>> import kwimage
+            >>> color = 'blue'
+            >>> self = kwimage.Mask.random(shape=(128, 128))
+            >>> # Test drawong on all channel + dtype combinations
+            >>> im3 = np.random.rand(128, 128, 3).astype(np.float32)
+            >>> im_chans = {
+            >>>     'im3': im3,
+            >>>     'im1': kwimage.convert_colorspace(im3, 'rgb', 'gray'),
+            >>>     'im4': kwimage.convert_colorspace(im3, 'rgb', 'rgba'),
+            >>> }
+            >>> inputs = {}
+            >>> for k, im in im_chans.items():
+            >>>     inputs[k + '_01'] = (kwimage.ensure_float01(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_255'] = (kwimage.ensure_uint255(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_01_a'] = (kwimage.ensure_float01(im.copy()), {'alpha': 0.5})
+            >>>     inputs[k + '_255_a'] = (kwimage.ensure_uint255(im.copy()), {'alpha': 0.5})
+            >>> outputs = {}
+            >>> for k, v in inputs.items():
+            >>>     im, kw = v
+            >>>     outputs[k] = self.draw_on(im, color=color, **kw)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2, doclf=True)
+            >>> kwplot.autompl()
+            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=len(inputs))
+            >>> for k in inputs.keys():
+            >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
+            >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
+            >>> kwplot.show_if_requested()
         """
         import kwimage
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
+
+        if alpha is None:
+            alpha = 1.0
 
         # Make an alpha mask with the requested color
         mask = self.to_c_mask().data
@@ -542,6 +576,7 @@ class _MaskDrawMixin(object):
             canvas = kwimage.ensure_alpha_channel(image, copy=True)
             alpha_part = alpha_mask[min_slice]
             image_part = image[min_slice]
+            # TODO: could use add weighted to get a faster impl
             canvas_part = kwimage.overlay_alpha_images(alpha_part, image_part)
             canvas[min_slice] = canvas_part
         else:
@@ -556,7 +591,7 @@ class _MaskDrawMixin(object):
                                       border_thick, cv2.LINE_AA)
             canvas = canvas.astype(np.float) / 255.
 
-        canvas = dtype_fixer(canvas)
+        canvas = dtype_fixer(canvas, copy=False)
         return canvas
 
     def draw(self, color='blue', alpha=0.5, ax=None, show_border=False,

@@ -87,13 +87,6 @@ import functools
 from . import _generic
 
 
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except ImportError:
-#     profile = ub.identity
-
-
 class _HeatmapDrawMixin(object):
     """
     mixin methods for drawing heatmap details
@@ -106,7 +99,6 @@ class _HeatmapDrawMixin(object):
 
         import networkx as nx
         import kwimage
-        # kwplot.autoplt()
 
         classes = self.meta['classes']
         backup_colors = iter(kwimage.Color.distinct(len(classes)))
@@ -512,7 +504,7 @@ class _HeatmapDrawMixin(object):
         layers.append(image)
 
         overlaid = kwimage.overlay_alpha_layers(layers)
-        overlaid = dtype_fixer(overlaid)
+        overlaid = dtype_fixer(overlaid, copy=False)
         return overlaid
 
 

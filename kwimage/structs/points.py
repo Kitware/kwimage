@@ -7,16 +7,8 @@ from distutils.version import LooseVersion  # NOQA
 from . import _generic
 
 
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except ImportError:
-#     profile = ub.identity
-
-
 class _PointsWarpMixin:
 
-    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -58,7 +50,6 @@ class _PointsWarpMixin:
             self.meta.pop('tf_data_to_img')
         return new
 
-    # @profile
     def to_imgaug(self, input_dims):
         """
         Example:
@@ -85,7 +76,6 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -331,7 +321,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image, color='white', radius=None):
+    def draw_on(self, image, color='white', radius=None, copy=False):
         """
         CommandLine:
             xdoctest -m ~/code/kwimage/kwimage/structs/points.py Points.draw_on --show
@@ -365,6 +355,36 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.imshow(image)
             >>> self.draw(radius=3, alpha=.5, color='classes')
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> import kwimage
+            >>> s = 32
+            >>> self = kwimage.Points.random(10).scale(s)
+            >>> color = 'blue'
+            >>> # Test drawong on all channel + dtype combinations
+            >>> im3 = np.zeros((s, s, 3), dtype=np.float32)
+            >>> im_chans = {
+            >>>     'im3': im3,
+            >>>     'im1': kwimage.convert_colorspace(im3, 'rgb', 'gray'),
+            >>>     'im4': kwimage.convert_colorspace(im3, 'rgb', 'rgba'),
+            >>> }
+            >>> inputs = {}
+            >>> for k, im in im_chans.items():
+            >>>     inputs[k + '_01'] = (kwimage.ensure_float01(im.copy()), {'radius': None})
+            >>>     inputs[k + '_255'] = (kwimage.ensure_uint255(im.copy()), {'radius': None})
+            >>> outputs = {}
+            >>> for k, v in inputs.items():
+            >>>     im, kw = v
+            >>>     outputs[k] = self.draw_on(im, color=color, **kw)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2, doclf=True)
+            >>> kwplot.autompl()
+            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=len(inputs))
+            >>> for k in inputs.keys():
+            >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
+            >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
+            >>> kwplot.show_if_requested()
         """
         import kwimage
 
@@ -372,15 +392,16 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
         if radius is None:
             if color == 'distinct':
-                raise Exception
+                raise NotImplementedError
             image = kwimage.atleast_3channels(image)
-            image = kwimage.ensure_float01(image)
-            value = kwimage.Color(color).as01()
+            image = kwimage.ensure_float01(image, copy=copy)
+            # value = kwimage.Color(color).as01()
+            value = kwimage.Color(color)._forimage(image)
             image = self.data['xy'].fill(
                 image, value, coord_axes=[1, 0], interp='bilinear')
         else:
             import cv2
-            image = kwimage.atleast_3channels(image)
+            image = kwimage.atleast_3channels(image, copy=copy)
 
             xy_pts = self.data['xy'].data.reshape(-1, 2)
 
@@ -392,15 +413,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 _keys, _vals = kwarray.group_indices(class_idxs)
                 cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
                 colors = list(ub.take(cls_colors, class_idxs))
-                if image.dtype.kind == 'f':
-                    colors = [kwimage.Color(c).as01() for c in colors]
-                else:
-                    colors = [kwimage.Color(c).as255() for c in colors]
+                colors = [kwimage.Color(c)._forimage(image) for c in colors]
+                # if image.dtype.kind == 'f':
+                #     colors = [kwimage.Color(c).as01() for c in colors]
+                # else:
+                #     colors = [kwimage.Color(c).as255() for c in colors]
             else:
-                if image.dtype.kind == 'f':
-                    value = kwimage.Color(color).as01()
-                else:
-                    value = kwimage.Color(color).as255()
+                value = kwimage.Color(color)._forimage(image)
                 colors = [value] * len(xy_pts)
                 # image = kwimage.ensure_float01(image)
 
@@ -416,7 +435,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                                     startAngle=0.0, endAngle=360.0,
                                     color=color_, thickness=-1)
 
-        image = dtype_fixer(image)
+        image = dtype_fixer(image, copy=False)
         return image
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1, **kwargs):
