@@ -207,3 +207,45 @@ def _safe_compress(data, flags, axis):
         return data.compress(flags, axis=axis)
     except (TypeError, AttributeError):
         return kwarray.ArrayAPI.compress(data, flags, axis=axis)
+
+
+def _issubclass2(child, parent):
+    """
+    Uses string comparisons to avoid ipython reload errors.
+    Much less robust though.
+    """
+    # String comparison
+    if child.__name__ == parent.__name__:
+        if child.__module__ == parent.__module__:
+            return True
+    # Recurse through classes of obj
+    return any(_issubclass2(base, parent) for base in child.__bases__)
+
+
+def _isinstance2(obj, cls):
+    """
+    Uses string comparisons to avoid ipython reload errors.
+    Much less robust though.
+
+    Example:
+        import kwimage
+        from kwimage.structs import _generic
+        cls = kwimage.structs._generic.ObjectList
+        obj = kwimage.MaskList([])
+        _generic._isinstance2(obj, cls)
+
+        _generic._isinstance2(kwimage.MaskList([]), _generic.ObjectList)
+
+        dets = kwimage.Detections(
+            boxes=kwimage.Boxes.random(3).numpy(),
+            class_idxs=[0, 1, 1],
+            segmentations=kwimage.MaskList([None] * 3)
+        )
+    """
+    if isinstance(obj, cls):
+        return True
+    try:
+        return _issubclass2(obj.__class__, cls)
+    except Exception:
+        return False
+    return False

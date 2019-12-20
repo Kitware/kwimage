@@ -656,6 +656,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         [0, 0, 1, 1, 1, 0, 1, 1, 0],
 
     """
+
     def __init__(self, data=None, format=None):
         self.data = data
         self.format = format

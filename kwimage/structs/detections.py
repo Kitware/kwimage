@@ -110,6 +110,10 @@ class _DetDrawMixin:
             >>> kwplot.autompl()
             >>> kwplot.imshow(image2)
             >>> kwplot.show_if_requested()
+
+        Ignore:
+            import xdev
+            globals().update(xdev.get_func_kwargs(kwimage.Detections.draw_on))
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
@@ -487,9 +491,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 other = []
                 objlist = []
                 for k, v in data.items():
-                    if isinstance(v, _generic.ObjectList):
+                    if _generic._isinstance2(v, _generic.ObjectList):
                         objlist.append(v)
-                    elif isinstance(v, _boxes.Boxes):
+                    elif _generic._isinstance2(v, _boxes.Boxes):
                         if v.is_numpy():
                             ndarrays.append(k)
                         else:
