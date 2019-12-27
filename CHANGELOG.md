@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Fixed color in kwimage.struct `draw_on` methods.
+* Detections concatenate now works when segmentations are populated.
 
 
 ## Version 0.5.3 - Released 2019-Dec-17

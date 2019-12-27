@@ -884,6 +884,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets = [self, other]
             >>> new = Detections.concatenate(dets)
             >>> assert new.num_boxes() == 5
+
+            >>> self = Detections.random(2, segmentations=True)
+            >>> other = Detections.random(3, segmentations=True)
+            >>> dets = [self, other]
+            >>> new = Detections.concatenate(dets)
+            >>> assert new.num_boxes() == 5
         """
         if len(dets) == 0:
             raise ValueError('need at least one detection to concatenate')
@@ -906,7 +912,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     msg = ('Error when trying to concat {}'.format(key))
                     print(msg)
                     raise
-                    raise Exception(msg)
 
         newmeta = dets[0].meta
         new = cls(newdata, newmeta)

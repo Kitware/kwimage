@@ -164,8 +164,35 @@ class ObjectList(Spatial):
         return self.apply(lambda item: item.numpy())
 
     @classmethod
-    def concatenate(cls, data):
-        raise NotImplementedError
+    def concatenate(cls, items, axis=0):
+        """
+        Args:
+            items (Sequence[ObjectList]): multiple object lists of the same type
+            axis (int | None): unused, always implied to be axis 0
+
+        Returns:
+            ObjectList: combined object list
+
+        Example:
+            >>> import kwimage
+            >>> cls = kwimage.MaskList
+            >>> sub_cls = kwimage.Mask
+            >>> item1 = cls([sub_cls.random(), sub_cls.random()])
+            >>> item2 = cls([sub_cls.random()])
+            >>> items = [item1, item2]
+            >>> new = cls.concatenate(items)
+            >>> assert len(new) == 3
+        """
+        if len(items) == 0:
+            new = cls([])
+        else:
+            newdata = []
+            for item in items:
+                newdata.extend(item.data)
+
+        newmeta = items[0].meta
+        new = cls(newdata, newmeta)
+        return new
 
     def is_tensor(cls):
         raise NotImplementedError
