@@ -205,9 +205,11 @@ def rle_translate(rle, offset, output_shape=None):
             'only binary rle translation is implemented')
 
     # Careful of residuals
-    orig_offset = offset
-    offset = tuple(int(round(o)) for o in offset)
-    if not all(abs(a - b) < 1e-6 for a, b in zip(offset, orig_offset)):
+    orig_offset = np.array(offset)
+    offset = np.round(orig_offset).astype(np.int)
+    residual = orig_offset - offset.astype(orig_offset.dtype)
+
+    if not np.all(np.abs(residual) < 1e-6):
         import warnings
         warnings.warn('translating by rle, but offset is non-integer')
 
