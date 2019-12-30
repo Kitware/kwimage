@@ -450,7 +450,7 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
-    def translate(self, offset, output_dims=None):
+    def translate(self, offset, output_dims=None, inplace=False):
         """
         Efficiently translate an array_rle in the encoding space
 
@@ -458,6 +458,8 @@ class _MaskTransformMixin(object):
             offset (Tuple): x,y offset
             output_dims (Tuple, optional): h,w of transformed mask.
                 If unspecified the parent shape is used.
+
+            inplace (bool): for api compatability, currently ignored
 
         Example:
             >>> self = Mask.random(shape=(8, 8), rng=0)
@@ -472,6 +474,7 @@ class _MaskTransformMixin(object):
         if not ub.iterable(offset):
             offset = (offset, offset)
         rle = self.to_array_rle(copy=False).data
+
         new_rle = kwimage.rle_translate(rle, offset, output_dims)
         new_rle['size'] = new_rle['shape']
         new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
