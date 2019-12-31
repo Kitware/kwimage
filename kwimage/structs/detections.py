@@ -701,7 +701,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 dets.meta['kp_classes'] = kp_classes
         return dets
 
-    def to_coco(self, cname_to_cat=None):
+    def to_coco(self, cname_to_cat=None, style='orig'):
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
@@ -720,6 +720,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             cname_to_cat: currently ignored.
 
+            style (str): either orig (for the original coco format) or new
+                for the more general ndsampler-style coco format.
+
         Yields:
             dict: coco-like annotation structures
 
@@ -733,7 +736,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         import kwarray
         to_collate = {}
         if 'boxes' in self.data:
-            to_collate['bbox'] = list(self.data['boxes'].to_coco())
+            to_collate['bbox'] = list(self.data['boxes'].to_coco(style=style))
 
         if 'class_idxs' in self.data:
             if 'classes' in self.meta:
@@ -747,10 +750,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     self.data['class_idxs'])
 
         if 'keypoints' in self.data:
-            to_collate['keypoints'] = list(self.data['keypoints'].to_coco())
+            to_collate['keypoints'] = list(self.data['keypoints'].to_coco(
+                style=style))
 
         if 'segmentations' in self.data:
-            to_collate['segmentation'] = list(self.data['segmentations'].to_coco())
+            to_collate['segmentation'] = list(self.data['segmentations'].to_coco(
+                style=style))
 
         if 'scores' in self.data:
             to_collate['score'] = kwarray.ArrayAPI.tolist(self.data['scores'])

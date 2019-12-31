@@ -1175,7 +1175,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         return self.to_coco()
 
-    def to_coco(self):
+    def to_coco(self, style='orig'):
         """
         Example:
             >>> # xdoc: +REQUIRES(--mask)
@@ -1313,6 +1313,17 @@ class MaskList(_generic.ObjectList):
     """
     Store and manipulate multiple masks, usually within the same image
     """
+
+    def to_polygon_list(self):
+        """
+        Converts all mask objects to polygon objects
+        """
+        import kwimage
+        new = kwimage.PolygonList([
+            None if mask is None else mask.to_multi_polygon()
+            for mask in self
+        ])
+        return new
 
 
 if __name__ == '__main__':

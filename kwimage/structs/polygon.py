@@ -695,9 +695,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
-        print('--- A')
-        print('image.dtype = {!r}'.format(image.dtype))
-        print('image.max() = {!r}'.format(image.max()))
+        # print('--- A')
+        # print('image.dtype = {!r}'.format(image.dtype))
+        # print('image.max() = {!r}'.format(image.max()))
 
         # line_type = cv2.LINE_AA
         line_type = cv2.LINE_8
@@ -713,10 +713,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             image = kwimage.ensure_alpha_channel(image)
             rgba = kwimage.Color(color, alpha=alpha)._forimage(image)
 
-        print('--- B')
-        print('image.dtype = {!r}'.format(image.dtype))
-        print('image.max() = {!r}'.format(image.max()))
-        print('rgba = {!r}'.format(rgba))
+        # print('--- B')
+        # print('image.dtype = {!r}'.format(image.dtype))
+        # print('image.max() = {!r}'.format(image.max()))
+        # print('rgba = {!r}'.format(rgba))
 
         if fill:
             if alpha is None or alpha == 1.0:
@@ -730,10 +730,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                 image = kwimage.overlay_alpha_images(mask, orig)
                 rgba = kwimage.Color(rgba)._forimage(image)
 
-        print('--- C')
-        print('image.dtype = {!r}'.format(image.dtype))
-        print('image.max() = {!r}'.format(image.max()))
-        print('rgba = {!r}'.format(rgba))
+        # print('--- C')
+        # print('image.dtype = {!r}'.format(image.dtype))
+        # print('image.max() = {!r}'.format(image.max()))
+        # print('rgba = {!r}'.format(rgba))
 
         if border or True:
             thickness = 4
@@ -742,9 +742,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                                      thickness, line_type)
         # image = kwimage.ensure_float01(image)[..., 0:3]
 
-        print('--- D')
-        print('image.dtype = {!r}'.format(image.dtype))
-        print('image.max() = {!r}'.format(image.max()))
+        # print('--- D')
+        # print('image.dtype = {!r}'.format(image.dtype))
+        # print('image.max() = {!r}'.format(image.max()))
 
         image = dtype_fixer(image, copy=False)
         return image
@@ -825,6 +825,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return patch
 
     def _to_coco(self, style='orig'):
+        return self.to_coco(style=style)
+
+    def to_coco(self, style='orig'):
         interiors = self.data.get('interiors', [])
         if style == 'orig':
             if interiors:
@@ -838,9 +841,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             return _new
         else:
             raise KeyError(style)
-
-    def to_coco(self, style='orig'):
-        return self._to_coco(style=style)
 
     def to_geojson(self):
         """
@@ -1083,4 +1083,6 @@ class MultiPolygon(_generic.ObjectList):
 
 
 class PolygonList(_generic.ObjectList):
-    pass
+
+    def to_polygon_list(self):
+        return self
