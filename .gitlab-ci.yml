@@ -132,17 +132,13 @@ stages:
             echo $CI_KITWARE_SECRET
             echo $TWINE_USERNAME
 
-            # encrypt relevant travis variables
             # ADD RELEVANT VARIABLES TO GITLAB SECRET VARIABLES
-            # https://gitlab.kitware.com/computer-vision/kwimage/-/settings/ci_cd
+            # https://gitlab.kitware.com/computer-vision/kwarray/-/settings/ci_cd
             # Note that it is important to make sure that these variables are
             # only decrpyted on protected branches by selecting the protected
-            # and masked option.
-            #
-            # On travis we would do:
-            #gitlab encrypt CI_KITWARE_SECRET=$CI_KITWARE_SECRET
-            #gitlab encrypt TWINE_PASSWORD=$TWINE_PASSWORD  
-            #gitlab encrypt TWINE_USERNAME=$TWINE_USERNAME 
+            # and masked option. Also make sure you have master and release
+            # branches protected.
+            # https://gitlab.kitware.com/computer-vision/kwarray/-/settings/repository#js-protected-branches-settings
 
             # HOW TO ENCRYPT YOUR SECRET GPG KEY
             IDENTIFIER="travis-ci-Erotemic"
@@ -159,9 +155,13 @@ stages:
             GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/ci_public_gpg_key.pgp > dev/ci_public_gpg_key.pgp.enc
             GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/ci_secret_gpg_key.pgp > dev/ci_secret_gpg_key.pgp.enc
             GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/gpg_owner_trust > dev/gpg_owner_trust.enc
+            echo $GPG_KEYID > dev/public_gpg_key
 
             # Test decrpyt
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc
+            cat dev/public_gpg_key
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc 
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc 
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc 
 
             source $(secret_unloader.sh)
 
@@ -170,6 +170,7 @@ stages:
             rm dev/gpg_owner_trust dev/*.pgp
             git status
             git add dev/*.enc
+            git add dev/public_gpg_key
 
 
 .gpgsign_template: &gpgsign_template
