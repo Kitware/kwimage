@@ -595,6 +595,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> new_id = self._to_coco(style='new-id')
             >>> print('new_id = {}'.format(ub.repr2(new_id, nl=-1)))
         """
+        if self.xy.size == 0:
+            return []
         if len(self.xy.shape) == 2:
             return self._to_coco(style=style)
         else:
@@ -614,7 +616,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
             # TODO: ensure these are in the right order for the classes
             flat_pts = np.hstack([self.xy, visible]).reshape(-1)
-            return flat_pts
+            return flat_pts.tolist()
         elif style.startswith('new'):
 
             if style == 'new-id':
