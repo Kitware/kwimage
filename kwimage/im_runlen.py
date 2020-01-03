@@ -146,7 +146,8 @@ def rle_translate(rle, offset, output_shape=None):
 
     Args:
         rle (dict): an enconding dict returned by `encode_run_length`
-        offset (Tuple): x,y offset
+        offset (Tuple): x,y offset,
+            CAREFUL, this can only accept integers
         output_shape (Tuple, optional): h,w of transformed mask.
             If unspecified the input rle shape is used.
 
@@ -202,6 +203,15 @@ def rle_translate(rle, offset, output_shape=None):
     if not rle['binary']:
         raise NotImplementedError(
             'only binary rle translation is implemented')
+
+    # Careful of residuals
+    orig_offset = np.array(offset)
+    offset = np.round(orig_offset).astype(np.int)
+    residual = orig_offset - offset.astype(orig_offset.dtype)
+
+    if not np.all(np.abs(residual) < 1e-6):
+        import warnings
+        warnings.warn('translating by rle, but offset is non-integer')
 
     # These are the flat indices where the value changes:
     #  * even locs are stop-indices for zeros and start indices for ones

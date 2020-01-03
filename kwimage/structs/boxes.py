@@ -544,7 +544,7 @@ class _BoxConversionMixins(object):
         tlbr = tlbr.reshape(-1, 4)
         return Boxes(tlbr, format=BoxFormat.TLBR, check=False)
 
-    def to_coco(self):
+    def to_coco(self, style='orig'):
         """
         Example:
             >>> orig = Boxes.random(5)
