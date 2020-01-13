@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import numpy as np
 import six
 import ubelt as ub
-
 from collections import OrderedDict
+from . import im_core
 
 
 class Color(ub.NiceRepr):
@@ -104,8 +104,7 @@ class Color(ub.NiceRepr):
             >>> Color('red', alpha=0.5)._forimage(img_u4)
             (255, 0, 0, 127)
         """
-        import kwimage
-        if kwimage.num_channels(image) == 4:
+        if im_core.num_channels(image) == 4:
             if not space.endswith('a'):
                 space = space + 'a'
         if image.dtype.kind == 'f':
@@ -119,8 +118,9 @@ class Color(ub.NiceRepr):
         return '#' + ''.join(['{:02x}'.format(c) for c in c255])
 
     def as255(self, space=None):
-        color = (np.array(self.as01(space)) * 255).astype(np.uint8)
-        return tuple(map(int, color))
+        # TODO: be more efficient about not changing to 01 space
+        color = tuple(int(c * 255) for c in self.as01(space))
+        return color
 
     def as01(self, space=None):
         """
@@ -128,7 +128,7 @@ class Color(ub.NiceRepr):
         mplutil.Color('green').as01('rgba')
 
         """
-        color = tuple(self.color01)
+        color = tuple(map(float, self.color01))
         if space is not None:
             if space == self.space:
                 pass
@@ -143,7 +143,7 @@ class Color(ub.NiceRepr):
             else:
                 # from colormath import color_conversions
                 raise NotImplementedError('{} -> {}'.format(self.space, space))
-        return tuple(map(float, color))
+        return color
 
     @classmethod
     def _is_base01(channels):
