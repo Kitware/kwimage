@@ -47,7 +47,7 @@ def _colormath_convert(src_color, src_space, dst_space):
         rgb_color = (0.29, 0.88, 0.81)
         >>> hsv_color = _colormath_convert(lab_color, 'lab', 'hsv')
         >>> print('hsv_color = {}'.format(ub.repr2(hsv_color, nl=0, precision=2)))
-        hsv_color = (4.84, 1.00, 0.02)
+        hsv_color = (175.39, 1.00, 0.88)
     """
     from colormath.color_conversions import convert_color
     src_cls = _lookup_colorspace_object(src_space)
@@ -186,7 +186,7 @@ class Color(ub.NiceRepr):
             elif space == 'rgb' and self.space == 'rgba':
                 color = color[0:3]
             elif space == 'rgba' and self.space == 'rgb':
-                color = color + (1,)
+                color = color + (1.0,)
             elif space == 'bgr' and self.space == 'rgb':
                 color = color[::-1]
             elif space == 'rgb' and self.space == 'bgr':
