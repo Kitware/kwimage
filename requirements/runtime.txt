@@ -16,3 +16,5 @@ ubelt >= 0.7.1
 
 # Note: this is one of our libs, but it is on pypi, so it should be ok
 kwarray >= 0.4.0
+
+future;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.

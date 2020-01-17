@@ -257,11 +257,19 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
     """
     Defined with help from ``~/code/kwimage/dev/bench_nms.py``
 
+    Args:
+        code (str): text that indicates which type of data you have
+            tensor0 is a tensor on a cuda device, tensor is on the cpu, and
+            numpy is a ndarray.
+
+        num (int): number of boxes you have to supress.
+
+        valid (List[str]): the list of valid implementations, an error will be
+            raised if heuristic preferences do not intersect with this list.
 
     Ignore:
         _impls._funcs
         valid_pref = ub.oset(preference) & set(_impls._funcs.keys())
-
         python ~/code/kwimage/dev/bench_nms.py --show --small-boxes --thresh=0.6
     """
     if code not in {'tensor0', 'tensor', 'ndarray'}:
@@ -273,17 +281,17 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
             preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch']
         if code == 'tensor':
             # dict(torchvision=5857.1, cython_gpu=3058.1)
-            preference = ['torchvision', 'cython_gpu']
+            preference = ['torchvision', 'cython_gpu', 'torch', 'numpy']
         if code == 'ndarray':
             # dict(cython_cpu=12226.1, numpy=7759.1, cython_gpu=3679.0, torch=1786.2)
             preference = ['cython_cpu', 'numpy', 'cython_gpu', 'torch']
     elif num <= 100:
         if code == 'tensor0':
             # dict(cython_cpu=4160.7, torchvision=3089.9, cython_gpu=2261.8, torch=846.8)
-            preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch']
+            preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch', 'numpy']
         if code == 'tensor':
             # dict(torchvision=5875.3, cython_gpu=3076.9)
-            preference = ['torchvision', 'cython_gpu']
+            preference = ['torchvision', 'cython_gpu', 'torch', 'numpy']
         if code == 'ndarray':
             # dict(cython_cpu=12256.7, cython_gpu=3702.9, numpy=2311.3, torch=1738.0)
             preference = ['cython_cpu', 'cython_gpu', 'numpy', 'torch']
@@ -293,7 +301,7 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
             preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch']
         if code == 'tensor':
             # dict(torchvision=3394.6, cython_gpu=2641.2)
-            preference = ['torchvision', 'cython_gpu']
+            preference = ['torchvision', 'cython_gpu', 'torch', 'numpy']
         if code == 'ndarray':
             # dict(cython_cpu=8220.6, cython_gpu=3114.5, torch=1240.7, numpy=309.5)
             preference = ['cython_cpu', 'cython_gpu', 'torch', 'numpy']
@@ -303,7 +311,7 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
             preference = ['torchvision', 'cython_cpu', 'cython_gpu', 'torch']
         if code == 'tensor':
             # dict(cython_gpu=2496.9, torchvision=1781.1)
-            preference = ['cython_gpu', 'torchvision']
+            preference = ['cython_gpu', 'torchvision', 'torch', 'numpy']
         if code == 'ndarray':
             # dict(cython_cpu=4085.6, cython_gpu=2944.4, torch=799.8, numpy=173.0)
             preference = ['cython_cpu', 'cython_gpu', 'torch', 'numpy']
@@ -313,7 +321,7 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
             preference = ['torchvision', 'cython_gpu', 'cython_cpu', 'torch']
         if code == 'tensor':
             # dict(cython_gpu=2463.1, torchvision=1126.2)
-            preference = ['cython_gpu', 'torchvision']
+            preference = ['cython_gpu', 'torchvision', 'torch', 'numpy']
         if code == 'ndarray':
             # dict(cython_gpu=2880.2, cython_cpu=2432.5, torch=511.9, numpy=114.0)
             preference = ['cython_gpu', 'cython_cpu', 'torch', 'numpy']
@@ -324,7 +332,9 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
         valid_pref = preference
 
     if not valid_pref:
-        raise Exception('no valid nms algo')
+        raise Exception(
+            'no valid nms algo: code={}, num={}, valid={}, preference={}, valid_pref={}'.format(
+                code, num, valid, preference, valid_pref))
 
     impl = valid_pref[0]
     return impl

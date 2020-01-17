@@ -1131,6 +1131,7 @@ class _BoxDrawMixins(object):
 
         Args:
             image (ndarray): must be in uint8 format
+            color (str | ColorLike): one color for all boxes
             copy (bool, default=False): if False only copies if necessary
 
         Example:

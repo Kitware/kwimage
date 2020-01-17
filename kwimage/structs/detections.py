@@ -73,7 +73,7 @@ class _DetDrawMixin:
             ax.set_ylim(ymin, ymax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
-                kpts=True, sseg=True, boxes=True):
+                kpts=True, sseg=True, boxes=True, ssegkw=None):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -123,7 +123,12 @@ class _DetDrawMixin:
 
         segmentations = self.data.get('segmentations', None)
         if sseg and segmentations is not None:
-            image = segmentations.draw_on(image, color=color, alpha=.4)
+            if ssegkw is None:
+                ssegkw = {
+                    'alpha': 0.4,
+                    'color': color,
+                }
+            image = segmentations.draw_on(image, **ssegkw)
 
         if boxes:
             image = self.boxes.draw_on(image, color=color, alpha=alpha,
@@ -195,7 +200,11 @@ class _DetAlgoMixin:
         Find high scoring minimally overlapping detections
 
         Args:
-            thresh (float): iou threshold
+            thresh (float): iou threshold between 0 and 1. A box is removed if
+                it overlaps with a previously chosen box by more than this
+                threshold. Higher values are are more permissive (more boxes
+                are returned). A value of 0 means that returned boxes will have
+                no overlap.
             perclass (bool): if True, works on a per-class basis
             impl (str): nms implementation to use
             daq (Bool | Dict): if False, uses reqgular nms, otherwise uses
@@ -544,7 +553,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     def from_coco_annots(cls, anns, cats=None, classes=None, kp_classes=None,
                          shape=None, dset=None):
         """
-        Create a Detections object from coco-like annotations.
+        Create a Detections object from a list of coco-like annotations.
 
         Args:
             anns (List[Dict]): list of coco-like annotation objects

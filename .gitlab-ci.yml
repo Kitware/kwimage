@@ -68,7 +68,7 @@ stages:
         # 
         - pip install pip -U
         - pip install pip setuptools -U
-        - pip install -r requirements.txt
+        - pip install -r requirements.txt -U
 
     script: 
         - ls wheelhouse
@@ -101,8 +101,8 @@ stages:
         - source venv/bin/activate
         - pip install pip -U
         - pip install pip setuptools -U
-        - pip install -r requirements/runtime.txt
-        - pip install -r requirements/tests.txt
+        - pip install -r requirements/runtime.txt -U
+        - pip install -r requirements/tests.txt -U
         #- pip install -r requirements/build.txt
 
     script: 

@@ -4,7 +4,7 @@ mkinit ~/code/kwimage/kwimage/structs/__init__.py --relative -w --nomod
 mkinit ~/code/kwimage/kwimage/__init__.py --relative -w --nomod
 """
 
-__version__ = '0.5.5'
+__version__ = '0.5.6'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,

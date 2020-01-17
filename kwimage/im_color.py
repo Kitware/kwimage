@@ -3,8 +3,59 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import numpy as np
 import six
 import ubelt as ub
-
 from collections import OrderedDict
+from . import im_core
+
+
+def _lookup_colorspace_object(space):
+    from colormath import color_objects
+    if space == 'rgb':
+        cls = color_objects.AdobeRGBColor
+    elif space == 'lab':
+        cls = color_objects.LabColor
+    elif space == 'hsv':
+        cls = color_objects.HSVColor
+    elif space == 'luv':
+        cls = color_objects.LuvColor
+    elif space == 'cmyk':
+        cls = color_objects.CMYKColor
+    elif space == 'cmy':
+        cls = color_objects.CMYColor
+    elif space == 'xyz':
+        cls = color_objects.XYZColor
+    else:
+        raise KeyError(space)
+    return cls
+
+
+def _colormath_convert(src_color, src_space, dst_space):
+    """
+    Uses colormath to convert colors
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:colormath)
+        >>> import kwimage
+        >>> src_color = kwimage.Color('turquoise').as01()
+        >>> print('src_color = {}'.format(ub.repr2(src_color, nl=0, precision=2)))
+        >>> src_space = 'rgb'
+        >>> dst_space = 'lab'
+        >>> lab_color = _colormath_convert(src_color, src_space, dst_space)
+        >>> print('lab_color = {}'.format(ub.repr2(lab_color, nl=0, precision=2)))
+        lab_color = (78.11, -70.09, -9.33)
+        >>> rgb_color = _colormath_convert(lab_color, 'lab', 'rgb')
+        >>> print('rgb_color = {}'.format(ub.repr2(rgb_color, nl=0, precision=2)))
+        rgb_color = (0.29, 0.88, 0.81)
+        >>> hsv_color = _colormath_convert(lab_color, 'lab', 'hsv')
+        >>> print('hsv_color = {}'.format(ub.repr2(hsv_color, nl=0, precision=2)))
+        hsv_color = (175.39, 1.00, 0.88)
+    """
+    from colormath.color_conversions import convert_color
+    src_cls = _lookup_colorspace_object(src_space)
+    dst_cls = _lookup_colorspace_object(dst_space)
+    src = src_cls(*src_color)
+    dst = convert_color(src, dst_cls)
+    dst_color = dst.get_value_tuple()
+    return dst_color
 
 
 class Color(ub.NiceRepr):
@@ -104,8 +155,7 @@ class Color(ub.NiceRepr):
             >>> Color('red', alpha=0.5)._forimage(img_u4)
             (255, 0, 0, 127)
         """
-        import kwimage
-        if kwimage.num_channels(image) == 4:
+        if im_core.num_channels(image) == 4:
             if not space.endswith('a'):
                 space = space + 'a'
         if image.dtype.kind == 'f':
@@ -119,8 +169,9 @@ class Color(ub.NiceRepr):
         return '#' + ''.join(['{:02x}'.format(c) for c in c255])
 
     def as255(self, space=None):
-        color = (np.array(self.as01(space)) * 255).astype(np.uint8)
-        return tuple(map(int, color))
+        # TODO: be more efficient about not changing to 01 space
+        color = tuple(int(c * 255) for c in self.as01(space))
+        return color
 
     def as01(self, space=None):
         """
@@ -128,22 +179,26 @@ class Color(ub.NiceRepr):
         mplutil.Color('green').as01('rgba')
 
         """
-        color = tuple(self.color01)
+        color = tuple(map(float, self.color01))
         if space is not None:
             if space == self.space:
                 pass
             elif space == 'rgb' and self.space == 'rgba':
                 color = color[0:3]
             elif space == 'rgba' and self.space == 'rgb':
-                color = color + (1,)
+                color = color + (1.0,)
             elif space == 'bgr' and self.space == 'rgb':
                 color = color[::-1]
             elif space == 'rgb' and self.space == 'bgr':
                 color = color[::-1]
+            elif space == 'lab' and self.space == 'rgb':
+                # Note: in this case we will not get a 0-1 normalized color.
+                # because lab does not natively exist in the 0-1 space.
+                color = _colormath_convert(color, 'rgb', 'lab')
             else:
                 # from colormath import color_conversions
                 raise NotImplementedError('{} -> {}'.format(self.space, space))
-        return tuple(map(float, color))
+        return color
 
     @classmethod
     def _is_base01(channels):
