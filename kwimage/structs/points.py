@@ -4,7 +4,8 @@ import skimage
 import kwarray
 import torch
 from distutils.version import LooseVersion  # NOQA
-from . import _generic
+# from . import _generic
+from kwimage.structs import _generic
 
 
 class _PointsWarpMixin:
@@ -402,6 +403,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             import cv2
             image = kwimage.atleast_3channels(image, copy=copy)
+            # note: ellipse has a different return type (UMat) and does not
+            # work inplace if the input is not contiguous.
+            image = np.ascontiguousarray(image)
 
             xy_pts = self.data['xy'].data.reshape(-1, 2)
 
@@ -431,9 +435,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 axes = tuple(map(int, axes))
                 # print('center = {!r}'.format(center))
                 # print('axes = {!r}'.format(axes))
-                image = cv2.ellipse(image, center, axes, angle=0.0,
-                                    startAngle=0.0, endAngle=360.0,
-                                    color=color_, thickness=-1)
+
+                cv2.ellipse(image, center, axes, angle=0.0, startAngle=0.0,
+                            endAngle=360.0, color=color_, thickness=-1)
 
         image = dtype_fixer(image, copy=False)
         return image
