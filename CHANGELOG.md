@@ -3,7 +3,18 @@
 This changelog follows the specifications detailed in: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
+
+## Version 0.5.8 - 
+
+### Added
+* thickness to `Boxes.draw_on`
+
+
+## Version 0.5.7 - Released 2020-January-23
+
+
 ## Version 0.5.6 - Released 2020-January-17
+
 
 ### Fixed:
 * fixed issue where non-max-suppression couldn't find a default implementation. 

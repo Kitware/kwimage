@@ -1125,14 +1125,22 @@ class _BoxDrawMixins(object):
                                  lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None,
-                copy=False):
+                copy=False, thickness=2):
         """
         Draws boxes directly on the image using OpenCV
 
         Args:
             image (ndarray): must be in uint8 format
+
             color (str | ColorLike): one color for all boxes
+
+            alpha (float): transparency of bboxes
+
+            labels (List[str]): a text label for each box
+
             copy (bool, default=False): if False only copies if necessary
+
+            thickness (int, default=2): rectangle thickness
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -1207,7 +1215,7 @@ class _BoxDrawMixins(object):
 
         # Parameters for drawing the box rectangles
         rectkw = {
-            'thickness': int(2),
+            'thickness': int(thickness),
             'color': rect_color,
         }
 
