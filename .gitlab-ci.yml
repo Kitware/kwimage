@@ -67,7 +67,8 @@ stages:
         - source venv/bin/activate
         # 
         - pip install pip -U
-        - pip install pip setuptools scikit-build -U
+        - pip install setuptools -U
+        - pip install scikit-build -U
         - pip install -r requirements.txt -U
 
     script: 
