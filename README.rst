@@ -71,19 +71,29 @@ effectively "inverts" the `rasterize` procedure of `Detections` by finding
 peaks in the heatmap, and running non-maximum suppression.
 
 
-This module contains data structures for image annotation primitives:
+This module contains data structures for three image annotation primitives:
 
-    * Boxes
-    * Mask
-    * Coords
+    * Boxes  # technically this could be made out of Coords and renamed to VectorCoords
+    * Mask   # likewise this could be renamed to RasterCoords
+    * Coords # 
 
-And composites of these primitives:
+These primative structures are used to define these metadata-containing composites:
 
     * Detections
     * Polygon
+    * Heatmap
     * MultiPolygon
     * PolygonList
     * MaskList
+
+All of these structures have a ``self.data`` attribute that holds a pointer to
+the underlying data representation.
+
+Some of these structures have a ``self.format`` attribute describing the
+underlying data representation. 
+
+Most of the compositie strucutres also have a ``self.meta`` attribute, which
+holds user-level metadata (e.g. info about the classes).
 
     
 .. |Pypi| image:: https://img.shields.io/pypi/v/kwimage.svg

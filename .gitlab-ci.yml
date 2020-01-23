@@ -33,7 +33,7 @@ stages:
         PIP_CACHE_DIR: "$CI_PROJECT_DIR/mb_work/cache_pip"
     
     
-.multibuild_template: &multibuild_template
+.manylinux_build_template: &manylinux_build_template
     <<: 
         - *common_template
 
@@ -45,7 +45,7 @@ stages:
     script: 
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - ls
-        - MB_PYTHON_TAG=$MB_PYTHON_TAG _INSIDE_DOCKER=YES ./run_multibuild.sh
+        - MB_PYTHON_TAG=$MB_PYTHON_TAG _INSIDE_DOCKER=YES ./run_manylinux_build.sh
 
     artifacts:
         paths:
@@ -62,12 +62,15 @@ stages:
     before_script:
         # Setup the correct version of python on this manylinux instance
         - python --version  # Print out python version for debugging
-        - python -m pip install virtualenv
+        - python -m pip install virtualenv scikit-build
         - python -m virtualenv venv
         - source venv/bin/activate
         # 
         - pip install pip -U
-        - pip install pip setuptools -U
+        - pip install setuptools -U
+        - pip install scikit-build -U
+        - pip install cmake -U
+        - pip install ninja -U
         - pip install -r requirements.txt -U
 
     script: 
@@ -100,7 +103,8 @@ stages:
         - python -m virtualenv venv
         - source venv/bin/activate
         - pip install pip -U
-        - pip install pip setuptools -U
+        - pip install setuptools -U
+        - pip install scikit-build -U
         - pip install -r requirements/runtime.txt -U
         - pip install -r requirements/tests.txt -U
         #- pip install -r requirements/build.txt
@@ -254,7 +258,7 @@ stages:
 
 build/cp37-cp37m-manylinux2010:
     <<: 
-        - *multibuild_template
+        - *manylinux_build_template
 
 test_full/cp37-cp37m-manylinux2010:
     <<: 
@@ -286,7 +290,7 @@ deploy/cp37-cp37m-manylinux2010:
 
 build/cp36-cp36m-manylinux2010:
     <<: 
-        - *multibuild_template
+        - *manylinux_build_template
 
 test_full/cp36-cp36m-manylinux2010:
     <<: 
@@ -318,7 +322,7 @@ deploy/cp36-cp36m-manylinux2010:
 
 build/cp35-cp35m-manylinux2010:
     <<: 
-        - *multibuild_template
+        - *manylinux_build_template
 
 test_full/cp35-cp35m-manylinux2010:
     <<: 
@@ -350,7 +354,7 @@ deploy/cp35-cp35m-manylinux2010:
 
 build/cp27-cp27mu-manylinux2010:
     <<: 
-        - *multibuild_template
+        - *manylinux_build_template
 
 test_full/cp27-cp27mu-manylinux2010:
     <<: 

@@ -30,15 +30,15 @@ notes:
         python run_tests.py
 
 
-MB_PYTHON_TAG=cp37-cp37m ./run_multibuild.sh
+MB_PYTHON_TAG=cp37-cp37m ./run_manylinux_build.sh
 
-MB_PYTHON_TAG=cp36-cp36m ./run_multibuild.sh
+MB_PYTHON_TAG=cp36-cp36m ./run_manylinux_build.sh
 
-MB_PYTHON_TAG=cp35-cp35m ./run_multibuild.sh
+MB_PYTHON_TAG=cp35-cp35m ./run_manylinux_build.sh
 
-MB_PYTHON_TAG=cp27-cp27m ./run_multibuild.sh
+MB_PYTHON_TAG=cp27-cp27m ./run_manylinux_build.sh
 
-# MB_PYTHON_TAG=cp27-cp27mu ./run_nmultibuild.sh
+# MB_PYTHON_TAG=cp27-cp27mu ./run_manylinux_build.sh
 
 """
 
@@ -47,7 +47,7 @@ MB_PYTHON_TAG=cp27-cp27m ./run_multibuild.sh
 DOCKER_IMAGE=${DOCKER_IMAGE:="quay.io/pypa/manylinux2010_x86_64"}
 #PARENT_USER=${PARENT_USER:="$USER"}
 
-# Valid multibuild python versions are:
+# Valid manylinux python versions are:
 # cp27-cp27m  cp27-cp27mu  cp34-cp34m  cp35-cp35m  cp36-cp36m  cp37-cp37m
 MB_PYTHON_TAG=${MB_PYTHON_TAG:="cp36-cp36m"}
 
@@ -59,7 +59,7 @@ if [ "$_INSIDE_DOCKER" != "YES" ]; then
         -v $PWD:/io \
         -e _INSIDE_DOCKER="YES" \
         -e MB_PYTHON_TAG="$MB_PYTHON_TAG" \
-        $DOCKER_IMAGE bash -c 'cd /io && ./run_multibuild.sh'
+        $DOCKER_IMAGE bash -c 'cd /io && ./run_manylinux_build.sh'
 
     __interactive__='''
     docker run --rm \
@@ -110,6 +110,9 @@ export PIP_CACHE_DIR="$MB_WORKDIR/cache_pip"
 
 pip install pip -U
 pip install pip setuptools -U
+pip install pip scikit-build -U
+pip install pip cmake -U
+pip install pip ninja -U
 
 #pip install -r requirements.txt
 # we only need build requirements to make the wheel
