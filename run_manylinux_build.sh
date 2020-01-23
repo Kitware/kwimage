@@ -110,6 +110,9 @@ export PIP_CACHE_DIR="$MB_WORKDIR/cache_pip"
 
 pip install pip -U
 pip install pip setuptools -U
+pip install pip scikit-build -U
+pip install pip cmake -U
+pip install pip ninja -U
 
 #pip install -r requirements.txt
 # we only need build requirements to make the wheel
