@@ -3,10 +3,9 @@ The Kitware Image Module
 
 
 .. # TODO Get CI services running on gitlab 
-.. # |ReadTheDocs|
+.. # 
 
-|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| 
-
+|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| |ReadTheDocs|
 
 The `kwimage` module handles low-level image operations at a high level.
 
@@ -14,6 +13,9 @@ The `kwimage` module builds on `kwarray` and provides tools commonly needed
 when addressing computer vision problems. This includes functions for reading
 images, non-maximum-suppression, image warp transformations, and
 run-length-encoding.
+
+Read the docs at: http://kwimage.readthedocs.io/en/master/
+
 
 The top-level API is:
 
@@ -102,8 +104,8 @@ holds user-level metadata (e.g. info about the classes).
 .. |Downloads| image:: https://img.shields.io/pypi/dm/kwimage.svg
    :target: https://pypistats.org/packages/kwimage
 
-.. |ReadTheDocs| image:: https://readthedocs.org/projects/kwimage/badge/?version=latest
-    :target: http://kwimage.readthedocs.io/en/latest/
+.. |ReadTheDocs| image:: https://readthedocs.org/projects/kwimage/badge/?version=release
+    :target: http://kwimage.readthedocs.io/en/release/
 
 .. # See: https://ci.appveyor.com/project/jon.crall/kwimage/settings/badges
 .. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/py3s2d6tyfjc8lm3/branch/master?svg=true
