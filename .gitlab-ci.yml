@@ -69,6 +69,8 @@ stages:
         - pip install pip -U
         - pip install setuptools -U
         - pip install scikit-build -U
+        - pip install cmake -U
+        - pip install ninja -U
         - pip install -r requirements.txt -U
 
     script: 
