@@ -62,12 +62,12 @@ stages:
     before_script:
         # Setup the correct version of python on this manylinux instance
         - python --version  # Print out python version for debugging
-        - python -m pip install virtualenv
+        - python -m pip install virtualenv scikit-build
         - python -m virtualenv venv
         - source venv/bin/activate
         # 
         - pip install pip -U
-        - pip install pip setuptools -U
+        - pip install pip setuptools scikit-build -U
         - pip install -r requirements.txt -U
 
     script: 
@@ -100,7 +100,8 @@ stages:
         - python -m virtualenv venv
         - source venv/bin/activate
         - pip install pip -U
-        - pip install pip setuptools -U
+        - pip install setuptools -U
+        - pip install scikit-build -U
         - pip install -r requirements/runtime.txt -U
         - pip install -r requirements/tests.txt -U
         #- pip install -r requirements/build.txt
