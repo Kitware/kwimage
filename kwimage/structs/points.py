@@ -309,6 +309,22 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
+    def round(self, inplace=False):
+        """
+        Rounds data to the nearest integer
+
+        Args:
+            inplace (bool, default=False): if True, modifies this object
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Points.random(3).scale(10)
+            >>> self.round()
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data['xy'] = self.data['xy'].round()
+        return new
+
     def numpy(self):
         """
         Example:
@@ -649,6 +665,21 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             return new_kpts
         else:
             raise KeyError(style)
+
+    @classmethod
+    def coerce(cls, data):
+        """
+        Attempt to coerce data into a Points object
+        """
+        if isinstance(data, cls):
+            return data
+        elif isinstance(data, (list, dict)):
+            # TODO: determine if coco or geojson
+            return cls.from_coco(data)
+        elif isinstance(data, (np.ndarray, torch.Tensor)):
+            return cls(data)
+        else:
+            raise TypeError(type(data))
 
     @classmethod
     def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):

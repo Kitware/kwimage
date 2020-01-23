@@ -172,6 +172,22 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.astype(new.data, dtype, copy=not inplace)
         return new
 
+    def round(self, inplace=False):
+        """
+        Rounds data to the nearest integer
+
+        Args:
+            inplace (bool, default=False): if True, modifies this object
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Coords.random(3).scale(10)
+            >>> self.round()
+        """
+        new = self if inplace else self.__class__(self.data, self.meta)
+        new.data = self._impl.round(new.data)
+        return new
+
     def view(self, *shape):
         """
         Passthrough method to view or reshape
