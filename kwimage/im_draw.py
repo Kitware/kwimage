@@ -158,16 +158,19 @@ def draw_text_on_image(img, text, org, **kwargs):
     return img
 
 
-def draw_clf_on_image(im, classes, tcx, probs=None, pcx=None, border=1):
+def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
     """
-    Draws classification label on an image
+    Draws classification label on an image.
+
+    Works best with image chips sized between 200x200 and 500x500
 
     Args:
         im (ndarray): the image
         classes (Sequence | CategoryTree): list of class names
-        tcx (int): true class index
+        tcx (int, default=None): true class index if known
         probs (ndarray): predicted class probs for each class
-        pcx (int): predicted class index. (if none uses argmax of probs)
+        pcx (int, default=None): predicted class index.
+            (if None but probs is specified uses argmax of probs)
 
     Example:
         >>> import torch
@@ -196,22 +199,26 @@ def draw_clf_on_image(im, classes, tcx, probs=None, pcx=None, border=1):
     w, h = im.shape[0:2][::-1]
 
     if pcx is None and probs is not None:
+        import kwarray
+        probs = kwarray.ArrayAPI.numpy(probs)
         pcx = probs.argmax()
 
     if probs is not None:
-        pred_score = probs[pcx]
-        true_score = probs[tcx]
+        pred_score = None if pcx is None else probs[pcx]
+        true_score = None if tcx is None else probs[tcx]
 
     org1 = np.array((2, h - 5))
     org2 = np.array((2, 5))
 
-    true_name = classes[tcx]
-    if pcx == tcx:
-        true_label = 't:{tcx}:{true_name}'.format(**locals())
-    elif probs is None:
-        true_label = 't:{tcx}:\n{true_name}'.format(**locals())
-    else:
-        true_label = 't:{tcx}@{true_score:.2f}:\n{true_name}'.format(**locals())
+    true_label = None
+    if tcx is not None:
+        true_name = classes[tcx]
+        if pcx == tcx:
+            true_label = 't:{tcx}:{true_name}'.format(**locals())
+        elif probs is None:
+            true_label = 't:{tcx}:\n{true_name}'.format(**locals())
+        else:
+            true_label = 't:{tcx}@{true_score:.2f}:\n{true_name}'.format(**locals())
 
     pred_label = None
     if pcx is not None:
@@ -228,15 +235,16 @@ def draw_clf_on_image(im, classes, tcx, probs=None, pcx=None, border=1):
     color = 'dodgerblue' if pcx == tcx else 'orangered'
 
     # im_ = draw_text_on_image(im_, pred_label, org=org1 - 2,
-    #                                  color='white', valign='bottom', **fontkw)
+    #                          color='white', valign='bottom', **fontkw)
     # im_ = draw_text_on_image(im_, true_label, org=org2 - 2,
-    #                                  color='white', valign='top', **fontkw)
+    #                          color='white', valign='top', **fontkw)
 
     if pred_label is not None:
         im_ = draw_text_on_image(im_, pred_label, org=org1, color=color,
                                  border=border, valign='bottom', **fontkw)
-    im_ = draw_text_on_image(im_, true_label, org=org2, color='lawngreen',
-                             valign='top', border=border, **fontkw)
+    if true_label is not None:
+        im_ = draw_text_on_image(im_, true_label, org=org2, color='lawngreen',
+                                 valign='top', border=border, **fontkw)
     return im_
 
 

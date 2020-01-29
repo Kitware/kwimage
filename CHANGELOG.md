@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * add `round` to Boxes, Points, and Coords
 * add `contains` to Boxes
 
+### Fixed:
+* issue with `draw_clf_on_image` when truth is unknown
+
 
 ## Version 0.5.7 - Released 2020-January-23
 

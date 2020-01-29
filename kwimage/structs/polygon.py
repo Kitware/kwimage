@@ -613,6 +613,20 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
+    def to_geojson(self):
+        """
+        Converts polygon to a geojson structure
+        """
+        coords = [self.data['exterior'].data.tolist()]
+        holes = [interior.data.tolist() for interior in self.data['interiors']]
+        if holes:
+            coords.extend(holes)
+        geojson = {
+            'type': 'Polygon',
+            'coordinates': coords,
+        }
+        return geojson
+
     @classmethod
     def from_coco(cls, data, dims=None):
         """
@@ -631,6 +645,65 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         else:
             raise TypeError(type(data))
         return self
+
+    def _to_coco(self, style='orig'):
+        return self.to_coco(style=style)
+
+    def to_coco(self, style='orig'):
+        interiors = self.data.get('interiors', [])
+        if style == 'orig':
+            if interiors:
+                raise ValueError('Original coco does not support holes')
+            return self.data['exterior'].data.ravel().tolist()
+        elif style == 'new':
+            _new = {
+                'exterior': self.data['exterior'].data.tolist(),
+                'interiors': [item.data.tolist() for item in interiors]
+            }
+            return _new
+        else:
+            raise KeyError(style)
+
+    def to_multi_polygon(self):
+        return MultiPolygon([self])
+
+    def to_boxes(self):
+        import kwimage
+        xys = self.data['exterior'].data
+        tl = xys.min(axis=0)
+        br = xys.max(axis=0)
+        tlbr = np.hstack([tl, br])[None, :]
+        boxes = kwimage.Boxes(tlbr, 'tlbr')
+        return boxes
+
+    def copy(self):
+        self2 = Polygon(self.data, self.meta)
+        self2.data['exterior'] = self2.data['exterior'].copy()
+        self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
+        return self2
+
+    def clip(self, x_min, y_min, x_max, y_max, inplace=False):
+        """
+        Clip polygon to image boundaries.
+
+        Example:
+            >>> from kwimage.structs.polygon import *
+            >>> self = Polygon.random().scale(10).translate(-1)
+            >>> self2 = self.clip(1, 1, 3, 3)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> self2.draw(setlim=True)
+        """
+        if inplace:
+            self2 = self
+        else:
+            self2 = self.copy()
+        impl = self._impl
+        xs, ys = impl.T(self2.data['exterior'].data)
+        np.clip(xs, x_min, x_max, out=xs)
+        np.clip(ys, y_min, y_max, out=ys)
+        return self2
 
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
                 copy=False):
@@ -823,79 +896,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             ax.set_xlim(x1, x2)
             ax.set_ylim(y1, y2)
         return patch
-
-    def _to_coco(self, style='orig'):
-        return self.to_coco(style=style)
-
-    def to_coco(self, style='orig'):
-        interiors = self.data.get('interiors', [])
-        if style == 'orig':
-            if interiors:
-                raise ValueError('Original coco does not support holes')
-            return self.data['exterior'].data.ravel().tolist()
-        elif style == 'new':
-            _new = {
-                'exterior': self.data['exterior'].data.tolist(),
-                'interiors': [item.data.tolist() for item in interiors]
-            }
-            return _new
-        else:
-            raise KeyError(style)
-
-    def to_geojson(self):
-        """
-        Converts polygon to a geojson structure
-        """
-        coords = [self.data['exterior'].data.tolist()]
-        holes = [interior.data.tolist() for interior in self.data['interiors']]
-        if holes:
-            coords.extend(holes)
-        geojson = {
-            'type': 'Polygon',
-            'coordinates': coords,
-        }
-        return geojson
-
-    def to_multi_polygon(self):
-        return MultiPolygon([self])
-
-    def to_boxes(self):
-        import kwimage
-        xys = self.data['exterior'].data
-        tl = xys.min(axis=0)
-        br = xys.max(axis=0)
-        tlbr = np.hstack([tl, br])[None, :]
-        boxes = kwimage.Boxes(tlbr, 'tlbr')
-        return boxes
-
-    def copy(self):
-        self2 = Polygon(self.data, self.meta)
-        self2.data['exterior'] = self2.data['exterior'].copy()
-        self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
-        return self2
-
-    def clip(self, x_min, y_min, x_max, y_max, inplace=False):
-        """
-        Clip polygon to image boundaries.
-
-        Example:
-            >>> from kwimage.structs.polygon import *
-            >>> self = Polygon.random().scale(10).translate(-1)
-            >>> self2 = self.clip(1, 1, 3, 3)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> import kwplot
-            >>> kwplot.autompl()
-            >>> self2.draw(setlim=True)
-        """
-        if inplace:
-            self2 = self
-        else:
-            self2 = self.copy()
-        impl = self._impl
-        xs, ys = impl.T(self2.data['exterior'].data)
-        np.clip(xs, x_min, x_max, out=xs)
-        np.clip(ys, y_min, y_max, out=ys)
-        return self2
 
 
 def _order_vertices(verts):
