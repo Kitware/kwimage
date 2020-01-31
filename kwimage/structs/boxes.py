@@ -1125,14 +1125,22 @@ class _BoxDrawMixins(object):
                                  lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None,
-                copy=False):
+                copy=False, thickness=2):
         """
         Draws boxes directly on the image using OpenCV
 
         Args:
             image (ndarray): must be in uint8 format
+
             color (str | ColorLike): one color for all boxes
+
+            alpha (float): transparency of bboxes
+
+            labels (List[str]): a text label for each box
+
             copy (bool, default=False): if False only copies if necessary
+
+            thickness (int, default=2): rectangle thickness
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -1207,7 +1215,7 @@ class _BoxDrawMixins(object):
 
         # Parameters for drawing the box rectangles
         rectkw = {
-            'thickness': int(2),
+            'thickness': int(thickness),
             'color': rect_color,
         }
 
@@ -1632,6 +1640,22 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             newself = self.__class__(data.astype(dtype), self.format)
         return newself
 
+    def round(self, inplace=False):
+        """
+        Rounds data to the nearest integer
+
+        Args:
+            inplace (bool, default=False): if True, modifies this object
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(3).scale(10)
+            >>> self.round()
+        """
+        new = self if inplace else self.__class__(self.data, self.format)
+        new.data = self._impl.round(new.data)
+        return new
+
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
@@ -1819,6 +1843,46 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         isect = Boxes(tlbr, 'tlbr')
 
         return isect
+
+    def contains(self, other):
+        """
+        Determine of points are completely contained by these boxes
+
+        Args:
+            other (Points): points to test for containment.
+                TODO: support generic data types
+
+        Returns:
+            flags (ArrayLike): N x M boolean matrix indicating which box
+                contains which points, where N is the number of boxes and
+                M is the number of points.
+
+        Examples:
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(10).scale(10).round()
+            >>> other = kwimage.Points.random(10).scale(10).round()
+            >>> flags = self.contains(other)
+            >>> flags = self.contains(self.xy_center)
+            >>> assert np.all(np.diag(flags))
+        """
+        tlbr = self.to_tlbr()
+
+        try:
+            # other = Points.coerce(other)?
+            # points
+            pt_x, pt_y = other.xy.T
+        except AttributeError:
+            # ndarray
+            pt_x, pt_y = other.T
+
+        flags = (
+            (tlbr.tl_x <= pt_x) &
+            (tlbr.tl_y <= pt_y) &
+            (tlbr.br_x >= pt_x) &
+            (tlbr.br_y >= pt_y)
+        )
+
+        return flags
 
     def view(self, *shape):
         """
