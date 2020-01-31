@@ -253,7 +253,7 @@ stages:
 # Define the actual jobs
 
 # ---------------
-# Python 3.7 Jobs
+# Python 3.8 Jobs
 
 build/cp38-cp38-manylinux2010:
     <<: 
