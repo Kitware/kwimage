@@ -545,24 +545,29 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                        for c in coords]
         return cv_contours
 
-    def to_shapely(self):
+    @classmethod
+    def coerce(Polygon, data):
         """
-        Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> # xdoc: +REQUIRES(module:shapely)
-            >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random(n_holes=1)
-            >>> self = self.scale(100)
-            >>> geom = self.to_shapely()
-            >>> print('geom = {!r}'.format(geom))
+        Try to autodetermine format of input polygon and coerce it into a
+        kwimage.Polygon.
         """
+        if isinstance(data, Polygon):
+            return data
+        if isinstance(data, str):
+            return Polygon.from_wkt(data)
+        if isinstance(data, dict):
+            if 'coordinates' in data:
+                return Polygon.from_geojson(data)
+            if 'exterior' in data:
+                return Polygon(data)
+
         import shapely
         import shapely.geometry
-        geom = shapely.geometry.Polygon(
-            shell=self.data['exterior'].data,
-            holes=[c.data for c in self.data['interiors']]
-        )
-        return geom
+        if isinstance(data, shapely.geometry.Polygon):
+            return Polygon.from_shapely(data)
+        raise TypeError(
+            'coerce data into a polygon not implemented for this case: {}'.format(
+                type(data)))
 
     @classmethod
     def from_shapely(Polygon, geom):
@@ -596,7 +601,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return self
 
     @classmethod
-    def from_geojson(MultiPolygon, data_geojson):
+    def from_geojson(Polygon, data_geojson):
         """
         Convert a geojson polygon to a kwimage.Polygon
 
@@ -613,9 +618,33 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
+    def to_shapely(self):
+        """
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(module:shapely)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(n_holes=1)
+            >>> self = self.scale(100)
+            >>> geom = self.to_shapely()
+            >>> print('geom = {!r}'.format(geom))
+        """
+        import shapely
+        import shapely.geometry
+        geom = shapely.geometry.Polygon(
+            shell=self.data['exterior'].data,
+            holes=[c.data for c in self.data['interiors']]
+        )
+        return geom
+
     def to_geojson(self):
         """
         Converts polygon to a geojson structure
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random()
+            >>> print(self.to_geojson())
         """
         coords = [self.data['exterior'].data.tolist()]
         holes = [interior.data.tolist() for interior in self.data['interiors']]
@@ -626,6 +655,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             'coordinates': coords,
         }
         return geojson
+
+    def to_wkt(self):
+        """
+        Convert a kwimage.Polygon to WKT string
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random()
+            >>> print(self.to_wkt())
+        """
+        return self.to_shapely().to_wkt()
 
     @classmethod
     def from_coco(cls, data, dims=None):
