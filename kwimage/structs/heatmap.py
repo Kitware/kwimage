@@ -237,12 +237,27 @@ class _HeatmapDrawMixin(object):
             elif channel == 'diameter':
                 mask = np.linalg.norm(a.diameter, axis=0)
             elif channel == 'class_probs_max':
-                mask = a.class_probs.max(axis=0)
+                if 'class_probs' in a.data:
+                    data = a.data['class_probs']
+                else:
+                    # HACK HACK HACK
+                    data = a.data['class_energy']
+                    low = min(0, data.min())
+                    high = max(1, data.max())
+                    data = (data - low) / (high - low)
+                mask = data.max(axis=0)
             elif channel == 'class_energy_max':
                 mask = a.data['class_energy'].max(axis=0)
                 mask -= mask.min()
             elif channel == 'class_probs_color' or channel == 'class_probs':
-                data = a.data['class_probs']
+                if 'class_probs' in a.data:
+                    data = a.data['class_probs']
+                else:
+                    # HACK HACK HACK
+                    data = a.data['class_energy']
+                    low = min(0, data.min())
+                    high = max(1, data.max())
+                    data = (data - low) / (high - low)
                 classes = self.classes
                 colormask = _per_channel_color(data, with_alpha, classes)
                 return colormask
