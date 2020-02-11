@@ -519,6 +519,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def fill(self, image, value=1):
         """
         Inplace fill in an image based on this polyon.
+
+        Args:
+            image (ndarray): image to draw on
+            value (int | Tuple[int], default=1): value fill in with
+
+        Returns:
+            ndarray: the image that has been modified in place
         """
         # line_type = cv2.LINE_AA
         cv_contours = self._to_cv_countours()
@@ -954,14 +961,42 @@ def _order_vertices(verts):
 
 
 class MultiPolygon(_generic.ObjectList):
+    """
+    Data structure for storing multiple polygons (typically related to the same
+    underlying but potentitally disjoing object)
+
+    Attributes:
+        data (List[Polygon])
+    """
 
     @classmethod
     def random(self, n=3, rng=None, tight=False):
+        """
+        Create a random MultiPolygon
+
+        Returns:
+            MultiPolygon
+        """
         import kwarray
         rng = kwarray.ensure_rng(rng)
         data = [Polygon.random(rng=rng, tight=tight) for _ in range(n)]
         self = MultiPolygon(data)
         return self
+
+    def fill(self, image, value=1):
+        """
+        Inplace fill in an image based on this multi-polyon.
+
+        Args:
+            image (ndarray): image to draw on (inplace)
+            value (int | Tuple[int], default=1): value fill in with
+
+        Returns:
+            ndarray: the image that has been modified in place
+        """
+        for p in self.data:
+            p.fill(image, value=value)
+        return image
 
     def to_multi_polygon(self):
         return self
@@ -1001,6 +1036,8 @@ class MultiPolygon(_generic.ObjectList):
     @classmethod
     def coerce(cls, data, dims=None):
         """
+        Attempts to construct a MultiPolygon instance from the input data
+
         See Mask.coerce
         """
         if data is None:
