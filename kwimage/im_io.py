@@ -388,6 +388,67 @@ def imwrite(fpath, image, space='auto'):
                 raise
 
 
+def load_image_shape(fpath):
+    """
+    Determine the height/width/channels of an image without reading the entire
+    file.
+
+    Args:
+        fpath (str): path to the image
+
+    Returns:
+        Tuple - shape of the dataset
+
+    Benchmark:
+        >>> # For large files, PIL is much faster
+        >>> import gdal
+        >>> from PIL import Image
+        >>> #
+        >>> import kwimage
+        >>> fpath = kwimage.grab_test_image_fpath()
+        >>> #
+        >>> ti = ub.Timerit(100, bestof=10, verbose=2)
+        >>> for timer in ti.reset('gdal'):
+        >>>     with timer:
+        >>>         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+        >>>         width = gdal_dset.RasterXSize
+        >>>         height = gdal_dset.RasterYSize
+        >>>         gdal_dset = None
+        >>> #
+        >>> for timer in ti.reset('PIL'):
+        >>>     with timer:
+        >>>         pil_img = Image.open(fpath)
+        >>>         width, height = pil_img.size
+        >>>         pil_img.close()
+        Timed gdal for: 100 loops, best of 10
+            time per loop: best=62.967 µs, mean=63.991 ± 0.8 µs
+        Timed PIL for: 100 loops, best of 10
+            time per loop: best=46.640 µs, mean=47.314 ± 0.4 µs
+    """
+    from PIL import Image
+    try:
+        pil_img = Image.open(fpath)
+        width, height = pil_img.size
+        num_channels = len(pil_img.getbands())
+        pil_img.close()
+    except Exception as pil_ex:
+        if not _have_gdal():
+            raise
+        try:
+            import gdal
+            gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+            if gdal_dset is None:
+                raise Exception
+            width = gdal_dset.RasterXSize
+            height = gdal_dset.RasterYSize
+            num_channels = gdal_dset.RasterCount
+            gdal_dset = None
+        except (ImportError, Exception):
+            raise pil_ex
+    shape = (height, width, num_channels)
+    return shape
+
+
 def _have_gdal():
     try:
         import gdal  # NOQA
