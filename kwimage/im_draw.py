@@ -417,6 +417,8 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
     SeeAlso:
         kwimage.overlay_alpha_images
 
+    DEPRECATED USE: draw_vector_field instead
+
     Example:
         >>> x, y = np.meshgrid(np.arange(512), np.arange(512))
         >>> dx, dy = x - 256.01, y - 256.01
@@ -483,3 +485,101 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
         # vecmask[:, :, 3] = (vecmask[:, :, 0:3].sum(axis=2) > 0) * alpha
         vecmask[:, :, 3] = vecmask[:, :, 0:3].sum(axis=2) * alpha
     return vecmask
+
+
+def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
+                      alpha=1.0, color='red', thickness=1, tipLength=0.1,
+                      line_type='aa'):
+    """
+    Create an image representing a 2D vector field.
+
+    Args:
+        image (ndarray): image to draw on
+        dx (ndarray): grid of vector x components
+        dy (ndarray): grid of vector y components
+        stride (int): sparsity of vectors
+        thresh (float): only plot vectors with magnitude greater than thres
+        scale (float): multiply magnitude for easier visualization
+        alpha (float): alpha value for vectors. Non-vector regions receive 0
+            alpha (if False, no alpha channel is used)
+        color (str | tuple | kwimage.Color): RGB color of the vectors
+        thickness (int, default=1): thickness of arrows
+        tipLength (float, default=0.1): fraction of line length
+        line_type (int): either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA
+
+    Returns:
+        ndarray[float32]: vec_img: an rgb/rgba image in 0-1 space
+
+    SeeAlso:
+        kwimage.overlay_alpha_images
+
+    Example:
+        >>> x, y = np.meshgrid(np.arange(512), np.arange(512))
+        >>> dx, dy = x - 256.01, y - 256.01
+        >>> radians = np.arctan2(dx, dy)
+        >>> mag = np.sqrt(dx ** 2 + dy ** 2)
+        >>> dx, dy = dx / mag, dy / mag
+        >>> image = np.zeros(x.shape, type=np.uint8)
+        >>> img = draw_vector_field(dx, dy, stride=10, scale=10, alpha=False)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img)
+        >>> kwplot.show_if_requested()
+    """
+    import cv2
+    import kwimage
+    color = kwimage.Color(color).as255('rgb')
+
+    line_type_lookup = {'aa': cv2.LINE_AA}
+    line_type = line_type_lookup.get(line_type, line_type)
+
+    x_grid = np.arange(0, dx.shape[1], 1)
+    y_grid = np.arange(0, dy.shape[0], 1)
+    # Vector locations and directions
+    X, Y = np.meshgrid(x_grid, y_grid)
+    U, V = dx, dy
+
+    XYUV = [X, Y, U, V]
+
+    # stride the points
+    if stride is not None and stride > 1:
+        XYUV = [a[::stride, ::stride] for a in XYUV]
+
+    # flatten the points
+    XYUV = [a.ravel() for a in XYUV]
+
+    # Filter out points with low magnitudes
+    if thresh is not None and thresh > 0:
+        M = np.sqrt((XYUV[2] ** 2) + (XYUV[3] ** 2)).ravel()
+        XYUV = np.array(XYUV)
+        flags = M > thresh
+        XYUV = [a[flags] for a in XYUV]
+
+    # Adjust vector magnitude for visibility
+    if scale is not None:
+        XYUV[2] *= scale
+        XYUV[3] *= scale
+
+    if image is None:
+        image = np.zeros(dx.shape + (3,), dtype=np.uint8)
+        # image = kwimage.atleast_3channels(image)
+
+    for (x, y, u, v) in zip(*XYUV):
+        pt1 = (int(x), int(y))
+        pt2 = tuple(map(int, map(np.round, (x + u, y + v))))
+        cv2.arrowedLine(image, pt1, pt2, color=color, thickness=thickness,
+                        tipLength=tipLength,
+                        line_type=line_type)
+
+    image = kwimage.ensure_float01(image)
+    if isinstance(alpha, np.ndarray):
+        # Alpha specified as explicit numpy array
+        image = kwimage.ensure_alpha_channel(image)
+        image[:, :, 3] = alpha
+    elif alpha is not False and alpha is not None:
+        # Alpha specified as a scale factor
+        image = kwimage.ensure_alpha_channel(image)
+        # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
+        image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
+    return image
