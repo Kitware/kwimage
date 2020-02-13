@@ -432,6 +432,8 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
         >>> kwplot.imshow(img)
         >>> kwplot.show_if_requested()
     """
+    import warnings
+    warnings.warn('Deprecated, use draw_vector_field instead', DeprecationWarning)
     import cv2
     import kwimage
     color = kwimage.Color(color).as255('rgb')
@@ -508,19 +510,19 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
         line_type (int): either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA
 
     Returns:
-        ndarray[float32]: vec_img: an rgb/rgba image in 0-1 space
-
-    SeeAlso:
-        kwimage.overlay_alpha_images
+        ndarray[float32]: The image with vectors overlaid. If image=None, then an
+            rgb/a image is created and returned.
 
     Example:
-        >>> x, y = np.meshgrid(np.arange(512), np.arange(512))
+        >>> import kwimage
+        >>> width, height = 512, 512
+        >>> x, y = np.meshgrid(np.arange(height), np.arange(width))
+        >>> image = kwimage.grab_test_image(dsize=(width, height))
         >>> dx, dy = x - 256.01, y - 256.01
         >>> radians = np.arctan2(dx, dy)
         >>> mag = np.sqrt(dx ** 2 + dy ** 2)
         >>> dx, dy = dx / mag, dy / mag
-        >>> image = np.zeros(x.shape, type=np.uint8)
-        >>> img = draw_vector_field(dx, dy, stride=10, scale=10, alpha=False)
+        >>> img = draw_vector_field(image, dx, dy, stride=10, scale=10, alpha=False)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -562,6 +564,7 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
         XYUV[3] *= scale
 
     if image is None:
+        # Create a default image
         image = np.zeros(dx.shape + (3,), dtype=np.uint8)
         # image = kwimage.atleast_3channels(image)
 
