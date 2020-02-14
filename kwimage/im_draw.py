@@ -531,7 +531,7 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
     """
     import cv2
     import kwimage
-    color = kwimage.Color(color).as255('rgb')
+    color = kwimage.Color(color)._forimage(image)
 
     line_type_lookup = {'aa': cv2.LINE_AA}
     line_type = line_type_lookup.get(line_type, line_type)
@@ -568,6 +568,9 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
         image = np.zeros(dx.shape + (3,), dtype=np.uint8)
         # image = kwimage.atleast_3channels(image)
 
+    if alpha != 1:
+        raise NotImplementedError
+
     for (x, y, u, v) in zip(*XYUV):
         pt1 = (int(x), int(y))
         pt2 = tuple(map(int, map(np.round, (x + u, y + v))))
@@ -575,14 +578,15 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
                         tipLength=tipLength,
                         line_type=line_type)
 
-    image = kwimage.ensure_float01(image)
-    if isinstance(alpha, np.ndarray):
-        # Alpha specified as explicit numpy array
-        image = kwimage.ensure_alpha_channel(image)
-        image[:, :, 3] = alpha
-    elif alpha is not False and alpha is not None:
-        # Alpha specified as a scale factor
-        image = kwimage.ensure_alpha_channel(image)
-        # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
-        image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
+    # if isinstance(alpha, np.ndarray):
+    #     # Alpha specified as explicit numpy array
+    #     image = kwimage.ensure_float01(image)
+    #     image = kwimage.ensure_alpha_channel(image)
+    #     image[:, :, 3] = alpha
+    # elif alpha is not False and alpha is not None:
+    #     # Alpha specified as a scale factor
+    #     image = kwimage.ensure_float01(image)
+    #     image = kwimage.ensure_alpha_channel(image)
+    #     # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
+    #     image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
     return image

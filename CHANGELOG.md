@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * add `Boxes.contains`
 * add `kwiamge.load_image_shape` 
 * add `MultiPolygon.fill` 
+* `kwimage.imwrite` now accepts the `backend` keyword, which can be `cv2`, `skimage`, or `gdal`. The `gdal` backend writes images as cloud-optimized-geotiffs.
 
 ### Fixed:
 * issue with `draw_clf_on_image` when truth is unknown
