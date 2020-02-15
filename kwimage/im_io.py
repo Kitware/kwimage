@@ -454,7 +454,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         import skimage.io
         return skimage.io.imsave(fpath, image, **kwargs)
     elif backend == 'gdal':
-        _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+        return _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
     else:
         raise KeyError('Unknown imwrite backend={!r}'.format(backend))
 
@@ -531,7 +531,7 @@ def _have_gdal():
 
 def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
-                                     overview_resample='NEAREST'):
+                                     overview_resample='NEAREST', options=[]):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -555,6 +555,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
             overview pyramid. Valid choices are: 'NEAREST', 'AVERAGE',
             'BILINEAR', 'CUBIC', 'CUBICSPLINE', 'LANCZOS'.
 
+        options (List[str]): other gdal options
+
     References:
         https://geoexamples.com/other/2019/02/08/cog-tutorial.html#create-a-cog-using-gdal-python
         http://osgeo-org.1560.x6.nabble.com/gdal-dev-Creating-Cloud-Optimized-GeoTIFFs-td5320101.html
@@ -562,6 +564,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/harshurampur/Geotiff-conversion
         https://github.com/sshuair/cogeotiff
         https://github.com/cogeotiff/rio-cogeo
+        https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
 
     Example:
         >>> # xdoctest: +REQUIRES(module:gdal)
@@ -600,8 +603,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     if compress == 'auto':
         compress = _gdal_auto_compress(data=data)
 
-    if compress not in ['JPEG', 'LZW', 'DEFLATE', 'RAW']:
-        raise KeyError('unknown compress={}'.format(compress))
+    # if compress not in ['JPEG', 'LZW', 'DEFLATE', 'RAW']:
+    #     raise KeyError('unknown compress={}'.format(compress))
+    # JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/NONE
 
     if compress == 'JPEG' and num_bands >= 5:
         raise ValueError('Cannot use JPEG with more than 4 channels (got {})'.format(num_bands))
@@ -619,21 +623,24 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     else:
         overviewlist = overviews
 
-    options = [
+    _options = [
         'TILED=YES',
         'BIGTIFF=YES',
         'BLOCKXSIZE={}'.format(blocksize),
         'BLOCKYSIZE={}'.format(blocksize),
     ]
     if compress != 'RAW':
-        options += ['COMPRESS={}'.format(compress)]
+        _options += ['COMPRESS={}'.format(compress)]
     if compress == 'JPEG' and num_bands == 3:
         # Using YCBCR speeds up jpeg compression by quite a bit
-        options += ['PHOTOMETRIC=YCBCR']
+        _options += ['PHOTOMETRIC=YCBCR']
 
-    options = list(map(str, options))  # python2.7 support
     if overviewlist:
-        options.append('COPY_SRC_OVERVIEWS=YES')
+        _options.append('COPY_SRC_OVERVIEWS=YES')
+
+    _options += options
+
+    _options = list(map(str, _options))  # python2.7 support
 
     # Create an in-memory dataset where we will prepare the COG data structure
     driver = gdal.GetDriverByName(str('MEM'))
@@ -649,7 +656,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     driver = None
     # Copy the in-memory dataset to an on-disk GeoTiff
     driver2 = gdal.GetDriverByName(str('GTiff'))
-    data_set2 = driver2.CreateCopy(fpath, data_set, options=options)
+    data_set2 = driver2.CreateCopy(fpath, data_set, options=_options)
     data_set = None
 
     # OK, so setting things to None turns out to be important. Gah!
@@ -662,26 +669,54 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
 
 def _numpy_to_gdal_dtype(numpy_dtype):
-    """ maps numpy dtypes to gdal dtypes """
+    """
+    maps numpy dtypes to gdal dtypes
+    """
     import gdal
+    if not hasattr(numpy_dtype, 'kind'):
+        # convert to the dtype instance object
+        numpy_dtype = numpy_dtype().dtype
     kindsize = (numpy_dtype.kind, numpy_dtype.itemsize)
     if kindsize == ('u', 1):
         eType = gdal.GDT_Byte
     elif kindsize == ('u', 2):
         eType = gdal.GDT_UInt16
+    elif kindsize == ('u', 4):
+        eType = gdal.GDT_UInt32
     elif kindsize == ('i', 2):
         eType = gdal.GDT_Int16
+    elif kindsize == ('i', 4):
+        eType = gdal.GDT_Int32
     elif kindsize == ('f', 4):
         eType = gdal.GDT_Float32
     elif kindsize == ('f', 8):
         eType = gdal.GDT_Float64
+    elif kindsize == ('c', 8):
+        eType = gdal.GDT_CFloat32
+    elif kindsize == ('c', 16):
+        eType = gdal.GDT_CFloat64
     else:
         raise TypeError('Unsupported GDAL dtype for {}'.format(kindsize))
     return eType
 
 
 def _gdal_to_numpy_dtype(gdal_dtype):
-    """ maps gdal dtypes to numpy dtypes """
+    """
+    maps gdal dtypes to numpy dtypes
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> numpy_types = [np.uint8, np.uint16, np.int16, np.uint32, np.int32,
+        >>>                np.float32, np.float64, np.complex64,
+        >>>                np.complex128]
+        >>> for np_type in numpy_types:
+        >>>     numpy_dtype1 = np_type().dtype
+        >>>     gdal_dtype1 = _numpy_to_gdal_dtype(numpy_dtype1)
+        >>>     numpy_dtype2 = _gdal_to_numpy_dtype(gdal_dtype1)
+        >>>     gdal_dtype2 = _numpy_to_gdal_dtype(numpy_dtype2)
+        >>>     assert gdal_dtype2 == gdal_dtype1
+        >>>     assert _dtype_equality(numpy_dtype1, numpy_dtype2)
+    """
     import gdal
     _GDAL_DTYPE_LUT = {
         gdal.GDT_Byte: np.uint8,
