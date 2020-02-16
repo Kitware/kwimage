@@ -508,6 +508,16 @@ class _BoxConversionMixins(object):
         if len(self.data.shape) != 2:
             raise ValueError('data must be 2d got {}d'.format(len(self.data.shape)))
 
+        if shape is None:
+            shape = (
+                int(np.ceil(self.br_y.max())) * 2,
+                int(np.ceil(self.br_x.max())) * 2,
+            )
+
+        if not isinstance(shape, tuple):
+            import kwarray
+            shape = tuple(kwarray.ArrayAPI.list(shape))
+
         tlbr = self.to_tlbr(copy=False).data
         bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in tlbr]
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
