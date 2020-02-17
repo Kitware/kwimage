@@ -531,6 +531,12 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
     """
     import cv2
     import kwimage
+
+    if image is None:
+        # Create a default image
+        image = np.zeros(dx.shape + (3,), dtype=np.uint8)
+        # image = kwimage.atleast_3channels(image)
+
     color = kwimage.Color(color)._forimage(image)
 
     line_type_lookup = {'aa': cv2.LINE_AA}
@@ -563,12 +569,7 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
         XYUV[2] *= scale
         XYUV[3] *= scale
 
-    if image is None:
-        # Create a default image
-        image = np.zeros(dx.shape + (3,), dtype=np.uint8)
-        # image = kwimage.atleast_3channels(image)
-
-    if alpha != 1:
+    if alpha is not None and alpha is not False and alpha != 1:
         raise NotImplementedError
 
     for (x, y, u, v) in zip(*XYUV):
@@ -578,15 +579,15 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
                         tipLength=tipLength,
                         line_type=line_type)
 
-    # if isinstance(alpha, np.ndarray):
-    #     # Alpha specified as explicit numpy array
-    #     image = kwimage.ensure_float01(image)
-    #     image = kwimage.ensure_alpha_channel(image)
-    #     image[:, :, 3] = alpha
-    # elif alpha is not False and alpha is not None:
-    #     # Alpha specified as a scale factor
-    #     image = kwimage.ensure_float01(image)
-    #     image = kwimage.ensure_alpha_channel(image)
-    #     # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
-    #     image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
+    if isinstance(alpha, np.ndarray):
+        # Alpha specified as explicit numpy array
+        image = kwimage.ensure_float01(image)
+        image = kwimage.ensure_alpha_channel(image)
+        image[:, :, 3] = alpha
+    elif alpha is not False and alpha is not None:
+        # Alpha specified as a scale factor
+        image = kwimage.ensure_float01(image)
+        image = kwimage.ensure_alpha_channel(image)
+        # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
+        image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
     return image
