@@ -48,7 +48,8 @@ from .heatmap import (Heatmap, smooth_prob,)
 from .mask import (Mask, MaskList,)
 from .points import (Points, PointsList,)
 from .polygon import (MultiPolygon, Polygon, PolygonList,)
+from .segmentation import (Segmentation, SegmentationList)
 
 __all__ = ['Boxes', 'Coords', 'Detections', 'Heatmap', 'Mask', 'MaskList',
            'MultiPolygon', 'Points', 'PointsList', 'Polygon', 'PolygonList',
-           'smooth_prob']
+           'smooth_prob', 'Segmentation', 'SegmentationList']

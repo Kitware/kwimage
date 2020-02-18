@@ -23,7 +23,7 @@ from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
 from .im_stack import (stack_images, stack_images_grid,)
 from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                       MultiPolygon, Points, PointsList, Polygon, PolygonList,
-                      smooth_prob,)
+                      smooth_prob, SegmentationList, Segmentation)
 from .util_warp import (TORCH_GRID_SAMPLE_HAS_ALIGN, subpixel_accum,
                         subpixel_align, subpixel_getvalue, subpixel_maximum,
                         subpixel_minimum, subpixel_set, subpixel_setvalue,
@@ -47,4 +47,4 @@ __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
            'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
            'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_points', 'warp_tensor']
+           'warp_points', 'warp_tensor', 'Segmentation', 'SegmentationList']

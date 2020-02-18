@@ -751,7 +751,7 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
         >>> assert _gdal_auto_compress(src_fpath='foo.jpg') == 'JPEG'
         >>> assert _gdal_auto_compress(src_fpath='foo.png') == 'LZW'
         >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'JPEG'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'RAW'
         >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'RAW'
         >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'RAW'
     """

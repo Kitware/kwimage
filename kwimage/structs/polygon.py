@@ -1042,7 +1042,7 @@ class MultiPolygon(_generic.ObjectList):
         """
         if data is None:
             return None
-        from kwimage.structs.mask import _coerce_coco_segmentation
+        from kwimage.structs.segmentation import _coerce_coco_segmentation
         self = _coerce_coco_segmentation(data, dims=dims)
         self = self.to_multi_polygon()
         return self
