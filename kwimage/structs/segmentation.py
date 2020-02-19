@@ -84,14 +84,16 @@ class Segmentation(_WrapperObject):
     def coerce(cls, data, dims=None):
         import kwimage
         if _generic._isinstance2(data, kwimage.Segmentation):
-            return data
-        if _generic._isinstance2(data, kwimage.Mask):
-            return Segmentation(data, 'mask')
-        if _generic._isinstance2(data, kwimage.Polygon):
-            return Segmentation(data, 'polygon')
-
-        data = _coerce_coco_segmentation(data, dims=dims)
-        self = cls.coerce(data, dims=dims)
+            self = data
+        elif _generic._isinstance2(data, kwimage.Mask):
+            self = Segmentation(data, 'mask')
+        elif _generic._isinstance2(data, kwimage.Polygon):
+            self = Segmentation(data, 'polygon')
+        elif _generic._isinstance2(data, kwimage.MultiPolygon):
+            self = Segmentation(data, 'multipolygon')
+        else:
+            data = _coerce_coco_segmentation(data, dims=dims)
+            self = cls.coerce(data, dims=dims)
         return self
 
 
