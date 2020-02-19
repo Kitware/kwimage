@@ -376,6 +376,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 boxes (kwimage.Boxes[ArrayLike]): multiple bounding boxes
                 scores (ArrayLike): associated scores
                 class_idxs (ArrayLike): associated class indices
+                segmentations (ArrayLike): segmentations masks for each box,
+                    members can be :class:`Mask` or :class:`MultiPolygon`.
+                keypoints (ArrayLike): keypoints for each box. Members should
+                    be :class:`Points`.
 
             Additional custom keys may be specified as long as (a) the values
             are array-like and the first axis corresponds to the standard data
@@ -499,6 +503,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 tensors = []
                 other = []
                 objlist = []
+
+                ### Make it easier to specify keypoints and segmentations
+                if 'segmentations' in data:
+                    import kwimage
+                    data['segmentations'] = kwimage.SegmentationList.coerce(
+                        data['segmentations'])
+
                 for k, v in data.items():
                     if _generic._isinstance2(v, _generic.ObjectList):
                         objlist.append(v)

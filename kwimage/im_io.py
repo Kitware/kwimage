@@ -198,13 +198,6 @@ def _imread_gdal(fpath):
 
         num_channels = gdal_dset.RasterCount
 
-        _gdal_dtype_lut = {
-            1: np.uint8,     2: np.uint16,
-            3: np.int16,     4: np.uint32,      5: np.int32,
-            6: np.float32,   7: np.float64,     8: np.complex_,
-            9: np.complex_,  10: np.complex64,  11: np.complex128
-        }
-
         if num_channels == 1:
             band = gdal_dset.GetRasterBand(1)
 
@@ -224,7 +217,7 @@ def _imread_gdal(fpath):
                 buf = band.ReadAsArray()
 
                 gdal_dtype = color_table.GetPaletteInterpretation()
-                dtype = _gdal_dtype_lut[gdal_dtype]
+                dtype = _gdal_to_numpy_dtype(gdal_dtype)
 
                 num_colors = color_table.GetCount()
                 if num_colors <= 0:
@@ -243,8 +236,8 @@ def _imread_gdal(fpath):
         else:
             bands = [gdal_dset.GetRasterBand(i)
                      for i in range(1, num_channels + 1)]
-            gdal_type_code = bands[0].DataType
-            dtype = _gdal_dtype_lut[gdal_type_code]
+            gdal_dtype = bands[0].DataType
+            dtype = _gdal_to_numpy_dtype(gdal_dtype)
             shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize,
                      gdal_dset.RasterCount)
             # Preallocate and populate image
@@ -272,18 +265,26 @@ def _imread_gdal(fpath):
     return image, src_space, auto_dst_space
 
 
-def imwrite(fpath, image, space='auto'):
+def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     """
     Writes image data to disk.
 
     Args:
         fpath (PathLike): location to save the imaeg
+
         image (ndarray): image data
+
         space (str): the colorspace of the image to save. Can by any colorspace
             accepted by `convert_colorspace`, or it can be 'auto', in which
             case we assume the input image is either RGB, RGBA or grayscale.
             If None, then absolutely no color modification is made and
             whatever backend is used writes the image as-is.
+
+        backend (str, default='auto'): which backend writer to use. By default
+            the file extension is used to determine this. Valid backends are
+            gdal, skimage, and cv2.
+
+        **kwargs : args passed to the backend writer
 
     Notes:
         The image may be modified to preserve its colorspace depending on which
@@ -309,11 +310,16 @@ def imwrite(fpath, image, space='auto'):
         >>>         # Write the image in TIF and PNG format
         >>>         tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>>         tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>>         imwrite(tmp_tif.name, img1, space=space)
+        >>>         imwrite(tmp_tif.name, img1, space=space, backend='skimage')
         >>>         imwrite(tmp_png.name, img1, space=space)
         >>>         tif_im = imread(tmp_tif.name, space=space)
         >>>         png_im = imread(tmp_png.name, space=space)
         >>>         assert np.all(tif_im == png_im), 'im-read/write inconsistency'
+        >>>         if _have_gdal:
+        >>>             tmp_tif2 = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>             imwrite(tmp_tif2.name, img1, space=space, backend='gdal')
+        >>>             tif_im2 = imread(tmp_tif2.name, space=space)
+        >>>             assert np.all(tif_im == tif_im2), 'im-read/write inconsistency'
         >>>         if space == 'gray':
         >>>             assert tif_im.ndim == 2
         >>>             assert png_im.ndim == 2
@@ -323,6 +329,65 @@ def imwrite(fpath, image, space='auto'):
         >>>         elif space in ['rgba', 'bgra']:
         >>>             assert tif_im.shape[2] == 4
         >>>             assert png_im.shape[2] == 4
+
+    Benchmark:
+        >>> import timerit
+        >>> import kwimage
+        >>> import tempfile
+        >>> #
+        >>> img1 = kwimage.grab_test_image('astro', dsize=(1920, 1080))
+        >>> space = 'auto'
+        >>> #
+        >>> file_sizes = {}
+        >>> #
+        >>> ti = timerit.Timerit(10, bestof=3, verbose=2)
+        >>> #
+        >>> for timer in ti.reset('imwrite-skimage-tif'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='skimage')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> for timer in ti.reset('imwrite-cv2-png'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.png')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='cv2')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> for timer in ti.reset('imwrite-cv2-jpg'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.jpg')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='cv2')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> for timer in ti.reset('imwrite-gdal-raw'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='gdal', compress='RAW')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> for timer in ti.reset('imwrite-gdal-lzw'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='gdal', compress='LZW')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> for timer in ti.reset('imwrite-gdal-deflate'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='gdal', compress='DEFLATE')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> for timer in ti.reset('imwrite-gdal-jpeg'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='gdal', compress='JPEG')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
+        >>> file_sizes = ub.sorted_vals(file_sizes)
+        >>> file_sizes_human = ub.map_vals(lambda x: xdev.byte_str(x, 'MB'), file_sizes)
+        >>> print('ti.rankings = {}'.format(ub.repr2(ti.rankings, nl=2)))
+        >>> print('file_sizes = {}'.format(ub.repr2(file_sizes_human, nl=1)))
     """
     if space is not None:
         n_channels = im_core.num_channels(image)
@@ -341,29 +406,17 @@ def imwrite(fpath, image, space='auto'):
     else:
         src_space = space
 
-    if fpath.endswith(('.tif', '.tiff')):
-        # TODO: allow writing of tiff images using gdal (allow COGS)
-
-        if space is not None:
-            # skimage writes images in RGB(A)/ grayscale
-            if n_channels == 3:
-                dst_space = 'rgb'
-            elif n_channels == 4:
-                dst_space = 'rgba'
-            elif n_channels == 1:
-                dst_space = 'gray'
+    if backend == 'auto':
+        if fpath.endswith(('.tif', '.tiff')):
+            if _have_gdal():
+                backend = 'gdal'
             else:
-                raise AssertionError('impossible state')
-            image = im_cv2.convert_colorspace(
-                image, src_space=src_space, dst_space=dst_space,
-                implicit=False)
+                backend = 'skimage'
+        else:
+            backend = 'cv2'
 
-        import skimage.io
-        # with warnings.catch_warnings():
-        #     warnings.simplefilter("ignore")
-        return skimage.io.imsave(fpath, image)
-    else:
-        if space is not None:
+    if space is not None:
+        if backend == 'cv2':
             # OpenCV writes images in BGR(A)/ grayscale
             if n_channels == 3:
                 dst_space = 'bgr'
@@ -373,12 +426,23 @@ def imwrite(fpath, image, space='auto'):
                 dst_space = 'gray'
             else:
                 raise AssertionError('impossible state')
-            image = im_cv2.convert_colorspace(
-                image, src_space=src_space, dst_space=dst_space,
-                implicit=False)
+        else:
+            # most writers like skimage and gdal write images in RGB(A)/ grayscale
+            if n_channels == 3:
+                dst_space = 'rgb'
+            elif n_channels == 4:
+                dst_space = 'rgba'
+            elif n_channels == 1:
+                dst_space = 'gray'
+            else:
+                raise AssertionError('impossible state')
+        image = im_cv2.convert_colorspace(
+            image, src_space=src_space, dst_space=dst_space,
+            implicit=False)
 
+    if backend == 'cv2':
         try:
-            return cv2.imwrite(fpath, image)
+            return cv2.imwrite(fpath, image, **kwargs)
         except cv2.error as ex:
             if 'could not find a writer for the specified extension' in str(ex):
                 raise ValueError(
@@ -386,6 +450,74 @@ def imwrite(fpath, image, space='auto'):
                     '(e.g. png/jpg)'.format(fpath))
             else:
                 raise
+    elif backend == 'skimage':
+        import skimage.io
+        return skimage.io.imsave(fpath, image, **kwargs)
+    elif backend == 'gdal':
+        return _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+    else:
+        raise KeyError('Unknown imwrite backend={!r}'.format(backend))
+
+
+def load_image_shape(fpath):
+    """
+    Determine the height/width/channels of an image without reading the entire
+    file.
+
+    Args:
+        fpath (str): path to the image
+
+    Returns:
+        Tuple - shape of the dataset
+
+    Benchmark:
+        >>> # For large files, PIL is much faster
+        >>> import gdal
+        >>> from PIL import Image
+        >>> #
+        >>> import kwimage
+        >>> fpath = kwimage.grab_test_image_fpath()
+        >>> #
+        >>> ti = ub.Timerit(100, bestof=10, verbose=2)
+        >>> for timer in ti.reset('gdal'):
+        >>>     with timer:
+        >>>         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+        >>>         width = gdal_dset.RasterXSize
+        >>>         height = gdal_dset.RasterYSize
+        >>>         gdal_dset = None
+        >>> #
+        >>> for timer in ti.reset('PIL'):
+        >>>     with timer:
+        >>>         pil_img = Image.open(fpath)
+        >>>         width, height = pil_img.size
+        >>>         pil_img.close()
+        Timed gdal for: 100 loops, best of 10
+            time per loop: best=62.967 µs, mean=63.991 ± 0.8 µs
+        Timed PIL for: 100 loops, best of 10
+            time per loop: best=46.640 µs, mean=47.314 ± 0.4 µs
+    """
+    from PIL import Image
+    try:
+        pil_img = Image.open(fpath)
+        width, height = pil_img.size
+        num_channels = len(pil_img.getbands())
+        pil_img.close()
+    except Exception as pil_ex:
+        if not _have_gdal():
+            raise
+        try:
+            import gdal
+            gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+            if gdal_dset is None:
+                raise Exception
+            width = gdal_dset.RasterXSize
+            height = gdal_dset.RasterYSize
+            num_channels = gdal_dset.RasterCount
+            gdal_dset = None
+        except (ImportError, Exception):
+            raise pil_ex
+    shape = (height, width, num_channels)
+    return shape
 
 
 def _have_gdal():
@@ -395,3 +527,286 @@ def _have_gdal():
         return False
     else:
         return True
+
+
+def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
+                                     blocksize=256, overviews=None,
+                                     overview_resample='NEAREST', options=[]):
+    """
+    Writes data as a cloud-optimized geotiff using gdal
+
+    Args:
+        fpath (PathLike): file path to save the COG to.
+
+        data (ndarray[ndim=3]): Raw HWC image data to save. Dimensions should
+            be height, width, channels.
+
+        compress (bool, default='auto'): Can be JPEG (lossy) or LZW (lossless),
+            or DEFLATE (lossless). Can also be 'auto', which will try to
+            hueristically choose a sensible choice.
+
+        blocksize (int, default=256): size of tiled blocks
+
+        overviews (None | int | list, default=None):
+            if specified as a list, then uses exactly those overviews. If
+            specified as an integer a list is created using powers of two.
+
+        overview_resample (str, default='NEAREST'): resampling method for
+            overview pyramid. Valid choices are: 'NEAREST', 'AVERAGE',
+            'BILINEAR', 'CUBIC', 'CUBICSPLINE', 'LANCZOS'.
+
+        options (List[str]): other gdal options
+
+    References:
+        https://geoexamples.com/other/2019/02/08/cog-tutorial.html#create-a-cog-using-gdal-python
+        http://osgeo-org.1560.x6.nabble.com/gdal-dev-Creating-Cloud-Optimized-GeoTIFFs-td5320101.html
+        https://gdal.org/drivers/raster/cog.html
+        https://github.com/harshurampur/Geotiff-conversion
+        https://github.com/sshuair/cogeotiff
+        https://github.com/cogeotiff/rio-cogeo
+        https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> import tempfile
+        >>> data = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.cog.tif')
+        >>> fpath = tmp_tif.name
+        >>> compress = 'JPEG'
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='JPEG')
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
+
+        >>> data = (np.random.rand(100, 100, 4) * 255).astype(np.uint8)
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='JPEG')
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='DEFLATE')
+
+        >>> data = (np.random.rand(100, 100, 5) * 255).astype(np.uint8)
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
+
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=3)
+        >>> import gdal
+        >>> ds = gdal.Open(fpath, gdal.GA_ReadOnly)
+        >>> filename = ds.GetDescription()
+        >>> main_band = ds.GetRasterBand(1)
+        >>> assert main_band.GetOverviewCount() == 3
+
+        >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=[2, 4])
+    """
+    import gdal
+    if len(data.shape) == 2:
+        data = data[:, :, None]
+
+    y_size, x_size, num_bands = data.shape
+
+    data_set = None
+    if compress == 'auto':
+        compress = _gdal_auto_compress(data=data)
+
+    # if compress not in ['JPEG', 'LZW', 'DEFLATE', 'RAW']:
+    #     raise KeyError('unknown compress={}'.format(compress))
+    # JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/NONE
+
+    if compress == 'JPEG' and num_bands >= 5:
+        raise ValueError('Cannot use JPEG with more than 4 channels (got {})'.format(num_bands))
+
+    eType = _numpy_to_gdal_dtype(data.dtype)
+    if compress == 'JPEG':
+        if eType not in [gdal.GDT_Byte, gdal.GDT_UInt16]:
+            raise ValueError('JPEG compression must use 8 or 16 bit integers')
+
+    # NEAREST/AVERAGE/BILINEAR/CUBIC/CUBICSPLINE/LANCZOS
+    if overviews is None:
+        overviewlist = []
+    elif isinstance(overviews, int):
+        overviewlist = (2 ** np.arange(1, overviews + 1)).tolist()
+    else:
+        overviewlist = overviews
+
+    _options = [
+        'TILED=YES',
+        'BIGTIFF=YES',
+        'BLOCKXSIZE={}'.format(blocksize),
+        'BLOCKYSIZE={}'.format(blocksize),
+    ]
+    if compress != 'RAW':
+        _options += ['COMPRESS={}'.format(compress)]
+    if compress == 'JPEG' and num_bands == 3:
+        # Using YCBCR speeds up jpeg compression by quite a bit
+        _options += ['PHOTOMETRIC=YCBCR']
+
+    if overviewlist:
+        _options.append('COPY_SRC_OVERVIEWS=YES')
+
+    _options += options
+
+    _options = list(map(str, _options))  # python2.7 support
+
+    # Create an in-memory dataset where we will prepare the COG data structure
+    driver = gdal.GetDriverByName(str('MEM'))
+    data_set = driver.Create(str(''), x_size, y_size, num_bands, eType=eType)
+    for i in range(num_bands):
+        band_data = np.ascontiguousarray(data[:, :, i])
+        data_set.GetRasterBand(i + 1).WriteArray(band_data)
+
+    if overviewlist:
+        # Build the downsampled overviews (for fast zoom in / out)
+        data_set.BuildOverviews(str(overview_resample), overviewlist)
+
+    driver = None
+    # Copy the in-memory dataset to an on-disk GeoTiff
+    driver2 = gdal.GetDriverByName(str('GTiff'))
+    data_set2 = driver2.CreateCopy(fpath, data_set, options=_options)
+    data_set = None
+
+    # OK, so setting things to None turns out to be important. Gah!
+    data_set2.FlushCache()
+
+    # Dereference everything
+    data_set2 = None
+    driver2 = None
+    return fpath
+
+
+def _numpy_to_gdal_dtype(numpy_dtype):
+    """
+    maps numpy dtypes to gdal dtypes
+    """
+    import gdal
+    if not hasattr(numpy_dtype, 'kind'):
+        # convert to the dtype instance object
+        numpy_dtype = numpy_dtype().dtype
+    kindsize = (numpy_dtype.kind, numpy_dtype.itemsize)
+    if kindsize == ('u', 1):
+        eType = gdal.GDT_Byte
+    elif kindsize == ('u', 2):
+        eType = gdal.GDT_UInt16
+    elif kindsize == ('u', 4):
+        eType = gdal.GDT_UInt32
+    elif kindsize == ('i', 2):
+        eType = gdal.GDT_Int16
+    elif kindsize == ('i', 4):
+        eType = gdal.GDT_Int32
+    elif kindsize == ('f', 4):
+        eType = gdal.GDT_Float32
+    elif kindsize == ('f', 8):
+        eType = gdal.GDT_Float64
+    elif kindsize == ('c', 8):
+        eType = gdal.GDT_CFloat32
+    elif kindsize == ('c', 16):
+        eType = gdal.GDT_CFloat64
+    else:
+        raise TypeError('Unsupported GDAL dtype for {}'.format(kindsize))
+    return eType
+
+
+def _gdal_to_numpy_dtype(gdal_dtype):
+    """
+    maps gdal dtypes to numpy dtypes
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> numpy_types = [np.uint8, np.uint16, np.int16, np.uint32, np.int32,
+        >>>                np.float32, np.float64, np.complex64,
+        >>>                np.complex128]
+        >>> for np_type in numpy_types:
+        >>>     numpy_dtype1 = np_type().dtype
+        >>>     gdal_dtype1 = _numpy_to_gdal_dtype(numpy_dtype1)
+        >>>     numpy_dtype2 = _gdal_to_numpy_dtype(gdal_dtype1)
+        >>>     gdal_dtype2 = _numpy_to_gdal_dtype(numpy_dtype2)
+        >>>     assert gdal_dtype2 == gdal_dtype1
+        >>>     assert _dtype_equality(numpy_dtype1, numpy_dtype2)
+    """
+    import gdal
+    _GDAL_DTYPE_LUT = {
+        gdal.GDT_Byte: np.uint8,
+        gdal.GDT_UInt16: np.uint16,
+        gdal.GDT_Int16: np.int16,
+        gdal.GDT_UInt32: np.uint32,
+        gdal.GDT_Int32: np.int32,
+        gdal.GDT_Float32: np.float32,
+        gdal.GDT_Float64: np.float64,
+        gdal.GDT_CInt16: np.complex_,
+        gdal.GDT_CInt32: np.complex_,
+        gdal.GDT_CFloat32: np.complex64,
+        gdal.GDT_CFloat64: np.complex128
+    }
+    return _GDAL_DTYPE_LUT[gdal_dtype]
+
+
+def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
+    """
+    Heuristic for automatically choosing gdal compression type
+
+    Args:
+        src_fpath (str): path to source image if known
+        data (ndarray): data pixels if known
+        data_set (gdal.Dataset): gdal dataset if known
+
+    Returns:
+        str: gdal compression code
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> assert _gdal_auto_compress(src_fpath='foo.jpg') == 'JPEG'
+        >>> assert _gdal_auto_compress(src_fpath='foo.png') == 'LZW'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'RAW'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'RAW'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'RAW'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'RAW'
+    """
+    compress = None
+    num_channels = None
+    dtype = None
+
+    if src_fpath is not None:
+        # the filepath might hint at which compress method is best.
+        ext = src_fpath[-5:].lower()
+        if ext.endswith(('.jpg', '.jpeg')):
+            compress = 'JPEG'
+        elif ext.endswith(('.png', '.png')):
+            compress = 'LZW'
+
+    if compress is None:
+
+        if data_set is not None:
+            if dtype is None:
+                main_band = data_set.GetRasterBand(1)
+                dtype = _gdal_to_numpy_dtype(main_band.DataType)
+
+            if num_channels is None:
+                data_set.RasterCount == 3
+
+        elif data is not None:
+            if dtype is None:
+                dtype = data.dtype
+
+            if num_channels is None:
+                if len(data.shape) == 3:
+                    num_channels = data.shape[2]
+
+    # if compress is None:
+    #     if _dtype_equality(dtype, np.uint8) and num_channels == 3:
+    #         compress = 'JPEG'
+
+    if compress is None:
+        # which backend is best in this case?
+        compress = 'RAW'
+    return compress
+
+
+def _dtype_equality(dtype1, dtype2):
+    """
+    Check for numpy dtype equality
+
+    References:
+        https://stackoverflow.com/questions/26921836/correct-way-to-test-for-numpy-dtype
+
+    Example:
+        dtype1 = np.empty(0, dtype=np.uint8).dtype
+        dtype2 = np.uint8
+        _dtype_equality(dtype1, dtype2)
+    """
+    dtype1_ = getattr(dtype1, 'type', dtype1)
+    dtype2_ = getattr(dtype2, 'type', dtype2)
+    return dtype1_ == dtype2_

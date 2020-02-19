@@ -508,6 +508,16 @@ class _BoxConversionMixins(object):
         if len(self.data.shape) != 2:
             raise ValueError('data must be 2d got {}d'.format(len(self.data.shape)))
 
+        if shape is None:
+            shape = (
+                int(np.ceil(self.br_y.max())) * 2,
+                int(np.ceil(self.br_x.max())) * 2,
+            )
+
+        if not isinstance(shape, tuple):
+            import kwarray
+            shape = tuple(kwarray.ArrayAPI.list(shape))
+
         tlbr = self.to_tlbr(copy=False).data
         bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in tlbr]
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
@@ -516,6 +526,9 @@ class _BoxConversionMixins(object):
     def to_shapley(self):
         """
         Convert boxes to a list of shapely polygons
+
+        Returns:
+            List[shapely.geometry.Polygon]: list of shapely polygons
         """
         from shapely.geometry import Polygon
         x1, y1, x2, y2 = self.to_tlbr(copy=False).components
@@ -523,8 +536,13 @@ class _BoxConversionMixins(object):
         b = _cat([x1, y2]).tolist()
         c = _cat([x2, y2]).tolist()
         d = _cat([x2, y1]).tolist()
-        polygons = [Polygon(points) for points in zip(a, b, c, d, a)]
-        return polygons
+        regions = [Polygon(points) for points in zip(a, b, c, d, a)]
+        # This just returns polygons anyway
+        # regions = [
+        #     shapely.geometry.box(minx, miny, maxx, maxy)
+        #     for minx, miny, maxx, maxy in zip(x1, y1, x2, y2)
+        # ]
+        return regions
 
     @classmethod
     def from_imgaug(Boxes, bboi):
