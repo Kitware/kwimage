@@ -23,7 +23,7 @@ from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
 from .im_stack import (stack_images, stack_images_grid,)
 from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                       MultiPolygon, Points, PointsList, Polygon, PolygonList,
-                      smooth_prob, SegmentationList, Segmentation)
+                      Segmentation, SegmentationList, smooth_prob,)
 from .util_warp import (TORCH_GRID_SAMPLE_HAS_ALIGN, subpixel_accum,
                         subpixel_align, subpixel_getvalue, subpixel_maximum,
                         subpixel_minimum, subpixel_set, subpixel_setvalue,
@@ -32,14 +32,15 @@ from .util_warp import (TORCH_GRID_SAMPLE_HAS_ALIGN, subpixel_accum,
 
 __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'Detections', 'Heatmap', 'Mask', 'MaskList', 'MultiPolygon',
-           'Points', 'PointsList', 'Polygon', 'PolygonList', 'TABLEAU_COLORS',
-           'TORCH_GRID_SAMPLE_HAS_ALIGN', 'XKCD_COLORS', 'atleast_3channels',
-           'available_nms_impls', 'convert_colorspace', 'daq_spatial_nms',
-           'decode_run_length', 'draw_boxes_on_image', 'draw_clf_on_image',
-           'draw_text_on_image', 'draw_vector_field', 'encode_run_length',
-           'ensure_alpha_channel', 'ensure_float01', 'ensure_uint255',
-           'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
-           'imread', 'imresize', 'imscale', 'imwrite', 'load_image_shape',
+           'Points', 'PointsList', 'Polygon', 'PolygonList', 'Segmentation',
+           'SegmentationList', 'TABLEAU_COLORS', 'TORCH_GRID_SAMPLE_HAS_ALIGN',
+           'XKCD_COLORS', 'atleast_3channels', 'available_nms_impls',
+           'convert_colorspace', 'daq_spatial_nms', 'decode_run_length',
+           'draw_boxes_on_image', 'draw_clf_on_image', 'draw_text_on_image',
+           'draw_vector_field', 'encode_run_length', 'ensure_alpha_channel',
+           'ensure_float01', 'ensure_uint255', 'gaussian_patch',
+           'grab_test_image', 'grab_test_image_fpath', 'imread', 'imresize',
+           'imscale', 'imwrite', 'load_image_shape',
            'make_channels_comparable', 'make_heatmask', 'make_orimask',
            'make_vector_field', 'non_max_supression', 'num_channels',
            'overlay_alpha_images', 'overlay_alpha_layers', 'rle_translate',
@@ -47,4 +48,4 @@ __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
            'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
            'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_points', 'warp_tensor', 'Segmentation', 'SegmentationList']
+           'warp_points', 'warp_tensor']
