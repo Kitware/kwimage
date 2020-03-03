@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * add `MultiPolygon.fill` 
 * `kwimage.imwrite` now accepts the `backend` keyword, which can be `cv2`, `skimage`, or `gdal`. The `gdal` backend writes images as cloud-optimized-geotiffs.
 * add `kwimage.structs.Segmentation` which encapsulates Masks, Polygons, and MultiPolygons
+* Add `im_filter` which currently contains fourier domain filters.
 
 ### Fixed:
 * issue with `draw_clf_on_image` when truth is unknown

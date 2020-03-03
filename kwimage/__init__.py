@@ -18,6 +18,7 @@ from .im_demodata import (grab_test_image, grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
                       draw_text_on_image, draw_vector_field, make_heatmask,
                       make_orimask, make_vector_field,)
+from .im_filter import (fourier_mask, radial_fourier_mask,)
 from .im_io import (imread, imwrite, load_image_shape,)
 from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
 from .im_stack import (stack_images, stack_images_grid,)
@@ -38,14 +39,15 @@ __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'convert_colorspace', 'daq_spatial_nms', 'decode_run_length',
            'draw_boxes_on_image', 'draw_clf_on_image', 'draw_text_on_image',
            'draw_vector_field', 'encode_run_length', 'ensure_alpha_channel',
-           'ensure_float01', 'ensure_uint255', 'gaussian_patch',
-           'grab_test_image', 'grab_test_image_fpath', 'imread', 'imresize',
-           'imscale', 'imwrite', 'load_image_shape',
+           'ensure_float01', 'ensure_uint255', 'fourier_mask',
+           'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
+           'imread', 'imresize', 'imscale', 'imwrite', 'load_image_shape',
            'make_channels_comparable', 'make_heatmask', 'make_orimask',
            'make_vector_field', 'non_max_supression', 'num_channels',
-           'overlay_alpha_images', 'overlay_alpha_layers', 'rle_translate',
-           'smooth_prob', 'stack_images', 'stack_images_grid',
-           'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
-           'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
-           'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_points', 'warp_tensor']
+           'overlay_alpha_images', 'overlay_alpha_layers',
+           'radial_fourier_mask', 'rle_translate', 'smooth_prob',
+           'stack_images', 'stack_images_grid', 'subpixel_accum',
+           'subpixel_align', 'subpixel_getvalue', 'subpixel_maximum',
+           'subpixel_minimum', 'subpixel_set', 'subpixel_setvalue',
+           'subpixel_slice', 'subpixel_translate', 'warp_points',
+           'warp_tensor']
