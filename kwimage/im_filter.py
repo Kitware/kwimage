@@ -98,12 +98,17 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None):
 
     Args:
         img_hwc (ndarray): assumed to be float 01
-        mask (ndarray): booleans with the same spatial dimensions as img_hwc
+        mask (ndarray): mask used to modulate the image in the fourier domain.
+             Usually these are boolean values (hence the name mask), but any
+             numerical value is technically allowed.
+
+    CommandLine:
+        xdoctest -m kwimage.im_filter fourier_mask --show
 
     Example:
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image(space='gray')
-        >>> mask = np.random.rand(*img_hwc.shape[0:2]) > 0.5
+        >>> mask = np.random.rand(*img_hwc.shape[0:2])
         >>> out_hwc = fourier_mask(img_hwc, mask)
         >>> # xdoc: REQUIRES(--show)
         >>> import kwplot

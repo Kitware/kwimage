@@ -56,14 +56,17 @@ class _Mask_Backends():
             from pycocotools import _mask
             _funcs['pycoco'] = _mask
         except ImportError as ex:
-            warnings.warn('pycoco tools is not available: {}'.format(str(ex)))
+            warnings.warn(
+                'optional module pycocotools is not available: {}'.format(
+                    str(ex)))
 
         if not DISABLE_C_EXTENSIONS:
             try:
                 from kwimage.structs._mask_backend import cython_mask
                 _funcs['kwimage'] = cython_mask
             except ImportError as ex:
-                warnings.warn('mask_backend is not available: {}'.format(str(ex)))
+                warnings.warn(
+                    'optional mask_backend is not available: {}'.format(str(ex)))
 
         self._funcs = _funcs
         self._valid = frozenset(self._funcs.keys())

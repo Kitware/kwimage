@@ -209,15 +209,18 @@ class _NMS_Impls():
             from torchvision import _C as C  # NOQA
             import torchvision
             _funcs['torchvision'] = torchvision.ops.nms
-        except ImportError:
-            pass
+        except ImportError as ex:
+            warnings.warn(
+                'optional torchvision C nms is not available: {}'.format(
+                    str(ex)))
 
         try:
             if not DISABLE_C_EXTENSIONS:
                 from kwimage.algo._nms_backend import cpu_nms
                 _funcs['cython_cpu'] = cpu_nms.cpu_nms
         except Exception as ex:
-            warnings.warn('cpu_nms is not available: {}'.format(str(ex)))
+            warnings.warn(
+                'optional cpu_nms is not available: {}'.format(str(ex)))
         try:
             if not DISABLE_C_EXTENSIONS:
                 if torch.cuda.is_available():
@@ -227,7 +230,8 @@ class _NMS_Impls():
                     # See the benchmarks for more info.
                     # ~/code/kwimage/dev/bench_nms.py
         except Exception as ex:
-            warnings.warn('gpu_nms is not available: {}'.format(str(ex)))
+            warnings.warn
+            ('optional gpu_nms is not available: {}'.format(str(ex)))
         self._funcs = _funcs
         self._valid = frozenset(_impls._funcs.keys())
 
@@ -470,15 +474,21 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
 
     if impl == 'cpu':
         import warnings
-        warnings.warn('impl="cpu" is deprecated use impl="cython_cpu" instead', DeprecationWarning)
+        warnings.warn(
+            'impl="cpu" is deprecated use impl="cython_cpu" instead',
+            DeprecationWarning)
         impl = 'cython_impl'
     elif impl == 'gpu':
         import warnings
-        warnings.warn('impl="gpu" is deprecated use impl="cython_gpu" instead', DeprecationWarning)
+        warnings.warn(
+            'impl="gpu" is deprecated use impl="cython_gpu" instead',
+            DeprecationWarning)
         impl = 'cython_gpu'
     elif impl == 'py':
         import warnings
-        warnings.warn('impl="py" is deprecated use impl="numpy" instead', DeprecationWarning)
+        warnings.warn(
+            'impl="py" is deprecated use impl="numpy" instead',
+            DeprecationWarning)
         impl = 'numpy'
 
     if not _impls._funcs:

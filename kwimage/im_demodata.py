@@ -6,51 +6,103 @@ from . import im_cv2
 
 
 _TEST_IMAGES = {
-    'astro': {
-        'url': 'https://i.imgur.com/KXhKM72.png',
-        'fname': 'astro.png',
-        'sha1': '160b6e5989d2788c0296eac45b33e90fe612da23',
-    },
-    'carl': {
-        'url': 'https://i.imgur.com/flTHWFD.png',
-        'fname': 'carl.png',
-        'sha1': 'f498fa6f6b24b4fa79322612144fedd5fad85bc3',
-    },
-    'stars': {
-        'url': 'https://i.imgur.com/kCi7C1r.png',
-        'fname': 'stars.png',
-        'sha1': 'bbf162d14537948e12169ccc26ca1b4e74f6a67e',
-    },
-    'paraview': {
-        'url': 'https://upload.wikimedia.org/wikipedia/commons/4/46/ParaView_splash1.png',
-        'fname': 'paraview.png',
-        'sha1': 'd3c6240ccb4748e9bd5de07f0aa3f86724edeee7',
-    },
     'airport': {
-        'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
         'fname': 'airport.png',
         'sha1': '52f15b9cccf2cc95a82ccacd96f1f15dc76a8544',
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
+    },
+    'amazon': {
+        'fname': 'amazon.jpg',
+        'sha1': '50a475dd4b294eb9413971a20648b3329cd7ef4d',
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Fires_and_Deforestation_on_the_Amazon_Frontier%2C_Rondonia%2C_Brazil_-_August_12%2C_2007.jpg',
+    },
+    'astro': {
+        'fname': 'astro.png',
+        'sha1': '160b6e5989d2788c0296eac45b33e90fe612da23',
+        'url': 'https://i.imgur.com/KXhKM72.png',
+    },
+    'carl': {
+        'fname': 'carl.png',
+        'sha1': 'f498fa6f6b24b4fa79322612144fedd5fad85bc3',
+        'url': 'https://i.imgur.com/flTHWFD.png',
+    },
+    'paraview': {
+        'fname': 'paraview.png',
+        'sha1': 'd3c6240ccb4748e9bd5de07f0aa3f86724edeee7',
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/4/46/ParaView_splash1.png',
     },
     'parrot': {
-        'url': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png',
         'fname': 'parrot.png',
         'sha1': '6f97b8f9095031aa26152aaa16cbd4e7e7ea16d9',
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png',
     },
-
+    'stars': {
+        'fname': 'stars.png',
+        'sha1': 'bbf162d14537948e12169ccc26ca1b4e74f6a67e',
+        'url': 'https://i.imgur.com/kCi7C1r.png',
+    },
     'tsukuba_l': {
-        # 'url': 'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imL.png',
-        'url': 'https://i.imgur.com/DhIKgGx.png',
         'fname': 'tsukuba_l.png',
         'sha1': '9208dce1d8c6521e24a9105f90e361a0b355db69',
+        'url': 'https://i.imgur.com/DhIKgGx.png',
     },
-
     'tsukuba_r': {
-        # 'url': 'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imR.png',
-        'url': 'https://i.imgur.com/38RST9H.png',
         'fname': 'tsukuba_r.png',
         'sha1': '10f9d2d832610253a3702d40f191e72e1af8b28b',
+        'url': 'https://i.imgur.com/38RST9H.png',
     },
 }
+
+
+# Note: tsukuba images are mirrored from the following urls:
+# 'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imL.png',
+# 'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imR.png',
+
+
+def _update_hashes():
+    """
+    for dev use to update hashes of the demo images
+
+    CommandLine:
+        xdoctest -m kwimage.im_demodata _update_hashes
+        xdoctest -m kwimage.im_demodata _update_hashes --require-hashes
+    """
+    TEST_IMAGES = _TEST_IMAGES.copy()
+
+    for key in TEST_IMAGES.keys():
+        item = TEST_IMAGES[key]
+
+        grabkw = {
+            'appname': 'kwimage/demodata',
+        }
+        # item['sha512'] = 'not correct'
+
+        # Wait until ubelt 9.1 is released to change hasher due to
+        # issue in ub.grabdata
+        # hasher_priority = ['sha512', 'sha1']
+        hasher_priority = ['sha1']
+
+        REQUIRE_EXISTING_HASH = ub.argflag('--require-hashes')
+        if REQUIRE_EXISTING_HASH:
+            for hasher in hasher_priority:
+                if hasher in item:
+                    grabkw.update({
+                        'hash_prefix': item[hasher],
+                        'hasher': hasher,
+                    })
+                    break
+
+        if 'fname' in item:
+            grabkw['fname'] = item['fname']
+
+        item.pop('sha512', None)
+        fpath = ub.grabdata(item['url'], **grabkw)
+        if 'hasher' not in item:
+            hasher = hasher_priority[0]
+            prefix = ub.hash_file(fpath, hasher=hasher)
+            item[hasher] = prefix[0:64]
+
+        print('_TEST_IMAGES = ' + ub.repr2(TEST_IMAGES, nl=2))
 
 
 def grab_test_image(key='astro', space='rgb', dsize=None,
@@ -77,7 +129,7 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         ndarray: the requested image
 
     CommandLine:
-        xdoctest -m ~/code/kwimage/kwimage/im_demodata.py grab_test_image
+        xdoctest -m kwimage.im_demodata grab_test_image
 
     Example:
         >>> for key in grab_test_image.keys():
@@ -128,11 +180,14 @@ def grab_test_image_fpath(key='astro'):
     grabkw = {
         'appname': 'kwimage/demodata',
     }
-    if 'sha1' in item:
-        grabkw.update({
-            'hash_prefix': item['sha1'],
-            'hasher': 'sha1',
-        })
+    hasher_priority = ['sha1']
+    for hasher in hasher_priority:
+        if hasher in item:
+            grabkw.update({
+                'hash_prefix': item[hasher],
+                'hasher': hasher,
+            })
+            break
     if 'fname' in item:
         grabkw['fname'] = item['fname']
 

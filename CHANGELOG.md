@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.1 -
 
+### Added
+* Added `im_filter` module with `fourier_mask` function. 
+* Add "amazon" demo image
+
+
 ## Version 0.6.0 - Released 2020-02-19 
 
 ### Added
