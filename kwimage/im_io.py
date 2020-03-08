@@ -471,10 +471,12 @@ def load_image_shape(fpath):
     file.
 
     Args:
-        fpath (str): path to the image
+        fpath (str): path to an image
 
     Returns:
-        Tuple - shape of the dataset
+        Tuple - shape of the dataset.
+            Recall this library uses the convention that "shape" is refers to
+            height,width,channels and "size" is width,height ordering.
 
     Benchmark:
         >>> # For large files, PIL is much faster
