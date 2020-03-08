@@ -26,6 +26,9 @@ def imread(fpath, space='auto', backend='auto'):
             the file extension is used to determine this, but it can be
             manually overridden. Valid backends are gdal, skimage, and cv2.
 
+    Returns:
+        ndarray: the image data in the specified color space.
+
     Note:
         if space is something non-standard like HSV or LAB, then the file must
         be a normal 8-bit color image, otherwise an error will occur.
@@ -51,8 +54,8 @@ def imread(fpath, space='auto', backend='auto'):
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img1, pnum=(1, 2, 1), fnum=1)
-        >>> kwplot.imshow(img2, pnum=(1, 2, 2), fnum=1)
+        >>> kwplot.imshow(img1, pnum=(1, 2, 1), fnum=1, norm=True)
+        >>> kwplot.imshow(img2, pnum=(1, 2, 2), fnum=1, norm=True)
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
@@ -74,7 +77,7 @@ def imread(fpath, space='auto', backend='auto'):
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> tif_fpath = ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif'),
+        >>> tif_fpath = ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif')
         >>> img1 = imread(tif_fpath)
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
@@ -289,6 +292,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Notes:
         The image may be modified to preserve its colorspace depending on which
         backend is used to write the image.
+
+        When saving as a jpeg or png, the image must be encoded with the uint8
+        data type. When saving as a tiff, any data type is allowed.
 
     Raises:
         Exception : if the image cannot be written

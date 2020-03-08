@@ -69,6 +69,8 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     """
     Resizes an image by a scale factor.
 
+    DEPRECATED
+
     Because the result image must have an integer number of pixels, the scale
     factor is rounded, and the rounded scale factor is optionaly returned.
 
@@ -86,7 +88,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
             to achive the new integer image size.
 
     SeeAlso:
-        imresize
+        :func:`imresize`.
 
     Example:
         >>> import kwimage
@@ -98,6 +100,10 @@ def imscale(img, scale, interpolation=None, return_scale=False):
         >>> assert new_scale == (.8, .8)
         >>> assert new_img.shape == (8, 8, 3)
     """
+    import warnings
+    warnings.warn(
+        'imscale is deprecated, use imresize instead', DeprecationWarning)
+
     dsize = img.shape[0:2][::-1]
 
     try:
@@ -126,9 +132,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     Resize an image based on a scale factor, final size, or size and aspect
     ratio.
 
-    Slightly more general than cv2.resize and kwimage.imscale, allows for
-    specification of either a scale factor, a final size, or the final size for
-    a particular dimension.
+    Slightly more general than cv2.resize, allows for specification of either a
+    scale factor, a final size, or the final size for a particular dimension.
 
     Args:
         img (ndarray): image to resize
@@ -151,7 +156,9 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             dimension is scaled to maintain aspect ratio.Mutually exclusive
             with size, dsize, and max_dim.
 
-        interpolation (str | int): interpolation key or code (e.g. linear lanczos)
+        interpolation (str | int): interpolation key or code (e.g. linear
+            lanczos). By default "area" is used if the image is shrinking and
+            "lanczos" is used if the image is growing.
 
         letterbox (bool, default=False): if used in conjunction with
             dsize, then the image is scaled and translated to fit in the
@@ -230,8 +237,6 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     if sum(a is not None for a in _mutex_args) != 1:
         raise ValueError(
             'Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim')
-
-    # TODO: add letterbox flag which can be used in conjunction with dsize
 
     if scale is not None:
         try:

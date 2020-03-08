@@ -393,7 +393,7 @@ def make_orimask(radians, mag=None, alpha=1.0):
     return orimask
 
 
-def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
+def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
                       color='red', thickness=1, tipLength=0.1, line_type='aa'):
     """
     Create an image representing a 2D vector field.
@@ -401,7 +401,8 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
     Args:
         dx (ndarray): grid of vector x components
         dy (ndarray): grid of vector y components
-        stride (int): sparsity of vectors
+        stride (int | float): sparsity of vectors, int specifies stride step in
+            pixels, a float specifies it as a percentage.
         thresh (float): only plot vectors with magnitude greater than thres
         scale (float): multiply magnitude for easier visualization
         alpha (float): alpha value for vectors. Non-vector regions receive 0
@@ -425,7 +426,7 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
         >>> radians = np.arctan2(dx, dy)
         >>> mag = np.sqrt(dx ** 2 + dy ** 2)
         >>> dx, dy = dx / mag, dy / mag
-        >>> img = make_vector_field(dx, dy, stride=10, scale=10, alpha=False)
+        >>> img = make_vector_field(dx, dy, scale=10, alpha=False)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -442,13 +443,21 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
     line_type_lookup = {'aa': cv2.LINE_AA}
     line_type = line_type_lookup.get(line_type, line_type)
 
-    x_grid = np.arange(0, dx.shape[1], 1)
-    y_grid = np.arange(0, dy.shape[0], 1)
+    width = dx.shape[1]
+    height = dy.shape[0]
+
+    x_grid = np.arange(0, width, 1)
+    y_grid = np.arange(0, height, 1)
     # Vector locations and directions
     X, Y = np.meshgrid(x_grid, y_grid)
     U, V = dx, dy
 
     XYUV = [X, Y, U, V]
+
+    if isinstance(stride, float):
+        if stride < 0 or stride > 1:
+            raise ValueError('Floating point strides must be between 0 and 1')
+        stride = int(np.ceil(stride * min(width, height)))
 
     # stride the points
     if stride is not None and stride > 1:
@@ -489,7 +498,7 @@ def make_vector_field(dx, dy, stride=1, thresh=0.0, scale=1.0, alpha=1.0,
     return vecmask
 
 
-def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
+def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
                       alpha=1.0, color='red', thickness=1, tipLength=0.1,
                       line_type='aa'):
     """
@@ -499,7 +508,8 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
         image (ndarray): image to draw on
         dx (ndarray): grid of vector x components
         dy (ndarray): grid of vector y components
-        stride (int): sparsity of vectors
+        stride (int | float): sparsity of vectors, int specifies stride step in
+            pixels, a float specifies it as a percentage.
         thresh (float): only plot vectors with magnitude greater than thres
         scale (float): multiply magnitude for easier visualization
         alpha (float): alpha value for vectors. Non-vector regions receive 0
@@ -516,13 +526,13 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
     Example:
         >>> import kwimage
         >>> width, height = 512, 512
-        >>> x, y = np.meshgrid(np.arange(height), np.arange(width))
         >>> image = kwimage.grab_test_image(dsize=(width, height))
-        >>> dx, dy = x - 256.01, y - 256.01
+        >>> x, y = np.meshgrid(np.arange(height), np.arange(width))
+        >>> dx, dy = x - width / 2, y - height / 2
         >>> radians = np.arctan2(dx, dy)
-        >>> mag = np.sqrt(dx ** 2 + dy ** 2)
+        >>> mag = np.sqrt(dx ** 2 + dy ** 2) + 1e-3
         >>> dx, dy = dx / mag, dy / mag
-        >>> img = draw_vector_field(image, dx, dy, stride=10, scale=10, alpha=False)
+        >>> img = kwimage.draw_vector_field(image, dx, dy, scale=10, alpha=False)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -542,13 +552,20 @@ def draw_vector_field(image, dx, dy, stride=1, thresh=0.0, scale=1.0,
     line_type_lookup = {'aa': cv2.LINE_AA}
     line_type = line_type_lookup.get(line_type, line_type)
 
-    x_grid = np.arange(0, dx.shape[1], 1)
-    y_grid = np.arange(0, dy.shape[0], 1)
+    height, width = dx.shape[0:2]
+
+    x_grid = np.arange(0, width, 1)
+    y_grid = np.arange(0, height, 1)
     # Vector locations and directions
     X, Y = np.meshgrid(x_grid, y_grid)
     U, V = dx, dy
 
     XYUV = [X, Y, U, V]
+
+    if isinstance(stride, float):
+        if stride < 0 or stride > 1:
+            raise ValueError('Floating point strides must be between 0 and 1')
+        stride = int(np.ceil(stride * min(width, height)))
 
     # stride the points
     if stride is not None and stride > 1:
