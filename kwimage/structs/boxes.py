@@ -1161,7 +1161,6 @@ class _BoxDrawMixins(object):
             thickness (int, default=2): rectangle thickness
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.boxes import *  # NOQA
             >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
             >>> self.data[0][:] = [3, 3, 253, 253]
@@ -1169,6 +1168,7 @@ class _BoxDrawMixins(object):
             >>> image = (np.random.rand(256, 256, 3) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image.copy(), color=color)
             >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
@@ -1208,14 +1208,6 @@ class _BoxDrawMixins(object):
             >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
-
-        Ignore:
-            import cv2
-            image = kwimage.ensure_uint255(np.random.rand(128, 128, 3))
-            image = kwimage.ensure_alpha_channel(np.random.rand(128, 128, 3))
-            canvas = cv2.rectangle(image, (10, 10), (100, 100), color=(0, 1.0, 0, 1.0), thickness=10)
-            kwplot.imshow(image, fnum=2000, pnum=(1, 2, 1))
-            kwplot.imshow(canvas, fnum=2000, pnum=(1, 2, 2))
         """
         import cv2
         import kwimage

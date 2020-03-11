@@ -392,10 +392,24 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             indexes.
 
     Example:
-        >>> self = Detections.random(10)
-        >>> other = Detections(self)
-        >>> assert other.data == self.data
-        >>> assert other.data is self.data, 'try not to copy unless necessary'
+        >>> import kwimage
+        >>> dets = kwimage.Detections(
+        >>>     # there are expected keys that do not need registration
+        >>>     boxes=kwimage.Boxes.random(3),
+        >>>     class_idxs=[0, 1, 1],
+        >>>     classes=['a', 'b'],
+        >>>     # custom data attrs must align with boxes
+        >>>     myattr1=np.random.rand(3),
+        >>>     myattr2=np.random.rand(3, 2, 8),
+        >>>     # there are no restrictions on metadata
+        >>>     mymeta='a custom metadata string',
+        >>>     # Note that any key not in kwimage.Detections.__datakeys__ or
+        >>>     # kwimage.Detections.__metakeys__ must be registered at the
+        >>>     # time of construction.
+        >>>     datakeys=['myattr1', 'myattr2'],
+        >>>     metakeys=['mymeta'],
+        >>>     checks=True,
+        >>> )
     """
     # __slots__ = ('data', 'meta',)
 
@@ -434,27 +448,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 specify any key for the data or meta dictionaries.
 
         Example:
-            >>> import kwimage
-            >>> dets = kwimage.Detections(
-            >>>     # there are expected keys that do not need registration
-            >>>     boxes=kwimage.Boxes.random(3),
-            >>>     class_idxs=[0, 1, 1],
-            >>>     classes=['a', 'b'],
-            >>>     # custom data attrs must align with boxes
-            >>>     myattr1=np.random.rand(3),
-            >>>     myattr2=np.random.rand(3, 2, 8),
-            >>>     # there are no restrictions on metadata
-            >>>     mymeta='a custom metadata string',
-            >>>     # Note that any key not in kwimage.Detections.__datakeys__ or
-            >>>     # kwimage.Detections.__metakeys__ must be registered at the
-            >>>     # time of construction.
-            >>>     datakeys=['myattr1', 'myattr2'],
-            >>>     metakeys=['mymeta'],
-            >>>     checks=True,
-            >>> )
-
-        Doctest:
-            >>> # TODO: move to external unit test
             >>> # Coerce to numpy
             >>> import kwimage
             >>> dets = Detections(
@@ -477,6 +470,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>>         class_idxs=[0, 1, 1],
             >>>         checks=True,
             >>>     )
+
+        Example:
+            >>> self = Detections.random(10)
+            >>> other = Detections(self)
+            >>> assert other.data == self.data
+            >>> assert other.data is self.data, 'try not to copy unless necessary'
+
         """
         # Standardize input format
         if kwargs:
