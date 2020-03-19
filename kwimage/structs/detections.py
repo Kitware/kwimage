@@ -561,6 +561,42 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return copy.deepcopy(self)
 
     @classmethod
+    def coerce(cls, data=None, **kwargs):
+        """
+        The "try-anything to get what I want" constructor
+
+        Args:
+            data:
+            **kwargs: currently boxes and cnames
+
+        Example:
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> import kwimage
+            >>> kwargs = dict(
+            >>>     boxes=kwimage.Boxes.random(4),
+            >>>     cnames=['a', 'b', 'c', 'c'],
+            >>> )
+            >>> data = {}
+            >>> self = kwimage.Detections.coerce(data, **kwargs)
+        """
+        if data is None:
+            data = {}
+        if 'boxes' in kwargs:
+            data['boxes'] = kwargs['boxes']
+
+        cnames = kwargs.get('cnames', kwargs.get('class_names', kwargs.get('catnames', None)))
+        if cnames is not None:
+            if len(cnames) and isinstance(ub.peek(cnames), six.string_types):
+                if 'classes' not in data:
+                    data['classes'] = sorted(set(cnames))
+                if 'class_idxs' not in data:
+                    classes = data['classes']
+                    data['class_idxs'] = list(map(classes.index, cnames))
+
+        self = cls(**data)
+        return self
+
+    @classmethod
     def from_coco_annots(cls, anns, cats=None, classes=None, kp_classes=None,
                          shape=None, dset=None):
         """
@@ -708,8 +744,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     # TODO: correctly handle newstyle keypoints
                     if dset is not None:
                         pass
-                    if kp_classes is not None:
-                        kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
+                    kpcidxs = None
+                    if not (isinstance(k, list) and len(k) and isinstance(ub.peek(k), dict)):
+                        # oldstyle
+                        if kp_classes is not None:
+                            # These are only needed for old-style coco
+                            kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
 
                     pts = kwimage.Points.from_coco(
                         k, class_idxs=kpcidxs, classes=kp_classes)

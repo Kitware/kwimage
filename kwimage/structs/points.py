@@ -779,6 +779,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         assert classes is not None
                         cname = kpdict['keypoint_category']
                         cidx = classes.index(cname)
+                    elif 'category_name' in kpdict:
+                        assert classes is not None
+                        cname = kpdict['category_name']
+                        cidx = classes.index(cname)
                     ### Legacy support, these are not prefered names ###
                     elif 'category_id' in kpdict:
                         import warnings
