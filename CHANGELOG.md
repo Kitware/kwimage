@@ -182,3 +182,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - `im_runlen`
     - `im_cv2`
     - `im_alphablend`
+
+## Version 0.6.2 - Unreleased
+## Version 0.6.2 - Unreleased rob sedr '0.6.1' '0.6.2' True
+
+## Version 0.6.2 - Unreleased
