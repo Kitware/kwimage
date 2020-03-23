@@ -1891,7 +1891,6 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             (tlbr.br_x >= pt_x) &
             (tlbr.br_y >= pt_y)
         )
-
         return flags
 
     def view(self, *shape):
