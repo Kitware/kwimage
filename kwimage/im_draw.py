@@ -326,12 +326,12 @@ def draw_line_segments_on_image(
         >>> kwplot.imshow(img2)
 
     Example:
-        >>> from kwimage.im_draw import *  # NOQA
+        >>> import kwimage
         >>> pts1 = kwimage.Points.random(10).scale(512).xy
         >>> pts2 = kwimage.Points.random(10).scale(512).xy
         >>> img = np.ones((512, 512, 3), dtype=np.uint8) * 255
         >>> color = kwimage.Color.distinct(10)
-        >>> img2 = draw_line_segments_on_image(img, pts1, pts2, color=color)
+        >>> img2 = kwimage.draw_line_segments_on_image(img, pts1, pts2, color=color)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()  # xdoc: +SKIP
