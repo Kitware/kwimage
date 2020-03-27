@@ -525,6 +525,15 @@ deploy/py2.py3-none-any:
         # todo, can we tag the branch here as well?
         # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
         - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        # Have the server git-tag the release and push the tags
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
+        # do sed twice to handle the case of https clone with and without a read token
+        - URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g')
+        - echo "URL_HOST = $URL_HOST"
+        - git config user.email "ci@gitlab.kitware.com"
+        - git config user.name "Gitlab-CI"
+        - git tag $VERSION -m "tarball tag $VERSION"
+        - git push --tags "https://${GIT_PUSH_TOKEN}@${URL_HOST}"
             
     only:
         refs:
