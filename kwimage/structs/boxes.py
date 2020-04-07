@@ -60,6 +60,7 @@ import ubelt as ub
 import warnings
 import skimage
 import kwarray
+import six
 from distutils.version import LooseVersion
 from . import _generic  # NOQA
 
@@ -881,20 +882,25 @@ class _BoxTransformMixins(object):
 
         return new
 
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, about='origin', output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
+
+        works natively with tlbr, cxywh, xywh, xy, or wh formats
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+
+            about (str | ArrayLike, default='origin'):
+                Origin of the scaling operation, Can be a single point, an
+                array of points for each box, or a special string:
+                    'origin': all boxes are scaled about (0, 0)
+                    'center': all boxes are scaled about their own center.
+
             output_dims (Tuple): unused in non-raster spatial structures
 
-        TODO:
-            it might be useful to have an argument `origin`, so everything
-            is scaled about that origin.
-
-            works natively with tlbr, cxywh, xywh, xy, or wh formats
+            inplace (bool, default=False): if True works inplace if possible
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -927,6 +933,17 @@ class _BoxTransformMixins(object):
             >>> y1 = boxes.toformat('tlbr').scale(scale_xy).toformat('xywh')
             >>> y2 = boxes.toformat('xxyy').scale(scale_xy).toformat('xywh')
             >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
+
+        Example:
+            >>> import kwimage
+            >>> # Test with about=center
+            >>> self = kwimage.Boxes([[25., 30., 15., 10.], [2, 0, 15., 10.]], 'cxywh')
+            >>> scale_xy = (2, 4)
+            >>> print(ub.repr2(self.scale(scale_xy, about='center').data, precision=2))
+            >>> y0 = self.toformat('xywh').scale(scale_xy, about='center').toformat('cxywh')
+            >>> y1 = self.toformat('tlbr').scale(scale_xy, about='center').toformat('cxywh')
+            >>> y2 = self.toformat('xxyy').scale(scale_xy, about='center').toformat('cxywh')
+            >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
         """
         if not ub.iterable(factor):
             sx = sy = factor
@@ -945,19 +962,52 @@ class _BoxTransformMixins(object):
             else:
                 new_data = self.data.astype(np.float, copy=True)
             new = Boxes(new_data, self.format)
+
         if _numel(new_data) > 0:
-            if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.TLBR]:
-                new_data[..., 0] *= sx
-                new_data[..., 1] *= sy
-                new_data[..., 2] *= sx
-                new_data[..., 3] *= sy
-            elif self.format in [BoxFormat.XXYY]:
-                new_data[..., 0] *= sx
-                new_data[..., 1] *= sx
-                new_data[..., 2] *= sy
-                new_data[..., 3] *= sy
+
+            if isinstance(about, six.string_types):
+                if about == 'origin':
+                    about = None
+                elif about == 'center':
+                    about = self.xy_center
+                else:
+                    raise KeyError(about)
+
+            if about is None:
+                # scale about the origin
+                if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.TLBR]:
+                    new_data[..., 0] *= sx
+                    new_data[..., 1] *= sy
+                    new_data[..., 2] *= sx
+                    new_data[..., 3] *= sy
+                elif self.format in [BoxFormat.XXYY]:
+                    new_data[..., 0] *= sx
+                    new_data[..., 1] *= sx
+                    new_data[..., 2] *= sy
+                    new_data[..., 3] *= sy
+                else:
+                    raise NotImplementedError('Cannot scale: {}'.format(self.format))
             else:
-                raise NotImplementedError('Cannot scale: {}'.format(self.format))
+                # scale about some point: translate, scale, untranslate
+                about_x = about[..., 0]
+                about_y = about[..., 1]
+                if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH]:
+                    new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
+                    new_data[..., 1] = (new_data[..., 1] - about_y) * sy + about_y
+                    new_data[..., 2] *= sx
+                    new_data[..., 3] *= sy
+                elif self.format in [BoxFormat.TLBR]:
+                    new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
+                    new_data[..., 1] = (new_data[..., 1] - about_y) * sy + about_y
+                    new_data[..., 2] = (new_data[..., 2] - about_x) * sx + about_x
+                    new_data[..., 3] = (new_data[..., 3] - about_y) * sy + about_y
+                elif self.format in [BoxFormat.XXYY]:
+                    new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
+                    new_data[..., 1] = (new_data[..., 1] - about_x) * sx + about_x
+                    new_data[..., 2] = (new_data[..., 2] - about_y) * sy + about_y
+                    new_data[..., 3] = (new_data[..., 3] - about_y) * sy + about_y
+                else:
+                    raise NotImplementedError('Cannot scale about: {}'.format(self.format))
         return new
 
     def translate(self, amount, output_dims=None, inplace=False):
