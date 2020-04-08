@@ -29,13 +29,18 @@ Notes:
     semantics which are w/h.
 
 """
+import os
 import cv2
 import copy
 import six
 import numpy as np
 import ubelt as ub
 import itertools as it
+import warnings
 from . import _generic
+
+
+KWIMAGE_DISABLE_IMPORT_WARNINGS = os.environ.get('KWIMAGE_DISABLE_IMPORT_WARNINGS', '')
 
 
 class _Mask_Backends():
@@ -45,9 +50,6 @@ class _Mask_Backends():
 
     def _lazy_init(self):
         _funcs = {}
-
-        import os
-        import warnings
         val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
         DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
 
@@ -56,17 +58,19 @@ class _Mask_Backends():
             from pycocotools import _mask
             _funcs['pycoco'] = _mask
         except ImportError as ex:
-            warnings.warn(
-                'optional module pycocotools is not available: {}'.format(
-                    str(ex)))
+            if not KWIMAGE_DISABLE_IMPORT_WARNINGS:
+                warnings.warn(
+                    'optional module pycocotools is not available: {}'.format(
+                        str(ex)))
 
         if not DISABLE_C_EXTENSIONS:
             try:
                 from kwimage.structs._mask_backend import cython_mask
                 _funcs['kwimage'] = cython_mask
             except ImportError as ex:
-                warnings.warn(
-                    'optional mask_backend is not available: {}'.format(str(ex)))
+                if not KWIMAGE_DISABLE_IMPORT_WARNINGS:
+                    warnings.warn(
+                        'optional mask_backend is not available: {}'.format(str(ex)))
 
         self._funcs = _funcs
         self._valid = frozenset(self._funcs.keys())
@@ -77,8 +81,8 @@ class _Mask_Backends():
 
         valid = ub.oset(prefs) & set(self._funcs)
         if not valid:
-            import warnings
-            warnings.warn('no valid mask backend')
+            if not KWIMAGE_DISABLE_IMPORT_WARNINGS:
+                warnings.warn('no valid mask backend')
             return None, None
         key = ub.peek(valid)
         func = self._funcs[key]
@@ -87,11 +91,11 @@ class _Mask_Backends():
 
 _backends = _Mask_Backends()
 
-# cython_mask = _backends.get_backend(['pycoco', 'kwimage'])
-backend_key, cython_mask = _backends.get_backend(['kwimage', 'pycoco'])
-# print('backend_key = {!r}'.format(backend_key))
-# cython_mask = _backends.get_backend([])
-# cython_backend = _backends.get_backend(['pycoco'])
+
+@ub.memoize
+def _lazy_mask_backend():
+    backend_key, cython_mask = _backends.get_backend(['kwimage', 'pycoco'])
+    return cython_mask
 
 
 __all__ = ['Mask', 'MaskList']
@@ -188,6 +192,9 @@ class _MaskConversionMixin(object):
         """
         if self.format == MaskFormat.BYTES_RLE:
             return self.copy() if copy else self
+
+        cython_mask = _lazy_mask_backend()
+
         if self.format == MaskFormat.ARRAY_RLE:
             h, w = self.data['size']
             if self.data.get('order', 'F') != 'F':
@@ -256,6 +263,7 @@ class _MaskConversionMixin(object):
         else:
             # NOTE: inefficient, could be improved
             self = self.to_bytes_rle(copy=False)
+            cython_mask = _lazy_mask_backend()
             if cython_mask is None:
                 raise NotImplementedError('pure python version')
             f_mask = cython_mask.decode([self.data])[:, :, 0]
@@ -337,6 +345,7 @@ class _MaskConstructorMixin(object):
         if isinstance(polygons, np.ndarray):
             polygons = [polygons]
         flat_polys = [np.array(ps).ravel() for ps in polygons]
+        cython_mask = _lazy_mask_backend()
         if cython_mask is None:
             raise NotImplementedError('pure python version')
         encoded = cython_mask.frPoly(flat_polys, h, w)
@@ -766,6 +775,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 new = cls(new_data, MaskFormat.C_MASK)
             elif format == MaskFormat.BYTES_RLE:
                 datas = [item.to_bytes_rle().data for item in items]
+                cython_mask = _lazy_mask_backend()
                 if cython_mask is None:
                     raise NotImplementedError('pure python version')
                 new_data = cython_mask.merge(datas, intersect=0)
@@ -796,6 +806,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         cls = self.__class__ if isinstance(self, Mask) else Mask
         rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
+        cython_mask = _lazy_mask_backend()
         if cython_mask is None:
             raise NotImplementedError('pure python version')
         encoded = cython_mask.merge(rle_datas, intersect=1)
@@ -825,6 +836,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             150
         """
         self = self.to_bytes_rle()
+        cython_mask = _lazy_mask_backend()
         if cython_mask is None:
             raise NotImplementedError('pure python version')
         return cython_mask.area([self.data])[0]
@@ -863,6 +875,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         # import kwimage
         self = self.to_bytes_rle()
+        cython_mask = _lazy_mask_backend()
         if cython_mask is None:
             raise NotImplementedError('pure python version')
         xywh = cython_mask.toBbox([self.data])[0]
@@ -1132,6 +1145,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # I'm not sure what passing `pyiscrowd` actually does here
         # TODO: determine what `pyiscrowd` does, and document it.
         pyiscrowd = np.array([0], dtype=np.uint8)
+        cython_mask = _lazy_mask_backend()
         if cython_mask is None:
             raise NotImplementedError('pure python version')
         iou = cython_mask.iou([item1], [item2], pyiscrowd)[0, 0]
