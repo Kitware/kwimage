@@ -991,7 +991,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         sortx = self.scores.argsort()
         if reverse:
-            sortx = sortx[::-1]
+            if torch.is_tensor(sortx):
+                sortx = torch.flip(sortx, dims=(0,))
+            else:
+                sortx = sortx[::-1]
         return sortx
 
     def sort(self, reverse=True):
