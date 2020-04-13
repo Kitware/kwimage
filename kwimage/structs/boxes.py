@@ -1820,7 +1820,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if len(other) == 0 or len(self) == 0:
             if torch.is_tensor(self.data) or torch.is_tensor(other.data):
                 if _TORCH_HAS_EMPTY_SHAPE:
-                    torch.empty((len(self), len(other)))
+                    ious = torch.empty((len(self), len(other)))
                 else:
                     ious = torch.empty(0)
             else:
@@ -1859,10 +1859,21 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         other_is_1d = (len(other.shape) == 1)
         if other_is_1d:
             other = other[None, :]
-        self_tlbr = self.to_tlbr(copy=False)
-        other_tlbr = other.to_tlbr(copy=False)
 
-        isect = _isect_areas(self_tlbr.data, other_tlbr.data)
+        if len(other) == 0 or len(self) == 0:
+            if torch.is_tensor(self.data) or torch.is_tensor(other.data):
+                if _TORCH_HAS_EMPTY_SHAPE:
+                    isect = torch.empty((len(self), len(other)))
+                else:
+                    isect = torch.empty(0)
+            else:
+                isect = np.empty((len(self), len(other)))
+        else:
+            self_tlbr = self.to_tlbr(copy=False)
+            other_tlbr = other.to_tlbr(copy=False)
+
+            isect = _isect_areas(self_tlbr.data, other_tlbr.data)
+
         if other_is_1d:
             isect = isect[..., 0]
         return isect
