@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * `draw_line_segments_on_image`
 * Boxes.scale now accepts `about` keyword arg (can use to scale about center).
+* Boxes.warp now accepts matrices and does inexact corner warping
+* `kwimage.warp_points` now accepts `homog_mode`
 
 
 ## Version 0.6.1 -
