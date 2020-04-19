@@ -460,6 +460,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1, **kwargs):
         """
+        TODO: can use kwplot.draw_points
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
