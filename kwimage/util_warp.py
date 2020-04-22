@@ -1390,6 +1390,8 @@ def warp_points(matrix, pts, homog_mode='divide'):
             # the last row was ommitted)
             new_pts_T = new_pts_T[0:D] / new_pts_T[-1:]
         elif homog_mode == 'drop':
+            # FIXME: the drop mode probably doesn't correspond to anything real
+            # and thus should be removed
             new_pts_T = new_pts_T[0:D]
         elif homog_mode == 'keep':
             new_pts_T = new_pts_T
@@ -1409,6 +1411,9 @@ def remove_homog(pts, mode='divide'):
 
     This is a convinience function, it is not particularly efficient.
 
+    SeeAlso:
+        cv2.convertPointsFromHomogeneous
+
     Example:
         >>> homog_pts = np.random.rand(10, 3)
         >>> remove_homog(homog_pts, 'divide')
@@ -1421,6 +1426,8 @@ def remove_homog(pts, mode='divide'):
     if mode == 'divide':
         new_pts_T = pts_T[0:new_D] / pts_T[-1:]
     elif mode == 'drop':
+        # FIXME: the drop mode probably doesn't correspond to anything real
+        # and thus should be removed
         new_pts_T = pts_T[0:new_D]
     else:
         raise KeyError(mode)
@@ -1434,16 +1441,29 @@ def add_homog(pts):
 
     This is a convinience function, it is not particularly efficient.
 
+    SeeAlso:
+        cv2.convertPointsToHomogeneous
+
     Example:
         >>> pts = np.random.rand(10, 2)
         >>> add_homog(pts)
+
+    Benchmark:
+        >>> import timerit
+        >>> ti = timerit.Timerit(1000, bestof=10, verbose=2)
+        >>> pts = np.random.rand(1000, 2)
+        >>> for timer in ti.reset('kwimage'):
+        >>>     with timer:
+        >>>         kwimage.add_homog(pts)
+        >>> for timer in ti.reset('cv2'):
+        >>>     with timer:
+        >>>         cv2.convertPointsToHomogeneous(pts)
+        >>> # cv2 is 4x faster, but has more restrictive inputs
     """
     import kwarray
     impl = kwarray.ArrayAPI.coerce(pts)
-    D = pts.shape[-1]  # the trailing axis is the point dimensionality
-    pts_T = impl.T(impl.view(pts, (-1, D)))
-    new_pts_T = impl.cat([pts_T, impl.ones_like(pts_T[0:1])], axis=0)
-    new_pts = impl.T(new_pts_T)
+    new_pts = impl.cat([
+        pts, impl.ones(pts.shape[0:-1] + (1,), dtype=pts.dtype)], axis=-1)
     return new_pts
 
 
