@@ -294,9 +294,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Args:
             transform (GeometricTransform | ArrayLike | Augmenter | callable):
-                scikit-image tranform, a transformation matrix,
-                an imgaug Augmenter, or callable that maps the ndarray of
-                coords.
+                scikit-image tranform, a 3x3 transformation matrix,
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
@@ -368,9 +368,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             except ImportError:
                 import warnings
                 warnings.warn('imgaug is not installed')
-                raise TypeError(type(transform))
-            if isinstance(transform, imgaug.augmenters.Augmenter):
-                return new._warp_imgaug(transform, input_dims, inplace=True)
+            else:
+                if isinstance(transform, imgaug.augmenters.Augmenter):
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
 
             ### Try to accept GDAL tranforms ###
             try:
@@ -387,9 +387,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                         new_pts.append((x, y))
                     new.data = np.array(new_pts, dtype=new.data.dtype)
                     return new
-                elif callable(transform):
-                    new.data = transform(new.data)
-                    return new
+
+            ### Try to accept generic callable transforms ###
+            if callable(transform):
+                new.data = transform(new.data)
+                return new
+
             raise TypeError(type(transform))
         new.data = kwimage.warp_points(matrix, new.data)
         return new
@@ -715,3 +718,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             collections.append(col)
             ax.add_collection(col)
         return collections
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python -m kwimage.structs.coords all
+    """
+    import xdoctest
+    xdoctest.doctest_module(__file__)

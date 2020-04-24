@@ -790,8 +790,10 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (skimage.transform._geometric.GeometricTransform | ArrayLike):
-                scikit-image tranform or a 3x3 transformation matrix
+            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+                scikit-image tranform, a 3x3 transformation matrix,
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
@@ -799,9 +801,6 @@ class _BoxTransformMixins(object):
             output_dims (Tuple): unused in non-raster spatial structures
 
             inplace (bool, default=False): if True, modifies data inplace
-
-        TODO:
-            - [ ] Generalize so the transform can be an arbitrary matrix
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -929,7 +928,8 @@ class _BoxTransformMixins(object):
                 corners_new = func(corners)
             else:
                 raise NotImplementedError(
-                    'Corner warping is not implemented yet for transform={}'.format(transform))
+                    'Corner warping is not implemented yet for '
+                    'transform={!r}'.format(transform))
 
             x_pts_new = corners_new[..., 0].reshape(-1, 4)
             y_pts_new = corners_new[..., 1].reshape(-1, 4)

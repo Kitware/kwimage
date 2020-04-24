@@ -84,8 +84,8 @@ class _PointsWarpMixin:
         Args:
             transform (GeometricTransform | ArrayLike | Augmenter | callable):
                 scikit-image tranform, a 3x3 transformation matrix,
-                an imgaug Augmenter, or generic callable (which works on 1
-                point at a time).
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
