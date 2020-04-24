@@ -14,7 +14,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ### Changed
-* `_rectify_interpolation` now accepts strings for fallback interpolation flags.
+* Renamed `_rectify_interpolation` to `_coerce_interpolation`. Old function is deprecated and removed in the future.
+* `_coerce_interpolation` now accepts strings for fallback interpolation flags.
 
 
 ## Version 0.6.1 -

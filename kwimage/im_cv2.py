@@ -21,7 +21,7 @@ _CV2_INTERPOLATION_TYPES = {
 }
 
 
-def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
+def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                            grow_default=cv2.INTER_LANCZOS4,
                            shrink_default=cv2.INTER_AREA, scale=None):
     """
@@ -47,25 +47,25 @@ def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
            functions like cv2.resize, cv2.warpAffine, etc...
 
     Example:
-        >>> flag = _rectify_interpolation('linear')
+        >>> flag = _coerce_interpolation('linear')
         >>> assert flag == cv2.INTER_LINEAR
-        >>> flag = _rectify_interpolation(cv2.INTER_LINEAR)
+        >>> flag = _coerce_interpolation(cv2.INTER_LINEAR)
         >>> assert flag == cv2.INTER_LINEAR
-        >>> flag = _rectify_interpolation('auto', default='lanczos')
+        >>> flag = _coerce_interpolation('auto', default='lanczos')
         >>> assert flag == cv2.INTER_LANCZOS4
-        >>> flag = _rectify_interpolation(None, default='lanczos')
+        >>> flag = _coerce_interpolation(None, default='lanczos')
         >>> assert flag == cv2.INTER_LANCZOS4
-        >>> flag = _rectify_interpolation('auto', shrink_default='area', scale=0.1)
+        >>> flag = _coerce_interpolation('auto', shrink_default='area', scale=0.1)
         >>> assert flag == cv2.INTER_AREA
-        >>> flag = _rectify_interpolation('auto', grow_default='cubic', scale=10.)
+        >>> flag = _coerce_interpolation('auto', grow_default='cubic', scale=10.)
         >>> assert flag == cv2.INTER_CUBIC
         >>> # xdoctest: +REQUIRES(module:pytest)
         >>> import pytest
         >>> with pytest.raises(TypeError):
-        >>>     _rectify_interpolation(3.4)
+        >>>     _coerce_interpolation(3.4)
         >>> import pytest
         >>> with pytest.raises(KeyError):
-        >>>     _rectify_interpolation('foobar')
+        >>>     _coerce_interpolation('foobar')
     """
     # Handle auto-defaulting
     if interpolation is None or interpolation == 'auto':
@@ -93,6 +93,16 @@ def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
             'Invalid interpolation value={!r}. '
             'Type must be int or string but got {!r}'.format(
                 interpolation, type(interpolation)))
+
+
+def _rectify_interpolation(*args, **kwargs):
+    if False:
+        # TODO: Enable warning once internals are switched over
+        import warnings
+        warnings.warn(
+            '_rectify_interpolation is deprecated use _coerce_interpolation',
+            DeprecationWarning)
+    return _coerce_interpolation(*args, **kwargs)
 
 
 def imscale(img, scale, interpolation=None, return_scale=False):
@@ -147,7 +157,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     new_scale = new_w / w, new_h / h
     new_dsize = (new_w, new_h)
 
-    interpolation = _rectify_interpolation(interpolation)
+    interpolation = _coerce_interpolation(interpolation)
     new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
 
     if return_scale:
@@ -316,7 +326,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         left, top = offset
         right, bot = target_size - (embed_size + offset)
 
-        interpolation = _rectify_interpolation(
+        interpolation = _coerce_interpolation(
             interpolation, scale=equal_sxy)
 
         embed_dsize = tuple(embed_size)
@@ -340,7 +350,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         old_dsize = (old_w, old_h)
         new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
         new_scale = np.array(new_dsize) / np.array(old_dsize)
-        interpolation = _rectify_interpolation(
+        interpolation = _coerce_interpolation(
             interpolation, scale=new_scale.min())
         new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
         if return_info:
