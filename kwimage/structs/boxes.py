@@ -909,7 +909,6 @@ class _BoxTransformMixins(object):
                 new.translate(translation, inplace=True)
 
         except NeedsWarpCorners:
-            import kwimage
             corners = []
             x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]
             stacked = np.array([
@@ -923,6 +922,7 @@ class _BoxTransformMixins(object):
 
             # apply the operation to warp the corner points
             if matrix is not None:
+                import kwimage
                 corners_new = kwimage.warp_points(matrix, corners)
             elif func is not None:
                 corners_new = func(corners)
@@ -946,6 +946,22 @@ class _BoxTransformMixins(object):
             new.format = 'tlbr'
 
         return new
+
+    def corners(self):
+        """
+        Return the corners of the boxes
+        """
+        corners = []
+        x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]
+        stacked = np.array([
+            [x1, y1],
+            [x1, y2],
+            [x2, y2],
+            [x2, y1],
+        ])
+        corners = stacked.transpose(2, 0, 1).reshape(-1, 2)
+        corners = np.ascontiguousarray(corners)
+        return corners
 
     def scale(self, factor, about='origin', output_dims=None, inplace=False):
         """
