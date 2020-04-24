@@ -880,11 +880,12 @@ class _BoxTransformMixins(object):
                 except ImportError:
                     import warnings
                     warnings.warn('imgaug is not installed')
-                    raise TypeError(type(transform))
-                if isinstance(transform, imgaug.augmenters.Augmenter):
-                    aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)
-                    return aug
-                elif callable(transform):
+                else:
+                    if isinstance(transform, imgaug.augmenters.Augmenter):
+                        aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)
+                        return aug
+
+                if callable(transform):
                     func = transform
                     raise NeedsWarpCorners
                 else:

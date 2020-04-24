@@ -350,8 +350,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> # can use a generic function
             >>> def func(xy):
             ...     return np.zeros_like(xy)
-            >>> self = Points.random(10, rng=0)
-            >>> assert np.all(self.warp(func).xy == 0)
+            >>> self = Coords.random(10, rng=0)
+            >>> assert np.all(self.warp(func).data == 0)
         """
         import kwimage
         impl = self._impl
