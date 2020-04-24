@@ -373,6 +373,19 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = kwimage.warp_points(matrix, new.data)
         return new
 
+    def _warp_func(self, func, inplace=False):
+        """
+        Warp using a function that transforms points
+
+        Args:
+            func (callable): maps a single coordinate to a new coordinate
+        """
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        dtype = self.data.dtype
+        new.data = np.array([func(pt) for pt in new.data], dtype=dtype)
+        return new
+
     # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """

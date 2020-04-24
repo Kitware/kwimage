@@ -440,7 +440,9 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
         heatmask[:, :, 3] = (probs * with_alpha)  # assign probs to alpha channel
     if dsize is not None:
         import cv2
-        heatmask = cv2.resize(heatmask, tuple(dsize), interpolation=cv2.INTER_NEAREST)
+        heatmask = cv2.resize(
+            heatmask, tuple(dsize),
+            interpolation=cv2.INTER_NEAREST)
     return heatmask
 
 

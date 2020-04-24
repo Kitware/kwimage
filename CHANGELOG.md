@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Boxes.scale now accepts `about` keyword arg (can use to scale about center).
 * Boxes.warp now accepts matrices and does inexact corner warping
 * `kwimage.warp_points` now accepts `homog_mode`
+* Add `_warp_func`, which warps points using a general function to structures
 
 
 ### Changed
