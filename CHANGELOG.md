@@ -13,6 +13,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `kwimage.warp_points` now accepts `homog_mode`
 
 
+### Changed
+* `_rectify_interpolation` now accepts strings for fallback interpolation flags.
+
+
 ## Version 0.6.1 -
 
 ### Added

@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import cv2
 import six
 import numpy as np
+import numbers
 from . import im_core
 
 
@@ -44,25 +45,54 @@ def _rectify_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
     Returns:
         int: flag specifying interpolation type that can be passed to
            functions like cv2.resize, cv2.warpAffine, etc...
+
+    Example:
+        >>> flag = _rectify_interpolation('linear')
+        >>> assert flag == cv2.INTER_LINEAR
+        >>> flag = _rectify_interpolation(cv2.INTER_LINEAR)
+        >>> assert flag == cv2.INTER_LINEAR
+        >>> flag = _rectify_interpolation('auto', default='lanczos')
+        >>> assert flag == cv2.INTER_LANCZOS4
+        >>> flag = _rectify_interpolation(None, default='lanczos')
+        >>> assert flag == cv2.INTER_LANCZOS4
+        >>> flag = _rectify_interpolation('auto', shrink_default='area', scale=0.1)
+        >>> assert flag == cv2.INTER_AREA
+        >>> flag = _rectify_interpolation('auto', grow_default='cubic', scale=10.)
+        >>> assert flag == cv2.INTER_CUBIC
+        >>> # xdoctest: +REQUIRES(module:pytest)
+        >>> import pytest
+        >>> with pytest.raises(TypeError):
+        >>>     _rectify_interpolation(3.4)
+        >>> import pytest
+        >>> with pytest.raises(KeyError):
+        >>>     _rectify_interpolation('foobar')
     """
-    if interpolation is None:
+    # Handle auto-defaulting
+    if interpolation is None or interpolation == 'auto':
         if scale is None:
-            return default
+            interpolation = default
         else:
             if scale >= 1:
-                return grow_default
+                interpolation = grow_default
             else:
-                return shrink_default
+                interpolation = shrink_default
 
-    elif isinstance(interpolation, six.text_type):
+    # Handle coercion from string to cv2 integer flag
+    if isinstance(interpolation, six.text_type):
         try:
             return _CV2_INTERPOLATION_TYPES[interpolation]
         except KeyError:
-            print('Valid values for interpolation are {}'.format(
-                list(_CV2_INTERPOLATION_TYPES.keys())))
-            raise
+            raise KeyError(
+                'Invalid interpolation value={!r}. '
+                'Valid strings for interpolation are {}'.format(
+                    interpolation, list(_CV2_INTERPOLATION_TYPES.keys())))
+    elif isinstance(interpolation, numbers.Integral):
+        return int(interpolation)
     else:
-        return interpolation
+        raise TypeError(
+            'Invalid interpolation value={!r}. '
+            'Type must be int or string but got {!r}'.format(
+                interpolation, type(interpolation)))
 
 
 def imscale(img, scale, interpolation=None, return_scale=False):
