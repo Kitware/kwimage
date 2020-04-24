@@ -783,8 +783,7 @@ class _BoxTransformMixins(object):
         return new
 
     # @profile
-    def warp(self, transform, input_dims=None, output_dims=None, inplace=False,
-             homog_mode='divide'):
+    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
         not axis-aligned will lose information (and also may not be
@@ -815,12 +814,29 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> import kwimage
+            >>> # Can warp corners with a transformation matrix
             >>> self = kwimage.Boxes.random(3).scale(100).round(0)
             >>> transform = np.array([[ 0.98412825,  0.0577905 ,  0.16778511],
             >>>                       [-0.05968319,  0.99819777,  0.00625538],
             >>>                       [-0.16712122, -0.01617005,  0.98580375]])
             >>> matrix = transform
-            >>> self.warp(transform)
+            >>> new = self.warp(transform)
+            >>> assert np.all(new.area != self.area)
+
+        Example:
+            >>> import kwimage
+            >>> # can use a generic function to warp corners
+            >>> self = kwimage.Boxes.random(3).scale(100).round(0)
+            >>> def func(xy):
+            ...     return xy * 2
+            >>> new = self.warp(func)
+            >>> assert np.allclose(new.data, self.scale(2).to_tlbr().data)
+            >>> # If the box is distorted, the operation is not invertable
+            >>> self = kwimage.Boxes.random(3).scale(100).round(0)
+            >>> def func(xy):
+            ...     return np.zeros_like(xy)
+            >>> new = self.warp(func)
+            >>> assert np.all(new.area == 0)
         """
 
         if inplace:
@@ -840,6 +856,7 @@ class _BoxTransformMixins(object):
             scale = 0
             translation = 0
             matrix = None
+            func = None
 
             if isinstance(transform, skimage.transform.AffineTransform):
                 rotation = transform.rotation
@@ -867,6 +884,9 @@ class _BoxTransformMixins(object):
                 if isinstance(transform, imgaug.augmenters.Augmenter):
                     aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)
                     return aug
+                elif callable(transform):
+                    func = transform
+                    raise NeedsWarpCorners
                 else:
                     raise TypeError(type(transform))
 
@@ -889,46 +909,41 @@ class _BoxTransformMixins(object):
                 new.translate(translation, inplace=True)
 
         except NeedsWarpCorners:
-            if matrix is None:
-                raise NotImplementedError('Corner warping is not implemented yet for non-matrix')
+            import kwimage
+            corners = []
+            x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]
+            stacked = np.array([
+                [x1, y1],
+                [x1, y2],
+                [x2, y2],
+                [x2, y1],
+            ])
+            corners = stacked.transpose(2, 0, 1).reshape(-1, 2)
+            corners = np.ascontiguousarray(corners)
+
+            # apply the operation to warp the corner points
+            if matrix is not None:
+                corners_new = kwimage.warp_points(matrix, corners)
+            elif func is not None:
+                corners_new = func(corners)
             else:
-                import kwimage
-                corners = []
-                x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]
-                stacked = np.array([
-                    [x1, y1],
-                    [x1, y2],
-                    [x2, y2],
-                    [x2, y1],
-                ])
-                corners = stacked.transpose(2, 0, 1).reshape(-1, 2)
-                corners = np.ascontiguousarray(corners)
+                raise NotImplementedError(
+                    'Corner warping is not implemented yet for transform={}'.format(transform))
 
-                # homog_mode = 'drop'
-                corners_new = kwimage.warp_points(
-                    matrix, corners, homog_mode=homog_mode)
-                # kwimage.warp_points(matrix, corners, homog_mode='drop')
-                # kwimage.warp_points(matrix, corners, homog_mode='keep')
-                # kwimage.warp_points(matrix, corners, homog_mode='divide')
+            x_pts_new = corners_new[..., 0].reshape(-1, 4)
+            y_pts_new = corners_new[..., 1].reshape(-1, 4)
 
-                # corners_homog = kwimage.add_homog(corners)
-                # corners_homog_new = np.matmul(matrix, corners_homog.T).T
-                # corners_new = kwimage.remove_homog(corners_homog_new, mode='drop')
+            x1_new = x_pts_new.min(axis=1)
+            x2_new = x_pts_new.max(axis=1)
+            y1_new = y_pts_new.min(axis=1)
+            y2_new = y_pts_new.max(axis=1)
 
-                x_pts_new = corners_new[..., 0].reshape(-1, 4)
-                y_pts_new = corners_new[..., 1].reshape(-1, 4)
-
-                x1_new = x_pts_new.min(axis=1)
-                x2_new = x_pts_new.max(axis=1)
-                y1_new = y_pts_new.min(axis=1)
-                y2_new = y_pts_new.max(axis=1)
-
-                data_new = np.hstack([
-                    x1_new[:, None], y1_new[:, None],
-                    x2_new[:, None], y2_new[:, None],
-                ])
-                new.data = data_new
-                new.format = 'tlbr'
+            data_new = np.hstack([
+                x1_new[:, None], y1_new[:, None],
+                x2_new[:, None], y2_new[:, None],
+            ])
+            new.data = data_new
+            new.format = 'tlbr'
 
         return new
 

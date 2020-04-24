@@ -188,21 +188,6 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def _warp_func(self, func, inplace=False):
-        """
-        Warp using a function that transforms points
-
-        Args:
-            func (callable): maps a single coordinate to a new coordinate
-        """
-        new = self if inplace else self.__class__(self.data.copy())
-        new.data['exterior'] = new.data['exterior']._warp_func(func, inplace)
-        new.data['interiors'] = [
-            p._warp_func(func, inplace)
-            for p in new.data['interiors']
-        ]
-        return new
-
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a polygon by a factor
