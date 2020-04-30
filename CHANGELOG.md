@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 * Renamed `_rectify_interpolation` to `_coerce_interpolation`. Old function is deprecated and removed in the future.
 * `_coerce_interpolation` now accepts strings for fallback interpolation flags.
+* `Detections.from_coco_annots` now returns classes as ndsampler.CategoryTree when possible
 
 
 ## Version 0.6.1 -

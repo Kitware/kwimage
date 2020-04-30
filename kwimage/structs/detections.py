@@ -664,6 +664,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         import kwimage
         cnames = None
         if dset is not None:
+            try:
+                classes = dset.object_categories()
+            except Exception:
+                pass
             cats = dset.dataset['categories']
             kp_classes = dset.keypoint_categories()
         else:
