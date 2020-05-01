@@ -139,9 +139,10 @@ class _PolyWarpMixin:
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter):
-                scikit-image tranform, a 3x3 transformation matrix, or
-                an imgaug Augmenter.
+            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+                scikit-image tranform, a 3x3 transformation matrix,
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)

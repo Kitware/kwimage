@@ -209,7 +209,7 @@ class _NMS_Impls():
             from torchvision import _C as C  # NOQA
             import torchvision
             _funcs['torchvision'] = torchvision.ops.nms
-        except ImportError as ex:
+        except (ImportError, UnicodeDecodeError) as ex:
             warnings.warn(
                 'optional torchvision C nms is not available: {}'.format(
                     str(ex)))

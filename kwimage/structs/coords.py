@@ -293,9 +293,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter):
-                scikit-image tranform, a transformation matrix, or
-                an imgaug Augmenter.
+            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+                scikit-image tranform, a 3x3 transformation matrix,
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
@@ -325,15 +326,32 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(self.warp(np.eye(3)).data == self.data)
             >>> assert np.all(self.warp(np.eye(2)).data == self.data)
 
-        Ignore:
-            >>> # xdoctest: +SKIP
+        Doctest:
             >>> # xdoctest: +REQUIRES(module:osr)
+            >>> import osr
             >>> wgs84_crs = osr.SpatialReference()
             >>> wgs84_crs.ImportFromEPSG(4326)
-            >>> transform = osr.CoordinateTransformation(wgs84_crs, wgs84_crs)
+            >>> dst_crs = osr.SpatialReference()
+            >>> dst_crs.ImportFromEPSG(2927)
+            >>> transform = osr.CoordinateTransformation(wgs84_crs, dst_crs)
             >>> self = Coords.random(10, rng=0)
             >>> new = self.warp(transform)
-            >>> assert np.all(new.data == self.data)
+            >>> assert np.all(new.data != self.data)
+
+            >>> # Alternative using generic func
+            >>> def _gdal_coord_tranform(pts):
+            ...     return np.array([transform.TransformPoint(x, y, 0)[0:2]
+            ...                      for x, y in pts])
+            >>> alt = self.warp(_gdal_coord_tranform)
+            >>> assert np.all(alt.data != self.data)
+            >>> assert np.all(alt.data == new.data)
+
+        Doctest:
+            >>> # can use a generic function
+            >>> def func(xy):
+            ...     return np.zeros_like(xy)
+            >>> self = Coords.random(10, rng=0)
+            >>> assert np.all(self.warp(func).data == 0)
         """
         import kwimage
         impl = self._impl
@@ -350,9 +368,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             except ImportError:
                 import warnings
                 warnings.warn('imgaug is not installed')
-                raise TypeError(type(transform))
-            if isinstance(transform, imgaug.augmenters.Augmenter):
-                return new._warp_imgaug(transform, input_dims, inplace=True)
+            else:
+                if isinstance(transform, imgaug.augmenters.Augmenter):
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
 
             ### Try to accept GDAL tranforms ###
             try:
@@ -369,11 +387,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                         new_pts.append((x, y))
                     new.data = np.array(new_pts, dtype=new.data.dtype)
                     return new
+
+            ### Try to accept generic callable transforms ###
+            if callable(transform):
+                new.data = transform(new.data)
+                return new
+
             raise TypeError(type(transform))
         new.data = kwimage.warp_points(matrix, new.data)
         return new
 
-    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -695,3 +718,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             collections.append(col)
             ax.add_collection(col)
         return collections
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python -m kwimage.structs.coords all
+    """
+    import xdoctest
+    xdoctest.doctest_module(__file__)

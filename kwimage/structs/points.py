@@ -82,9 +82,10 @@ class _PointsWarpMixin:
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter):
-                scikit-image tranform, a 3x3 transformation matrix, or
-                an imgaug Augmenter.
+            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+                scikit-image tranform, a 3x3 transformation matrix,
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
@@ -125,6 +126,9 @@ class _PointsWarpMixin:
             tf = transform
             if isinstance(tf, np.ndarray):
                 tf = skimage.transform.AffineTransform(matrix=transform)
+            elif callable(tf):
+                raise NotImplementedError(
+                    'callables cant transform linear data_to_img yet')
             inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
             # new.meta['tf_data_to_img'] = new.meta['tf_data_to_img'] + inv_tf
             new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
@@ -460,6 +464,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     def draw(self, color='blue', ax=None, alpha=None, radius=1, **kwargs):
         """
+        TODO: can use kwplot.draw_points
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA

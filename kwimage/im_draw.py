@@ -293,6 +293,116 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
     return img2
 
 
+def draw_line_segments_on_image(
+        img, pts1, pts2, color='blue', colorspace='rgb', thickness=1,
+        **kwargs):
+    """
+    Draw line segments between pts1 and pts2 on an image.
+
+    Args:
+        pts1 (ndarray): xy coordinates of starting points
+        pts2 (ndarray): corresponding xy coordinates of ending points
+        color (str | List):
+            color code or a list of colors for each line segment
+        colorspace (str, default='rgb'): colorspace of image
+        thickness (int, default=1)
+        lineType (int, default=cv2.LINE_AA) option for cv2.line
+
+    Returns:
+        ndarray: the modified image (inplace if possible)
+
+    Example:
+        >>> from kwimage.im_draw import *  # NOQA
+        >>> pts1 = np.array([[2, 0], [2, 20], [2.5, 30]])
+        >>> pts2 = np.array([[10, 5], [30, 28], [100, 50]])
+        >>> img = np.ones((100, 100, 3), dtype=np.uint8) * 255
+        >>> color = 'blue'
+        >>> colorspace = 'rgb'
+        >>> img2 = draw_line_segments_on_image(img, pts1, pts2, thickness=2)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()  # xdoc: +SKIP
+        >>> kwplot.figure(doclf=True, fnum=1)
+        >>> kwplot.imshow(img2)
+
+    Example:
+        >>> import kwimage
+        >>> pts1 = kwimage.Points.random(10).scale(512).xy
+        >>> pts2 = kwimage.Points.random(10).scale(512).xy
+        >>> img = np.ones((512, 512, 3), dtype=np.uint8) * 255
+        >>> color = kwimage.Color.distinct(10)
+        >>> img2 = kwimage.draw_line_segments_on_image(img, pts1, pts2, color=color)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()  # xdoc: +SKIP
+        >>> kwplot.figure(doclf=True, fnum=1)
+        >>> kwplot.imshow(img2)
+    """
+    import cv2
+    # color = kwimage.Color(color)._forimage(img, colorspace)
+    num = len(pts1)
+    colors = _broadcast_colors(color, num, img, colorspace)
+
+    if 'lineType' not in kwargs:
+        kwargs['lineType'] = cv2.LINE_AA
+
+    pts1_ = pts1.tolist()
+    pts2_ = pts2.tolist()
+    for xy1, xy2, col in zip(pts1_, pts2_, colors):
+        xy1 = tuple(map(int, xy1))
+        xy2 = tuple(map(int, xy2))
+        cv2.line(img, xy1, xy2, color=col, thickness=thickness, **kwargs)
+    return img
+
+
+def _broadcast_colors(color, num, img, colorspace):
+    """
+    Determine if color applies a single color to all ``num`` items, or if it is
+    a list of colors for each item. Return as a list of colors for each item.
+
+    TODO:
+        - [ ] add as classmethod of kwimage.Color
+
+    Example:
+        >>> img = (np.random.rand(512, 512, 3) * 255).astype(np.uint8)
+        >>> colorspace = 'rgb'
+        >>> color = color_str_list = ['red', 'green', 'blue']
+        >>> color_str = 'red'
+        >>> num = 3
+        >>> print(_broadcast_colors(color_str_list, num, img, colorspace))
+        >>> print(_broadcast_colors(color_str, num, img, colorspace))
+        >>> colors_tuple_list = _broadcast_colors(color_str_list, num, img, colorspace)
+        >>> print(_broadcast_colors(colors_tuple_list, num, img, colorspace))
+        >>> #
+        >>> # FIXME: This case seems broken
+        >>> colors_ndarray_list = np.array(_broadcast_colors(color_str_list, num, img, colorspace))
+        >>> print(_broadcast_colors(colors_ndarray_list, num, img, colorspace))
+    """
+    # Note there is an ambiguity when num=3 and color=[int, int, int]
+    # that must be resolved by checking num channels in the image
+    import kwimage
+    import ubelt as ub
+    import numbers
+
+    needs_broadcast = True  # assume the list wasnt given by default
+    if ub.iterable(color):
+        first = ub.peek(color)
+        if len(color) == num:
+            if len(color) <= 4 and isinstance(first, numbers.Number):
+                # ambiguous case, interpret as a single broadcastable color
+                needs_broadcast = True
+            else:
+                # This is the only case we dont need broadcast
+                needs_broadcast = False
+
+    if needs_broadcast:
+        color = kwimage.Color(color)._forimage(img, colorspace)
+        colors = [color] * num
+    else:
+        colors = [kwimage.Color(c)._forimage(img, colorspace) for c in color]
+    return colors
+
+
 def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
                   dsize=None):
     """
@@ -330,7 +440,9 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
         heatmask[:, :, 3] = (probs * with_alpha)  # assign probs to alpha channel
     if dsize is not None:
         import cv2
-        heatmask = cv2.resize(heatmask, tuple(dsize), interpolation=cv2.INTER_NEAREST)
+        heatmask = cv2.resize(
+            heatmask, tuple(dsize),
+            interpolation=cv2.INTER_NEAREST)
     return heatmask
 
 

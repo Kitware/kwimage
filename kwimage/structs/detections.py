@@ -664,6 +664,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         import kwimage
         cnames = None
         if dset is not None:
+            try:
+                classes = dset.object_categories()
+            except Exception:
+                pass
             cats = dset.dataset['categories']
             kp_classes = dset.keypoint_categories()
         else:
@@ -991,7 +995,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         sortx = self.scores.argsort()
         if reverse:
-            sortx = sortx[::-1]
+            if torch.is_tensor(sortx):
+                sortx = torch.flip(sortx, dims=(0,))
+            else:
+                sortx = sortx[::-1]
         return sortx
 
     def sort(self, reverse=True):

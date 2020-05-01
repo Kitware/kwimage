@@ -60,6 +60,7 @@ import ubelt as ub
 import warnings
 import skimage
 import kwarray
+import six
 from distutils.version import LooseVersion
 from . import _generic  # NOQA
 
@@ -789,8 +790,10 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (skimage.transform._geometric.GeometricTransform | ArrayLike):
-                scikit-image tranform or a 3x3 transformation matrix
+            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+                scikit-image tranform, a 3x3 transformation matrix,
+                an imgaug Augmenter, or generic callable which transforms
+                an NxD ndarray.
 
             input_dims (Tuple): shape of the image these objects correspond to
                 (only needed / used when transform is an imgaug augmenter)
@@ -799,9 +802,6 @@ class _BoxTransformMixins(object):
 
             inplace (bool, default=False): if True, modifies data inplace
 
-        TODO:
-            - [ ] Generalize so the transform can be an arbitrary matrix
-
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> transform = skimage.transform.AffineTransform(scale=(2, 3), translation=(4, 5))
@@ -809,6 +809,33 @@ class _BoxTransformMixins(object):
             <Boxes(xywh, array([54., 95., 30., 30.]))>
             >>> Boxes([25, 30, 15, 10], 'xywh').warp(transform.params)
             <Boxes(xywh, array([54., 95., 30., 30.]))>
+
+
+        Example:
+            >>> import kwimage
+            >>> # Can warp corners with a transformation matrix
+            >>> self = kwimage.Boxes.random(3).scale(100).round(0)
+            >>> transform = np.array([[ 0.98412825,  0.0577905 ,  0.16778511],
+            >>>                       [-0.05968319,  0.99819777,  0.00625538],
+            >>>                       [-0.16712122, -0.01617005,  0.98580375]])
+            >>> matrix = transform
+            >>> new = self.warp(transform)
+            >>> assert np.all(new.area != self.area)
+
+        Example:
+            >>> import kwimage
+            >>> # can use a generic function to warp corners
+            >>> self = kwimage.Boxes.random(3).scale(100).round(0)
+            >>> def func(xy):
+            ...     return xy * 2
+            >>> new = self.warp(func)
+            >>> assert np.allclose(new.data, self.scale(2).to_tlbr().data)
+            >>> # If the box is distorted, the operation is not invertable
+            >>> self = kwimage.Boxes.random(3).scale(100).round(0)
+            >>> def func(xy):
+            ...     return np.zeros_like(xy)
+            >>> new = self.warp(func)
+            >>> assert np.all(new.area == 0)
         """
 
         if inplace:
@@ -828,6 +855,7 @@ class _BoxTransformMixins(object):
             scale = 0
             translation = 0
             matrix = None
+            func = None
 
             if isinstance(transform, skimage.transform.AffineTransform):
                 rotation = transform.rotation
@@ -851,10 +879,14 @@ class _BoxTransformMixins(object):
                 except ImportError:
                     import warnings
                     warnings.warn('imgaug is not installed')
-                    raise TypeError(type(transform))
-                if isinstance(transform, imgaug.augmenters.Augmenter):
-                    aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)
-                    return aug
+                else:
+                    if isinstance(transform, imgaug.augmenters.Augmenter):
+                        aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)
+                        return aug
+
+                if callable(transform):
+                    func = transform
+                    raise NeedsWarpCorners
                 else:
                     raise TypeError(type(transform))
 
@@ -877,24 +909,80 @@ class _BoxTransformMixins(object):
                 new.translate(translation, inplace=True)
 
         except NeedsWarpCorners:
-            raise NotImplementedError('Corner warping is not implemented yet')
+            corners = []
+            x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]
+            stacked = np.array([
+                [x1, y1],
+                [x1, y2],
+                [x2, y2],
+                [x2, y1],
+            ])
+            corners = stacked.transpose(2, 0, 1).reshape(-1, 2)
+            corners = np.ascontiguousarray(corners)
+
+            # apply the operation to warp the corner points
+            if matrix is not None:
+                import kwimage
+                corners_new = kwimage.warp_points(matrix, corners)
+            elif func is not None:
+                corners_new = func(corners)
+            else:
+                raise NotImplementedError(
+                    'Corner warping is not implemented yet for '
+                    'transform={!r}'.format(transform))
+
+            x_pts_new = corners_new[..., 0].reshape(-1, 4)
+            y_pts_new = corners_new[..., 1].reshape(-1, 4)
+
+            x1_new = x_pts_new.min(axis=1)
+            x2_new = x_pts_new.max(axis=1)
+            y1_new = y_pts_new.min(axis=1)
+            y2_new = y_pts_new.max(axis=1)
+
+            data_new = np.hstack([
+                x1_new[:, None], y1_new[:, None],
+                x2_new[:, None], y2_new[:, None],
+            ])
+            new.data = data_new
+            new.format = 'tlbr'
 
         return new
 
-    def scale(self, factor, output_dims=None, inplace=False):
+    def corners(self):
+        """
+        Return the corners of the boxes
+        """
+        corners = []
+        x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]
+        stacked = np.array([
+            [x1, y1],
+            [x1, y2],
+            [x2, y2],
+            [x2, y1],
+        ])
+        corners = stacked.transpose(2, 0, 1).reshape(-1, 2)
+        corners = np.ascontiguousarray(corners)
+        return corners
+
+    def scale(self, factor, about='origin', output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
+
+        works natively with tlbr, cxywh, xywh, xy, or wh formats
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+
+            about (str | ArrayLike, default='origin'):
+                Origin of the scaling operation, Can be a single point, an
+                array of points for each box, or a special string:
+                    'origin': all boxes are scaled about (0, 0)
+                    'center': all boxes are scaled about their own center.
+
             output_dims (Tuple): unused in non-raster spatial structures
 
-        TODO:
-            it might be useful to have an argument `origin`, so everything
-            is scaled about that origin.
-
-            works natively with tlbr, cxywh, xywh, xy, or wh formats
+            inplace (bool, default=False): if True works inplace if possible
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -927,6 +1015,17 @@ class _BoxTransformMixins(object):
             >>> y1 = boxes.toformat('tlbr').scale(scale_xy).toformat('xywh')
             >>> y2 = boxes.toformat('xxyy').scale(scale_xy).toformat('xywh')
             >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
+
+        Example:
+            >>> import kwimage
+            >>> # Test with about=center
+            >>> self = kwimage.Boxes([[25., 30., 15., 10.], [2, 0, 15., 10.]], 'cxywh')
+            >>> scale_xy = (2, 4)
+            >>> print(ub.repr2(self.scale(scale_xy, about='center').data, precision=2))
+            >>> y0 = self.toformat('xywh').scale(scale_xy, about='center').toformat('cxywh')
+            >>> y1 = self.toformat('tlbr').scale(scale_xy, about='center').toformat('cxywh')
+            >>> y2 = self.toformat('xxyy').scale(scale_xy, about='center').toformat('cxywh')
+            >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
         """
         if not ub.iterable(factor):
             sx = sy = factor
@@ -945,19 +1044,52 @@ class _BoxTransformMixins(object):
             else:
                 new_data = self.data.astype(np.float, copy=True)
             new = Boxes(new_data, self.format)
+
         if _numel(new_data) > 0:
-            if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.TLBR]:
-                new_data[..., 0] *= sx
-                new_data[..., 1] *= sy
-                new_data[..., 2] *= sx
-                new_data[..., 3] *= sy
-            elif self.format in [BoxFormat.XXYY]:
-                new_data[..., 0] *= sx
-                new_data[..., 1] *= sx
-                new_data[..., 2] *= sy
-                new_data[..., 3] *= sy
+
+            if isinstance(about, six.string_types):
+                if about == 'origin':
+                    about = None
+                elif about == 'center':
+                    about = self.xy_center
+                else:
+                    raise KeyError(about)
+
+            if about is None:
+                # scale about the origin
+                if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.TLBR]:
+                    new_data[..., 0] *= sx
+                    new_data[..., 1] *= sy
+                    new_data[..., 2] *= sx
+                    new_data[..., 3] *= sy
+                elif self.format in [BoxFormat.XXYY]:
+                    new_data[..., 0] *= sx
+                    new_data[..., 1] *= sx
+                    new_data[..., 2] *= sy
+                    new_data[..., 3] *= sy
+                else:
+                    raise NotImplementedError('Cannot scale: {}'.format(self.format))
             else:
-                raise NotImplementedError('Cannot scale: {}'.format(self.format))
+                # scale about some point: translate, scale, untranslate
+                about_x = about[..., 0]
+                about_y = about[..., 1]
+                if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH]:
+                    new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
+                    new_data[..., 1] = (new_data[..., 1] - about_y) * sy + about_y
+                    new_data[..., 2] *= sx
+                    new_data[..., 3] *= sy
+                elif self.format in [BoxFormat.TLBR]:
+                    new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
+                    new_data[..., 1] = (new_data[..., 1] - about_y) * sy + about_y
+                    new_data[..., 2] = (new_data[..., 2] - about_x) * sx + about_x
+                    new_data[..., 3] = (new_data[..., 3] - about_y) * sy + about_y
+                elif self.format in [BoxFormat.XXYY]:
+                    new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
+                    new_data[..., 1] = (new_data[..., 1] - about_x) * sx + about_x
+                    new_data[..., 2] = (new_data[..., 2] - about_y) * sy + about_y
+                    new_data[..., 3] = (new_data[..., 3] - about_y) * sy + about_y
+                else:
+                    raise NotImplementedError('Cannot scale about: {}'.format(self.format))
         return new
 
     def translate(self, amount, output_dims=None, inplace=False):
@@ -1770,7 +1902,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if len(other) == 0 or len(self) == 0:
             if torch.is_tensor(self.data) or torch.is_tensor(other.data):
                 if _TORCH_HAS_EMPTY_SHAPE:
-                    torch.empty((len(self), len(other)))
+                    ious = torch.empty((len(self), len(other)))
                 else:
                     ious = torch.empty(0)
             else:
@@ -1809,10 +1941,21 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         other_is_1d = (len(other.shape) == 1)
         if other_is_1d:
             other = other[None, :]
-        self_tlbr = self.to_tlbr(copy=False)
-        other_tlbr = other.to_tlbr(copy=False)
 
-        isect = _isect_areas(self_tlbr.data, other_tlbr.data)
+        if len(other) == 0 or len(self) == 0:
+            if torch.is_tensor(self.data) or torch.is_tensor(other.data):
+                if _TORCH_HAS_EMPTY_SHAPE:
+                    isect = torch.empty((len(self), len(other)))
+                else:
+                    isect = torch.empty(0)
+            else:
+                isect = np.empty((len(self), len(other)))
+        else:
+            self_tlbr = self.to_tlbr(copy=False)
+            other_tlbr = other.to_tlbr(copy=False)
+
+            isect = _isect_areas(self_tlbr.data, other_tlbr.data)
+
         if other_is_1d:
             isect = isect[..., 0]
         return isect
@@ -1891,7 +2034,6 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             (tlbr.br_x >= pt_x) &
             (tlbr.br_y >= pt_y)
         )
-
         return flags
 
     def view(self, *shape):

@@ -4,6 +4,21 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
+## Version 0.6.2 - Unreleased
+
+### Added
+* `draw_line_segments_on_image`
+* Boxes.scale now accepts `about` keyword arg (can use to scale about center).
+* Boxes.warp now accepts matrices and does inexact corner warping
+* kwimage structures `warp` function now accepts a generic callable for mapping array-based points.
+
+
+### Changed
+* Renamed `_rectify_interpolation` to `_coerce_interpolation`. Old function is deprecated and removed in the future.
+* `_coerce_interpolation` now accepts strings for fallback interpolation flags.
+* `Detections.from_coco_annots` now returns classes as ndsampler.CategoryTree when possible
+
+
 ## Version 0.6.1 -
 
 ### Added

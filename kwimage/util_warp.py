@@ -75,6 +75,14 @@ def _coordinate_grid(dims, align_corners=False):
     return pixel_coords
 
 
+def warp_image(inputs, mat, **kw):
+    import kwarray
+    # _impl = kwarray.ArrayAPI.coerce(inputs)
+    inputs = kwarray.atleast_nd(inputs, 3)
+    tensor = inputs.transpose(2, 0, 1)
+    return warp_tensor(tensor, mat, **kw)
+
+
 def warp_tensor(inputs, mat, output_dims, mode='bilinear',
                 padding_mode='zeros', isinv=False, ishomog=None,
                 align_corners=False, new_mode=False):
@@ -1285,7 +1293,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     return outputs
 
 
-def warp_points(matrix, pts):
+def warp_points(matrix, pts, homog_mode='divide'):
     """
     Warp ND points / coordinates using a transformation matrix.
 
@@ -1304,6 +1312,10 @@ def warp_points(matrix, pts):
             returned in homogenous space. D is the dimensionality of the
             points.  The leading axis may take any shape, but usually, shape
             will be [N x D] where N is the number of points.
+
+        homog_mode (str, default='divide'):
+            what to do for homogenous coordinates. Can either divide, keep, or
+            drop.
 
     Retrns:
         new_pts (ArrayLike): the points after being transformed by the matrix
@@ -1351,6 +1363,7 @@ def warp_points(matrix, pts):
     if len(matrix.shape) != 2:
         raise ValueError('matrix must have 2 dimensions')
 
+    new_shape = pts.shape
     D = pts.shape[-1]  # the trailing axis is the point dimensionality
     D1, D2 = matrix.shape
 
@@ -1372,13 +1385,85 @@ def warp_points(matrix, pts):
     new_pts_T = impl.matmul(matrix, new_pts_T)
 
     if D != D1:
-        # remove homogenous coordinates (unless the matrix was affine with the
-        # last row was ommitted)
-        new_pts_T = new_pts_T[0:D] / new_pts_T[-1:]
+        if homog_mode == 'divide':
+            # remove homogenous coordinates (unless the matrix was affine with
+            # the last row was ommitted)
+            new_pts_T = new_pts_T[0:D] / new_pts_T[-1:]
+        elif homog_mode == 'drop':
+            # FIXME: the drop mode probably doesn't correspond to anything real
+            # and thus should be removed
+            new_pts_T = new_pts_T[0:D]
+        elif homog_mode == 'keep':
+            new_pts_T = new_pts_T
+            new_shape = pts.shape[0:-1] + (D1,)
+        else:
+            raise KeyError(homog_mode)
 
     # Return the warped points with the same shape as the input
     new_pts = impl.T(new_pts_T)
-    new_pts = impl.view(new_pts, pts.shape)
+    new_pts = impl.view(new_pts, new_shape)
+    return new_pts
+
+
+def remove_homog(pts, mode='divide'):
+    """
+    Remove homogenous coordinate to a point array.
+
+    This is a convinience function, it is not particularly efficient.
+
+    SeeAlso:
+        cv2.convertPointsFromHomogeneous
+
+    Example:
+        >>> homog_pts = np.random.rand(10, 3)
+        >>> remove_homog(homog_pts, 'divide')
+        >>> remove_homog(homog_pts, 'drop')
+    """
+    impl = kwarray.ArrayAPI.coerce(pts)
+    D = pts.shape[-1]  # the trailing axis is the point dimensionality
+    new_D = D - 1
+    pts_T = impl.T(impl.view(pts, (-1, D)))
+    if mode == 'divide':
+        new_pts_T = pts_T[0:new_D] / pts_T[-1:]
+    elif mode == 'drop':
+        # FIXME: the drop mode probably doesn't correspond to anything real
+        # and thus should be removed
+        new_pts_T = pts_T[0:new_D]
+    else:
+        raise KeyError(mode)
+    new_pts = impl.T(new_pts_T)
+    return new_pts
+
+
+def add_homog(pts):
+    """
+    Add a homogenous coordinate to a point array
+
+    This is a convinience function, it is not particularly efficient.
+
+    SeeAlso:
+        cv2.convertPointsToHomogeneous
+
+    Example:
+        >>> pts = np.random.rand(10, 2)
+        >>> add_homog(pts)
+
+    Benchmark:
+        >>> import timerit
+        >>> ti = timerit.Timerit(1000, bestof=10, verbose=2)
+        >>> pts = np.random.rand(1000, 2)
+        >>> for timer in ti.reset('kwimage'):
+        >>>     with timer:
+        >>>         kwimage.add_homog(pts)
+        >>> for timer in ti.reset('cv2'):
+        >>>     with timer:
+        >>>         cv2.convertPointsToHomogeneous(pts)
+        >>> # cv2 is 4x faster, but has more restrictive inputs
+    """
+    import kwarray
+    impl = kwarray.ArrayAPI.coerce(pts)
+    new_pts = impl.cat([
+        pts, impl.ones(pts.shape[0:-1] + (1,), dtype=pts.dtype)], axis=-1)
     return new_pts
 
 
