@@ -716,7 +716,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         boxes = kwimage.Boxes(xywh, 'xywh')
         try:
             class_idxs = [classes.index(cname) for cname in cnames]
-        except ValueError:
+        except (KeyError, ValueError):
             class_idxs = [None if cname is None else classes.index(cname)
                           for cname in cnames]
 
