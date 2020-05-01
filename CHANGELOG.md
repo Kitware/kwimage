@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.3 - Unreleased
 
+### Fixed
+* Fix bug in `Detections.from_coco_annots` when categories are null.
+
 
 ## Version 0.6.2 - Released 2020-05-01 
 

@@ -650,6 +650,23 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets = Detections.from_coco_annots(anns, cats)
 
         Example:
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # Test case with no category information
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> anns = [{
+            >>>     'id': 0,
+            >>>     'image_id': 1,
+            >>>     'category_id': None,
+            >>>     'bbox': [2, 3, 10, 10],
+            >>>     'prob': [.1, .9],
+            >>> }]
+            >>> cats = [
+            >>>     {'id': 0, 'name': 'background'},
+            >>>     {'id': 2, 'name': 'class1'}
+            >>> ]
+            >>> dets = Detections.from_coco_annots(anns, cats)
+
+        Example:
             >>> import kwimage
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> import ndsampler
@@ -692,11 +709,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if cnames is None:
             cids = [ann['category_id'] for ann in anns]
             cid_to_cat = {c['id']: c for c in cats}  # Hack
-            cnames = [cid_to_cat[cid]['name'] for cid in cids]
+            cnames = [None if cid is None else cid_to_cat[cid]['name']
+                      for cid in cids]
 
         xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
         boxes = kwimage.Boxes(xywh, 'xywh')
-        class_idxs = [classes.index(cname) for cname in cnames]
+        try:
+            class_idxs = [classes.index(cname) for cname in cnames]
+        except ValueError:
+            class_idxs = [None if cname is None else classes.index(cname)
+                          for cname in cnames]
 
         dets = Detections(
             boxes=boxes,
