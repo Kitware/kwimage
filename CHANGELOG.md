@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Fix bug in `Detections.from_coco_annots` when categories are null.
+* Fix bug `Detections.compress` when flags are in tensor space.
 
 
 ## Version 0.6.2 - Released 2020-05-01 

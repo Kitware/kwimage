@@ -1072,10 +1072,20 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if isinstance(flags, np.ndarray):
                 if flags.dtype.kind == 'b':
                     flags = flags.astype(np.uint8)
-            if _TORCH_HAS_BOOL_COMP:
-                flags = torch.BoolTensor(flags).to(self.device)
+            if isinstance(flags, torch.Tensor):
+                if _TORCH_HAS_BOOL_COMP:
+                    if flags.dtype != torch.bool:
+                        flags = flags.bool()
+                else:
+                    if flags.dtype != torch.uint8:
+                        flags = flags.byte()
+                if flags.device != flags.device:
+                    flags = flags.to(self.device)
             else:
-                flags = torch.ByteTensor(flags).to(self.device)
+                if _TORCH_HAS_BOOL_COMP:
+                    flags = torch.BoolTensor(flags).to(self.device)
+                else:
+                    flags = torch.ByteTensor(flags).to(self.device)
         newdata = {k: _generic._safe_compress(v, flags, axis)
                    for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
