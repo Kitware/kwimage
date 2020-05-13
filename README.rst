@@ -7,12 +7,27 @@ The Kitware Image Module
 
 |GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| |ReadTheDocs|
 
-The `kwimage` module handles low-level image operations at a high level.
+The main webpage for this project is: https://gitlab.kitware.com/computer-vision/kwimage
 
-The `kwimage` module builds on `kwarray` and provides tools commonly needed
+The ``kwimage`` module handles low-level image operations at a high level.
+
+The core ``kwimage`` is a functional library with image-related helper
+functions that are either unimplemented in or more have a more general
+interface then their opencv counterparts. 
+
+The ``kwimage`` module builds on ``kwarray`` and provides tools commonly needed
 when addressing computer vision problems. This includes functions for reading
-images, non-maximum-suppression, image warp transformations, and
-run-length-encoding.
+images, resizing, image warp transformations, run-length-encoding, and
+non-maximum-suppression.
+
+
+The ``kwimage`` module is also the current home of my annotation data
+structures, which provide efficient ways to interoperate between different
+common annotation formats (e.g. different bounding box / polygon / point
+formats).  These data structures have both a ``.draw`` and ``.draw_on`` method
+for overlaying visualizations on matplotlib axes or numpy image matrices
+respectively. 
+
 
 Read the docs at: http://kwimage.readthedocs.io/en/master/
 
@@ -25,51 +40,58 @@ The top-level API is:
     from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
     from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
                                 overlay_alpha_layers,)
+    from .im_color import (Color,)
     from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
                           make_channels_comparable, num_channels,)
-    from .im_cv2 import (convert_colorspace, draw_boxes_on_image,
-                         draw_text_on_image, gaussian_patch, imscale, imresize,)
+    from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,)
     from .im_demodata import (grab_test_image, grab_test_image_fpath,)
-    from .im_io import (imread, imwrite,)
+    from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
+                          draw_line_segments_on_image, draw_text_on_image,
+                          draw_vector_field, make_heatmask, make_orimask,
+                          make_vector_field,)
+    from .im_filter import (fourier_mask, radial_fourier_mask,)
+    from .im_io import (imread, imwrite, load_image_shape,)
     from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
     from .im_stack import (stack_images, stack_images_grid,)
     from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                           MultiPolygon, Points, PointsList, Polygon, PolygonList,
-                          smooth_prob,)
-    from .util_warp import (subpixel_accum, subpixel_align, subpixel_getvalue,
+                          Segmentation, SegmentationList, smooth_prob,)
+    from .util_warp import (add_homog, remove_homog,
+                            subpixel_accum, subpixel_align, subpixel_getvalue,
                             subpixel_maximum, subpixel_minimum, subpixel_set,
                             subpixel_setvalue, subpixel_slice, subpixel_translate,
                             warp_points, warp_tensor,)
 
 
+
 NOTE: THE KWIMAGE STRUCTS WILL EVENTUALLY MOVE TO THE KWANNOT REPO
 
 
-The most notable feature of the `kwimage` module are the `kwimage.structs`
-objects. This includes the primitive `Boxes`, `Mask`, and `Coords` objects, The
-semi-primitive `Points`, `Polygon` structures, and the composite `Heatmap` and
-`Detections` structures (note: `Heatmap` is just a composite of array-like
+The most notable feature of the ``kwimage`` module are the ``kwimage.structs``
+objects. This includes the primitive ``Boxes``, ``Mask``, and ``Coords`` objects, The
+semi-primitive ``Points``, ``Polygon`` structures, and the composite ``Heatmap`` and
+``Detections`` structures (note: ``Heatmap`` is just a composite of array-like
 structures). 
 
 The primitive and semi-primitive objects store and manipulate annotation
 geometry, and the composite structures combine primitives into a single
-object that jointly manipulates the primitives using `warp` operations.
+object that jointly manipulates the primitives using ``warp`` operations.
 
-The `Detections` structure is a meta-structure that associates the other more
+The ``Detections`` structure is a meta-structure that associates the other more
 primitive components, and allows a developer to compose them into something
 that represents objects of interest.  The details of this composition are left
 up to the end-application.
 
-The `Detections` object can also be "rasterized" and converted into a `Heatmap`
+The ``Detections`` object can also be "rasterized" and converted into a ``Heatmap``
 object, which represents the same information, but is in a form that is more
 suitable for use when training convolutional neural networks. Likewise, the
-output of neural networks can be directly encoded in a `kwimage.Heatmap`
-object. The `Heatmap.detect` method can then be used to convert the dense
-heatmap representation into a spare `Detections` representation that is more
-suitable for use in an object-detection system. We note that the `detect`
+output of neural networks can be directly encoded in a ``kwimage.Heatmap``
+object. The ``Heatmap.detect`` method can then be used to convert the dense
+heatmap representation into a spare ``Detections`` representation that is more
+suitable for use in an object-detection system. We note that the ``detect``
 function is not a special detection algorithm. The detection algorithm (which
-is outside the scope of kwimage) produces the heatmap, and the `detect` method
-effectively "inverts" the `rasterize` procedure of `Detections` by finding
+is outside the scope of kwimage) produces the heatmap, and the ``detect`` method
+effectively "inverts" the ``rasterize`` procedure of ``Detections`` by finding
 peaks in the heatmap, and running non-maximum suppression.
 
 

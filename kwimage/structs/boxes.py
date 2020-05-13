@@ -342,6 +342,9 @@ class _BoxConversionMixins(object):
         Returns:
             Boxes : transformed boxes
 
+        TODO:
+            - [ ] rename to to_format?
+
         CommandLine:
             xdoctest -m kwimage.structs.boxes _BoxConversionMixins.toformat
 
