@@ -255,3 +255,168 @@ def atleast_3channels(arr, copy=True):
     else:
         raise ValueError('Cannot handle arr.shape={}'.format(arr.shape))
     return res
+
+
+def normalize(arr, new_min=None, new_max=None, alpha=None, beta=None, out=None):
+    """
+    Rebalance pixel intensities
+
+    Args:
+        arr (ndarray): array to normalize, usually an image
+
+        new_min (None | float | int): numeric value.
+            If unspecified uses uses the naitive minimum.
+
+        new_max (None | float | int): numeric value.
+            If unspecified uses uses the naitive maximum.
+
+        out (ndarray | None): output array
+            Note, sometimes this cannot be used for integers
+
+        alpha (float): division factor (pre-sigmoid)
+        beta (float): subtractive factor (pre-sigmoid)
+
+    References:
+        https://en.wikipedia.org/wiki/Normalization_(image_processing)
+
+    Example:
+        >>> raw_f = np.random.rand(8, 8)
+        >>> norm_f = normalize(raw_f)
+
+        >>> raw_f = np.random.rand(8, 8) * 100
+        >>> norm_f = normalize(raw_f)
+        >>> assert norm_f.min() == 0
+        >>> assert norm_f.max() == 1
+
+        >>> raw_u = (np.random.rand(8, 8) * 255).astype(np.uint8)
+        >>> norm_u = normalize(raw_u)
+
+    Example:
+        >>> from kwimage.im_core import *  # NOQA
+        >>> import kwimage
+        >>> arr = kwimage.grab_test_image('stars')
+        >>> arr = kwimage.ensure_float01(arr) * 0.5
+        >>> #arr = (np.random.rand(128, 128) * 0.5) + .2
+
+        >>> norms = {}
+        >>> norms['arr'] = arr.copy()
+        >>> norms['linear'] = normalize(arr)
+        >>> norms['a0.50;b0.5'] = normalize(arr, alpha=0.5, beta=0.5)
+        >>> norms['a0.10;b0.5'] = normalize(arr, alpha=0.1, beta=0.1)
+        >>> norms['a0.08;b0.5'] = normalize(arr, alpha=0.08, beta=0.5)
+        >>> norms['a0.8;b0.0'] = normalize(arr, alpha=0.8, beta=0.0)
+        >>> norms['a0.8;b0.5'] = normalize(arr, alpha=0.8, beta=0.5)
+
+        >>> alpha = np.sqrt(arr.std()) / 2
+        >>> beta = arr.mean()
+        >>> norms['a_std;b_mean'] = normalize(arr, alpha=alpha, beta=beta)
+
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nSubplots=len(norms))
+        >>> for key, img in norms.items():
+        >>>     kwplot.imshow(img, pnum=pnum_(), title=key)
+
+    Ignore:
+        globals().update(xdev.get_func_kwargs(normalize))
+    """
+
+    if new_max is None:
+        if arr.dtype.kind in ('i', 'u'):
+            new_max = np.iinfo(arr.dtype).max
+        elif arr.dtype.kind == 'f':
+            new_max = 1.0
+        else:
+            raise NotImplementedError
+
+    if new_min is None:
+        new_min = 0
+
+    if out is None:
+        out = arr.copy()
+
+    old_min = arr.min()
+    old_max = arr.max()
+    old_span = old_max - old_min
+    new_span = new_max - new_min
+
+    if alpha is None and beta is None:
+
+        # linear case
+        # out = (out - old_min) * (new_span / old_span) + new_min
+        if old_span == 0:
+            factor = 1
+        else:
+            factor = (new_span / old_span)
+
+        if old_min != 0:
+            out -= old_min
+
+        if factor != 1:
+            try:
+                np.multiply(out, factor, out=out)
+            except Exception:
+                out[:] = np.multiply(out, factor).astype(out.dtype)
+
+        if new_min != 0:
+            out += new_min
+    else:
+        # nonlinear case
+
+        """
+        alpha = arr.std() / 6
+        beta = arr.mean()
+        energy = (arr - beta) / alpha
+        out01 = sigmoid(energy)
+        out =  new_span * sigmoid(out01) + new_min
+        """
+        from scipy.special import expit as sigmoid
+        if alpha is None:
+            # division factor
+            alpha = old_span
+
+        if beta is None:
+            # subtractive factor
+            beta = old_min
+
+        # out = (new_max - new_min) * (1 / (1 + np.exp(- (out - beta) / alpha)) + new_min
+        # exparg = -1 * (out - beta) / alpha
+
+        if 0:
+            out = arr.copy()
+            beta = 0.5
+
+        energy = out
+        energy -= beta
+        energy /= alpha
+
+        # Ideally the data of interest is roughly in the range (-6, +6)
+        out = sigmoid(energy, out=out)
+        out *= new_span
+        out += new_min
+
+        if new_min != 0:
+            out += new_min
+
+    return out
+
+
+# def _sigmoid(x, out=None):
+#     """
+#     The sigmoid function
+
+#     Scipy.special.expit
+
+#     Math:
+#         sigmoid(x) = 1 / ( 1 + exp(-x))
+
+#     Example:
+#         x = np.array([10.1])
+#         sigmoid(x)
+#     """
+#     out = np.negative(x, out=out)
+#     np.exp(out, out=out)
+#     np.add(out, 1, out=out)
+#     np.reciprocal(out, out=out)
+#     return out

@@ -12,7 +12,7 @@ from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
 from .im_color import (BASE_COLORS, CSS4_COLORS, Color, TABLEAU_COLORS,
                        XKCD_COLORS,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                      make_channels_comparable, num_channels,)
+                      make_channels_comparable, normalize, num_channels,)
 from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,)
 from .im_demodata import (grab_test_image, grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
@@ -30,7 +30,7 @@ from .util_warp import (TORCH_GRID_SAMPLE_HAS_ALIGN, add_homog, remove_homog,
                         subpixel_accum, subpixel_align, subpixel_getvalue,
                         subpixel_maximum, subpixel_minimum, subpixel_set,
                         subpixel_setvalue, subpixel_slice, subpixel_translate,
-                        warp_points, warp_tensor,)
+                        warp_image, warp_points, warp_tensor,)
 
 __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'Detections', 'Heatmap', 'Mask', 'MaskList', 'MultiPolygon',
@@ -45,11 +45,11 @@ __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
            'imread', 'imresize', 'imscale', 'imwrite', 'load_image_shape',
            'make_channels_comparable', 'make_heatmask', 'make_orimask',
-           'make_vector_field', 'non_max_supression', 'num_channels',
-           'overlay_alpha_images', 'overlay_alpha_layers',
+           'make_vector_field', 'non_max_supression', 'normalize',
+           'num_channels', 'overlay_alpha_images', 'overlay_alpha_layers',
            'radial_fourier_mask', 'remove_homog', 'rle_translate',
            'smooth_prob', 'stack_images', 'stack_images_grid',
            'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
            'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
            'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_points', 'warp_tensor']
+           'warp_image', 'warp_points', 'warp_tensor']

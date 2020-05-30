@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Boxes.scale now accepts `about` keyword arg (can use to scale about center).
 * Boxes.warp now accepts matrices and does inexact corner warping
 * kwimage structures `warp` function now accepts a generic callable for mapping array-based points.
+* add ``normalize`` function for intensity rebalance. 
 
 ### Changed
 * Renamed `_rectify_interpolation` to `_coerce_interpolation`. Old function is deprecated and removed in the future.
