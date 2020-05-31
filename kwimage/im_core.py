@@ -257,8 +257,7 @@ def atleast_3channels(arr, copy=True):
     return res
 
 
-def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
-              beta=None, out=None):
+def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     """
     Rebalance pixel intensities via contrast stretching.
 
@@ -267,12 +266,6 @@ def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
 
     Args:
         arr (ndarray): array to normalize, usually an image
-
-        new_min (None | float | int): numeric value.
-            If unspecified uses uses the naitive minimum.
-
-        new_max (None | float | int): numeric value.
-            If unspecified uses uses the naitive maximum.
 
         out (ndarray | None): output array. Note, that we will create an
             internal floating point copy for integer computations.
@@ -311,23 +304,10 @@ def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
         >>> import kwimage
         >>> arr = kwimage.grab_test_image('lowcontrast')
         >>> arr = kwimage.ensure_float01(arr)
-        >>> #arr = (np.random.rand(128, 128) * 0.5) + .2
-
-        >>> norms = {}
-        >>> norms['arr'] = arr.copy()
-        >>> norms['linear'] = normalize(arr)
         >>> norms = {}
         >>> norms['arr'] = arr.copy()
         >>> norms['linear'] = normalize(arr, mode='linear')
         >>> norms['sigmoid'] = normalize(arr, mode='sigmoid')
-        >>> #norms['a0.08;b0.5'] = normalize(arr, alpha=0.08, beta=0.5, mode='sigmoid')
-        >>> #norms['a0.03;b0.4'] = normalize(arr, alpha=0.03, beta=0.4, mode='sigmoid')
-        >>> #norms['a1.00;b0.4'] = normalize(arr, alpha=1.00, beta=0.4, mode='sigmoid')
-        >>> #norms['a0.01;b0.4'] = normalize(arr, alpha=0.01, beta=0.4, mode='sigmoid')
-        >>> #alpha = (arr.max() - arr.min()) / 6
-        >>> #beta = arr.mean()
-        >>> #norms['a_std/6;b_mean'] = normalize(arr, alpha=alpha, beta=beta, mode='sigmoid')
-
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -337,7 +317,6 @@ def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
         >>>     kwplot.imshow(img, pnum=pnum_(), title=key)
 
     Benchmark:
-
         # Our method is faster than standard in-line implementations.
 
         import timerit
@@ -397,36 +376,23 @@ def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
     if arr.dtype.kind in ('i', 'u'):
         # Need a floating point workspace
         float_out = out.astype(np.float32)
-        if new_max is None:
-            new_max = float(np.iinfo(arr.dtype).max)
+        new_max = float(np.iinfo(arr.dtype).max)
     elif arr.dtype.kind == 'f':
         float_out = out
-        if new_max is None:
-            new_max = 1.0
+        new_max = 1.0
     else:
         raise NotImplementedError
 
-    if new_min is None:
-        new_min = 0.0
+    new_min = 0.0
 
     old_min = float_out.min()
     old_max = float_out.max()
     old_span = old_max - old_min
     new_span = new_max - new_min
 
-    # debug = False
-    # if debug:
-    #     # easy to spot check, but less efficient
-    #     from scipy.special import expit as sigmoid
-    #     if alpha is None and beta is None:
-    #         out = (arr - old_min) * (new_span / old_span) + new_min
-    #     else:
-    #         out = new_span * sigmoid((arr - beta) / alpha) + new_min
-    #     return out
-
     if mode == 'linear':
         # linear case
-        # float_out = (float_out - old_min) * (new_span / old_span) + new_min
+        # out = (arr - old_min) * (new_span / old_span) + new_min
         if old_span == 0:
             factor = 1.0
         else:
@@ -435,6 +401,7 @@ def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
             float_out -= old_min
     elif mode == 'sigmoid':
         # nonlinear case
+        # out = new_span * sigmoid((arr - beta) / alpha) + new_min
         from scipy.special import expit as sigmoid
         if beta is None:
             # should center the desired distribution to visualize on zero
@@ -466,27 +433,3 @@ def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
     if float_out is not out:
         out[:] = float_out.astype(out.dtype)
     return out
-
-
-# def _sigmoid(x, out=None):
-#     """
-#     The sigmoid function
-
-#     Scipy.special.expit
-
-#     Math:
-#         sigmoid(x) = 1 / ( 1 + exp(-x))
-
-#     Example:
-#         x = np.random.randn(512, 512) * 6.2
-#         from scipy.special import expit as sigmoid
-#         import timerit
-#         ti = timerit.Timerit(100, bestof=10, verbose=2)
-#         ti.reset('ours').call(lambda: _sigmoid(x))
-#         ti.reset('scipy').call(lambda: sigmoid(x))
-#     """
-#     out = np.negative(x, out=out)
-#     np.exp(out, out=out)
-#     np.add(out, 1, out=out)
-#     np.reciprocal(out, out=out)
-#     return out
