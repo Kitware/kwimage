@@ -51,6 +51,11 @@ _TEST_IMAGES = {
         'sha1': '10f9d2d832610253a3702d40f191e72e1af8b28b',
         'url': 'https://i.imgur.com/38RST9H.png',
     },
+    'lowcontrast': {
+        'fname': 'lowcontrast.jpg',
+        'sha1': 'ade84f4aa22f07f58cd530882d4ecd92e0609b81',
+        'url': 'https://i.imgur.com/dyC68Bi.jpg',
+    }
 }
 
 

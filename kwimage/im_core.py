@@ -257,9 +257,13 @@ def atleast_3channels(arr, copy=True):
     return res
 
 
-def normalize(arr, new_min=None, new_max=None, alpha=None, beta=None, out=None):
+def normalize(arr, new_min=None, new_max=None, mode='linear', alpha=None,
+              beta=None, out=None):
     """
-    Rebalance pixel intensities
+    Rebalance pixel intensities via contrast stretching.
+
+    By default linearly stretches pixel intensities to minimum and maximum
+    values.
 
     Args:
         arr (ndarray): array to normalize, usually an image
@@ -270,11 +274,22 @@ def normalize(arr, new_min=None, new_max=None, alpha=None, beta=None, out=None):
         new_max (None | float | int): numeric value.
             If unspecified uses uses the naitive maximum.
 
-        out (ndarray | None): output array
-            Note, sometimes this cannot be used for integers
+        out (ndarray | None): output array. Note, that we will create an
+            internal floating point copy for integer computations.
 
-        alpha (float): division factor (pre-sigmoid)
-        beta (float): subtractive factor (pre-sigmoid)
+        mode (str): either linear or sigmoid.
+
+        alpha (float): Only used if mode=sigmoid.  Division factor
+            (pre-sigmoid). If unspecified computed as:
+            ``max(abs(old_min - beta), abs(old_max - beta)) / 6.212606``.
+            Note this parameter is sensitive to if the input is a float or
+            uint8 image.
+
+        beta (float): subtractive factor (pre-sigmoid). This should be the
+            intensity of the most interesting bits of the image, i.e. bring
+            them to the center (0) of the distribution.
+            Defaults to ``(max - min) / 2``.  Note this parameter is sensitive
+            to if the input is a float or uint8 image.
 
     References:
         https://en.wikipedia.org/wiki/Normalization_(image_processing)
@@ -294,111 +309,162 @@ def normalize(arr, new_min=None, new_max=None, alpha=None, beta=None, out=None):
     Example:
         >>> from kwimage.im_core import *  # NOQA
         >>> import kwimage
-        >>> arr = kwimage.grab_test_image('stars')
-        >>> arr = kwimage.ensure_float01(arr) * 0.5
+        >>> arr = kwimage.grab_test_image('lowcontrast')
+        >>> arr = kwimage.ensure_float01(arr)
         >>> #arr = (np.random.rand(128, 128) * 0.5) + .2
 
         >>> norms = {}
         >>> norms['arr'] = arr.copy()
         >>> norms['linear'] = normalize(arr)
-        >>> norms['a0.50;b0.5'] = normalize(arr, alpha=0.5, beta=0.5)
-        >>> norms['a0.10;b0.5'] = normalize(arr, alpha=0.1, beta=0.1)
-        >>> norms['a0.08;b0.5'] = normalize(arr, alpha=0.08, beta=0.5)
-        >>> norms['a0.8;b0.0'] = normalize(arr, alpha=0.8, beta=0.0)
-        >>> norms['a0.8;b0.5'] = normalize(arr, alpha=0.8, beta=0.5)
-
-        >>> alpha = np.sqrt(arr.std()) / 2
-        >>> beta = arr.mean()
-        >>> norms['a_std;b_mean'] = normalize(arr, alpha=alpha, beta=beta)
+        >>> norms = {}
+        >>> norms['arr'] = arr.copy()
+        >>> norms['linear'] = normalize(arr, mode='linear')
+        >>> norms['sigmoid'] = normalize(arr, mode='sigmoid')
+        >>> #norms['a0.08;b0.5'] = normalize(arr, alpha=0.08, beta=0.5, mode='sigmoid')
+        >>> #norms['a0.03;b0.4'] = normalize(arr, alpha=0.03, beta=0.4, mode='sigmoid')
+        >>> #norms['a1.00;b0.4'] = normalize(arr, alpha=1.00, beta=0.4, mode='sigmoid')
+        >>> #norms['a0.01;b0.4'] = normalize(arr, alpha=0.01, beta=0.4, mode='sigmoid')
+        >>> #alpha = (arr.max() - arr.min()) / 6
+        >>> #beta = arr.mean()
+        >>> #norms['a_std/6;b_mean'] = normalize(arr, alpha=alpha, beta=beta, mode='sigmoid')
 
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
+        >>> kwplot.figure(fnum=1, doclf=True)
         >>> pnum_ = kwplot.PlotNums(nSubplots=len(norms))
         >>> for key, img in norms.items():
         >>>     kwplot.imshow(img, pnum=pnum_(), title=key)
 
+    Benchmark:
+
+        # Our method is faster than standard in-line implementations.
+
+        import timerit
+        ti = timerit.Timerit(100, bestof=10, verbose=2, unit='ms')
+        arr = kwimage.grab_test_image('lowcontrast', dsize=(512, 512))
+
+        print('--- uint8 ---')
+        arr = ensure_float01(arr)
+        out = arr.copy()
+        for timer in ti.reset('naive1-float'):
+            with timer:
+                (arr - arr.min()) / (arr.max() - arr.min())
+
+        import timerit
+        for timer in ti.reset('simple-float'):
+            with timer:
+                max_ = arr.max()
+                min_ = arr.min()
+                result = (arr - min_) / (max_ - min_)
+
+        for timer in ti.reset('normalize-float'):
+            with timer:
+                normalize(arr)
+
+        for timer in ti.reset('normalize-float-inplace'):
+            with timer:
+                normalize(arr, out=out)
+
+        print('--- float ---')
+        arr = ensure_uint255(arr)
+        out = arr.copy()
+        for timer in ti.reset('naive1-uint8'):
+            with timer:
+                (arr - arr.min()) / (arr.max() - arr.min())
+
+        import timerit
+        for timer in ti.reset('simple-uint8'):
+            with timer:
+                max_ = arr.max()
+                min_ = arr.min()
+                result = (arr - min_) / (max_ - min_)
+
+        for timer in ti.reset('normalize-uint8'):
+            with timer:
+                normalize(arr)
+
+        for timer in ti.reset('normalize-uint8-inplace'):
+            with timer:
+                normalize(arr, out=out)
+
     Ignore:
         globals().update(xdev.get_func_kwargs(normalize))
     """
-
-    if new_max is None:
-        if arr.dtype.kind in ('i', 'u'):
-            new_max = np.iinfo(arr.dtype).max
-        elif arr.dtype.kind == 'f':
-            new_max = 1.0
-        else:
-            raise NotImplementedError
-
-    if new_min is None:
-        new_min = 0
-
     if out is None:
         out = arr.copy()
 
-    old_min = arr.min()
-    old_max = arr.max()
+    if arr.dtype.kind in ('i', 'u'):
+        # Need a floating point workspace
+        float_out = out.astype(np.float32)
+        if new_max is None:
+            new_max = float(np.iinfo(arr.dtype).max)
+    elif arr.dtype.kind == 'f':
+        float_out = out
+        if new_max is None:
+            new_max = 1.0
+    else:
+        raise NotImplementedError
+
+    if new_min is None:
+        new_min = 0.0
+
+    old_min = float_out.min()
+    old_max = float_out.max()
     old_span = old_max - old_min
     new_span = new_max - new_min
 
-    if alpha is None and beta is None:
+    # debug = False
+    # if debug:
+    #     # easy to spot check, but less efficient
+    #     from scipy.special import expit as sigmoid
+    #     if alpha is None and beta is None:
+    #         out = (arr - old_min) * (new_span / old_span) + new_min
+    #     else:
+    #         out = new_span * sigmoid((arr - beta) / alpha) + new_min
+    #     return out
 
+    if mode == 'linear':
         # linear case
-        # out = (out - old_min) * (new_span / old_span) + new_min
+        # float_out = (float_out - old_min) * (new_span / old_span) + new_min
         if old_span == 0:
-            factor = 1
+            factor = 1.0
         else:
             factor = (new_span / old_span)
-
         if old_min != 0:
-            out -= old_min
-
-        if factor != 1:
-            try:
-                np.multiply(out, factor, out=out)
-            except Exception:
-                out[:] = np.multiply(out, factor).astype(out.dtype)
-
-        if new_min != 0:
-            out += new_min
-    else:
+            float_out -= old_min
+    elif mode == 'sigmoid':
         # nonlinear case
-
-        """
-        alpha = arr.std() / 6
-        beta = arr.mean()
-        energy = (arr - beta) / alpha
-        out01 = sigmoid(energy)
-        out =  new_span * sigmoid(out01) + new_min
-        """
         from scipy.special import expit as sigmoid
+        if beta is None:
+            # should center the desired distribution to visualize on zero
+            beta = old_max - old_min
+
         if alpha is None:
             # division factor
-            alpha = old_span
-
-        if beta is None:
-            # subtractive factor
-            beta = old_min
-
-        # out = (new_max - new_min) * (1 / (1 + np.exp(- (out - beta) / alpha)) + new_min
-        # exparg = -1 * (out - beta) / alpha
-
-        if 0:
-            out = arr.copy()
-            beta = 0.5
-
-        energy = out
+            # from scipy.special import logit
+            # alpha = max(abs(old_min - beta), abs(old_max - beta)) / logit(0.998)
+            # This chooses alpha such the original min/max value will be pushed
+            # towards -1 / +1.
+            alpha = max(abs(old_min - beta), abs(old_max - beta)) / 6.212606
+        energy = float_out
         energy -= beta
         energy /= alpha
-
         # Ideally the data of interest is roughly in the range (-6, +6)
-        out = sigmoid(energy, out=out)
-        out *= new_span
-        out += new_min
+        float_out = sigmoid(energy, out=float_out)
+        factor = new_span
+    else:
+        raise KeyError(mode)
 
-        if new_min != 0:
-            out += new_min
+    # Stretch / shift to the desired output range
+    if factor != 1:
+        float_out *= factor
 
+    if new_min != 0:
+        float_out += new_min
+
+    if float_out is not out:
+        out[:] = float_out.astype(out.dtype)
     return out
 
 
@@ -412,8 +478,12 @@ def normalize(arr, new_min=None, new_max=None, alpha=None, beta=None, out=None):
 #         sigmoid(x) = 1 / ( 1 + exp(-x))
 
 #     Example:
-#         x = np.array([10.1])
-#         sigmoid(x)
+#         x = np.random.randn(512, 512) * 6.2
+#         from scipy.special import expit as sigmoid
+#         import timerit
+#         ti = timerit.Timerit(100, bestof=10, verbose=2)
+#         ti.reset('ours').call(lambda: _sigmoid(x))
+#         ti.reset('scipy').call(lambda: sigmoid(x))
 #     """
 #     out = np.negative(x, out=out)
 #     np.exp(out, out=out)
