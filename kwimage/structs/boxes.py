@@ -954,6 +954,11 @@ class _BoxTransformMixins(object):
     def corners(self):
         """
         Return the corners of the boxes
+
+        This function is unintuitive and may be deprecated
+
+        Returns:
+            np.ndarray : stacked corners in an array with shape [4*N, 2]
         """
         corners = []
         x1, y1, x2, y2 = [a.ravel() for a in self.to_tlbr().components]

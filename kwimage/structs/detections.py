@@ -787,7 +787,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 dets.meta['kp_classes'] = kp_classes
         return dets
 
-    def to_coco(self, cname_to_cat=None, style='orig'):
+    def to_coco(self, cname_to_cat=None, style='orig', image_id=None):
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
@@ -851,6 +851,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         if 'probs' in self.data:
             to_collate['prob'] = kwarray.ArrayAPI.tolist(self.data['probs'])
+
+        if image_id is not None:
+            to_collate['image_id'] = [image_id] * len(self)
 
         keys = list(to_collate.keys())
         for item_vals in zip(*to_collate.values()):
