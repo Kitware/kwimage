@@ -1846,8 +1846,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def ious(self, other, bias=0, impl='auto', mode=None):
         """
+        Intersection over union.
+
         Compute IOUs (intersection area over union area) between these boxes
-        and another set of boxes.
+        and another set of boxes. This is a symmetric measure of similarity
+        between boxes.
 
         Args:
             other (Boxes): boxes to compare IoUs against
@@ -1861,6 +1864,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 system the torch impl was fastest (when the data was on the
                 GPU).
             mode : depricated, use impl
+
+        SeeAlso:
+            iooas - for a measure of coverage between boxes
 
         Examples:
             >>> self = Boxes(np.array([[ 0,  0, 10, 10],
@@ -1932,6 +1938,37 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         # if self_is_1d:
         #     ious = ious[0, ...]
         return ious
+
+    def iooas(self, other, bias=0):
+        """
+        Intersection over other area.
+
+        This is an asymetric measure of coverage. How much of the "other" boxes
+        are covered by these boxes. It is the area of intersection between each
+        pair of boxes and the area of the "other" boxes.
+
+        SeeAlso:
+            ious - for a measure of similarity between boxes
+
+        Args:
+            other (Boxes): boxes to compare IoOA against
+            bias (int, default=0): either 0 or 1, does TL=BR have area of 0 or 1?
+
+        Examples:
+            >>> self = Boxes(np.array([[ 0,  0, 10, 10],
+            >>>                        [10,  0, 20, 10],
+            >>>                        [20,  0, 30, 10]]), 'tlbr')
+            >>> other = Boxes(np.array([[6, 2, 20, 10], [0, 0, 0, 3]]), 'xywh')
+            >>> coverage = self.iooas(other, bias=0).round(2)
+            >>> print('coverage = {!r}'.format(coverage))
+        """
+        numer = self.isect_area(other, bias=bias)
+        denom = other.area.T
+        # If the denom is zero the numer must also be zero, and the overlap is
+        # zero, so this is safe.
+        denom[denom == 0] = 1
+        iooas = numer / denom
+        return iooas
 
     def isect_area(self, other, bias=0):
         """

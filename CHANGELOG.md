@@ -8,7 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * `Detections.from_coco_annots` now accepts `dset` keyword argument that
-  attemps to fill the category_id coco field.
+  attempts to fill the category_id coco field.
+* `Boxes.iooas` - intersection-over-other-area
 
 ### Fixed
 * Fix bug in `Detections.from_coco_annots` when categories are null.
