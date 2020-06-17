@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.3 - Unreleased
 
+### Added
+* `Detections.from_coco_annots` now accepts `dset` keyword argument that
+  attemps to fill the category_id coco field.
+
 ### Fixed
 * Fix bug in `Detections.from_coco_annots` when categories are null.
 * Fix bug `Detections.compress` when flags are in tensor space.

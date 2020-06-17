@@ -787,7 +787,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 dets.meta['kp_classes'] = kp_classes
         return dets
 
-    def to_coco(self, cname_to_cat=None, style='orig', image_id=None):
+    def to_coco(self, cname_to_cat=None, style='orig', image_id=None, dset=None):
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
@@ -806,8 +806,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             cname_to_cat: currently ignored.
 
-            style (str): either orig (for the original coco format) or new
-                for the more general ndsampler-style coco format.
+            style (str, default='orig'): either orig (for the original coco
+                format) or new for the more general ndsampler-style coco
+                format.
+
+            image_id (int, default=None):
+                if specified, populates the image_id field of each image
+
+            dset (CocoDataset, default=None):
+                if specified, attempts to populate the category_id field
+                to be compatible with this coco dataset.
 
         Yields:
             dict: coco-like annotation structures
@@ -830,8 +838,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 catnames = [classes[cidx] for cidx in self.class_idxs]
                 if cname_to_cat is not None:
                     pass
-                to_collate['category_name'] = catnames
+                if dset is not None:
+                    cids = [dset._resolve_to_cat(c)['id'] for c in catnames]
+                    to_collate['category_id'] = cids
+                else:
+                    to_collate['category_name'] = catnames
             else:
+                if dset is not None:
+                    raise NotImplementedError(
+                        'Passed a dset to resolve category id, but this '
+                        'detection object has no classes meta attribute')
                 to_collate['category_index'] = kwarray.ArrayAPI.tolist(
                     self.data['class_idxs'])
 
