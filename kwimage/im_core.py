@@ -293,8 +293,8 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
 
         >>> raw_f = np.random.rand(8, 8) * 100
         >>> norm_f = normalize(raw_f)
-        >>> assert norm_f.min() == 0
-        >>> assert norm_f.max() == 1
+        >>> assert np.isclose(norm_f.min(), 0)
+        >>> assert np.isclose(norm_f.max(), 1)
 
         >>> raw_u = (np.random.rand(8, 8) * 255).astype(np.uint8)
         >>> norm_u = normalize(raw_u)
