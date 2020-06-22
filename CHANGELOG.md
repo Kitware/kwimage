@@ -10,10 +10,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `Detections.from_coco_annots` now accepts `dset` keyword argument that
   attempts to fill the category_id coco field.
 * `Boxes.iooas` - intersection-over-other-area
+* `kwimage.imread` - now has a turbojpeg backend.
 
 ### Fixed
 * Fix bug in `Detections.from_coco_annots` when categories are null.
 * Fix bug `Detections.compress` when flags are in tensor space.
+
+### Changed
+* `kwimage.imwrite` now always returns the file path that was written to
+  regardless of the backend.
 
 
 ## Version 0.6.2 - Released 2020-05-01 
