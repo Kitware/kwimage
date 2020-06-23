@@ -199,3 +199,5 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - `im_alphablend`
 
 ## Version 0.6.3 - Unreleased
+
+## Version 0.6.4 - Unreleased
