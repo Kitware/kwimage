@@ -76,7 +76,7 @@ stages:
     script: 
         - ls wheelhouse
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - VERSION=$(python -c "import setup; print(setup.version)")
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
@@ -112,7 +112,7 @@ stages:
     script: 
         - ls wheelhouse
         - MB_PYTHON_TAG=py2.py3-none-any
-        - VERSION=$(python -c "import setup; print(setup.version)")
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install $BDIST_WHEEL_PATH
         - xdoctest -m kwimage
@@ -187,7 +187,7 @@ stages:
     script: 
         - ls wheelhouse
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - VERSION=$(python -c "import setup; print(setup.version)")
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
@@ -232,7 +232,7 @@ stages:
     script: 
         - ls wheelhouse
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - VERSION=$(python -c "import setup; print(setup.version)")
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
@@ -436,7 +436,7 @@ build/py2.py3-none-any:
         - python setup.py bdist_wheel --universal
         - ls dist
         #- MB_PYTHON_TAG=py2.py3-none-any
-        #- # VERSION=$(python -c "import setup; print(setup.version)")
+        #- # VERSION=$(python -c "import setup; print(setup.VERSION)")
         #- # BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         #- # pip install $BDIST_WHEEL_PATH
         #- # pip install pygments
@@ -465,7 +465,7 @@ gpgsign/py2.py3-none-any:
     script: 
         - ls dist
         - MB_PYTHON_TAG=py2.py3-none-any
-        - VERSION=$(python -c "import setup; print(setup.version)")
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
@@ -514,7 +514,7 @@ deploy/py2.py3-none-any:
     script: 
         - ls dist
         - MB_PYTHON_TAG=py2.py3-none-any
-        - VERSION=$(python -c "import setup; print(setup.version)")
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
         - pip install requests[security] twine 
