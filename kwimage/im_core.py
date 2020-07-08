@@ -255,3 +255,181 @@ def atleast_3channels(arr, copy=True):
     else:
         raise ValueError('Cannot handle arr.shape={}'.format(arr.shape))
     return res
+
+
+def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
+    """
+    Rebalance pixel intensities via contrast stretching.
+
+    By default linearly stretches pixel intensities to minimum and maximum
+    values.
+
+    Args:
+        arr (ndarray): array to normalize, usually an image
+
+        out (ndarray | None): output array. Note, that we will create an
+            internal floating point copy for integer computations.
+
+        mode (str): either linear or sigmoid.
+
+        alpha (float): Only used if mode=sigmoid.  Division factor
+            (pre-sigmoid). If unspecified computed as:
+            ``max(abs(old_min - beta), abs(old_max - beta)) / 6.212606``.
+            Note this parameter is sensitive to if the input is a float or
+            uint8 image.
+
+        beta (float): subtractive factor (pre-sigmoid). This should be the
+            intensity of the most interesting bits of the image, i.e. bring
+            them to the center (0) of the distribution.
+            Defaults to ``(max - min) / 2``.  Note this parameter is sensitive
+            to if the input is a float or uint8 image.
+
+    References:
+        https://en.wikipedia.org/wiki/Normalization_(image_processing)
+
+    Example:
+        >>> raw_f = np.random.rand(8, 8)
+        >>> norm_f = normalize(raw_f)
+
+        >>> raw_f = np.random.rand(8, 8) * 100
+        >>> norm_f = normalize(raw_f)
+        >>> assert np.isclose(norm_f.min(), 0)
+        >>> assert np.isclose(norm_f.max(), 1)
+
+        >>> raw_u = (np.random.rand(8, 8) * 255).astype(np.uint8)
+        >>> norm_u = normalize(raw_u)
+
+    Example:
+        >>> from kwimage.im_core import *  # NOQA
+        >>> import kwimage
+        >>> arr = kwimage.grab_test_image('lowcontrast')
+        >>> arr = kwimage.ensure_float01(arr)
+        >>> norms = {}
+        >>> norms['arr'] = arr.copy()
+        >>> norms['linear'] = normalize(arr, mode='linear')
+        >>> norms['sigmoid'] = normalize(arr, mode='sigmoid')
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.figure(fnum=1, doclf=True)
+        >>> pnum_ = kwplot.PlotNums(nSubplots=len(norms))
+        >>> for key, img in norms.items():
+        >>>     kwplot.imshow(img, pnum=pnum_(), title=key)
+
+    Benchmark:
+        # Our method is faster than standard in-line implementations.
+
+        import timerit
+        ti = timerit.Timerit(100, bestof=10, verbose=2, unit='ms')
+        arr = kwimage.grab_test_image('lowcontrast', dsize=(512, 512))
+
+        print('--- uint8 ---')
+        arr = ensure_float01(arr)
+        out = arr.copy()
+        for timer in ti.reset('naive1-float'):
+            with timer:
+                (arr - arr.min()) / (arr.max() - arr.min())
+
+        import timerit
+        for timer in ti.reset('simple-float'):
+            with timer:
+                max_ = arr.max()
+                min_ = arr.min()
+                result = (arr - min_) / (max_ - min_)
+
+        for timer in ti.reset('normalize-float'):
+            with timer:
+                normalize(arr)
+
+        for timer in ti.reset('normalize-float-inplace'):
+            with timer:
+                normalize(arr, out=out)
+
+        print('--- float ---')
+        arr = ensure_uint255(arr)
+        out = arr.copy()
+        for timer in ti.reset('naive1-uint8'):
+            with timer:
+                (arr - arr.min()) / (arr.max() - arr.min())
+
+        import timerit
+        for timer in ti.reset('simple-uint8'):
+            with timer:
+                max_ = arr.max()
+                min_ = arr.min()
+                result = (arr - min_) / (max_ - min_)
+
+        for timer in ti.reset('normalize-uint8'):
+            with timer:
+                normalize(arr)
+
+        for timer in ti.reset('normalize-uint8-inplace'):
+            with timer:
+                normalize(arr, out=out)
+
+    Ignore:
+        globals().update(xdev.get_func_kwargs(normalize))
+    """
+    if out is None:
+        out = arr.copy()
+
+    if arr.dtype.kind in ('i', 'u'):
+        # Need a floating point workspace
+        float_out = out.astype(np.float32)
+        new_max = float(np.iinfo(arr.dtype).max)
+    elif arr.dtype.kind == 'f':
+        float_out = out
+        new_max = 1.0
+    else:
+        raise NotImplementedError
+
+    new_min = 0.0
+
+    old_min = float_out.min()
+    old_max = float_out.max()
+    old_span = old_max - old_min
+    new_span = new_max - new_min
+
+    if mode == 'linear':
+        # linear case
+        # out = (arr - old_min) * (new_span / old_span) + new_min
+        if old_span == 0:
+            factor = 1.0
+        else:
+            factor = (new_span / old_span)
+        if old_min != 0:
+            float_out -= old_min
+    elif mode == 'sigmoid':
+        # nonlinear case
+        # out = new_span * sigmoid((arr - beta) / alpha) + new_min
+        from scipy.special import expit as sigmoid
+        if beta is None:
+            # should center the desired distribution to visualize on zero
+            beta = old_max - old_min
+
+        if alpha is None:
+            # division factor
+            # from scipy.special import logit
+            # alpha = max(abs(old_min - beta), abs(old_max - beta)) / logit(0.998)
+            # This chooses alpha such the original min/max value will be pushed
+            # towards -1 / +1.
+            alpha = max(abs(old_min - beta), abs(old_max - beta)) / 6.212606
+        energy = float_out
+        energy -= beta
+        energy /= alpha
+        # Ideally the data of interest is roughly in the range (-6, +6)
+        float_out = sigmoid(energy, out=float_out)
+        factor = new_span
+    else:
+        raise KeyError(mode)
+
+    # Stretch / shift to the desired output range
+    if factor != 1:
+        float_out *= factor
+
+    if new_min != 0:
+        float_out += new_min
+
+    if float_out is not out:
+        out[:] = float_out.astype(out.dtype)
+    return out

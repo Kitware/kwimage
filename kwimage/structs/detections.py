@@ -650,6 +650,23 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets = Detections.from_coco_annots(anns, cats)
 
         Example:
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> # Test case with no category information
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> anns = [{
+            >>>     'id': 0,
+            >>>     'image_id': 1,
+            >>>     'category_id': None,
+            >>>     'bbox': [2, 3, 10, 10],
+            >>>     'prob': [.1, .9],
+            >>> }]
+            >>> cats = [
+            >>>     {'id': 0, 'name': 'background'},
+            >>>     {'id': 2, 'name': 'class1'}
+            >>> ]
+            >>> dets = Detections.from_coco_annots(anns, cats)
+
+        Example:
             >>> import kwimage
             >>> # xdoctest: +REQUIRES(--module:ndsampler)
             >>> import ndsampler
@@ -692,11 +709,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if cnames is None:
             cids = [ann['category_id'] for ann in anns]
             cid_to_cat = {c['id']: c for c in cats}  # Hack
-            cnames = [cid_to_cat[cid]['name'] for cid in cids]
+            cnames = [None if cid is None else cid_to_cat[cid]['name']
+                      for cid in cids]
 
         xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
         boxes = kwimage.Boxes(xywh, 'xywh')
-        class_idxs = [classes.index(cname) for cname in cnames]
+        try:
+            class_idxs = [classes.index(cname) for cname in cnames]
+        except (KeyError, ValueError):
+            class_idxs = [None if cname is None else classes.index(cname)
+                          for cname in cnames]
 
         dets = Detections(
             boxes=boxes,
@@ -765,7 +787,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 dets.meta['kp_classes'] = kp_classes
         return dets
 
-    def to_coco(self, cname_to_cat=None, style='orig'):
+    def to_coco(self, cname_to_cat=None, style='orig', image_id=None, dset=None):
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
@@ -784,8 +806,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             cname_to_cat: currently ignored.
 
-            style (str): either orig (for the original coco format) or new
-                for the more general ndsampler-style coco format.
+            style (str, default='orig'): either orig (for the original coco
+                format) or new for the more general ndsampler-style coco
+                format.
+
+            image_id (int, default=None):
+                if specified, populates the image_id field of each image
+
+            dset (CocoDataset, default=None):
+                if specified, attempts to populate the category_id field
+                to be compatible with this coco dataset.
 
         Yields:
             dict: coco-like annotation structures
@@ -808,8 +838,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 catnames = [classes[cidx] for cidx in self.class_idxs]
                 if cname_to_cat is not None:
                     pass
-                to_collate['category_name'] = catnames
+                if dset is not None:
+                    cids = [dset._resolve_to_cat(c)['id'] for c in catnames]
+                    to_collate['category_id'] = cids
+                else:
+                    to_collate['category_name'] = catnames
             else:
+                if dset is not None:
+                    raise NotImplementedError(
+                        'Passed a dset to resolve category id, but this '
+                        'detection object has no classes meta attribute')
                 to_collate['category_index'] = kwarray.ArrayAPI.tolist(
                     self.data['class_idxs'])
 
@@ -829,6 +867,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         if 'probs' in self.data:
             to_collate['prob'] = kwarray.ArrayAPI.tolist(self.data['probs'])
+
+        if image_id is not None:
+            to_collate['image_id'] = [image_id] * len(self)
 
         keys = list(to_collate.keys())
         for item_vals in zip(*to_collate.values()):
@@ -1050,10 +1091,20 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if isinstance(flags, np.ndarray):
                 if flags.dtype.kind == 'b':
                     flags = flags.astype(np.uint8)
-            if _TORCH_HAS_BOOL_COMP:
-                flags = torch.BoolTensor(flags).to(self.device)
+            if isinstance(flags, torch.Tensor):
+                if _TORCH_HAS_BOOL_COMP:
+                    if flags.dtype != torch.bool:
+                        flags = flags.bool()
+                else:
+                    if flags.dtype != torch.uint8:
+                        flags = flags.byte()
+                if flags.device != flags.device:
+                    flags = flags.to(self.device)
             else:
-                flags = torch.ByteTensor(flags).to(self.device)
+                if _TORCH_HAS_BOOL_COMP:
+                    flags = torch.BoolTensor(flags).to(self.device)
+                else:
+                    flags = torch.ByteTensor(flags).to(self.device)
         newdata = {k: _generic._safe_compress(v, flags, axis)
                    for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)

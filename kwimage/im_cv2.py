@@ -207,7 +207,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
         return_info (bool, default=False):
             if True returns information about the final transformation in a
-            dictionary.
+            dictionary. If there is an offset, the scale is applied before the
+            offset when transforming to the new resized space.
 
     Returns:
         ndarray | Tuple[ndarray, Dict] :
@@ -355,6 +356,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
         if return_info:
             info = {
+                'offset': 0,
                 'scale': new_scale,
                 'dsize': new_dsize,
             }

@@ -4,6 +4,7 @@ import numpy as np
 import warnings  # NOQA
 import cv2
 from os.path import exists
+import ubelt as ub
 from . import im_cv2
 from . import im_core
 
@@ -20,7 +21,7 @@ def imread(fpath, space='auto', backend='auto'):
             'auto', in which case the colorspace of the image is unmodified
             (except in the case where a color image is read by opencv, in which
             case we convert BGR to RGB by default). If None, then no
-            modification is made to whaveter backend is used to read the image.
+            modification is made to whatever backend is used to read the image.
 
         backend (str, default='auto'): which backend reader to use. By default
             the file extension is used to determine this, but it can be
@@ -91,14 +92,80 @@ def imread(fpath, space='auto', backend='auto'):
         >>> kwplot.autompl()
         >>> kwplot.imshow(png_im / 2 ** 16, pnum=(1, 2, 1), fnum=1)
         >>> kwplot.imshow(tif_im / 2 ** 16, pnum=(1, 2, 2), fnum=1)
+
+    Benchmark:
+        >>> from kwimage.im_io import *  # NOQA
+        >>> import timerit
+        >>> import kwimage
+        >>> import tempfile
+        >>> #
+        >>> dsize = (1920, 1080)
+        >>> img1 = kwimage.grab_test_image('amazon', dsize=dsize)
+        >>> ti = timerit.Timerit(10, bestof=3, verbose=1, unit='us')
+        >>> formats = {}
+        >>> dpath = ub.ensure_app_cache_dir('cache')
+        >>> space = 'auto'
+        >>> formats['png'] = kwimage.imwrite(join(dpath, '.png'), img1, space=space, backend='cv2')
+        >>> formats['jpg'] = kwimage.imwrite(join(dpath, '.jpg'), img1, space=space, backend='cv2')
+        >>> formats['tif_raw'] = kwimage.imwrite(join(dpath, '.raw.tif'), img1, space=space, backend='gdal', compress='RAW')
+        >>> formats['tif_deflate'] = kwimage.imwrite(join(dpath, '.deflate.tif'), img1, space=space, backend='gdal', compress='DEFLATE')
+        >>> formats['tif_lzw'] = kwimage.imwrite(join(dpath, '.lzw.tif'), img1, space=space, backend='gdal', compress='LZW')
+        >>> grid = [
+        >>>     ('cv2', 'png'),
+        >>>     ('cv2', 'jpg'),
+        >>>     ('gdal', 'jpg'),
+        >>>     ('turbojpeg', 'jpg'),
+        >>>     ('gdal', 'tif_raw'),
+        >>>     ('gdal', 'tif_lzw'),
+        >>>     ('gdal', 'tif_deflate'),
+        >>>     ('skimage', 'tif_raw'),
+        >>> ]
+        >>> backend, filefmt = 'cv2', 'png'
+        >>> for backend, filefmt in grid:
+        >>>     for timer in ti.reset(f'imread-{filefmt}-{backend}'):
+        >>>         with timer:
+        >>>             kwimage.imread(formats[filefmt], space=space, backend=backend)
+        >>> # Test all formats in auto mode
+        >>> for filefmt in formats.keys():
+        >>>     for timer in ti.reset(f'kwimage.imread-{filefmt}-auto'):
+        >>>         with timer:
+        >>>             kwimage.imread(formats[filefmt], space=space, backend='auto')
+        >>> ti.measures = ub.map_vals(ub.sorted_vals, ti.measures)
+        >>> import netharn as nh
+        >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['min'], nl=2), ':')))
+        Timed best=42891.504 µs, mean=44008.439 ± 1409.2 µs for imread-png-cv2
+        Timed best=33146.808 µs, mean=34185.172 ± 656.3 µs for imread-jpg-cv2
+        Timed best=40120.306 µs, mean=41220.927 ± 1010.9 µs for imread-jpg-gdal
+        Timed best=30798.162 µs, mean=31573.070 ± 737.0 µs for imread-jpg-turbojpeg
+        Timed best=6223.170 µs, mean=6370.462 ± 150.7 µs for imread-tif_raw-gdal
+        Timed best=42459.404 µs, mean=46519.940 ± 5664.9 µs for imread-tif_lzw-gdal
+        Timed best=36271.175 µs, mean=37301.108 ± 861.1 µs for imread-tif_deflate-gdal
+        Timed best=5239.503 µs, mean=6566.574 ± 1086.2 µs for imread-tif_raw-skimage
+        ti.measures = {
+            'imread-tif_raw-skimage' : 0.0052395030070329085,
+            'imread-tif_raw-gdal'    : 0.006223169999429956,
+            'imread-jpg-turbojpeg'   : 0.030798161998973228,
+            'imread-jpg-cv2'         : 0.03314680799667258,
+            'imread-tif_deflate-gdal': 0.03627117499127053,
+            'imread-jpg-gdal'        : 0.040120305988239124,
+            'imread-tif_lzw-gdal'    : 0.042459404008695856,
+            'imread-png-cv2'         : 0.042891503995633684,
+        }
+
+
+        >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['mean'], nl=2), ':')))
     """
     if backend == 'auto':
+        # TODO: memoize the extensions?
         # Determine the backend reader using the file extension
         _fpath_lower = fpath.lower()
         # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
         GDAL_EXTENSIONS = (
             '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
             '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+        )
+        JPG_EXTENSIONS = (
+            '.jpg', '.jpeg'
         )
         if _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
@@ -107,16 +174,23 @@ def imread(fpath, space='auto', backend='auto'):
                 backend = 'gdal'
             else:
                 backend = 'skimage'
+        elif _fpath_lower.endswith(JPG_EXTENSIONS):
+            if _have_turbojpg():
+                backend = 'turbojpeg'
+            else:
+                backend = 'cv2'
         else:
             backend = 'cv2'
 
     try:
         if backend == 'gdal':
             image, src_space, auto_dst_space = _imread_gdal(fpath)
-        elif backend == 'skimage':
-            image, src_space, auto_dst_space = _imread_skimage(fpath)
         elif backend == 'cv2':
             image, src_space, auto_dst_space = _imread_cv2(fpath)
+        elif backend == 'turbojpeg':
+            image, src_space, auto_dst_space = _imread_turbojpeg(fpath)
+        elif backend == 'skimage':
+            image, src_space, auto_dst_space = _imread_skimage(fpath)
         else:
             raise KeyError('Unknown imread backend={!r}'.format(backend))
 
@@ -142,6 +216,64 @@ def imread(fpath, space='auto', backend='auto'):
         print('ex = {!r}'.format(ex))
         print('Error reading fpath = {!r}'.format(fpath))
         raise
+
+
+def _imread_turbojpeg(fpath):
+    """
+    See: https://www.learnopencv.com/efficient-image-loading/
+
+    References:
+        https://pypi.org/project/PyTurboJPEG/
+
+    Bash:
+        pip install PyTurboJPEG
+        sudo apt install libturbojpeg -y
+
+    Ignore:
+        >>> # xdoctest: +REQUIRES(--network)
+        >>> # xdoctest: +REQUIRES(turbojpeg)
+        >>> import kwimage
+        >>> rgb_fpath = kwimage.grab_test_image_fpath('amazon')
+        >>> assert rgb_fpath.endswith('.jpg')
+        >>> #
+        >>> rgb = kwimage.imread(rgb_fpath)
+        >>> gray = kwimage.convert_colorspace(rgb, 'rgb', 'gray')
+        >>> gray_fpath = rgb_fpath + '.gray.jpg'
+        >>> kwimage.imwrite(gray_fpath, gray)
+        >>> #
+        >>> fpath = gray_fpath
+        >>> #
+        >>> from kwimage.im_io import _imread_turbojpeg, _imread_skimage, _imread_cv2
+        >>> import timerit
+        >>> ti = timerit.Timerit(50, bestof=10, verbose=2)
+        >>> #
+        >>> for timer in ti.reset('turbojpeg'):
+        >>>     with timer:
+        >>>         im_turbo = _imread_turbojpeg(fpath)
+        >>> #
+        >>> for timer in ti.reset('cv2'):
+        >>>     with timer:
+        >>>         im_cv2 = _imread_cv2(fpath)
+    """
+    import turbojpeg
+    jpeg = turbojpeg.TurboJPEG()
+    with open(fpath, 'rb') as file:
+        data = file.read()
+        (width, height, jpeg_subsample, jpeg_colorspace) = jpeg.decode_header(data)
+        # print('width = {!r}'.format(width))
+        # print('height = {!r}'.format(height))
+        # print('jpeg_subsample = {!r}'.format(jpeg_subsample))
+        # print('jpeg_colorspace = {!r}'.format(jpeg_colorspace))
+        if jpeg_colorspace == turbojpeg.TJCS_GRAY:
+            pixel_format = turbojpeg.TJPF_GRAY
+            src_space = 'gray'
+            auto_dst_space = 'gray'
+        else:
+            pixel_format = turbojpeg.TJPF_RGB
+            src_space = 'rgb'
+            auto_dst_space = 'rgb'
+        image = jpeg.decode(data, pixel_format=pixel_format)
+    return image, src_space, auto_dst_space
 
 
 def _imread_skimage(fpath):
@@ -273,7 +405,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Writes image data to disk.
 
     Args:
-        fpath (PathLike): location to save the imaeg
+        fpath (PathLike): location to save the image
 
         image (ndarray): image data
 
@@ -288,6 +420,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             gdal, skimage, and cv2.
 
         **kwargs : args passed to the backend writer
+
+    Returns:
+        str: path to the written file
 
     Notes:
         The image may be modified to preserve its colorspace depending on which
@@ -448,7 +583,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
     if backend == 'cv2':
         try:
-            return cv2.imwrite(fpath, image, **kwargs)
+            cv2.imwrite(fpath, image, **kwargs)
         except cv2.error as ex:
             if 'could not find a writer for the specified extension' in str(ex):
                 raise ValueError(
@@ -458,11 +593,15 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                 raise
     elif backend == 'skimage':
         import skimage.io
-        return skimage.io.imsave(fpath, image, **kwargs)
+        skimage.io.imsave(fpath, image, **kwargs)
     elif backend == 'gdal':
-        return _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+        _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+    elif backend == 'turbojpeg':
+        raise NotImplementedError
     else:
         raise KeyError('Unknown imwrite backend={!r}'.format(backend))
+
+    return fpath
 
 
 def load_image_shape(fpath):
@@ -528,6 +667,60 @@ def load_image_shape(fpath):
     return shape
 
 
+def __inspect_optional_overhead():
+    """
+        Benchmark:
+            >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
+            >>> def dis_instructions(func):
+            >>>     import dis
+            >>>     import io
+            >>>     buf = io.StringIO()
+            >>>     dis.disassemble(func.__code__, file=buf)
+            >>>     _, text = buf.seek(0), buf.read()
+            >>>     return text
+            >>> func = _have_turbojpg
+            >>> func = _have_gdal
+            >>> memo = ub.memoize(func)
+            >>> print(func_dis := dis_instructions(func))
+            >>> print(memo_dis := dis_instructions(memo))
+            >>> n = max(func_dis.count('\n'), memo_dis.count('\n'))
+            >>> sep = ' | \n' * n
+            >>> prefix = '| \n' * n
+            >>> print('\n\n')
+            >>> print(ub.hzcat([prefix, x, sep, y]))
+
+        Benchmark:
+            >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
+            >>> funcs = []
+            >>> funcs += [_have_turbojpg]
+            >>> funcs += [_have_gdal]
+            >>> for func in funcs:
+            >>>     memo = ub.memoize(func)
+            >>>     print('func = {!r}'.format(func))
+            >>>     print('memo = {!r}'.format(memo))
+            >>>     import timerit
+            >>>     ti = timerit.Timerit(100, bestof=10, verbose=1, unit='us')
+            >>>     ti.reset('call func').call(func).report()
+            >>>     ti.reset('call memo').call(memo).report()
+    """
+    raise NotImplementedError
+
+
+@ub.memoize
+def _have_turbojpg():
+    """
+    pip install PyTurboJPEG
+
+    """
+    try:
+        import turbojpeg  # NOQA
+        turbojpeg.TurboJPEG()
+    except ImportError:
+        return False
+    else:
+        return True
+
+
 def _have_gdal():
     try:
         import gdal  # NOQA
@@ -551,7 +744,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         compress (bool, default='auto'): Can be JPEG (lossy) or LZW (lossless),
             or DEFLATE (lossless). Can also be 'auto', which will try to
-            hueristically choose a sensible choice.
+            heuristically choose a sensible choice.
 
         blocksize (int, default=256): size of tiled blocks
 

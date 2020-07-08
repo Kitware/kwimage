@@ -4,14 +4,31 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.6.2 - Unreleased
+## Version 0.6.3 - Unreleased
+
+### Added
+* `Detections.from_coco_annots` now accepts `dset` keyword argument that
+  attempts to fill the category_id coco field.
+* `Boxes.iooas` - intersection-over-other-area
+* `kwimage.imread` - now has a turbojpeg backend.
+
+### Fixed
+* Fix bug in `Detections.from_coco_annots` when categories are null.
+* Fix bug `Detections.compress` when flags are in tensor space.
+
+### Changed
+* `kwimage.imwrite` now always returns the file path that was written to
+  regardless of the backend.
+
+
+## Version 0.6.2 - Released 2020-05-01 
 
 ### Added
 * `draw_line_segments_on_image`
 * Boxes.scale now accepts `about` keyword arg (can use to scale about center).
 * Boxes.warp now accepts matrices and does inexact corner warping
 * kwimage structures `warp` function now accepts a generic callable for mapping array-based points.
-
+* add ``normalize`` function for intensity rebalance. 
 
 ### Changed
 * Renamed `_rectify_interpolation` to `_coerce_interpolation`. Old function is deprecated and removed in the future.
