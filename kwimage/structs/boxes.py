@@ -1869,10 +1869,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             iooas - for a measure of coverage between boxes
 
         Examples:
-            >>> self = Boxes(np.array([[ 0,  0, 10, 10],
-            >>>                        [10,  0, 20, 10],
-            >>>                        [20,  0, 30, 10]]), 'tlbr')
-            >>> other = Boxes(np.array([6, 2, 20, 10]), 'tlbr')
+            >>> import kwimage
+            >>> self = kwimage.Boxes(np.array([[ 0,  0, 10, 10],
+            >>>                                [10,  0, 20, 10],
+            >>>                                [20,  0, 30, 10]]), 'tlbr')
+            >>> other = kwimage.Boxes(np.array([6, 2, 20, 10]), 'tlbr')
             >>> overlaps = self.ious(other, bias=1).round(2)
             >>> assert np.all(np.isclose(overlaps, [0.21, 0.63, 0.04])), repr(overlaps)
 

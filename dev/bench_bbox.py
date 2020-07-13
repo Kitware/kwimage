@@ -13,7 +13,7 @@ def bench_bbox_iou_method():
     from kwimage.structs.boxes import _box_ious_torch, _box_ious_py, _bbox_ious_c
 
     ydata = ub.ddict(list)
-    xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 2000]
+    xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 2000, 4000]
     bias = 0
 
     if _bbox_ious_c is None:
@@ -83,5 +83,21 @@ def bench_bbox_iou_method():
 
             raise AssertionError('different methods report different results')
 
-    kwimage.autompl()
-    kwimage.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
+        print('num = {!r}'.format(num))
+        print('ti.measures = {}'.format(ub.repr2(
+            ub.map_vals(ub.sorted_vals, ti.measures), align=':',
+            nl=2, precision=6)))
+
+    import kwplot
+    kwplot.autoplt()
+    kwplot.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
+    kwplot.show_if_requested()
+    # plt.show()
+
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python ~/code/kwimage/dev/bench_bbox.py --show
+    """
+    bench_bbox_iou_method()
