@@ -715,7 +715,7 @@ def _have_turbojpg():
     try:
         import turbojpeg  # NOQA
         turbojpeg.TurboJPEG()
-    except ImportError:
+    except Exception:
         return False
     else:
         return True
@@ -724,7 +724,7 @@ def _have_turbojpg():
 def _have_gdal():
     try:
         import gdal  # NOQA
-    except ImportError:
+    except Exception:
         return False
     else:
         return True
