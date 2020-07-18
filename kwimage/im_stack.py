@@ -316,3 +316,84 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
     offset_tup = (offset1, offset2)
     sf_tup = (sf1, sf2)
     return imgB, offset_tup, sf_tup
+
+
+def _efficient_rectangle_packing():
+    """
+    References:
+        https://en.wikipedia.org/wiki/Packing_problems
+        https://github.com/Penlect/rectangle-packer
+        https://github.com/secnot/rectpack
+        https://stackoverflow.com/questions/1213394/what-algorithm-can-be-used-for-packing-rectangles-of-different-sizes-into-the-sm
+        https://www.codeproject.com/Articles/210979/Fast-optimizing-rectangle-packing-algorithm-for-bu
+
+    Ignore:
+        pip install rectangle-packer
+
+        >>> anchors = anchors=[[1, 1], [3 / 4, 1], [1, 3 / 4]]
+        >>> boxes = kwimage.Boxes.random(num=100, anchors=anchors).scale((100, 100)).to_xywh()
+        >>> # Create a bunch of rectangles (width, height)
+        >>> sizes = boxes.data[:, 2:4].astype(np.int).tolist()
+        >>> import rpack
+        >>> positions = rpack.pack(sizes)
+        >>> boxes.data[:, 0:2] = positions
+        >>> boxes = boxes.scale(0.95, about='center')
+
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> boxes.draw()
+
+        # The result will be a list of (x, y) positions:
+        >>> positions
+
+        images = [kwimage.grab_test_image(key) for key in kwimage.grab_test_image.keys()]
+        images = [kwimage.imresize(g, max_dim=256) for g in images]
+
+        sizes = [g.shape[0:2][::-1] for g in images]
+
+        import rpack
+        positions = rpack.pack(sizes)
+
+        !pip install rectpack
+
+        import rectpack
+
+        bin_width = 512
+
+        packer = rectpack.newPacker(rotation=False)
+        for rid, (w, h) in enumerate(sizes):
+            packer.add_rect(w, h, rid=rid)
+
+        max_w, max_h = np.array(sizes).sum(axis=0)
+        # f = max_w / bin_width
+        avail_height = max_h
+        packer.add_bin(bin_width, avail_height)
+
+        packer.pack()
+        print(len(packer))
+
+        packer[0]
+
+        all_rects = packer.rect_list()
+        all_rects = np.array(all_rects)
+
+        rids = all_rects[:, 5]
+        tl_x = all_rects[:, 1]
+        tl_y = all_rects[:, 2]
+        w = all_rects[:, 3]
+        h = all_rects[:, 4]
+
+        tlbr = kwimage.Boxes(all_rects[:, 1:5], 'xywh').to_tlbr()
+        canvas_w, canvas_h = tlbr.data[:, 2:4].max(axis=0)
+
+        canvas = np.zeros((canvas_h, canvas_w), dtype=np.float32)
+
+        for b, x, y, w, h, rid in all_rects:
+            img = images[rid]
+            img = kwimage.ensure_float01(img)
+            canvas, img = kwimage.make_channels_comparable(canvas, img)
+            canvas[y: y + h, x: x + w] = img
+
+        kwplot.imshow(canvas)
+
+    """
