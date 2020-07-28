@@ -327,9 +327,11 @@ def _efficient_rectangle_packing():
         https://stackoverflow.com/questions/1213394/what-algorithm-can-be-used-for-packing-rectangles-of-different-sizes-into-the-sm
         https://www.codeproject.com/Articles/210979/Fast-optimizing-rectangle-packing-algorithm-for-bu
 
-    Ignore:
+    Requires:
         pip install rectangle-packer
 
+    Ignore:
+        >>> import kwimage
         >>> anchors = anchors=[[1, 1], [3 / 4, 1], [1, 3 / 4]]
         >>> boxes = kwimage.Boxes.random(num=100, anchors=anchors).scale((100, 100)).to_xywh()
         >>> # Create a bunch of rectangles (width, height)
@@ -338,12 +340,11 @@ def _efficient_rectangle_packing():
         >>> positions = rpack.pack(sizes)
         >>> boxes.data[:, 0:2] = positions
         >>> boxes = boxes.scale(0.95, about='center')
-
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> boxes.draw()
-
-        # The result will be a list of (x, y) positions:
+        >>> # The result will be a list of (x, y) positions:
         >>> positions
 
         images = [kwimage.grab_test_image(key) for key in kwimage.grab_test_image.keys()]

@@ -686,7 +686,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             except Exception:
                 pass
             cats = dset.dataset['categories']
-            kp_classes = dset.keypoint_categories()
+            try:
+                kp_classes = dset.keypoint_categories()
+            except Exception:
+                pass
+                # kp_classes = None
         else:
             if cats is None:
                 cnames = []
