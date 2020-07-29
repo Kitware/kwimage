@@ -79,9 +79,9 @@ stages:
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-manylinux2010_x86_64.whl
         - pip install $BDIST_WHEEL_PATH
-        - xdoctest -m kwimage
+        - xdoctest -m kwimage --style=google all
         - pip install pygments
-        - xdoctest kwimage --mask 
+        - xdoctest kwimage --style=google all --mask 
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           
@@ -115,7 +115,7 @@ stages:
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install $BDIST_WHEEL_PATH
-        - xdoctest -m kwimage
+        - xdoctest -m kwimage --style=google all
         - pip install pygments
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1

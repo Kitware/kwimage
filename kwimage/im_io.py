@@ -668,7 +668,7 @@ def load_image_shape(fpath):
 
 
 def __inspect_optional_overhead():
-    """
+    r"""
         Benchmark:
             >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
             >>> def dis_instructions(func):
