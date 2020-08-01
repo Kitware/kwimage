@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
 import torch
 from distutils.version import LooseVersion  # NOQA
-# from . import _generic
+import warnings
 from kwimage.structs import _generic
 
 
@@ -111,7 +112,6 @@ class _PointsWarpMixin:
             try:
                 import imgaug
             except ImportError:
-                import warnings
                 warnings.warn('imgaug is not installed')
                 raise TypeError(type(transform))
             if isinstance(transform, imgaug.augmenters.Augmenter):
@@ -514,7 +514,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             'ec': None,
         }
         if 'fc' in kwargs:
-            import warnings
             warnings.warning(
                 'Warning: specifying fc to Points.draw overrides '
                 'the color argument. Use color instead')
@@ -693,7 +692,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return cls.from_coco(coco_kpts, class_idxs=class_idxs, classes=classes)
 
     @classmethod
-    def from_coco(cls, coco_kpts, class_idxs=None, classes=None):
+    def from_coco(cls, coco_kpts, class_idxs=None, classes=None, warn=False):
         """
         Args:
             coco_kpts (list | dict): either the original list keypoint encoding
@@ -702,6 +701,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             class_idxs (list): only needed if using old style
 
             classes (list | CategoryTree): list of all keypoint category names
+
+            warn (bool, default=False): if True raise warnings
 
         Example:
             >>> ##
@@ -750,8 +751,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             cidx_list = []
 
             if class_idxs is not None:
-                import warnings
-                warnings.warn('class_idxs should not be specified for new-style')
+                if warn:
+                    warnings.warn('class_idxs should not be specified for new-style')
                 class_idxs = None
 
             # raise NotImplementedError(
@@ -767,10 +768,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                                                kpdict.get('category', None))
                                     for kpdict in coco_kpts]
                 if all(inferred_classes):
-                    import warnings
-                    warnings.warn(
-                        'Inferring keypoint classes in Points.from_coco. '
-                        'It would be better to specify them explicitly')
+                    if warn:
+                        warnings.warn(
+                            'Inferring keypoint classes in Points.from_coco. '
+                            'It would be better to specify them explicitly')
                     classes = sorted(set(inferred_classes))
 
             for kpdict in coco_kpts:
@@ -791,16 +792,16 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         cidx = classes.index(cname)
                     ### Legacy support, these are not prefered names ###
                     elif 'category_id' in kpdict:
-                        import warnings
-                        warnings.warn('Keypoints got category_id, but we would prefer keypoint_category_id')
+                        if warn:
+                            warnings.warn('Keypoints got category_id, but we would prefer keypoint_category_id')
                         cid = kpdict['category_id']
                         try:
                             cidx = classes.id_to_idx[cid]
                         except AttributeError:
                             raise TypeError('classes needs to be a ndsampler.CategoryTree to parse keypoint_category_id')
                     elif 'category' in kpdict:
-                        import warnings
-                        warnings.warn('Keypoints got category, but we would prefer keypoint_category')
+                        if warn:
+                            warnings.warn('Keypoints got category, but we would prefer keypoint_category')
                         assert classes is not None
                         cname = kpdict['category']
                         cidx = classes.index(cname)
@@ -809,7 +810,6 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     cidx_list.append(cidx)
                 else:
                     if 'keypoint_category_id' in kpdict or 'keypoint_category' in kpdict:
-                        # import warnings
                         # warnings.warn('classes should be specified for new-style')
                         raise Exception('classes should be specified for new-style')
 
@@ -835,8 +835,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             if class_idxs is not None:
                 if len(class_idxs) == 0:
                     if len(kp) > 0:
-                        import warnings
-                        warnings.warn('Creating keypoints with unknown class information')
+                        if warn:
+                            warnings.warn('Creating keypoints with unknown class information')
                         # raise Exception('Creating keypoints with unknown class information')
                         class_idxs = [-1] * len(xy)
                     else:
