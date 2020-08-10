@@ -200,14 +200,14 @@ class _MaskConversionMixin(object):
             if self.data.get('order', 'F') != 'F':
                 raise ValueError('Expected column-major array RLE')
             if cython_mask is None:
-                raise NotImplementedError('pure python version')
+                raise NotImplementedError('pure python version of array_rle to_bytes_rle')
             newdata = cython_mask.frUncompressedRLE([self.data], h, w)[0]
             self = Mask(newdata, MaskFormat.BYTES_RLE)
 
         elif self.format == MaskFormat.F_MASK:
             f_masks = self.data[:, :, None]
             if cython_mask is None:
-                raise NotImplementedError('pure python version')
+                raise NotImplementedError('pure python version of f to to_bytes_rle')
             encoded = cython_mask.encode(f_masks)[0]
             if 'size' in encoded:
                 encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -216,7 +216,7 @@ class _MaskConversionMixin(object):
             c_mask = self.data
             f_masks = np.asfortranarray(c_mask)[:, :, None]
             if cython_mask is None:
-                raise NotImplementedError('pure python version')
+                raise NotImplementedError('pure python version of c to to_bytes_rle')
             encoded = cython_mask.encode(f_masks)[0]
             if 'size' in encoded:
                 encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -347,7 +347,7 @@ class _MaskConstructorMixin(object):
         flat_polys = [np.array(ps).ravel() for ps in polygons]
         cython_mask = _lazy_mask_backend()
         if cython_mask is None:
-            raise NotImplementedError('pure python version')
+            raise NotImplementedError('pure python version from polygons')
         encoded = cython_mask.frPoly(flat_polys, h, w)
         if 'size' in encoded:
             encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -777,7 +777,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 datas = [item.to_bytes_rle().data for item in items]
                 cython_mask = _lazy_mask_backend()
                 if cython_mask is None:
-                    raise NotImplementedError('pure python version')
+                    raise NotImplementedError('pure python version of bytes rle union')
                 new_data = cython_mask.merge(datas, intersect=0)
                 if 'size' in new_data:
                     new_data['size'] = list(map(int, new_data['size']))  # python2 fix
@@ -785,7 +785,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             else:
                 datas = [item.to_bytes_rle().data for item in items]
                 if cython_mask is None:
-                    raise NotImplementedError('pure python version')
+                    raise NotImplementedError('pure python version of union')
                 new_rle = cython_mask.merge(datas, intersect=0)
                 if 'size' in new_rle:
                     new_rle['size'] = list(map(int, new_rle['size']))  # python2 fix
@@ -808,7 +808,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         rle_datas = [item.to_bytes_rle().data for item in it.chain([self], others)]
         cython_mask = _lazy_mask_backend()
         if cython_mask is None:
-            raise NotImplementedError('pure python version')
+            raise NotImplementedError('pure python version of mask intersection')
         encoded = cython_mask.merge(rle_datas, intersect=1)
         if 'size' in encoded:
             encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -838,7 +838,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         self = self.to_bytes_rle()
         cython_mask = _lazy_mask_backend()
         if cython_mask is None:
-            raise NotImplementedError('pure python version')
+            raise NotImplementedError('pure python version mask area')
         return cython_mask.area([self.data])[0]
 
     def get_patch(self):
@@ -877,7 +877,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         self = self.to_bytes_rle()
         cython_mask = _lazy_mask_backend()
         if cython_mask is None:
-            raise NotImplementedError('pure python version')
+            raise NotImplementedError('pure python version get_xywh')
         xywh = cython_mask.toBbox([self.data])[0]
         # boxes = kwimage.Boxes(xywh, 'xywh')
         # return boxes
@@ -1147,7 +1147,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         pyiscrowd = np.array([0], dtype=np.uint8)
         cython_mask = _lazy_mask_backend()
         if cython_mask is None:
-            raise NotImplementedError('pure python version')
+            raise NotImplementedError('pure python version iou')
         iou = cython_mask.iou([item1], [item2], pyiscrowd)[0, 0]
         return iou
 
