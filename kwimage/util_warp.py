@@ -805,6 +805,23 @@ def subpixel_slice(inputs, index):
         index (Tuple[slice]): a slice to subpixel accuracy
 
     Example:
+        >>> import kwimage
+        >>> import torch
+        >>> # say we have a (576, 576) input space
+        >>> # and a (9, 9) output space downsampled by 64x
+        >>> ospc_feats = np.tile(np.arange(9 * 9).reshape(1, 9, 9), (1024, 1, 1))
+        >>> inputs = torch.from_numpy(ospc_feats)
+        >>> # We detected a box in the input space
+        >>> ispc_bbox = kwimage.Boxes([[64,  65, 100, 120]], 'tlbr')
+        >>> # Get coordinates in the output space
+        >>> ospc_bbox = ispc_bbox.scale(1 / 64)
+        >>> tl_x, tl_y, br_x, br_y = ospc_bbox.data[0]
+        >>> # Convert the box to a slice
+        >>> index = [slice(None), slice(tl_y, br_y), slice(tl_x, br_x)]
+        >>> # Note: I'm not 100% sure this work right with non-intergral slices
+        >>> outputs = kwimage.subpixel_slice(inputs, index)
+
+    Example:
         >>> inputs = np.arange(5 * 5 * 3).reshape(5, 5, 3)
         >>> index = [slice(0, 3), slice(0, 3)]
         >>> outputs = subpixel_slice(inputs, index)
@@ -841,7 +858,8 @@ def subpixel_slice(inputs, index):
         shift = -subpixel_starts[interp_axes]
         output_shape = subpixel_stops - subpixel_starts
         if np.any(output_shape % 1 > 0):
-            raise ValueError('the slice length must be integral')
+            output_shape = np.ceil(output_shape)
+            # raise ValueError('the slice length must be integral')
         output_shape = output_shape.astype(np.int)
         outputs = subpixel_translate(inputs, shift, interp_axes=interp_axes,
                                      output_shape=output_shape)

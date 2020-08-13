@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Fix bug with check for turbojpeg in imread.
+* `subpixel_slice` now works with non-integer slices
 
 ## Version 0.6.4 - Released 2020-07-08 
 

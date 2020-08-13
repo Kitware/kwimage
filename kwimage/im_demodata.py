@@ -168,6 +168,9 @@ def grab_test_image_fpath(key='astro'):
     Returns:
         str: path to the requested image
 
+    CommandLine:
+        python -c "import kwimage; print(kwimage.grab_test_image_fpath('airport'))"
+
     Example:
         >>> for key in grab_test_image.keys():
         ...     grab_test_image_fpath(key)

@@ -767,6 +767,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/cogeotiff/rio-cogeo
         https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
 
+    CommandLine:
+        xdoctest -m kwimage.im_io _imwrite_cloud_optimized_geotiff
+
     Example:
         >>> # xdoctest: +REQUIRES(module:gdal)
         >>> import tempfile

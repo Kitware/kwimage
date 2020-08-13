@@ -105,7 +105,8 @@ class BoxFormat:
     # TODO: change the string values to match their associated NameConstant
     #     - [x] bump versions
     #     - [x] use the later in the or statements
-    #     - [ ] ensur nothing depends on the old values.
+    #     - [ ] ensure nothing depends on the old values.
+    #     - [ ] Change cannonical TLBR to LTRB
 
     # Definitions:
     #     x1 = top-left-x
@@ -142,11 +143,12 @@ class BoxFormat:
         # Once we hit version 1.0, this table cannot be removed from without
         # bumping a major version.
         'xywh': XYWH,
-        'tlhw': XYWH,  # todo: remove: does not follow the pattern
+        'ltwh': XYWH,  # left-top-width-height
 
         'cxywh': CXYWH,
 
-        'tlbr': TLBR,
+        'tlbr': TLBR,  # note tlbr is a confusing code, its actually LTRB. For legacy reasons we are retaining it for now.
+        'ltrb': TLBR,  # left-top-right-bottom
         'xyxy': TLBR,
         'xy1xy2': TLBR,
 
@@ -165,6 +167,14 @@ class BoxFormat:
     }
     for key in cannonical:
         aliases[key] = key
+
+    # these are old deprecated format codes that were once used and were
+    # removed due to inconsistent implementations. Thus we should not re-use
+    # then in the future (maybe unless there is a major version bump).
+    blocklist = [
+        'tlhw',
+        # 'tlbr', # eventually
+    ]
 
 
 def box_ious(tlbr1, tlbr2, bias=0, impl=None):

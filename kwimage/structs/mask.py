@@ -874,7 +874,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self.get_xywh().tolist()
         """
         if self.format == 'c_mask':
-            x_coords, y_coords = np.where(self.data)
+            y_coords, x_coords = np.where(self.data)
             tl_x = x_coords.min()
             br_x = x_coords.max()
             tl_y = y_coords.min()
@@ -883,7 +883,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             h = br_y - tl_y
             xywh = np.array([tl_x, tl_y, w, h])
         elif self.format == 'f_mask':
-            y_coords, x_coords = np.where(self.data)
+            x_coords, y_coords = np.where(self.data)
             tl_x = x_coords.min()
             br_x = x_coords.max()
             tl_y = y_coords.min()
@@ -1100,7 +1100,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 _contours, _hierarchy = _ret
             else:
                 _img, _contours, _hierarchy = _ret
-            _hierarchy = _hierarchy[0]
+            import xdev
+            with xdev.embed_on_exception_context:
+                _hierarchy = _hierarchy[0]
 
             polys = {i: {'exterior': None, 'interiors': []}
                      for i, row in enumerate(_hierarchy) if row[3] == -1}
