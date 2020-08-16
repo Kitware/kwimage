@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.5 - Unreleased
 
+### Changed
+* More methods in the Mask object should work without the c-extensions being built. 
+* The `Mask.to_coco` method now returns a format based on the native encoding.
+
 ### Fixed
 * Fix bug with check for turbojpeg in imread.
 * `subpixel_slice` now works with non-integer slices

@@ -1161,6 +1161,21 @@ class MultiPolygon(_generic.ObjectList):
 
 
 class PolygonList(_generic.ObjectList):
+    """
+    Stores and allows manipluation of multiple polygons, usually within the
+    same image.
+    """
 
     def to_polygon_list(self):
         return self
+
+    def to_segmentation_list(self):
+        """
+        Converts all items to segmentation objects
+        """
+        import kwimage
+        new = kwimage.SegmentationList([
+            None if item is None else kwimage.Segmentation.coerce(item)
+            for item in self
+        ])
+        return new
