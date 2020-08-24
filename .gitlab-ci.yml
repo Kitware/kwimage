@@ -26,6 +26,7 @@ stages:
         # Tags define which runners will accept which jobs
         - docker
         - linux
+        - build
 
     variables:
         # Change pip's cache directory to be inside the project directory since we can
@@ -383,33 +384,33 @@ deploy/cp35-cp35m-manylinux2010:
 # ---------------
 # Python 2.7 Jobs
 
-build/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *manylinux_build_template
+#build/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *manylinux_build_template
 
-test_full/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *test_full_template
-    image:
-        python:2.7
+#test_full/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *test_full_template
+#    image:
+#        python:2.7
 
-test_basic/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *test_basic_template
-    image:
-        python:2.7
+#test_basic/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *test_basic_template
+#    image:
+#        python:2.7
 
-gpgsign/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *gpgsign_template
-    image:
-        python:2.7
+#gpgsign/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *gpgsign_template
+#    image:
+#        python:2.7
 
-deploy/cp27-cp27mu-manylinux2010:
-    <<: 
-        - *deploy_template
-    image:
-        python:2.7
+#deploy/cp27-cp27mu-manylinux2010:
+#    <<: 
+#        - *deploy_template
+#    image:
+#        python:2.7
 
 
 # ---------------
