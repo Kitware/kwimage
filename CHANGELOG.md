@@ -4,7 +4,7 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.6.5 - Unreleased
+## Version 0.6.5 - Released 2020-08-26 
 
 ### Added
 * Add `to_boxes` to MultiPolygon
@@ -12,6 +12,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 * More methods in the Mask object should work without the c-extensions being built. 
 * The `Mask.to_coco` method now returns a format based on the native encoding.
+* Support for the new is preferred "ltrb" format over "tlbr" which will eventually be deprecated.
+* No longer publishing wheels / CI testing for Python 2.7
 
 ### Fixed
 * Fix bug with check for turbojpeg in imread.
