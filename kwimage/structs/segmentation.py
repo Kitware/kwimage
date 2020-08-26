@@ -42,6 +42,10 @@ class _WrapperObject(ub.NiceRepr):
 class Segmentation(_WrapperObject):
     """
     Either holds a MultiPolygon, Polygon, or Mask
+
+    Args:
+        data (object): the underlying object
+        format (str): either 'mask', 'polygon', or 'multipolygon'
     """
     def __init__(self, data, format=None):
         self.data = data
@@ -99,12 +103,13 @@ class Segmentation(_WrapperObject):
 
 class SegmentationList(_generic.ObjectList):
     """
-    Store and manipulate multiple masks, usually within the same image
+    Store and manipulate multiple segmentations (masks or polygons), usually
+    within the same image
     """
 
     def to_polygon_list(self):
         """
-        Converts all mask objects to polygon objects
+        Converts all mask objects to multi-polygon objects
         """
         import kwimage
         new = kwimage.PolygonList([
@@ -112,6 +117,20 @@ class SegmentationList(_generic.ObjectList):
             for item in self
         ])
         return new
+
+    def to_mask_list(self, dims=None):
+        """
+        Converts all mask objects to multi-polygon objects
+        """
+        import kwimage
+        new = kwimage.MaskList([
+            None if item is None else item.to_mask(dims=dims)
+            for item in self
+        ])
+        return new
+
+    def to_segmentation_list(self):
+        return self
 
     @classmethod
     def coerce(cls, data):

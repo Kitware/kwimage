@@ -105,7 +105,8 @@ class BoxFormat:
     # TODO: change the string values to match their associated NameConstant
     #     - [x] bump versions
     #     - [x] use the later in the or statements
-    #     - [ ] ensur nothing depends on the old values.
+    #     - [ ] ensure nothing depends on the old values.
+    #     - [ ] Change cannonical TLBR to LTRB
 
     # Definitions:
     #     x1 = top-left-x
@@ -142,11 +143,12 @@ class BoxFormat:
         # Once we hit version 1.0, this table cannot be removed from without
         # bumping a major version.
         'xywh': XYWH,
-        'tlhw': XYWH,  # todo: remove: does not follow the pattern
+        'ltwh': XYWH,  # left-top-width-height
 
         'cxywh': CXYWH,
 
-        'tlbr': TLBR,
+        'tlbr': TLBR,  # note tlbr is a confusing code, its actually LTRB. For legacy reasons we are retaining it for now.
+        'ltrb': TLBR,  # left-top-right-bottom
         'xyxy': TLBR,
         'xy1xy2': TLBR,
 
@@ -165,6 +167,14 @@ class BoxFormat:
     }
     for key in cannonical:
         aliases[key] = key
+
+    # these are old deprecated format codes that were once used and were
+    # removed due to inconsistent implementations. Thus we should not re-use
+    # then in the future (maybe unless there is a major version bump).
+    blocklist = [
+        'tlhw',
+        # 'tlbr', # eventually
+    ]
 
 
 def box_ious(tlbr1, tlbr2, bias=0, impl=None):
@@ -1852,6 +1862,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         and another set of boxes. This is a symmetric measure of similarity
         between boxes.
 
+        TODO:
+            - [ ] Add pairwise flag to toggle between one-vs-one and all-vs-all
+                  computation.
+
         Args:
             other (Boxes): boxes to compare IoUs against
             bias (int, default=0): either 0 or 1, does TL=BR have area of 0 or 1?
@@ -1869,10 +1883,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             iooas - for a measure of coverage between boxes
 
         Examples:
-            >>> self = Boxes(np.array([[ 0,  0, 10, 10],
-            >>>                        [10,  0, 20, 10],
-            >>>                        [20,  0, 30, 10]]), 'tlbr')
-            >>> other = Boxes(np.array([6, 2, 20, 10]), 'tlbr')
+            >>> import kwimage
+            >>> self = kwimage.Boxes(np.array([[ 0,  0, 10, 10],
+            >>>                                [10,  0, 20, 10],
+            >>>                                [20,  0, 30, 10]]), 'tlbr')
+            >>> other = kwimage.Boxes(np.array([6, 2, 20, 10]), 'tlbr')
             >>> overlaps = self.ious(other, bias=1).round(2)
             >>> assert np.all(np.isclose(overlaps, [0.21, 0.63, 0.04])), repr(overlaps)
 
@@ -1903,6 +1918,24 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> print(ub.repr2(results, sk=True, precision=3, nl=2))
             >>> from functools import partial
             >>> assert ub.allsame(results.values(), partial(np.allclose, atol=1e-07))
+
+        Ignore:
+            >>> # does this work with backprop?
+            >>> import torch
+            >>> import kwimage
+            >>> num = 1000
+            >>> true_boxes = kwimage.Boxes.random(num).tensor()
+            >>> inputs = torch.rand(num, 10)
+            >>> regress = torch.nn.Linear(10, 4)
+            >>> energy = regress(inputs)
+            >>> energy.retain_grad()
+            >>> outputs = energy.sigmoid()
+            >>> outputs.retain_grad()
+            >>> out_boxes = kwimage.Boxes(outputs, 'cxywh')
+            >>> ious = out_boxes.ious(true_boxes)
+            >>> loss = ious.sum()
+            >>> loss.backward()
+
         """
         other_is_1d = len(other) > 0 and (len(other.shape) == 1)
         if other_is_1d:

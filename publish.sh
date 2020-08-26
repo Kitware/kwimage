@@ -56,7 +56,7 @@ USE_GPG=${USE_GPG:="True"}
 CURRENT_BRANCH=${CURRENT_BRANCH:=$(git branch | grep \* | cut -d ' ' -f2)}
 DEPLOY_BRANCH=${DEPLOY_BRANCH:=release}
 DEPLOY_REMOTE=${DEPLOY_REMOTE:=origin}
-VERSION=$(python -c "import setup; print(setup.version)")
+VERSION=$(python -c "import setup; print(setup.VERSION)")
 echo "VERSION = $VERSION"
 
 GPG_EXECUTABLE=${GPG_EXECUTABLE:=gpg}

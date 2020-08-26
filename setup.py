@@ -249,7 +249,8 @@ compile_setup_kw = dict(
 #     pass
 
 
-version = parse_version('kwimage/__init__.py')  # needs to be a global var for git tags
+NAME = 'kwimage'
+VERSION = parse_version('kwimage/__init__.py')  # needs to be a global var for git tags
 
 if __name__ == '__main__':
     if 'clean' in sys.argv:
@@ -259,8 +260,8 @@ if __name__ == '__main__':
     if setup is None:
         raise ImportError('skbuild or setuptools failed to import')
     setup(
-        name='kwimage',
-        version=version,
+        name=NAME,
+        version=VERSION,
         author='Jon Crall',
         author_email='jon.crall@kitware.com',
         long_description=parse_description(),
@@ -286,7 +287,7 @@ if __name__ == '__main__':
             # This should be interpreted as Apache License v2.0
             'License :: OSI Approved :: Apache Software License',
             # Supported Python versions
-            'Programming Language :: Python :: 2.7',
+            # 'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',

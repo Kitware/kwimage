@@ -668,7 +668,7 @@ def load_image_shape(fpath):
 
 
 def __inspect_optional_overhead():
-    """
+    r"""
         Benchmark:
             >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
             >>> def dis_instructions(func):
@@ -715,7 +715,7 @@ def _have_turbojpg():
     try:
         import turbojpeg  # NOQA
         turbojpeg.TurboJPEG()
-    except ImportError:
+    except Exception:
         return False
     else:
         return True
@@ -724,7 +724,7 @@ def _have_turbojpg():
 def _have_gdal():
     try:
         import gdal  # NOQA
-    except ImportError:
+    except Exception:
         return False
     else:
         return True
@@ -766,6 +766,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/sshuair/cogeotiff
         https://github.com/cogeotiff/rio-cogeo
         https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+
+    CommandLine:
+        xdoctest -m kwimage.im_io _imwrite_cloud_optimized_geotiff
 
     Example:
         >>> # xdoctest: +REQUIRES(module:gdal)

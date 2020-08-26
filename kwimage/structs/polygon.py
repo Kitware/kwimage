@@ -1002,6 +1002,33 @@ class MultiPolygon(_generic.ObjectList):
     def to_multi_polygon(self):
         return self
 
+    def to_boxes(self):
+        """
+        Return the bounding box of the multi polygon
+
+        Returns:
+            kwimage.Boxes:
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = MultiPolygon.random(rng=0, n=10)
+            >>> boxes = self.to_boxes()
+            >>> sub_boxes = [d.to_boxes() for d in self.data]
+            >>> areas1 = np.array([s.intersection(boxes).area[0] for s in sub_boxes])
+            >>> areas2 = np.array([s.area[0] for s in sub_boxes])
+            >>> assert np.allclose(areas1, areas2)
+        """
+        import kwimage
+        tl = np.array([np.inf, np.inf])
+        br = np.array([-np.inf, -np.inf])
+        for data in self.data:
+            xys = data.data['exterior'].data
+            tl = np.minimum(tl, xys.min(axis=0))
+            br = np.maximum(br, xys.max(axis=0))
+        tlbr = np.hstack([tl, br])[None, :]
+        boxes = kwimage.Boxes(tlbr, 'tlbr')
+        return boxes
+
     def to_mask(self, dims=None):
         """
         Returns a mask object indication regions occupied by this multipolygon
@@ -1161,6 +1188,21 @@ class MultiPolygon(_generic.ObjectList):
 
 
 class PolygonList(_generic.ObjectList):
+    """
+    Stores and allows manipluation of multiple polygons, usually within the
+    same image.
+    """
 
     def to_polygon_list(self):
         return self
+
+    def to_segmentation_list(self):
+        """
+        Converts all items to segmentation objects
+        """
+        import kwimage
+        new = kwimage.SegmentationList([
+            None if item is None else kwimage.Segmentation.coerce(item)
+            for item in self
+        ])
+        return new
