@@ -1354,7 +1354,8 @@ class _BoxDrawMixins(object):
         Args:
             image (ndarray): must be in uint8 format
 
-            color (str | ColorLike): one color for all boxes
+            color (str | ColorLike | List[ColorLike]):
+                one color for all boxes or a list of colors for each box
 
             alpha (float): transparency of bboxes
 
@@ -1362,7 +1363,8 @@ class _BoxDrawMixins(object):
 
             copy (bool, default=False): if False only copies if necessary
 
-            thickness (int, default=2): rectangle thickness
+            thickness (int, default=2): rectangle thickness, negative values
+                will draw a filled rectangle.
 
         Example:
             >>> from kwimage.structs.boxes import *  # NOQA
@@ -1415,6 +1417,7 @@ class _BoxDrawMixins(object):
         """
         import cv2
         import kwimage
+        import numbers
         def _coords(x, y):
             # ensure coords don't go out of bounds or cv2 throws weird error
             x = min(max(x, 0), w - 1)
@@ -1425,17 +1428,17 @@ class _BoxDrawMixins(object):
         h, w = image.shape[0:2]
 
         # Get the color that is compatible with the input image encoding
-        rect_color = kwimage.Color(color)._forimage(image)
+        # rect_color = kwimage.Color(color)._forimage(image)
 
         # Parameters for drawing the box rectangles
         rectkw = {
             'thickness': int(thickness),
-            'color': rect_color,
+            # 'color': rect_color,
         }
 
         # Parameters for drawing the label text
         fontkw = {
-            'color': rect_color,
+            # 'color': rect_color,
             'thickness': int(2),
             'fontFace': cv2.FONT_HERSHEY_SIMPLEX,
             'fontScale': 0.75,
@@ -1443,18 +1446,26 @@ class _BoxDrawMixins(object):
         }
 
         tlbr_list = self.to_tlbr().data
+        num = len(tlbr_list)
+
+        if isinstance(color, list) and not isinstance(color, numbers.Number):
+            # Passed list of color for each box
+            colors = [kwimage.Color(c)._forimage(image) for c in color]
+        else:
+            # Passed a single color
+            colors = [kwimage.Color(color)._forimage(image)] * num
 
         if alpha is None:
-            alpha = [1.0] * len(tlbr_list)
+            alpha = [1.0] * num
         elif isinstance(alpha, (float, np.float32, np.float64)):
-            alpha = [alpha] * len(tlbr_list)
+            alpha = [alpha] * num
 
         if labels is None or labels is False:
-            labels = [None] * len(tlbr_list)
+            labels = [None] * num
 
         image = kwimage.atleast_3channels(image, copy=copy)
 
-        for tlbr, label, alpha_ in zip(tlbr_list, labels, alpha):
+        for tlbr, label, alpha_, col in zip(tlbr_list, labels, alpha, colors):
             x1, y1, x2, y2 = tlbr
             pt1 = _coords(x1, y1)
             pt2 = _coords(x2, y2)
@@ -1466,10 +1477,10 @@ class _BoxDrawMixins(object):
 
             # while cv2.rectangle will accept an alpha color it will not do any
             # blending with the background image.
-            image = cv2.rectangle(image, pt1, pt2, **rectkw)
+            image = cv2.rectangle(image, pt1, pt2, color=col, **rectkw)
             if label:
                 image = kwimage.draw_text_on_image(
-                    image, text=label, org=org, **fontkw)
+                    image, text=label, org=org, color=col, **fontkw)
             if alpha_ < 1.0:
                 # We could get away with only doing this to a slice of the
                 # image. It might result in a significant speedup. We would

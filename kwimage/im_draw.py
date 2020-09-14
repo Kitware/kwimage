@@ -102,6 +102,7 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         # recursive call
         subkw = kwargs.copy()
         subkw['color'] = 'black'
+        subkw.pop('return_info', None)
         basis = list(range(-border, border + 1))
         for i, j in it.product(basis, basis):
             if i == 0 and j == 0:
