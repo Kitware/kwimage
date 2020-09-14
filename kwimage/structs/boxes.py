@@ -1257,32 +1257,86 @@ class _BoxTransformMixins(object):
 class _BoxDrawMixins(object):
     """
     Non-core functions for box visualization
+
+    Example:
+        >>> # Drawing boxes (and annotation objects in general) with kwimage is
+        >>> # easy.  For boxes we assume that your data is in an [Nx4] array,
+        >>> # but its important that you further specify a format so we know
+        >>> # which each column represents. The major formats are:
+        >>> #     'xywh'  -  (x1, y1, w, h)
+        >>> #     'cxywh' -  (cx, cy, w, h)
+        >>> #     'ltbr'  -  (x1, y1, x2, y2)  # formerly tlbr
+        >>> #     'xxyy'  -  (x1, x2, y1, y2)
+        >>> # (see kwimage.structs.boxes.BoxFormat for more format details)
+        >>> #
+        >>> # For the purposes of this demo lets assume you have boxes in
+        >>> # "xywh" format.
+        >>> data = np.random.rand(10, 4) * 224
+        >>> #
+        >>> # Simply wrap your data with a Boxes object
+        >>> import kwimage
+        >>> boxes = kwimage.Boxes(data, format='xywh')
+        >>> #
+        >>> # Now to draw the boxes there are two ways
+        >>> #
+        >>> # Method (2): OpenCV
+        >>> # To use opencv you need to draw onto an existing numpy image.
+        >>> # Assuming we have such an image:
+        >>> image = np.random.rand(224, 224, 3)
+        >>> #
+        >>> # It is good practice to copy it, as we will modify it in-place
+        >>> canvas = image.copy()
+        >>> # Then simply call draw-on and the underlying ndarray will be
+        >>> # modified such that your boxes are drawn on it.
+        >>> canvas = boxes.draw_on(canvas)
+        >>> #
+        >>> # xdoctest: +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(module:matplotlib)
+        >>> # Method (1): Matplotlib
+        >>> # Assuming you already have a figure setup with correct limits
+        >>> # you can draw the boxes on top of that figure via:
+        >>> boxes.draw()
+
     """
 
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
-             fill=False, lw=2, ax=None):
+             fill=False, lw=2, ax=None, setlim=False):
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.boxes import *  # NOQA
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
-            >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
+            >>> #image = (np.random.rand(256, 256) * 255).astype(np.uint8)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
-            >>> kwplot.imshow(image)
+            >>> #kwplot.imshow(image)
             >>> # xdoc: +REQUIRES(--show)
-            >>> self.draw(color='blue')
+            >>> self.draw(color='blue', setlim=1.2)
             >>> # xdoc: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
         """
         import kwplot
+        from matplotlib import pyplot as plt
+        if ax is None:
+            ax = plt.gca()
+
+        if setlim:
+            x1, y1, x2, y2 = self.to_tlbr().components
+            xmin, xmax = x1.min(), x2.max()
+            ymin, ymax = x1.min(), x2.max()
+            w = (xmax - xmin)
+            pad = ((w * setlim) - w) / 2
+            ax.set_xlim(xmin - pad, xmax + pad)
+            ax.set_ylim(ymin - pad, ymax + pad)
+
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:
             # Hack to draw non-2d boxes

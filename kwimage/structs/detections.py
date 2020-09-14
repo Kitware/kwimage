@@ -6,6 +6,28 @@ structure.
 
 Also can optionally incorporate `kwimage.PolygonList` for segmentation masks
 and `kwimage.PointsList` for keypoints.
+
+
+If you want to visualize boxes and scores you can do this:
+    >>> # Given data
+    >>> data = np.random.rand(10, 4) * 224
+    >>> scores = np.random.rand(10,)
+    >>> class_idxs = np.random.randint(0, 3, size=10)
+    >>> classes = ['class1', 'class2', 'class3']
+    >>> #
+    >>> # Wrap your data with a Detections object
+    >>> import kwimage
+    >>> dets = kwimage.Detections(
+    >>>     boxes=kwimage.Boxes(data, format='xywh'),
+    >>>     scores=scores,
+    >>>     class_idxs=class_idxs,
+    >>>     classes=classes,
+    >>> )
+    >>> dets.draw()
+    >>> import matplotlib.pyplot as plt
+    >>> plt.gca().set_xlim(0, 224)
+    >>> plt.gca().set_ylim(0, 224)
+
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import six

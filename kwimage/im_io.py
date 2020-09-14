@@ -9,6 +9,14 @@ from . import im_cv2
 from . import im_core
 
 
+# Common image extensions
+IMAGE_EXTENSIONS = (
+    '.bmp', '.pgm', '.jpg', '.jpeg', '.png', '.tif', '.tiff',
+    '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif', '.r0',
+    '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+)
+
+
 def imread(fpath, space='auto', backend='auto'):
     """
     Reads image data in a specified format using some backend implementation.
