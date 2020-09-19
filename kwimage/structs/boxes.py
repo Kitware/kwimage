@@ -1448,6 +1448,9 @@ class _BoxDrawMixins(object):
         tlbr_list = self.to_tlbr().data
         num = len(tlbr_list)
 
+        image = kwimage.atleast_3channels(image, copy=copy)
+        image = np.ascontiguousarray(image)
+
         if isinstance(color, list) and not isinstance(color, numbers.Number):
             # Passed list of color for each box
             colors = [kwimage.Color(c)._forimage(image) for c in color]
@@ -1462,8 +1465,6 @@ class _BoxDrawMixins(object):
 
         if labels is None or labels is False:
             labels = [None] * num
-
-        image = kwimage.atleast_3channels(image, copy=copy)
 
         for tlbr, label, alpha_, col in zip(tlbr_list, labels, alpha, colors):
             x1, y1, x2, y2 = tlbr
