@@ -791,6 +791,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 k = ann.get('keypoints', None)
                 if k is None:
                     kpts.append(k)
+                elif len(k) == 0:
+                    kpcidxs = []
                 else:
                     kpcidxs = None
                     # TODO: correctly handle newstyle keypoints
