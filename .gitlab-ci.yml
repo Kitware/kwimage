@@ -356,33 +356,33 @@ deploy/cp36-cp36m-manylinux2010:
 # ---------------
 # Python 3.5 Jobs
 
-build/cp35-cp35m-manylinux2010:
-    <<: 
-        - *manylinux_build_template
+#build/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *manylinux_build_template
 
-test_full/cp35-cp35m-manylinux2010:
-    <<: 
-        - *test_full_template
-    image:
-        python:3.5
+#test_full/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *test_full_template
+#    image:
+#        python:3.5
 
-test_basic/cp35-cp35m-manylinux2010:
-    <<: 
-        - *test_basic_template
-    image:
-        python:3.5
+#test_basic/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *test_basic_template
+#    image:
+#        python:3.5
 
-gpgsign/cp35-cp35m-manylinux2010:
-    <<: 
-        - *gpgsign_template
-    image:
-        python:3.5
+#gpgsign/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *gpgsign_template
+#    image:
+#        python:3.5
 
-deploy/cp35-cp35m-manylinux2010:
-    <<: 
-        - *deploy_template
-    image:
-        python:3.5
+#deploy/cp35-cp35m-manylinux2010:
+#    <<: 
+#        - *deploy_template
+#    image:
+#        python:3.5
 
 
 # ---------------

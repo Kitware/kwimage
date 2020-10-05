@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * `kwimage.draw_text_on_image` now support `halign`
 
+### Changed
+* Removed explicit Python 3.5 support. Note, 3.5 should still still work using
+  the universal `py2.py3-none-any` wheel.
+
 
 ## Version 0.6.5 - Released 2020-08-26 
 
