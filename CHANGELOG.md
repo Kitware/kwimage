@@ -8,10 +8,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * `kwimage.draw_text_on_image` now support `halign`
+* `kwimage.Boxes.draw_on` now supports different colors for each box.
 
 ### Changed
 * Removed explicit Python 3.5 support. Note, 3.5 should still still work using
   the universal `py2.py3-none-any` wheel.
+
+### Fixed
+* Issue with `Detections.from_coco` with keypoint categories
+* Fixed `kwimage.Boxes.draw_on` when images are non-contiguous
 
 
 ## Version 0.6.5 - Released 2020-08-26 
