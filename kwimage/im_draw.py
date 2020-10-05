@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 
-def draw_text_on_image(img, text, org, **kwargs):
+def draw_text_on_image(img, text, org, return_info=False, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
@@ -21,12 +21,16 @@ def draw_text_on_image(img, text, org, **kwargs):
         org (tuple): x, y location of the text string in the image.
             if bottomLeftOrigin=True this is the bottom-left corner of the text
             otherwise it is the top-left corner (default).
+        return_info (bool, default=False):
+            if True, also returns information about the positions the text
+            was drawn on.
         **kwargs:
             color (tuple): default blue
             thickneess (int): defaults to 2
             fontFace (int): defaults to cv2.FONT_HERSHEY_SIMPLEX
             fontScale (float): defaults to 1.0
-            valign (str, default=bottom): either top, center, or bottom
+            valign (str, default='bottom'): either top, center, or bottom
+            halign (str, default='left'): either left, center, or right
 
     References:
         https://stackoverflow.com/questions/27647424/
@@ -45,10 +49,15 @@ def draw_text_on_image(img, text, org, **kwargs):
 
     Example:
         >>> import kwimage
-        >>> img = kwimage.grab_test_image(space='rgb')
+        >>> # Test valign
+        >>> img = kwimage.grab_test_image(space='rgb', dsize=(500, 500))
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(150, 0), valign='center', border=2)
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(300, 0), valign='bottom', border=2)
+        >>> # Test halign
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(250, 100), halign='right', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(250, 250), halign='center', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(250, 400), halign='left', border=2)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -68,7 +77,10 @@ def draw_text_on_image(img, text, org, **kwargs):
         kwargs['color'] = 'red'
 
     # Get the color that is compatible with the input image encoding
-    kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
+    if img is None:
+        kwargs['color'] = kwimage.Color(kwargs['color']).as255()
+    else:
+        kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
 
     if 'thickness' not in kwargs:
         kwargs['thickness'] = 2
@@ -90,6 +102,7 @@ def draw_text_on_image(img, text, org, **kwargs):
         # recursive call
         subkw = kwargs.copy()
         subkw['color'] = 'black'
+        subkw.pop('return_info', None)
         basis = list(range(-border, border + 1))
         for i, j in it.product(basis, basis):
             if i == 0 and j == 0:
@@ -98,6 +111,7 @@ def draw_text_on_image(img, text, org, **kwargs):
             img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
 
     valign = kwargs.pop('valign', None)
+    halign = kwargs.pop('halign', None)
 
     getsize_kw = {
         k: kwargs[k]
@@ -126,10 +140,11 @@ def draw_text_on_image(img, text, org, **kwargs):
     all_bottom_y = (line_org[-1, 1] + line_sizes[-1, 1])
 
     first_h = line_sizes[0, 1]
+
     total_h = (all_bottom_y - all_top_y)
+    total_w = line_sizes.T[0].max()
 
     if valign is not None:
-        # TODO: halign
         if valign == 'bottom':
             # This is the default for the one-line case
             # in the multiline case we need to subtract the total
@@ -146,16 +161,39 @@ def draw_text_on_image(img, text, org, **kwargs):
         else:
             raise KeyError(valign)
 
+    if halign is not None:
+        if halign == 'left':
+            # This is the default case, no modification needed
+            pass
+        elif halign == 'center':
+            # When the x-orgin should be the center, subtract half of
+            # the line width to get the leftmost point.
+            line_org[:, 0] = x0 - (line_sizes[:, 0] / 2)
+        elif halign == 'right':
+            # The x-orgin should be the rightmost point, subtract
+            # the width of each line to find the leftmost point.
+            line_org[:, 0] = x0 - line_sizes[:, 0]
+        else:
+            raise KeyError(halign)
+
     if img is None:
         # if image is unspecified allocate just enough space for text
-        total_w = line_sizes.T[0].max()
+        total_w = (line_org.T[0] + line_sizes.T[0]).max()
         # TODO: does not account for origin offset
-        img = np.zeros((total_h + thickness, total_w), dtype=np.uint8)
+        img = np.zeros((total_h + thickness, total_w, 3), dtype=np.uint8)
 
     for i, line in enumerate(lines):
         (x, y) = line_org[i]
         img = cv2.putText(img, line, (x, y), **kwargs)
-    return img
+
+    if return_info:
+        info = {
+            'line_org': line_org,
+            'line_sizes': line_sizes,
+        }
+        return img, info
+    else:
+        return img
 
 
 def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):

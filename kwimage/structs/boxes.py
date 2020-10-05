@@ -1257,32 +1257,86 @@ class _BoxTransformMixins(object):
 class _BoxDrawMixins(object):
     """
     Non-core functions for box visualization
+
+    Example:
+        >>> # Drawing boxes (and annotation objects in general) with kwimage is
+        >>> # easy.  For boxes we assume that your data is in an [Nx4] array,
+        >>> # but its important that you further specify a format so we know
+        >>> # which each column represents. The major formats are:
+        >>> #     'xywh'  -  (x1, y1, w, h)
+        >>> #     'cxywh' -  (cx, cy, w, h)
+        >>> #     'ltbr'  -  (x1, y1, x2, y2)  # formerly tlbr
+        >>> #     'xxyy'  -  (x1, x2, y1, y2)
+        >>> # (see kwimage.structs.boxes.BoxFormat for more format details)
+        >>> #
+        >>> # For the purposes of this demo lets assume you have boxes in
+        >>> # "xywh" format.
+        >>> data = np.random.rand(10, 4) * 224
+        >>> #
+        >>> # Simply wrap your data with a Boxes object
+        >>> import kwimage
+        >>> boxes = kwimage.Boxes(data, format='xywh')
+        >>> #
+        >>> # Now to draw the boxes there are two ways
+        >>> #
+        >>> # Method (2): OpenCV
+        >>> # To use opencv you need to draw onto an existing numpy image.
+        >>> # Assuming we have such an image:
+        >>> image = np.random.rand(224, 224, 3)
+        >>> #
+        >>> # It is good practice to copy it, as we will modify it in-place
+        >>> canvas = image.copy()
+        >>> # Then simply call draw-on and the underlying ndarray will be
+        >>> # modified such that your boxes are drawn on it.
+        >>> canvas = boxes.draw_on(canvas)
+        >>> #
+        >>> # xdoctest: +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(module:matplotlib)
+        >>> # Method (1): Matplotlib
+        >>> # Assuming you already have a figure setup with correct limits
+        >>> # you can draw the boxes on top of that figure via:
+        >>> boxes.draw()
+
     """
 
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
-             fill=False, lw=2, ax=None):
+             fill=False, lw=2, ax=None, setlim=False):
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.boxes import *  # NOQA
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
-            >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
+            >>> #image = (np.random.rand(256, 256) * 255).astype(np.uint8)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
-            >>> kwplot.imshow(image)
+            >>> #kwplot.imshow(image)
             >>> # xdoc: +REQUIRES(--show)
-            >>> self.draw(color='blue')
+            >>> self.draw(color='blue', setlim=1.2)
             >>> # xdoc: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
         """
         import kwplot
+        from matplotlib import pyplot as plt
+        if ax is None:
+            ax = plt.gca()
+
+        if setlim:
+            x1, y1, x2, y2 = self.to_tlbr().components
+            xmin, xmax = x1.min(), x2.max()
+            ymin, ymax = x1.min(), x2.max()
+            w = (xmax - xmin)
+            pad = ((w * setlim) - w) / 2
+            ax.set_xlim(xmin - pad, xmax + pad)
+            ax.set_ylim(ymin - pad, ymax + pad)
+
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:
             # Hack to draw non-2d boxes
@@ -1300,7 +1354,8 @@ class _BoxDrawMixins(object):
         Args:
             image (ndarray): must be in uint8 format
 
-            color (str | ColorLike): one color for all boxes
+            color (str | ColorLike | List[ColorLike]):
+                one color for all boxes or a list of colors for each box
 
             alpha (float): transparency of bboxes
 
@@ -1308,7 +1363,8 @@ class _BoxDrawMixins(object):
 
             copy (bool, default=False): if False only copies if necessary
 
-            thickness (int, default=2): rectangle thickness
+            thickness (int, default=2): rectangle thickness, negative values
+                will draw a filled rectangle.
 
         Example:
             >>> from kwimage.structs.boxes import *  # NOQA
@@ -1361,6 +1417,7 @@ class _BoxDrawMixins(object):
         """
         import cv2
         import kwimage
+        import numbers
         def _coords(x, y):
             # ensure coords don't go out of bounds or cv2 throws weird error
             x = min(max(x, 0), w - 1)
@@ -1371,17 +1428,17 @@ class _BoxDrawMixins(object):
         h, w = image.shape[0:2]
 
         # Get the color that is compatible with the input image encoding
-        rect_color = kwimage.Color(color)._forimage(image)
+        # rect_color = kwimage.Color(color)._forimage(image)
 
         # Parameters for drawing the box rectangles
         rectkw = {
             'thickness': int(thickness),
-            'color': rect_color,
+            # 'color': rect_color,
         }
 
         # Parameters for drawing the label text
         fontkw = {
-            'color': rect_color,
+            # 'color': rect_color,
             'thickness': int(2),
             'fontFace': cv2.FONT_HERSHEY_SIMPLEX,
             'fontScale': 0.75,
@@ -1389,18 +1446,27 @@ class _BoxDrawMixins(object):
         }
 
         tlbr_list = self.to_tlbr().data
-
-        if alpha is None:
-            alpha = [1.0] * len(tlbr_list)
-        elif isinstance(alpha, (float, np.float32, np.float64)):
-            alpha = [alpha] * len(tlbr_list)
-
-        if labels is None or labels is False:
-            labels = [None] * len(tlbr_list)
+        num = len(tlbr_list)
 
         image = kwimage.atleast_3channels(image, copy=copy)
+        image = np.ascontiguousarray(image)
 
-        for tlbr, label, alpha_ in zip(tlbr_list, labels, alpha):
+        if isinstance(color, list) and not isinstance(color, numbers.Number):
+            # Passed list of color for each box
+            colors = [kwimage.Color(c)._forimage(image) for c in color]
+        else:
+            # Passed a single color
+            colors = [kwimage.Color(color)._forimage(image)] * num
+
+        if alpha is None:
+            alpha = [1.0] * num
+        elif isinstance(alpha, (float, np.float32, np.float64)):
+            alpha = [alpha] * num
+
+        if labels is None or labels is False:
+            labels = [None] * num
+
+        for tlbr, label, alpha_, col in zip(tlbr_list, labels, alpha, colors):
             x1, y1, x2, y2 = tlbr
             pt1 = _coords(x1, y1)
             pt2 = _coords(x2, y2)
@@ -1412,10 +1478,10 @@ class _BoxDrawMixins(object):
 
             # while cv2.rectangle will accept an alpha color it will not do any
             # blending with the background image.
-            image = cv2.rectangle(image, pt1, pt2, **rectkw)
+            image = cv2.rectangle(image, pt1, pt2, color=col, **rectkw)
             if label:
                 image = kwimage.draw_text_on_image(
-                    image, text=label, org=org, **fontkw)
+                    image, text=label, org=org, color=col, **fontkw)
             if alpha_ < 1.0:
                 # We could get away with only doing this to a slice of the
                 # image. It might result in a significant speedup. We would

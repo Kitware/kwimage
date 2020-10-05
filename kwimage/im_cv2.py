@@ -205,6 +205,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             center of the new image while maintaining aspect ratio. Black
             padding is added if necessary.
 
+            - [ ] TODO: add padding options
+
         return_info (bool, default=False):
             if True returns information about the final transformation in a
             dictionary. If there is an offset, the scale is applied before the
