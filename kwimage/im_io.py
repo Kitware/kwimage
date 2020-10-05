@@ -48,7 +48,7 @@ def imread(fpath, space='auto', backend='auto'):
         NotImplementedError - if trying to read a corner-case image
 
     Example:
-        >>> # xdoctest: +REQUIRES(--network)
+        >>> # xdoctest: +REQUIRES(--network/
         >>> from kwimage.im_io import *  # NOQA
         >>> import tempfile
         >>> from os.path import splitext  # NOQA
@@ -775,11 +775,22 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/cogeotiff/rio-cogeo
         https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
 
+    Notes:
+        Need to fix `CXXABI_1.3.11 not found` with conda gdal sometimes
+
+        CLI to reproduce:
+            python -c "import kwimage; kwimage.imread(kwimage.grab_test_image_fpath(), backend='gdal')"
+
+        This error seems to be fixed by using 2.3.3 instead of 3.x gdal, not
+        sure why, should look into that.
+
     CommandLine:
         xdoctest -m kwimage.im_io _imwrite_cloud_optimized_geotiff
 
     Example:
         >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import tempfile
         >>> data = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.cog.tif')
