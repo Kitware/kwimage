@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import torch
 import skimage
+import numbers
 from . import _generic
 
 
@@ -682,7 +683,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         if isinstance(data, list):
             if len(data) > 0:
-                assert isinstance(ub.peek(data), int)
+                assert isinstance(ub.peek(data), numbers.Number)
                 exterior = np.array(data).reshape(-1, 2)
                 self = cls(exterior=exterior)
             else:
