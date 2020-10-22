@@ -251,7 +251,7 @@ def atleast_3channels(arr, copy=True):
         elif c in [3, 4]:
             res = arr.copy() if copy else arr
         else:
-            raise ValueError('Cannot handle ndims={}'.format(ndims))
+            raise ValueError('Cannot handle ndims={} with c={}'.format(ndims, c))
     else:
         raise ValueError('Cannot handle arr.shape={}'.format(arr.shape))
     return res
