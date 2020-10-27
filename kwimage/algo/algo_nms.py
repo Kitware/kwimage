@@ -205,18 +205,20 @@ class _NMS_Impls():
         from kwimage.algo._nms_backend import py_nms
         from kwimage.algo._nms_backend import torch_nms
         _funcs['numpy'] = py_nms.py_nms
-        _funcs['torch'] = torch_nms.torch_nms
 
-        # if not DISABLE_C_EXTENSIONS:
-        try:
-            # TODO: torchvision impl might be the best, need to test
-            from torchvision import _C as C  # NOQA
-            import torchvision
-            _funcs['torchvision'] = torchvision.ops.nms
-        except (ImportError, UnicodeDecodeError) as ex:
-            warnings.warn(
-                'optional torchvision C nms is not available: {}'.format(
-                    str(ex)))
+        if torch is not None:
+            _funcs['torch'] = torch_nms.torch_nms
+
+            # if not DISABLE_C_EXTENSIONS:
+            try:
+                # TODO: torchvision impl might be the best, need to test
+                from torchvision import _C as C  # NOQA
+                import torchvision
+                _funcs['torchvision'] = torchvision.ops.nms
+            except (ImportError, UnicodeDecodeError) as ex:
+                warnings.warn(
+                    'optional torchvision C nms is not available: {}'.format(
+                        str(ex)))
 
         try:
             if not DISABLE_C_EXTENSIONS:
