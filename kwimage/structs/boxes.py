@@ -1819,7 +1819,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def is_tensor(self):
         """ is the backend fueled by torch? """
-        return torch.is_tensor(self.data)
+        return torch is not None and torch.is_tensor(self.data)
 
     def is_numpy(self):
         """ is the backend fueled by numpy? """

@@ -846,6 +846,7 @@ class _HeatmapAlgoMixin(object):
             Heatmap: the combined heatmap
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> a = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> b = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
@@ -1094,6 +1095,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py Heatmap --show
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
         >>> img_dims = (220, 220)
