@@ -582,5 +582,8 @@ deploy/py2.py3-none-any:
 
             # Fixes the LibGL error
             #apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*
+
+            xdoctest -m 
             
+            ./run_doctests.sh
             ./run_tests.py
