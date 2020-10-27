@@ -545,6 +545,7 @@ class _HeatmapWarpMixin(object):
             Heatmap: warped version of `other` that aligns with `self`.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> other2 = self._align_other(other)
@@ -1441,6 +1442,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             detections.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> rng = np.random.RandomState(0)
         >>> probs = rng.rand(3, 3).astype(np.float32)
         >>> min_score = .5
@@ -1453,6 +1455,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> assert len(dets) == 9
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> from kwimage.structs.heatmap import *
         >>> from kwimage.structs.heatmap import _prob_to_dets

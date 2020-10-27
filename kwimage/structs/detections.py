@@ -482,6 +482,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>>     class_idxs=[0, 1, 1],
             >>>     checks=True,
             >>> )
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> # Coerce to tensor
             >>> dets = Detections(
             >>>     boxes=kwimage.Boxes.random(3).tensor(),
@@ -1099,6 +1100,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             xdoctest -m kwimage.structs.detections Detections.compress
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwimage
             >>> dets = kwimage.Detections.random(keypoints='dense')
             >>> flags = np.random.rand(len(dets)) > 0.5
@@ -1157,6 +1159,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets = kwimage.Detections(boxes=kwimage.Boxes.random(10))
             >>> subset = dets.take([2, 3, 5, 7])
             >>> assert len(subset) == 4
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> subset = dets.tensor().take([2, 3, 5, 7])
             >>> assert len(subset) == 4
         """
@@ -1211,6 +1214,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Detections.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.scores[0] = 0
@@ -1257,6 +1261,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Converts numpy to tensors. Does not change memory if possible.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.detections import *
             >>> self = Detections.random(3)
             >>> newself = self.tensor()

@@ -301,6 +301,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     def tensor(self, device=ub.NoParam):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(10)
             >>> self.tensor()
@@ -331,6 +332,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     def numpy(self):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(10)
             >>> self.tensor().numpy().tensor().numpy()
@@ -547,6 +549,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> assert len(self) == 4
             >>> assert len(other) == 3
 
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> other = self.tensor().compress(flags)
             >>> assert len(other) == 3
         """
@@ -571,6 +574,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> assert len(self) == 4
             >>> assert len(other) == 2
 
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> other = self.tensor().take(indices)
             >>> assert len(other) == 2
         """

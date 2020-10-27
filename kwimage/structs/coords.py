@@ -48,7 +48,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         >>> self.translate(3, inplace=True)
         >>> self.scale(2)
         >>> self.tensor()
-        >>> # self.tensor(device=0)
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> self.tensor().tensor().numpy().numpy()
         >>> self.numpy()
         >>> #self.draw_on()
@@ -128,6 +128,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> self.compress([True] * len(self))
             >>> self.compress([False] * len(self))
             <Coords(data=array([], shape=(0, 2), dtype=float64))>
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = self.tensor()
             >>> self.compress([True] * len(self))
             >>> self.compress([False] * len(self))
@@ -195,9 +196,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             *shape : new shape of the data
 
         Example:
-            >>> self = Coords.random(6, dim=4).tensor()
-            >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
             >>> self = Coords.random(6, dim=4).numpy()
+            >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
+            >>> # xdoctest: +REQUIRES(module:torch)
+            >>> self = Coords.random(6, dim=4).tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
         """
         data_ = self._impl.view(self.data, *shape)
@@ -258,6 +260,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Converts numpy to tensors. Does not change memory if possible.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Coords.random(3).numpy()
             >>> newself = self.tensor()
             >>> self.data[0, 0] = 0
@@ -274,6 +277,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Coords.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.data[0, 0] = 0

@@ -419,6 +419,7 @@ class _MaskTransformMixin(object):
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Mask.random()
             >>> factor = 5
             >>> inplace = False

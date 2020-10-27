@@ -16,6 +16,7 @@ class _PolyArrayBackend:
     def tensor(self, device=ub.NoParam):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.polygon import *
             >>> self = Polygon.random()
             >>> self.tensor()
@@ -42,6 +43,7 @@ class _PolyArrayBackend:
     def numpy(self):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.polygon import *
             >>> self = Polygon.random()
             >>> self.tensor().numpy().tensor().numpy()
