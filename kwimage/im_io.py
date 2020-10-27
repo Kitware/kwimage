@@ -48,7 +48,7 @@ def imread(fpath, space='auto', backend='auto'):
         NotImplementedError - if trying to read a corner-case image
 
     Example:
-        >>> # xdoctest: +REQUIRES(--network/
+        >>> # xdoctest: +REQUIRES(--network)
         >>> from kwimage.im_io import *  # NOQA
         >>> import tempfile
         >>> from os.path import splitext  # NOQA
