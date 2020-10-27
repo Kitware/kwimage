@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.7 - Unreleased
 
+### Changed
+* Torch and pandas are now optional
 
 ## Version 0.6.6 - Released 2020-10-05
 

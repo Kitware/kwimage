@@ -1,7 +1,6 @@
 import ubelt as ub
 import cv2
 import numpy as np
-import torch
 import skimage
 import numbers
 from . import _generic
@@ -273,14 +272,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             if 'exterior' in data:
                 if isinstance(data['exterior'], (list, tuple)):
                     data['exterior'] = kwimage.Coords(np.array(data['exterior']))
-                elif isinstance(data['exterior'], (np.ndarray, torch.Tensor)):
+                elif isinstance(data['exterior'], _generic.ARRAY_TYPES):
                     data['exterior'] = kwimage.Coords(data['exterior'])
             if 'interiors' in data:
                 holes = []
                 for hole in data['interiors']:
                     if isinstance(hole, (list, tuple)):
                         hole = kwimage.Coords(np.array(hole))
-                    elif isinstance(hole, (np.ndarray, torch.Tensor)):
+                    elif isinstance(hole, _generic.ARRAY_TYPES):
                         hole = kwimage.Coords(hole)
                     holes.append(hole)
                 data['interiors'] = holes

@@ -1,4 +1,4 @@
 pyqt5>= 5.11.2;python_version>'2.7'  # 
 matplotlib
-
+torch >= 1.0.0
 PyTurboJPEG  # also requires ``apt install libturbojpeg``

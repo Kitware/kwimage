@@ -78,13 +78,17 @@ Example:
 from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
 import numpy as np
-import torch
 import ubelt as ub
 import skimage
 import kwarray
 import six
 import functools
 from . import _generic
+
+try:
+    import torch
+except Exception:
+    torch = None
 
 
 class _HeatmapDrawMixin(object):
@@ -610,6 +614,7 @@ class _HeatmapWarpMixin(object):
         Warp the heatmap with the image dimensions
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask = self.upscale()
 
@@ -658,6 +663,7 @@ class _HeatmapWarpMixin(object):
             assert R2 == R3
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random(rng=0, keypoints=True)
             >>> S = 3.0
@@ -970,8 +976,8 @@ class _HeatmapAlgoMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
-            >>> import ndsampler
-            >>> catgraph = ndsampler.CategoryTree.demo()
+            >>> import kwcoco
+            >>> catgraph = kwcoco.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.hierarchical_softmax(class_energy, dim=0)
             >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)

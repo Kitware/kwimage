@@ -6,7 +6,6 @@ metadata on top of coordinate data.
 import numpy as np
 import ubelt as ub
 import skimage
-import torch
 import kwarray
 from distutils.version import LooseVersion
 from . import _generic
@@ -356,7 +355,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         import kwimage
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
-        if isinstance(transform, (np.ndarray, torch.Tensor)):
+        if isinstance(transform, _generic.ARRAY_TYPES):
             matrix = transform
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params

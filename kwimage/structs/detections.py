@@ -31,7 +31,6 @@ If you want to visualize boxes and scores you can do this:
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import six
-import torch
 import numpy as np
 import ubelt as ub
 from kwimage.structs import boxes as _boxes
@@ -39,7 +38,13 @@ from kwimage.structs import _generic
 from distutils.version import LooseVersion
 
 
-_TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
+try:
+    import torch
+except Exception:
+    torch = None
+    _TORCH_HAS_BOOL_COMP = False
+else:
+    _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 class _DetDrawMixin:
@@ -542,7 +547,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                             tensors.append(k)
                     elif isinstance(v, np.ndarray):
                         ndarrays.append(k)
-                    elif isinstance(v, torch.Tensor):
+                    elif torch is not None and isinstance(v, torch.Tensor):
                         tensors.append(k)
                     else:
                         other.append(k)
@@ -1064,7 +1069,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         sortx = self.scores.argsort()
         if reverse:
-            if torch.is_tensor(sortx):
+            if torch is not None and torch.is_tensor(sortx):
                 sortx = torch.flip(sortx, dims=(0,))
             else:
                 sortx = sortx[::-1]
@@ -1219,7 +1224,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if val is None:
                 newval = val
             else:
-                if torch.is_tensor(val):
+                if torch is not None and torch.is_tensor(val):
                     newval = val.data.cpu().numpy()
                 elif hasattr(val, 'numpy'):
                     newval = val.numpy()
@@ -1268,7 +1273,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             elif hasattr(val, 'tensor'):
                 newval = val.tensor(device)
             else:
-                if torch.is_tensor(val):
+                if torch is not None and torch.is_tensor(val):
                     newval = val
                 else:
                     newval = torch.from_numpy(val)

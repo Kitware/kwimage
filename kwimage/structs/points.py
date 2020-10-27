@@ -3,7 +3,6 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
-import torch
 from distutils.version import LooseVersion  # NOQA
 import warnings
 from kwimage.structs import _generic
@@ -232,7 +231,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
 
             if 'xy' in data:
-                if isinstance(data['xy'], (np.ndarray, torch.Tensor)):
+                if isinstance(data['xy'], _generic.ARRAY_TYPES):
                     import kwimage
                     data['xy'] = kwimage.Coords(data['xy'])
 
@@ -681,7 +680,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         elif isinstance(data, (list, dict)):
             # TODO: determine if coco or geojson
             return cls.from_coco(data)
-        elif isinstance(data, (np.ndarray, torch.Tensor)):
+        elif isinstance(data, _generic.ARRAY_TYPES):
             return cls(data)
         else:
             raise TypeError(type(data))

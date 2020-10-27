@@ -4,10 +4,14 @@ Generic Non-Maximum Suppression API with efficient backend implementations
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
-import torch
 import ubelt as ub
 import warnings
 import kwarray
+
+try:
+    import torch
+except Exception:
+    torch = None
 
 
 def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
@@ -223,7 +227,7 @@ class _NMS_Impls():
                 'optional cpu_nms is not available: {}'.format(str(ex)))
         try:
             if not DISABLE_C_EXTENSIONS:
-                if torch.cuda.is_available():
+                if torch is not None and torch.cuda.is_available():
                     from kwimage.algo._nms_backend import gpu_nms
                     _funcs['cython_gpu'] = gpu_nms.gpu_nms
                     # NOTE: GPU is not the fastests on all systems.
@@ -498,7 +502,7 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         return []
 
     if impl == 'auto':
-        is_tensor = torch.is_tensor(tlbr)
+        is_tensor = torch is not None and torch.is_tensor(tlbr)
         num = len(tlbr)
         if is_tensor:
             if tlbr.device.type == 'cuda':

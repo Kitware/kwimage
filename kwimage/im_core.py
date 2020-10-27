@@ -373,6 +373,11 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     if out is None:
         out = arr.copy()
 
+    # TODO:
+    # - [ ] Parametarize new_min / new_max values
+    #     - [ ] infer from datatype
+    #     - [ ] explicitly given
+    new_min = 0.0
     if arr.dtype.kind in ('i', 'u'):
         # Need a floating point workspace
         float_out = out.astype(np.float32)
@@ -383,20 +388,21 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     else:
         raise NotImplementedError
 
-    new_min = 0.0
-
+    # TODO:
+    # - [ ] Parametarize old_min / old_max strategies
+    #     - [ ] explicitly given min and max
+    #     - [ ] raw-naive min and max inference
+    #     - [ ] outlier-aware min and max inference
     old_min = float_out.min()
     old_max = float_out.max()
+
     old_span = old_max - old_min
     new_span = new_max - new_min
 
     if mode == 'linear':
         # linear case
         # out = (arr - old_min) * (new_span / old_span) + new_min
-        if old_span == 0:
-            factor = 1.0
-        else:
-            factor = (new_span / old_span)
+        factor = 1.0 if old_span == 0 else (new_span / old_span)
         if old_min != 0:
             float_out -= old_min
     elif mode == 'sigmoid':
