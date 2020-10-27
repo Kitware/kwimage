@@ -219,12 +219,12 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
         >>>     assert np.all(np.isclose(ious_c, ious_py))
     """
     if impl is None or impl == 'auto':
-        if torch.is_tensor(tlbr1):
+        if torch is not None and torch.is_tensor(tlbr1):
             impl = 'torch'
         else:
             impl = 'py' if _bbox_ious_c is None else 'c'
 
-    if impl == 'torch' or torch.is_tensor(tlbr1):
+    if impl == 'torch' or (torch is not None and torch.is_tensor(tlbr1)):
         # TODO: add tests for equality with other methods or show why it should
         # be different.
         # NOTE: this is done in boxes.ious
@@ -1064,7 +1064,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            if torch.is_tensor(self.data):
+            if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(np.float, copy=True)
@@ -1174,7 +1174,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            if torch.is_tensor(self.data):
+            if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(np.float, copy=True)
@@ -1233,7 +1233,7 @@ class _BoxTransformMixins(object):
             np.clip(x2, x_min, x_max, out=x2)
             np.clip(y2, y_min, y_max, out=y2)
         else:
-            if torch.is_tensor(self2.data):
+            if torch is not None and torch.is_tensor(self2.data):
                 x1, y1, x2, y2 = self2.data.t()
                 x1.clamp_(x_min, x_max)
                 y1.clamp_(y_min, y_max)
@@ -1531,6 +1531,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         <Boxes(tlbr, array([25, 30, 40, 40]))>
         >>> Boxes([25, 30, 15, 10], 'xywh').scale(2).to_tlbr()
         <Boxes(tlbr, array([50., 60., 80., 80.]))>
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_tlbr()
         <Boxes(tlbr, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
@@ -1906,7 +1907,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> assert self.data[0, 0] == 1
         """
         data = self.data
-        if torch.is_tensor(data):
+        if torch is not None and torch.is_tensor(data):
             data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format)
         return newself
@@ -1925,6 +1926,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.data[0, 0] = 1
             >>> assert self.data[0, 0] == 1
         """
+        if torch is None:
+            raise Exception('torch is not available')
         data = self.data
         if not torch.is_tensor(data):
             data = torch.from_numpy(data)
@@ -2000,10 +2003,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Ignore:
             >>> # does this work with backprop?
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> import torch
             >>> import kwimage
             >>> num = 1000
-            >>> # xdoctest: +REQUIRES(module:torch)
             >>> true_boxes = kwimage.Boxes.random(num).tensor()
             >>> inputs = torch.rand(num, 10)
             >>> regress = torch.nn.Linear(10, 4)
@@ -2027,7 +2030,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         #     self = self[None, :]
 
         if len(other) == 0 or len(self) == 0:
-            if torch.is_tensor(self.data) or torch.is_tensor(other.data):
+            if torch is not None and (torch.is_tensor(self.data) or torch.is_tensor(other.data)):
                 if _TORCH_HAS_EMPTY_SHAPE:
                     ious = torch.empty((len(self), len(other)))
                 else:
@@ -2101,7 +2104,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             other = other[None, :]
 
         if len(other) == 0 or len(self) == 0:
-            if torch.is_tensor(self.data) or torch.is_tensor(other.data):
+            if torch is not None and (torch.is_tensor(self.data) or torch.is_tensor(other.data)):
                 if _TORCH_HAS_EMPTY_SHAPE:
                     isect = torch.empty((len(self), len(other)))
                 else:
@@ -2210,14 +2213,14 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
 
 def _copy(data):
-    if torch.is_tensor(data):
+    if torch is not None and torch.is_tensor(data):
         return data.clone()
     else:
         return data.copy()
 
 
 def _view(data, *shape):
-    if torch.is_tensor(data):
+    if torch is not None and torch.is_tensor(data):
         data_ = data.view(*shape)
     else:
         data_ = data.reshape(*shape)
@@ -2225,7 +2228,7 @@ def _view(data, *shape):
 
 
 def _cat(datas, axis=-1):
-    if torch.is_tensor(datas[0]):
+    if torch is not None and torch.is_tensor(datas[0]):
         return torch.cat(datas, dim=axis)
     else:
         return np.concatenate(datas, axis=axis)
@@ -2236,6 +2239,7 @@ def _take(data, indices, axis=None):
     compatable take-API between torch and numpy
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> indices = [1, 3, 5, 7, 11, 13, 17, 21]
@@ -2247,7 +2251,7 @@ def _take(data, indices, axis=None):
     """
     if isinstance(data, np.ndarray):
         return data.take(indices, axis=axis)
-    elif torch.is_tensor(data):
+    elif torch is not None and torch.is_tensor(data):
         if not torch.is_tensor(indices):
             indices = torch.LongTensor(indices).to(data.device)
         if axis is None:
@@ -2263,6 +2267,7 @@ def _compress(data, flags, axis=None):
     compatable take-API between torch and numpy
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> flags = (np_data % 2 == 0).ravel()
