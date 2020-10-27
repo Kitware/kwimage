@@ -1748,6 +1748,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> boxes[1].data = boxes[0].data[0:0]
             >>> new = Boxes.concatenate(boxes)
             >>> assert len(new) == 4
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> new = Boxes.concatenate([b.tensor() for b in boxes])
             >>> assert len(new) == 4
         """
@@ -1986,6 +1987,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             (0, 1)
 
         Examples:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> formats = BoxFormat.cannonical
             >>> istensors = [False, True]
             >>> results = {}
