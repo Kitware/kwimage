@@ -55,7 +55,6 @@ Example:
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
-import torch
 import ubelt as ub
 import warnings
 import skimage
@@ -63,6 +62,16 @@ import kwarray
 import six
 from distutils.version import LooseVersion
 from . import _generic  # NOQA
+
+try:
+    import torch
+except Exception:
+    torch = None
+    _TORCH_HAS_EMPTY_SHAPE = None
+    _TORCH_HAS_BOOL_COMP = None
+else:
+    _TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0')
+    _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 __all__ = ['Boxes']
 
@@ -77,9 +86,6 @@ if not DISABLE_C_EXTENSIONS:
         _bbox_ious_c = None
 else:
     _bbox_ious_c = None
-
-_TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0')
-_TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 class NeedsWarpCorners(AssertionError):
@@ -213,12 +219,12 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
         >>>     assert np.all(np.isclose(ious_c, ious_py))
     """
     if impl is None or impl == 'auto':
-        if torch.is_tensor(tlbr1):
+        if torch is not None and torch.is_tensor(tlbr1):
             impl = 'torch'
         else:
             impl = 'py' if _bbox_ious_c is None else 'c'
 
-    if impl == 'torch' or torch.is_tensor(tlbr1):
+    if impl == 'torch' or (torch is not None and torch.is_tensor(tlbr1)):
         # TODO: add tests for equality with other methods or show why it should
         # be different.
         # NOTE: this is done in boxes.ious
@@ -237,6 +243,7 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
 def _box_ious_torch(tlbr1, tlbr2, bias=0):
     """
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').tensor().data
         >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').tensor().data
         >>> bias = 0
@@ -855,7 +862,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            if torch.is_tensor(self.data):
+            if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(np.float, copy=True)
@@ -884,7 +891,7 @@ class _BoxTransformMixins(object):
                 translation = transform.translation
             elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
                 matrix = transform.params
-            elif isinstance(transform, (np.ndarray, torch.Tensor)):
+            elif isinstance(transform, _generic.ARRAY_TYPES):
                 matrix = transform
             else:
                 try:
@@ -1057,7 +1064,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            if torch.is_tensor(self.data):
+            if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(np.float, copy=True)
@@ -1167,7 +1174,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            if torch.is_tensor(self.data):
+            if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(np.float, copy=True)
@@ -1226,7 +1233,7 @@ class _BoxTransformMixins(object):
             np.clip(x2, x_min, x_max, out=x2)
             np.clip(y2, y_min, y_max, out=y2)
         else:
-            if torch.is_tensor(self2.data):
+            if torch is not None and torch.is_tensor(self2.data):
                 x1, y1, x2, y2 = self2.data.t()
                 x1.clamp_(x_min, x_max)
                 y1.clamp_(y_min, y_max)
@@ -1524,6 +1531,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         <Boxes(tlbr, array([25, 30, 40, 40]))>
         >>> Boxes([25, 30, 15, 10], 'xywh').scale(2).to_tlbr()
         <Boxes(tlbr, array([50., 60., 80., 80.]))>
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_tlbr()
         <Boxes(tlbr, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
@@ -1644,6 +1652,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
                        [79, 38, 17, 14]]))>
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> Boxes.random(3, rng=0, scale=100).tensor()
             <Boxes(xywh,
                 tensor([[ 54,  54,   6,  17],
@@ -1739,6 +1748,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> boxes[1].data = boxes[0].data[0:0]
             >>> new = Boxes.concatenate(boxes)
             >>> assert len(new) == 4
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> new = Boxes.concatenate([b.tensor() for b in boxes])
             >>> assert len(new) == 4
         """
@@ -1809,7 +1819,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def is_tensor(self):
         """ is the backend fueled by torch? """
-        return torch.is_tensor(self.data)
+        return torch is not None and torch.is_tensor(self.data)
 
     def is_numpy(self):
         """ is the backend fueled by numpy? """
@@ -1822,6 +1832,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Example:
             >>> assert Boxes.random().numpy()._impl.is_numpy
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> assert Boxes.random().tensor()._impl.is_tensor
         """
         return kwarray.ArrayAPI.coerce(self.data)
@@ -1845,6 +1856,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> Boxes.random(3, 100, rng=0).tensor().astype('int32')
             <Boxes(xywh,
                 tensor([[54, 54,  6, 17],
@@ -1859,7 +1871,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> Boxes.random(3, 100, rng=0).numpy().astype('float32')
         """
         data = self.data
-        if torch.is_tensor(data):
+        if torch is not None and torch.is_tensor(data):
             dtype = _rectify_torch_dtype(dtype)
             newself = self.__class__(data.to(dtype), self.format)
         else:
@@ -1887,6 +1899,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Converts tensors to numpy. Does not change memory if possible.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Boxes.random(3).tensor()
             >>> newself = self.numpy()
             >>> self.data[0, 0] = 0
@@ -1895,7 +1908,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> assert self.data[0, 0] == 1
         """
         data = self.data
-        if torch.is_tensor(data):
+        if torch is not None and torch.is_tensor(data):
             data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format)
         return newself
@@ -1905,13 +1918,17 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Converts numpy to tensors. Does not change memory if possible.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Boxes.random(3)
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> newself = self.tensor()
             >>> self.data[0, 0] = 0
             >>> assert newself.data[0, 0] == 0
             >>> self.data[0, 0] = 1
             >>> assert self.data[0, 0] == 1
         """
+        if torch is None:
+            raise Exception('torch is not available')
         data = self.data
         if not torch.is_tensor(data):
             data = torch.from_numpy(data)
@@ -1970,6 +1987,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             (0, 1)
 
         Examples:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> formats = BoxFormat.cannonical
             >>> istensors = [False, True]
             >>> results = {}
@@ -1987,6 +2005,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Ignore:
             >>> # does this work with backprop?
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> import torch
             >>> import kwimage
             >>> num = 1000
@@ -2013,7 +2032,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         #     self = self[None, :]
 
         if len(other) == 0 or len(self) == 0:
-            if torch.is_tensor(self.data) or torch.is_tensor(other.data):
+            if torch is not None and (torch.is_tensor(self.data) or torch.is_tensor(other.data)):
                 if _TORCH_HAS_EMPTY_SHAPE:
                     ious = torch.empty((len(self), len(other)))
                 else:
@@ -2087,7 +2106,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             other = other[None, :]
 
         if len(other) == 0 or len(self) == 0:
-            if torch.is_tensor(self.data) or torch.is_tensor(other.data):
+            if torch is not None and (torch.is_tensor(self.data) or torch.is_tensor(other.data)):
                 if _TORCH_HAS_EMPTY_SHAPE:
                     isect = torch.empty((len(self), len(other)))
                 else:
@@ -2185,6 +2204,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Passthrough method to view or reshape
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
             >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr').tensor()
@@ -2195,14 +2215,14 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
 
 def _copy(data):
-    if torch.is_tensor(data):
+    if torch is not None and torch.is_tensor(data):
         return data.clone()
     else:
         return data.copy()
 
 
 def _view(data, *shape):
-    if torch.is_tensor(data):
+    if torch is not None and torch.is_tensor(data):
         data_ = data.view(*shape)
     else:
         data_ = data.reshape(*shape)
@@ -2210,7 +2230,7 @@ def _view(data, *shape):
 
 
 def _cat(datas, axis=-1):
-    if torch.is_tensor(datas[0]):
+    if torch is not None and torch.is_tensor(datas[0]):
         return torch.cat(datas, dim=axis)
     else:
         return np.concatenate(datas, axis=axis)
@@ -2221,6 +2241,7 @@ def _take(data, indices, axis=None):
     compatable take-API between torch and numpy
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> indices = [1, 3, 5, 7, 11, 13, 17, 21]
@@ -2232,7 +2253,7 @@ def _take(data, indices, axis=None):
     """
     if isinstance(data, np.ndarray):
         return data.take(indices, axis=axis)
-    elif torch.is_tensor(data):
+    elif torch is not None and torch.is_tensor(data):
         if not torch.is_tensor(indices):
             indices = torch.LongTensor(indices).to(data.device)
         if axis is None:
@@ -2248,6 +2269,7 @@ def _compress(data, flags, axis=None):
     compatable take-API between torch and numpy
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> flags = (np_data % 2 == 0).ravel()
@@ -2259,7 +2281,7 @@ def _compress(data, flags, axis=None):
     """
     if isinstance(data, np.ndarray):
         return data.compress(flags, axis=axis)
-    elif torch.is_tensor(data):
+    elif torch is not None and torch.is_tensor(data):
         if not torch.is_tensor(flags):
             if _TORCH_HAS_BOOL_COMP:
                 flags = np.asarray(flags, dtype=np.bool)

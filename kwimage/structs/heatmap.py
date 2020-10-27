@@ -78,13 +78,17 @@ Example:
 from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
 import numpy as np
-import torch
 import ubelt as ub
 import skimage
 import kwarray
 import six
 import functools
 from . import _generic
+
+try:
+    import torch
+except Exception:
+    torch = None
 
 
 class _HeatmapDrawMixin(object):
@@ -541,6 +545,7 @@ class _HeatmapWarpMixin(object):
             Heatmap: warped version of `other` that aligns with `self`.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> other2 = self._align_other(other)
@@ -610,6 +615,7 @@ class _HeatmapWarpMixin(object):
         Warp the heatmap with the image dimensions
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask = self.upscale()
 
@@ -658,6 +664,7 @@ class _HeatmapWarpMixin(object):
             assert R2 == R3
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random(rng=0, keypoints=True)
             >>> S = 3.0
@@ -839,6 +846,7 @@ class _HeatmapAlgoMixin(object):
             Heatmap: the combined heatmap
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> a = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> b = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
@@ -970,8 +978,8 @@ class _HeatmapAlgoMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
-            >>> import ndsampler
-            >>> catgraph = ndsampler.CategoryTree.demo()
+            >>> import kwcoco
+            >>> catgraph = kwcoco.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.hierarchical_softmax(class_energy, dim=0)
             >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)
@@ -1087,6 +1095,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py Heatmap --show
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
         >>> img_dims = (220, 220)
@@ -1435,6 +1444,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             detections.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> rng = np.random.RandomState(0)
         >>> probs = rng.rand(3, 3).astype(np.float32)
         >>> min_score = .5
@@ -1447,6 +1457,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> assert len(dets) == 9
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> from kwimage.structs.heatmap import *
         >>> from kwimage.structs.heatmap import _prob_to_dets

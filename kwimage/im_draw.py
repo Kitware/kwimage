@@ -211,6 +211,7 @@ def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
             (if None but probs is specified uses argmax of probs)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import torch
         >>> import kwarray
         >>> import kwimage

@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
-import torch
 import numpy as np
 from distutils.version import LooseVersion
 
-_TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
+
+try:
+    import torch
+except Exception:
+    torch = None
+    _TORCH_HAS_BOOL_COMP = False
+else:
+    _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
@@ -24,6 +30,7 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
 
     Example:
         >>> # DISABLE_DOCTEST
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import torch
         >>> import numpy as np
         >>> tlbr = torch.FloatTensor(np.array([
@@ -45,6 +52,7 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
 
     Example:
         >>> # DISABLE_DOCTEST
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import torch
         >>> import numpy as np
         >>> # Test to check that conflicts are correctly resolved

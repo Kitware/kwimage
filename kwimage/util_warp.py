@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
-import torch.nn.functional as F
 import ubelt as ub
-import torch
 import numpy as np
 import kwarray
 from distutils.version import LooseVersion
 
-
-TORCH_GRID_SAMPLE_HAS_ALIGN = LooseVersion(torch.__version__) >= LooseVersion('1.3.0')
+try:
+    import torch
+    import torch.nn.functional as F
+    TORCH_GRID_SAMPLE_HAS_ALIGN = LooseVersion(torch.__version__) >= LooseVersion('1.3.0')
+except Exception:
+    torch = None
+    F = None
+    TORCH_GRID_SAMPLE_HAS_ALIGN = None
 
 
 def _coordinate_grid(dims, align_corners=False):
@@ -30,6 +34,7 @@ def _coordinate_grid(dims, align_corners=False):
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> _coordinate_grid((2, 2))
         tensor([[[0., 1.],
                  [0., 1.]],
@@ -149,6 +154,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # Create a relatively simple affine matrix
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import skimage
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
         >>>     translation=[1, -1], scale=[.532, 2],
@@ -173,6 +179,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # Create a relatively simple affine matrix
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import skimage
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
         >>>     rotation=0.01, shear=0.1).params)
@@ -198,6 +205,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # Create a random affine matrix
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import skimage
         >>> rng = np.random.RandomState(0)
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
@@ -224,6 +232,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # Test 3D warping with identity
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> mat = torch.eye(4)
         >>> input_dims = [2, 3, 3]
         >>> output_dims = (2, 3, 3)
@@ -235,6 +244,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # Test 3D warping with scaling
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> mat = torch.FloatTensor([
         >>>     [0.8,   0,   0, 0],
         >>>     [  0, 1.0,   0, 0],
@@ -257,6 +267,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
                    [13.5 , 14.75,  7.75]]], dtype=np.float32)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> mat = torch.eye(3)
         >>> input_dims = [5, 7]
         >>> output_dims = (11, 7)
@@ -268,6 +279,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>>      print(result.shape)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> mat = torch.eye(4)
         >>> input_dims = [5, 5, 5]
         >>> output_dims = (6, 6, 6)
@@ -281,6 +293,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Ignore:
         import xdev
         globals().update(xdev.get_func_kwargs(warp_tensor))
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import cv2
         >>> inputs = torch.arange(9).view(1, 1, 3, 3).float() + 2
         >>> input_dims = inputs.shape[2:]
@@ -661,6 +674,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
                   [0. , 1. , 1. , 1. , 0. , 0. ],
                   [0. , 0.5, 0.5, 0.5, 0. , 0. ],
                   [0. , 0. , 0. , 0. , 0. , 0. ]])
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> dst = torch.zeros((1, 3, 6, 6))
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.5, 4.5), slice(1.25, 4.25))
@@ -741,6 +755,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
         np.array([0. , 1. , 2. , 1.2, 0. ])
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> dst = torch.zeros((1, 3, 5, 5)) + .5
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.4, 4.4), slice(1.25, 4.25))
@@ -778,6 +793,7 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
         np.array([0. , 0.8, 1. , 1. , 0. ])
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> dst = torch.zeros((1, 3, 5, 5)) + .5
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.4, 4.4), slice(1.25, 4.25))
@@ -805,6 +821,7 @@ def subpixel_slice(inputs, index):
         index (Tuple[slice]): a slice to subpixel accuracy
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> import torch
         >>> # say we have a (576, 576) input space
@@ -900,6 +917,7 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         [0.0, 0.5, 1.5, 2.5, 3.5]
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> inputs = torch.arange(9).view(1, 1, 3, 3).float()
         >>> print(inputs.long())
         tensor([[[[0, 1, 2],
@@ -1230,6 +1248,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     On CPU: torch is faster for homog, but cv2 is faster for affine
 
     Benchmark:
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> from kwimage.util.util_warp import *
         >>> from kwimage.util.util_warp import _warp_tensor_cv2
         >>> from kwimage.util.util_warp import warp_tensor
@@ -1346,6 +1365,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
         >>> matrix = rng.rand(2, 2)
         >>> warp_points(matrix, pts)
         >>> # --- with torch
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> pts = torch.Tensor(pts)
         >>> matrix = torch.Tensor(matrix)
         >>> warp_points(matrix, pts)
@@ -1356,6 +1376,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
         >>> pts = np.ones((10, 2))
         >>> matrix = np.diag([2, 3, 1])
         >>> ra = warp_points(matrix, pts)
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> rb = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
         >>> assert np.allclose(ra, rb.numpy())
 
@@ -1367,6 +1388,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
         >>> pts = rng.rand(1000, 2)
         >>> matrix = rng.rand(3, 3)
         >>> ra33 = warp_points(matrix, pts)
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> rb33 = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
         >>> assert np.allclose(ra33, rb33.numpy())
         >>> # Test opencv style affine matrices
@@ -1508,6 +1530,7 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
         array([4. , 6. , 6.8])
         >>> subpixel_getvalue(img, pts, coord_axes=(1, 0))
         array([4. , 6. , 5.2])
+        >>> # xdoctest: +REQUIRES(module:torch)
         >>> img = torch.Tensor(img)
         >>> pts = torch.Tensor(pts)
         >>> subpixel_getvalue(img, pts)

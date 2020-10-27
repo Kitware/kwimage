@@ -39,6 +39,11 @@ import itertools as it
 import warnings
 from . import _generic
 
+try:
+    import torch
+except Exception:
+    torch = None
+
 
 KWIMAGE_DISABLE_IMPORT_WARNINGS = os.environ.get('KWIMAGE_DISABLE_IMPORT_WARNINGS', '')
 
@@ -287,10 +292,9 @@ class _MaskConversionMixin(object):
         """
         Ensure mask is in numpy format (if possible)
         """
-        import torch
         data = self.data
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
-            if torch.is_tensor(data):
+            if torch is not None and torch.is_tensor(data):
                 data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format)
         return newself
@@ -299,10 +303,9 @@ class _MaskConversionMixin(object):
         """
         Ensure mask is in tensor format (if possible)
         """
-        import torch
         data = self.data
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
-            if not torch.is_tensor(data):
+            if torch is not None and not torch.is_tensor(data):
                 data = torch.from_numpy(data)
             if device is not ub.NoParam:
                 data = data.to(device)
@@ -416,6 +419,7 @@ class _MaskTransformMixin(object):
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Mask.random()
             >>> factor = 5
             >>> inplace = False
@@ -438,6 +442,7 @@ class _MaskTransformMixin(object):
         """
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwimage
             >>> self = mask = kwimage.Mask.random()
             >>> transform = np.array([[5., 0, 0], [0, 5, 0], [0, 0, 1]])
@@ -454,9 +459,10 @@ class _MaskTransformMixin(object):
         # HACK: use brute force just to get this implemented.
         # very inefficient
         import kwimage
-        import torch
-        c_mask = self.to_c_mask(copy=False).data
+        if torch is None:
+            raise Exception('need torch to warp raster masks')
 
+        c_mask = self.to_c_mask(copy=False).data
         t_mask = torch.Tensor(c_mask)
         matrix = torch.Tensor(transform)
         output_dims = output_dims

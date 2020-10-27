@@ -1,7 +1,5 @@
 scipy >= 1.2.1
 numpy >= 1.9.0
-pandas >= 0.23.2
-torch >= 1.0.0
 shapely
 Pillow >= 5.2.0
 opencv-python >= 3.4.1.15
@@ -10,3 +8,5 @@ six >= 1.11.0
 ubelt >= 0.7.1
 kwarray >= 0.4.0
 future;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.
+
+

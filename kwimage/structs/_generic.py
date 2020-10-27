@@ -1,6 +1,15 @@
 import ubelt as ub
 import kwarray
+import numpy as np
 # import abc
+
+try:
+    import torch
+except Exception:
+    torch = None
+    ARRAY_TYPES = (np.ndarray,)
+else:
+    ARRAY_TYPES = (np.ndarray, torch.Tensor)
 
 
 # class Spatial(ub.NiceRepr, abc.ABC):

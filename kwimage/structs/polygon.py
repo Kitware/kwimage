@@ -1,8 +1,8 @@
 import ubelt as ub
 import cv2
 import numpy as np
-import torch
 import skimage
+import numbers
 from . import _generic
 
 
@@ -16,6 +16,7 @@ class _PolyArrayBackend:
     def tensor(self, device=ub.NoParam):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.polygon import *
             >>> self = Polygon.random()
             >>> self.tensor()
@@ -42,6 +43,7 @@ class _PolyArrayBackend:
     def numpy(self):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.polygon import *
             >>> self = Polygon.random()
             >>> self.tensor().numpy().tensor().numpy()
@@ -272,14 +274,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             if 'exterior' in data:
                 if isinstance(data['exterior'], (list, tuple)):
                     data['exterior'] = kwimage.Coords(np.array(data['exterior']))
-                elif isinstance(data['exterior'], (np.ndarray, torch.Tensor)):
+                elif isinstance(data['exterior'], _generic.ARRAY_TYPES):
                     data['exterior'] = kwimage.Coords(data['exterior'])
             if 'interiors' in data:
                 holes = []
                 for hole in data['interiors']:
                     if isinstance(hole, (list, tuple)):
                         hole = kwimage.Coords(np.array(hole))
-                    elif isinstance(hole, (np.ndarray, torch.Tensor)):
+                    elif isinstance(hole, _generic.ARRAY_TYPES):
                         hole = kwimage.Coords(hole)
                     holes.append(hole)
                 data['interiors'] = holes
@@ -682,7 +684,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         if isinstance(data, list):
             if len(data) > 0:
-                assert isinstance(ub.peek(data), int)
+                assert isinstance(ub.peek(data), numbers.Number)
                 exterior = np.array(data).reshape(-1, 2)
                 self = cls(exterior=exterior)
             else:
