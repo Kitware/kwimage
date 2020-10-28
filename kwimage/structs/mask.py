@@ -973,12 +973,42 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> import kwimage
             >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
             >>> assert self.get_xywh().tolist() == [0, 0, 0, 0]
+
+        Ignore:
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
+            >>> x_coords = np.array([621, 752])
+            >>> y_coords = np.array([366, 292])
+            >>> self.data[y_coords, x_coords] = 1
+            >>> self.get_xywh()
+
+            >>> # References:
+            >>> # https://stackoverflow.com/questions/33281957/faster-alternative-to-numpy-where
+            >>> # https://answers.opencv.org/question/4183/what-is-the-best-way-to-find-bounding-box-for-binary-mask/
+            >>> import timerit
+            >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
+            >>> for timer in ti.reset('time'):
+            >>>     with timer:
+            >>>         y_coords, x_coords = np.where(self.data)
+            >>> #
+            >>> for timer in ti.reset('time'):
+            >>>     with timer:
+            >>>         cv2.findNonZero(data)
+
+            >>> poly = self.to_multi_polygon()
         """
         if self.format == MaskFormat.C_MASK:
-            y_coords, x_coords = np.where(self.data)
-            if len(x_coords) == 0:
+            # findNonZero seems much faster than np.where
+            cv2_coords = cv2.findNonZero(self.data)
+            if cv2_coords is None:
                 xywh = np.array([0, 0, 0, 0])
             else:
+                x_coords = cv2_coords[:, 0, 0]
+                y_coords = cv2_coords[:, 0, 1]
+                # # y_coords, x_coords = np.where(self.data)
+                # if len(x_coords) == 0:
+                #     xywh = np.array([0, 0, 0, 0])
+                # else:
                 tl_x = x_coords.min()
                 br_x = x_coords.max()
                 tl_y = y_coords.min()
