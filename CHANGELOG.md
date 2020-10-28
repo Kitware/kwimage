@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.8 - Unreleased
 
+### Fixed
+* Error in `Mask.get_xywh` when mask was empty.
 
 ## Version 0.6.7 - Released 2020-10-27
 
