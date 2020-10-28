@@ -619,11 +619,14 @@ class _MaskDrawMixin(object):
 
         if show_border:
             # return shape of contours to openCV contours
-            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            canvas = cv2.drawContours((canvas * 255.).astype(np.uint8),
-                                      contours, -1,
-                                      kwimage.Color(border_color).as255(),
-                                      border_thick, cv2.LINE_AA)
+            polys = self.to_multi_polygon()
+            for poly in polys:
+                contours = [np.expand_dims(c, axis=1) for c in poly.data['exterior']]
+                canvas = cv2.drawContours((canvas * 255.).astype(np.uint8),
+                                          contours, -1,
+                                          kwimage.Color(border_color).as255(),
+                                          border_thick, cv2.LINE_AA)
+
             canvas = canvas.astype(np.float) / 255.
 
         canvas = dtype_fixer(canvas, copy=False)
@@ -656,9 +659,12 @@ class _MaskDrawMixin(object):
                                 border_color_tup[2], 255 * alpha)
 
             # return shape of contours to openCV contours
-            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
-                                          border_color_tup, border_thick, cv2.LINE_AA)
+            polys = self.to_multi_polygon()
+            for poly in polys:
+                contours = [np.expand_dims(c, axis=1) for c in poly.data['exterior']]
+                alpha_mask = cv2.drawContours(
+                    (alpha_mask * 255.).astype(np.uint8),
+                    contours, -1, border_color_tup, border_thick, cv2.LINE_AA)
 
             alpha_mask = alpha_mask.astype(np.float) / 255.
 
@@ -1148,6 +1154,12 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> #image = other.draw_on(image, color='red')
             >>> kwplot.imshow(image)
             >>> multi_poly.draw()
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
+            >>> poly = self.to_multi_polygon()
+            >>> poly.to_multi_polygon()
         """
         import cv2
         p = 2
