@@ -45,6 +45,12 @@ except Exception:
     torch = None
 
 
+try:
+    from xdev import profile
+except Exception:
+    from ubelt import identity as profile
+
+
 KWIMAGE_DISABLE_IMPORT_WARNINGS = os.environ.get('KWIMAGE_DISABLE_IMPORT_WARNINGS', '')
 
 
@@ -416,6 +422,7 @@ class _MaskTransformMixin(object):
     Mixin methods relating to geometric transformations of mask objects
     """
 
+    @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Example:
@@ -473,6 +480,7 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
+    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Efficiently translate an array_rle in the encoding space

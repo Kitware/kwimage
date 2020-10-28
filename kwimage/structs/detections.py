@@ -39,6 +39,11 @@ from distutils.version import LooseVersion
 
 
 try:
+    from xdev import profile
+except Exception:
+    from ubelt import identity as profile
+
+try:
     import torch
 except Exception:
     torch = None
@@ -972,6 +977,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 inplace=inplace)
         return new
 
+    @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -994,6 +1000,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 factor, output_dims=output_dims, inplace=inplace)
         return new
 
+    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
