@@ -1160,14 +1160,31 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
             >>> poly = self.to_multi_polygon()
             >>> poly.to_multi_polygon()
+
+
+        Example:
+            # Corner case, only two pixels are on
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
+            >>> x_coords = np.array([621, 752])
+            >>> y_coords = np.array([366, 292])
+            >>> self.data[y_coords, x_coords] = 1
+            >>> poly = self.to_multi_polygon()
+
+            poly.to_mask(self.shape).data.sum()
+
+            self.to_array_rle().to_c_mask().data.sum()
+            temp.to_c_mask().data.sum()
         """
         import cv2
         p = 2
         # It should be faster to only exact the patch of non-zero values
         x, y, w, h = self.get_xywh().astype(np.int).tolist()
         if w > 0 and h > 0:
-            output_dims = (h, w)
+            output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
             xy_offset = (-x, -y)
+
+            # FIXME: In the case where
             temp = self.translate(xy_offset, output_dims)
             mask = temp.to_c_mask().data
             offset = (x - p, y - p)
@@ -1186,9 +1203,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 _contours, _hierarchy = _ret
             else:
                 _img, _contours, _hierarchy = _ret
-            import xdev
-            with xdev.embed_on_exception_context:
-                _hierarchy = _hierarchy[0]
+
+            if _hierarchy is None:
+                raise Exception('Contour extraction from binary mask failed')
+
+            _hierarchy = _hierarchy[0]
 
             polys = {i: {'exterior': None, 'interiors': []}
                      for i, row in enumerate(_hierarchy) if row[3] == -1}
