@@ -1186,7 +1186,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 _contours, _hierarchy = _ret
             else:
                 _img, _contours, _hierarchy = _ret
-            _hierarchy = _hierarchy[0]
+            import xdev
+            with xdev.embed_on_exception_context:
+                _hierarchy = _hierarchy[0]
 
             polys = {i: {'exterior': None, 'interiors': []}
                      for i, row in enumerate(_hierarchy) if row[3] == -1}
