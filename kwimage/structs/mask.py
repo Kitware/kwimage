@@ -952,6 +952,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         patch = temp.to_c_mask().data
         return patch
 
+    @profile
     def get_xywh(self):
         """
         Gets the bounding xywh box coordinates of this mask
@@ -1127,6 +1128,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
+    @profile
     def to_multi_polygon(self):
         """
         Returns a MultiPolygon object fit around this raster including disjoint
