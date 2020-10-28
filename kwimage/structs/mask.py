@@ -995,14 +995,25 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>>     with timer:
             >>>         cv2.findNonZero(data)
 
+            self.data = np.random.rand(800, 700) > 0.5
+
+            import timerit
+            ti = timerit.Timerit(100, bestof=10, verbose=2)
+            for timer in ti.reset('time'):
+                with timer:
+                    y_coords, x_coords = np.where(self.data)
+            #
+            for timer in ti.reset('time'):
+                with timer:
+                    data = np.ascontiguousarray(self.data).astype(np.uint8)
+                    cv2_coords = cv2.findNonZero(data)
+
             >>> poly = self.to_multi_polygon()
         """
         if self.format == MaskFormat.C_MASK:
             # findNonZero seems much faster than np.where
-            import xdev
-            with xdev.embed_on_exception_context:
-                data = np.ascontiguousarray(self.data)
-                cv2_coords = cv2.findNonZero(data)
+            data = np.ascontiguousarray(self.data).astype(np.uint8)
+            cv2_coords = cv2.findNonZero(data)
             if cv2_coords is None:
                 xywh = np.array([0, 0, 0, 0])
             else:
