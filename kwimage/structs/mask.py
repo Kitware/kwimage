@@ -960,35 +960,47 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self.get_xywh().tolist()
             >>> self = Mask.random(rng=0).translate((10, 10))
             >>> self.get_xywh().tolist()
+
+        Example:
+            >>> # test empty case
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
+            >>> assert self.get_xywh().tolist() == [0, 0, 0, 0]
         """
         if self.format == MaskFormat.C_MASK:
             y_coords, x_coords = np.where(self.data)
-            tl_x = x_coords.min()
-            br_x = x_coords.max()
-            tl_y = y_coords.min()
-            br_y = y_coords.max()
-            w = br_x - tl_x
-            h = br_y - tl_y
-            xywh = np.array([tl_x, tl_y, w, h])
+            if len(x_coords) == 0:
+                xywh = np.array([0, 0, 0, 0])
+            else:
+                tl_x = x_coords.min()
+                br_x = x_coords.max()
+                tl_y = y_coords.min()
+                br_y = y_coords.max()
+                w = br_x - tl_x
+                h = br_y - tl_y
+                xywh = np.array([tl_x, tl_y, w, h])
         elif self.format == MaskFormat.F_MASK:
             x_coords, y_coords = np.where(self.data)
-            tl_x = x_coords.min()
-            br_x = x_coords.max()
-            tl_y = y_coords.min()
-            br_y = y_coords.max()
-            w = br_x - tl_x
-            h = br_y - tl_y
-            xywh = np.array([tl_x, tl_y, w, h])
+            if len(x_coords) == 0:
+                xywh = np.array([0, 0, 0, 0])
+            else:
+                tl_x = x_coords.min()
+                br_x = x_coords.max()
+                tl_y = y_coords.min()
+                br_y = y_coords.max()
+                w = br_x - tl_x
+                h = br_y - tl_y
+                xywh = np.array([tl_x, tl_y, w, h])
         else:
             try:
-                self = self.to_bytes_rle()
+                self_rle = self.to_bytes_rle()
                 cython_mask = _lazy_mask_backend()
                 if cython_mask is None:
                     raise NotImplementedError('pure python version get_xywh')
-                xywh = cython_mask.toBbox([self.data])[0]
+                xywh = cython_mask.toBbox([self_rle.data])[0]
             except NotImplementedError:
-                self = self.to_c_mask()  # alternate path
-                xywh = self.get_xywh()
+                self_c = self.to_c_mask()  # alternate path
+                xywh = self_c.get_xywh()
         return xywh
 
     def get_polygon(self):
