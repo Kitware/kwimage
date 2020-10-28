@@ -999,7 +999,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         if self.format == MaskFormat.C_MASK:
             # findNonZero seems much faster than np.where
-            cv2_coords = cv2.findNonZero(self.data)
+            cv2_coords = cv2.findNonZero(np.ascontiguousarray(self.data))
             if cv2_coords is None:
                 xywh = np.array([0, 0, 0, 0])
             else:
