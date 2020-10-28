@@ -1,4 +1,4 @@
-/ -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 TODO:
     - [ ] Remove doctest dependency on ndsampler?
