@@ -1307,6 +1307,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self = Detections.from_coco_annots(
             anns, sampler.dset.dataset['categories'],
             sampler.catgraph, kp_classes, shape=input_dims)
+
+        # TODO: should this extra info belong in the metadata field?
         return self, iminfo, sampler
 
     @classmethod
@@ -1373,7 +1375,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 sseg = kwimage.MultiPolygon.random(n=1, tight=True, rng=rng)
                 sseg = sseg.scale(box_scale).translate(box_offset)
                 sseg_list.append(sseg)
-            self.data['segmentations'] = kwimage.PolygonList(sseg_list)
+            self.data['segmentations'] = kwimage.SegmentationList.coerce(sseg_list)
 
         if isinstance(keypoints, six.string_types):
             kp_classes = [1, 2, 3, 4]
