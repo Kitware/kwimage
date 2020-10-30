@@ -1077,14 +1077,9 @@ class MultiPolygon(_generic.ObjectList):
 
         See Mask.coerce
         """
-        if data is None:
-            return None
         from kwimage.structs.segmentation import _coerce_coco_segmentation
-        if data is None:
-            return None
-        import xdev
-        with xdev.embed_on_exception_context:
-            self = _coerce_coco_segmentation(data, dims=dims)
+        self = _coerce_coco_segmentation(data, dims=dims)
+        if self is not None:
             self = self.to_multi_polygon()
         return self
 
