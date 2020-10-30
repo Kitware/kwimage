@@ -1085,7 +1085,7 @@ class MultiPolygon(_generic.ObjectList):
         import xdev
         with xdev.embed_on_exception_context:
             self = _coerce_coco_segmentation(data, dims=dims)
-        self = self.to_multi_polygon()
+            self = self.to_multi_polygon()
         return self
 
     def to_shapely(self):
