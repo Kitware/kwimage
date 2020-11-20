@@ -845,8 +845,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             cname_to_cat: currently ignored.
 
-            style (str, default='orig'): either orig (for the original coco
-                format) or new for the more general ndsampler-style coco
+            style (str, default='orig'): either 'orig' (for the original coco
+                format) or 'new' for the more general kwcoco-style coco
                 format.
 
             image_id (int, default=None):
