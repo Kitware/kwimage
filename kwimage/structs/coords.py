@@ -10,6 +10,11 @@ import kwarray
 from distutils.version import LooseVersion
 from . import _generic
 
+try:
+    from xdev import profile
+except Exception:
+    from ubelt import identity as profile
+
 
 try:
     import imgaug
@@ -523,6 +528,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self = cls(xy)
         return self
 
+    @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale coordinates by a factor
@@ -568,6 +574,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = data
         return new
 
+    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the coordinates

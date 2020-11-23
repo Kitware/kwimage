@@ -65,12 +65,14 @@ def ensure_float01(img, dtype=np.float32, copy=True):
         array([[0..., 0.0039..., 0.784...]], dtype=float32)
     """
     if img.dtype.kind in ('i', 'u'):
-        if img.min() < 0 or img.max() > 255:
-            import kwarray
-            raise ValueError(
-                'The image type is int, but its values are not '
-                'between 0 and 255. Image stats are {}'.format(
-                    kwarray.stats_dict(img)))
+        if img.dtype.kind != 'u' or img.dtype.itemsize != 1:
+            # Only check min/max if the image is not a uint8
+            if img.min() < 0 or img.max() > 255:
+                import kwarray
+                raise ValueError(
+                    'The image type is int, but its values are not '
+                    'between 0 and 255. Image stats are {}'.format(
+                        kwarray.stats_dict(img)))
         img_ = img.astype(dtype, copy=copy) / 255.0
     else:
         img_ = img.astype(dtype, copy=copy)

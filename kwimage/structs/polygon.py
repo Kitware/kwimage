@@ -5,6 +5,11 @@ import skimage
 import numbers
 from . import _generic
 
+try:
+    from xdev import profile
+except Exception:
+    from ubelt import identity as profile
+
 
 class _PolyArrayBackend:
     def is_numpy(self):
@@ -191,6 +196,7 @@ class _PolyWarpMixin:
         ]
         return new
 
+    @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Scale a polygon by a factor
@@ -210,6 +216,7 @@ class _PolyWarpMixin:
         new.data['interiors'] = [p.scale(factor, output_dims, inplace) for p in new.data['interiors']]
         return new
 
+    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the polygon up/down left/right
@@ -1070,11 +1077,10 @@ class MultiPolygon(_generic.ObjectList):
 
         See Mask.coerce
         """
-        if data is None:
-            return None
         from kwimage.structs.segmentation import _coerce_coco_segmentation
         self = _coerce_coco_segmentation(data, dims=dims)
-        self = self.to_multi_polygon()
+        if self is not None:
+            self = self.to_multi_polygon()
         return self
 
     def to_shapely(self):

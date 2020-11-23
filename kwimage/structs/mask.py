@@ -45,6 +45,12 @@ except Exception:
     torch = None
 
 
+try:
+    from xdev import profile
+except Exception:
+    from ubelt import identity as profile
+
+
 KWIMAGE_DISABLE_IMPORT_WARNINGS = os.environ.get('KWIMAGE_DISABLE_IMPORT_WARNINGS', '')
 
 
@@ -416,6 +422,7 @@ class _MaskTransformMixin(object):
     Mixin methods relating to geometric transformations of mask objects
     """
 
+    @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Example:
@@ -473,6 +480,7 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
+    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Efficiently translate an array_rle in the encoding space
@@ -611,11 +619,14 @@ class _MaskDrawMixin(object):
 
         if show_border:
             # return shape of contours to openCV contours
-            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            canvas = cv2.drawContours((canvas * 255.).astype(np.uint8),
-                                      contours, -1,
-                                      kwimage.Color(border_color).as255(),
-                                      border_thick, cv2.LINE_AA)
+            polys = self.to_multi_polygon()
+            for poly in polys:
+                contours = [np.expand_dims(c, axis=1) for c in poly.data['exterior']]
+                canvas = cv2.drawContours((canvas * 255.).astype(np.uint8),
+                                          contours, -1,
+                                          kwimage.Color(border_color).as255(),
+                                          border_thick, cv2.LINE_AA)
+
             canvas = canvas.astype(np.float) / 255.
 
         canvas = dtype_fixer(canvas, copy=False)
@@ -648,9 +659,12 @@ class _MaskDrawMixin(object):
                                 border_color_tup[2], 255 * alpha)
 
             # return shape of contours to openCV contours
-            contours = [np.expand_dims(c, axis=1) for c in self.get_polygon()]
-            alpha_mask = cv2.drawContours((alpha_mask * 255.).astype(np.uint8), contours, -1,
-                                          border_color_tup, border_thick, cv2.LINE_AA)
+            polys = self.to_multi_polygon()
+            for poly in polys:
+                contours = [np.expand_dims(c, axis=1) for c in poly.data['exterior']]
+                alpha_mask = cv2.drawContours(
+                    (alpha_mask * 255.).astype(np.uint8),
+                    contours, -1, border_color_tup, border_thick, cv2.LINE_AA)
 
             alpha_mask = alpha_mask.astype(np.float) / 255.
 
@@ -938,6 +952,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         patch = temp.to_c_mask().data
         return patch
 
+    @profile
     def get_xywh(self):
         """
         Gets the bounding xywh box coordinates of this mask
@@ -952,35 +967,91 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self.get_xywh().tolist()
             >>> self = Mask.random(rng=0).translate((10, 10))
             >>> self.get_xywh().tolist()
+
+        Example:
+            >>> # test empty case
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
+            >>> assert self.get_xywh().tolist() == [0, 0, 0, 0]
+
+        Ignore:
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
+            >>> x_coords = np.array([621, 752])
+            >>> y_coords = np.array([366, 292])
+            >>> self.data[y_coords, x_coords] = 1
+            >>> self.get_xywh()
+
+            >>> # References:
+            >>> # https://stackoverflow.com/questions/33281957/faster-alternative-to-numpy-where
+            >>> # https://answers.opencv.org/question/4183/what-is-the-best-way-to-find-bounding-box-for-binary-mask/
+            >>> import timerit
+            >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
+            >>> for timer in ti.reset('time'):
+            >>>     with timer:
+            >>>         y_coords, x_coords = np.where(self.data)
+            >>> #
+            >>> for timer in ti.reset('time'):
+            >>>     with timer:
+            >>>         cv2.findNonZero(data)
+
+            self.data = np.random.rand(800, 700) > 0.5
+
+            import timerit
+            ti = timerit.Timerit(100, bestof=10, verbose=2)
+            for timer in ti.reset('time'):
+                with timer:
+                    y_coords, x_coords = np.where(self.data)
+            #
+            for timer in ti.reset('time'):
+                with timer:
+                    data = np.ascontiguousarray(self.data).astype(np.uint8)
+                    cv2_coords = cv2.findNonZero(data)
+
+            >>> poly = self.to_multi_polygon()
         """
         if self.format == MaskFormat.C_MASK:
-            y_coords, x_coords = np.where(self.data)
-            tl_x = x_coords.min()
-            br_x = x_coords.max()
-            tl_y = y_coords.min()
-            br_y = y_coords.max()
-            w = br_x - tl_x
-            h = br_y - tl_y
-            xywh = np.array([tl_x, tl_y, w, h])
+            # findNonZero seems much faster than np.where
+            data = np.ascontiguousarray(self.data).astype(np.uint8)
+            cv2_coords = cv2.findNonZero(data)
+            if cv2_coords is None:
+                xywh = np.array([0, 0, 0, 0])
+            else:
+                x_coords = cv2_coords[:, 0, 0]
+                y_coords = cv2_coords[:, 0, 1]
+                # # y_coords, x_coords = np.where(self.data)
+                # if len(x_coords) == 0:
+                #     xywh = np.array([0, 0, 0, 0])
+                # else:
+                tl_x = x_coords.min()
+                br_x = x_coords.max()
+                tl_y = y_coords.min()
+                br_y = y_coords.max()
+                w = br_x - tl_x
+                h = br_y - tl_y
+                xywh = np.array([tl_x, tl_y, w, h])
         elif self.format == MaskFormat.F_MASK:
             x_coords, y_coords = np.where(self.data)
-            tl_x = x_coords.min()
-            br_x = x_coords.max()
-            tl_y = y_coords.min()
-            br_y = y_coords.max()
-            w = br_x - tl_x
-            h = br_y - tl_y
-            xywh = np.array([tl_x, tl_y, w, h])
+            if len(x_coords) == 0:
+                xywh = np.array([0, 0, 0, 0])
+            else:
+                tl_x = x_coords.min()
+                br_x = x_coords.max()
+                tl_y = y_coords.min()
+                br_y = y_coords.max()
+                w = br_x - tl_x
+                h = br_y - tl_y
+                xywh = np.array([tl_x, tl_y, w, h])
         else:
             try:
-                self = self.to_bytes_rle()
+                self_rle = self.to_bytes_rle()
                 cython_mask = _lazy_mask_backend()
                 if cython_mask is None:
                     raise NotImplementedError('pure python version get_xywh')
-                xywh = cython_mask.toBbox([self.data])[0]
+                xywh = cython_mask.toBbox([self_rle.data])[0]
             except NotImplementedError:
-                self = self.to_c_mask()  # alternate path
-                xywh = self.get_xywh()
+                self_c = self.to_c_mask()  # alternate path
+                xywh = self_c.get_xywh()
         return xywh
 
     def get_polygon(self):
@@ -1101,6 +1172,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
+    @profile
     def to_multi_polygon(self):
         """
         Returns a MultiPolygon object fit around this raster including disjoint
@@ -1128,14 +1200,37 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> #image = other.draw_on(image, color='red')
             >>> kwplot.imshow(image)
             >>> multi_poly.draw()
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
+            >>> poly = self.to_multi_polygon()
+            >>> poly.to_multi_polygon()
+
+
+        Example:
+            # Corner case, only two pixels are on
+            >>> import kwimage
+            >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
+            >>> x_coords = np.array([621, 752])
+            >>> y_coords = np.array([366, 292])
+            >>> self.data[y_coords, x_coords] = 1
+            >>> poly = self.to_multi_polygon()
+
+            poly.to_mask(self.shape).data.sum()
+
+            self.to_array_rle().to_c_mask().data.sum()
+            temp.to_c_mask().data.sum()
         """
         import cv2
         p = 2
         # It should be faster to only exact the patch of non-zero values
         x, y, w, h = self.get_xywh().astype(np.int).tolist()
         if w > 0 and h > 0:
-            output_dims = (h, w)
+            output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
             xy_offset = (-x, -y)
+
+            # FIXME: In the case where
             temp = self.translate(xy_offset, output_dims)
             mask = temp.to_c_mask().data
             offset = (x - p, y - p)
@@ -1154,6 +1249,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 _contours, _hierarchy = _ret
             else:
                 _img, _contours, _hierarchy = _ret
+
+            if _hierarchy is None:
+                raise Exception('Contour extraction from binary mask failed')
+
             _hierarchy = _hierarchy[0]
 
             polys = {i: {'exterior': None, 'interiors': []}

@@ -39,6 +39,11 @@ from distutils.version import LooseVersion
 
 
 try:
+    from xdev import profile
+except Exception:
+    from ubelt import identity as profile
+
+try:
     import torch
 except Exception:
     torch = None
@@ -840,8 +845,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             cname_to_cat: currently ignored.
 
-            style (str, default='orig'): either orig (for the original coco
-                format) or new for the more general ndsampler-style coco
+            style (str, default='orig'): either 'orig' (for the original coco
+                format) or 'new' for the more general kwcoco-style coco
                 format.
 
             image_id (int, default=None):
@@ -972,6 +977,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 inplace=inplace)
         return new
 
+    @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -994,6 +1000,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 factor, output_dims=output_dims, inplace=inplace)
         return new
 
+    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Spatially warp the detections.
@@ -1300,6 +1307,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self = Detections.from_coco_annots(
             anns, sampler.dset.dataset['categories'],
             sampler.catgraph, kp_classes, shape=input_dims)
+
+        # TODO: should this extra info belong in the metadata field?
         return self, iminfo, sampler
 
     @classmethod
@@ -1366,7 +1375,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 sseg = kwimage.MultiPolygon.random(n=1, tight=True, rng=rng)
                 sseg = sseg.scale(box_scale).translate(box_offset)
                 sseg_list.append(sseg)
-            self.data['segmentations'] = kwimage.PolygonList(sseg_list)
+            self.data['segmentations'] = kwimage.SegmentationList.coerce(sseg_list)
 
         if isinstance(keypoints, six.string_types):
             kp_classes = [1, 2, 3, 4]

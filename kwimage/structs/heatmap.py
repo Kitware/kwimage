@@ -978,8 +978,8 @@ class _HeatmapAlgoMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
-            >>> import kwcoco
-            >>> catgraph = kwcoco.CategoryTree.demo()
+            >>> import ndsampler
+            >>> catgraph = ndsampler.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.hierarchical_softmax(class_energy, dim=0)
             >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)
