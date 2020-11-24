@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.10 - Unreleased
 
+### Fixed
+* GPG Keys needed to be renewed
+
 
 ## Version 0.6.9 - Released 2020-11-24
 
