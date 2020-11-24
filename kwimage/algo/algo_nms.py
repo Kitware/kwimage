@@ -3,6 +3,7 @@
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
+import os
 import numpy as np
 import ubelt as ub
 import warnings
@@ -197,9 +198,11 @@ class _NMS_Impls():
     def _lazy_init(self):
         _funcs = {}
 
-        import os
-        val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
-        DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
+        TRUTHY_ENVIRONS = {'true', 'on', 'yes', '1'}
+        DISABLE_C_EXTENSIONS = os.environ.get(
+            'KWIMAGE_DISABLE_C_EXTENSIONS', '').lower() in TRUTHY_ENVIRONS
+        DISABLE_TORCHVISION_NMS = os.environ.get(
+            'KWIMAGE_DISABLE_TORCHVISION_NMS', '').lower() in TRUTHY_ENVIRONS
 
         # These are pure python and should always be available
         from kwimage.algo._nms_backend import py_nms
@@ -209,16 +212,18 @@ class _NMS_Impls():
         if torch is not None:
             _funcs['torch'] = torch_nms.torch_nms
 
-            # if not DISABLE_C_EXTENSIONS:
-            try:
-                # TODO: torchvision impl might be the best, need to test
-                from torchvision import _C as C  # NOQA
-                import torchvision
-                _funcs['torchvision'] = torchvision.ops.nms
-            except (ImportError, UnicodeDecodeError) as ex:
-                warnings.warn(
-                    'optional torchvision C nms is not available: {}'.format(
-                        str(ex)))
+            if not DISABLE_TORCHVISION_NMS:
+                # The torchvision _C libraray may cause segfaults, which is
+                # why we have an option to disable even trying it
+                try:
+                    # TODO: torchvision impl might be the best, need to test
+                    from torchvision import _C as C  # NOQA
+                    import torchvision
+                    _funcs['torchvision'] = torchvision.ops.nms
+                except (ImportError, UnicodeDecodeError) as ex:
+                    warnings.warn(
+                        'optional torchvision C nms is not available: {}'.format(
+                            str(ex)))
 
         try:
             if not DISABLE_C_EXTENSIONS:

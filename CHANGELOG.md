@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.9 - Unreleased
 
+### Added
+* Added support for `KWIMAGE_DISABLE_TORCHVISION_NMS` environ
+
 
 ## Version 0.6.8 - Released 2020-11-23
 
