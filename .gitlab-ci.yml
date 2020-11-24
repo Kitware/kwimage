@@ -133,7 +133,7 @@ stages:
             # ON HOW THE ENCRYPTED GPG KEYS ARE SETUP.
             
             # Load or generate secrets
-            source $(secret_loader.sh)
+            load_secrets
             echo $CI_KITWARE_SECRET
             echo $TWINE_USERNAME
 
@@ -168,7 +168,7 @@ stages:
             GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc 
             GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc 
 
-            source $(secret_unloader.sh)
+            unload_secrets
 
             # Look at what we did, clean up, and add it to git
             ls dev/*.enc
