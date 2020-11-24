@@ -1115,13 +1115,6 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> assert len(subset) == flags.sum()
             >>> subset = dets.tensor().compress(flags)
             >>> assert len(subset) == flags.sum()
-
-
-            z = dets.tensor().data['keypoints'].data['xy']
-            z.compress(flags)
-            ub.map_vals(lambda x: x.shape, dets.data)
-            ub.map_vals(lambda x: x.shape, subset.data)
-
         """
         if flags is Ellipsis:
             return self
