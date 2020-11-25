@@ -463,9 +463,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         Construct a Detections object by either explicitly specifying the
         internal data and meta dictionary structures or by passing expected
-        attribute names as kwargs. Note that custom data and metadata can be
-        specified as long as you pass the names of these keys in the `datakeys`
-        and/or `metakeys` kwargs.
+        attribute names as kwargs.
 
         Args:
             data (Dict[str, ArrayLike]): explicitly specify the data dictionary
@@ -478,6 +476,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 kwargs, then check / ensure that all types are compatible
             **kwargs:
                 specify any key for the data or meta dictionaries.
+
+        Notes:
+            Custom data and metadata can be specified as long as you pass the
+            names of these keys in the `datakeys` and/or `metakeys` kwargs.
+
+            In the case where you specify a custom attribute as a list, it will
+            "currently" (we may change this behavior in the future) be coerced
+            into a numpy or torch array. If you want to store a generic Python
+            list, wrap the custom list in a ``_generic.ObjectList``.
 
         Example:
             >>> # Coerce to numpy
@@ -544,7 +551,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         data['segmentations'])
 
                 for k, v in data.items():
-                    if _generic._isinstance2(v, _generic.ObjectList):
+                    if v is None:
+                        objlist.append(v)
+                    elif _generic._isinstance2(v, _generic.ObjectList):
                         objlist.append(v)
                     elif _generic._isinstance2(v, _boxes.Boxes):
                         if v.is_numpy():
@@ -1653,6 +1662,67 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     'dets had keypoints, but we didnt encode them, were the kp classes missing?')
 
     return fcn_target
+
+
+class _UnitDoctTests:
+    """
+    Hacking in unit tests as doctests the file itself so it is easy to move to
+    kwannot when I finally get around to that.
+    """
+
+    def _test_foreign_keys_compress():
+        """
+        A detections object should be able to maintain foreign keys through
+        compress operations.
+
+        Example:
+            >>> from kwimage.structs.detections import _UnitDoctTests
+            >>> from kwimage.structs.detections import _generic
+            >>> _UnitDoctTests._test_foreign_keys_compress()
+        """
+        import kwimage
+        n = 5
+        dets = kwimage.Detections.random(num=n)
+        flags = dets.scores > np.median(dets.scores)
+
+        # Test normal compress
+        reduced = dets.compress(flags)
+        m = len(reduced)
+
+        # Test case with None attribute
+        dets2 = kwimage.Detections(**{
+            'boxes': dets.data['boxes'],
+            'custom': None,
+            'datakeys': ['custom'],
+        })
+        reduced2 = dets2.compress(flags)
+        assert dets2.data['custom'] is None, 'should be able to specify None value'
+        assert reduced2.data['custom'] is None, 'should be able to specify None value'
+
+        # Test case with _generic.ObjectList[None] attribute
+        dets3 = kwimage.Detections(**{
+            'boxes': dets.data['boxes'],
+            'custom': _generic.ObjectList([None] * n),
+            'datakeys': ['custom'],
+        })
+        reduced3 = dets3.compress(flags)
+        assert dets3.data['custom'].data == [None] * n, 'should be able to specify ObjectList[None] value'
+        assert reduced3.data['custom'].data == [None] * m, 'should be able to specify ObjectList[None] value'
+        assert len(reduced3.data['custom']) == m, 'compress failed'
+
+        # NOTE: We expect Lists to always be coreced to arrays
+        # Test case with List[None] attribute
+        dets4 = kwimage.Detections(**{
+            'boxes': dets.data['boxes'],
+            'custom': [None] * n,
+            'datakeys': ['custom'],
+        })
+        reduced4 = dets4.compress(flags)
+        assert dets4.data['custom'].dtype.kind == 'O', (
+            'we currently expect list to be coerced (may change in the future)')
+        assert reduced4.data['custom'].dtype.kind == 'O', (
+            'we currently expect list to be coerced (may change in the future)')
+        assert len(reduced4.data['custom']) == m, 'compress failed'
 
 
 if __name__ == '__main__':

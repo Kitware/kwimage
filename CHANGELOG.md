@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.11 - Unreleased
 
+### Fixed
+* `kwimage.Detections` now correctly handles `None` data values. Previously
+  `None` was converted to an `array(None, dtype=object)`.
+
 
 ## Version 0.6.10 - Released 2020-11-24
 
