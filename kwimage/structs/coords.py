@@ -537,6 +537,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or per-dimension tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -583,6 +584,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             offset (float or Tuple[float]):
                 transation offset as either a scalar or a per-dimension tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -610,6 +612,126 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             offset_ = impl.astype(offset_, data.dtype)
             data += offset_
         return new
+
+    @profile
+    def rotate(self, theta, about=None, output_dims=None, inplace=False):
+        """
+        Rotate the coordinates about a point.
+
+        Args:
+            theta (float):
+                rotation angle in radians
+
+            about (Tuple | None):
+                if unspecified rotates about the origin (0, 0), otherwise the
+                rotation is about this point.
+
+            output_dims (Tuple): unused in non-raster spatial structures
+
+            inplace (bool, default=False): if True, modifies data inplace
+
+        TODO:
+            - [ ] Generalized ND Rotations?
+
+        References:
+            https://math.stackexchange.com/questions/197772/generalized-rotation-matrix-in-n-dimensional-space-around-n-2-unit-vector
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, dim=2, rng=0)
+            >>> theta = np.pi / 2
+            >>> new = self.rotate(theta)
+
+            >>> # Test rotate agrees with warp
+            >>> sin_ = np.sin(theta)
+            >>> cos_ = np.cos(theta)
+            >>> rot_ = np.array([[cos_, -sin_], [sin_,  cos_]])
+            >>> new2 = self.warp(rot_)
+            >>> assert np.allclose(new.data, new2.data)
+
+            >>> #
+            >>> # Rotate about a custom point
+            >>> theta = np.pi / 2
+            >>> new3 = self.rotate(theta, about=(0.5, 0.5))
+            >>> #
+            >>> # Rotate about the center of mass
+            >>> about = self.data.mean(axis=0)
+            >>> new4 = self.rotate(theta, about=about)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> plt = kwplot.autoplt()
+            >>> self.draw(radius=0.01, color='blue', alpha=.5, coord_axes=[1, 0], setlim='grow')
+            >>> plt.gca().set_aspect('equal')
+            >>> new3.draw(radius=0.01, color='red', alpha=.5, coord_axes=[1, 0], setlim='grow')
+        """
+        if self.dim != 2:
+            raise NotImplementedError('only 2D rotations for now')
+
+        dtype = self.dtype
+        if isinstance(about, str):
+            raise NotImplementedError(about)
+
+        if about is None:
+            sin_ = np.sin(theta)
+            cos_ = np.cos(theta)
+            rot_ = np.array([[cos_, -sin_],
+                             [sin_,  cos_]], dtype=dtype)
+        else:
+            dim = self.dim
+            about_ = about if ub.iterable(about) else [about] * dim
+            """
+            # Construct a general closed-form affine matrix about a point
+            # Shows the symbolic construction of the code
+            # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
+            import sympy
+            sx, sy, theta, shear_y, shear_x, tx, ty, x0, y0 = sympy.symbols(
+                'sx, sy, theta, shear_y, shear_x, tx, ty, x0, y0')
+
+            # Construct an general origin centered affine matrix
+            sin_ = sympy.sin(theta)
+            cos_ = sympy.cos(theta)
+            R = np.array([[cos_, -sin_,  0],
+                          [sin_,  cos_,  0],
+                          [   0,     0,  1]])
+            H = np.array([[      1, shear_x, 0],
+                          [shear_y,       1, 0],
+                          [      0,       0, 1]])
+            S = np.array([[sx,  0, 0],
+                          [ 0, sy, 0],
+                          [ 0,  0, 1]])
+            T = np.array([[1, 0, tx],
+                          [0, 1, ty],
+                          [0, 0,  1]])
+
+            # combine simple transformations into an affine transform
+            Aff_0 = sympy.Matrix(T @ S @ R @ H)
+            Aff_0 = sympy.simplify(Aff_0)
+            print(ub.hzcat(['Aff_0 = ', repr(Aff_0)]))
+
+            # move to center xy0, apply affine transform, then move back
+            tr1 = np.array([[1, 0, -x0],
+                            [0, 1, -y0],
+                            [0, 0,   1]])
+            tr2 = np.array([[1, 0, x0],
+                            [0, 1, y0],
+                            [0, 0,  1]])
+            AffAbout = tr2 @ Aff_0 @ tr1
+            AffAbout = sympy.simplify(AffAbout)
+            print(ub.hzcat(['AffAbout = ', repr(AffAbout)]))
+
+            # Get the special case for rotation about
+            print(repr(AffAbout.subs(dict(shear_x=0, shear_y=0, sx=1, sy=1, tx=0, ty=0))))
+            """
+            x0, y0 = about_
+            sin_ = np.sin(theta)
+            cos_ = np.cos(theta)
+            rot_ = np.array([
+                [ cos_, -sin_, -x0 * cos_ + y0 * sin_ + x0],
+                [ sin_,  cos_, -x0 * sin_ - y0 * cos_ + y0],
+                [    0,     0,                           1]])
+        return self.warp(rot_, output_dims=output_dims, inplace=inplace)
 
     def fill(self, image, value, coord_axes=None, interp='bilinear'):
         """
@@ -672,10 +794,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return image
 
     def draw(self, color='blue', ax=None, alpha=None, coord_axes=[1, 0],
-             radius=1):
+             radius=1, setlim=False):
         """
         Note:
             unlike other methods, the defaults assume x/y internal data
+
+        Args:
+            setlim (bool): if True ensures the limits of the axes contains the
+                polygon
 
         Args:
             coord_axes (Tuple): specify which image axes each coordinate dim
@@ -688,7 +814,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10)
             >>> # xdoc: +REQUIRES(--show)
-            >>> self.draw(radius=3.0)
+            >>> self.draw(radius=3.0, setlim=True)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> self.draw(radius=3.0)
@@ -727,6 +853,22 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             col = mpl.collections.PatchCollection(patches, match_original=True)
             collections.append(col)
             ax.add_collection(col)
+
+        if setlim:
+            x1, y1 = self.data.min(axis=0)
+            x2, y2 = self.data.max(axis=0)
+
+            if setlim == 'grow':
+                # only allow growth
+                x1_, x2_ = ax.get_xlim()
+                y1_, y2_ = ax.get_ylim()
+                x1 = min(x1_, x1)
+                x2 = max(x2_, x2)
+                y1 = min(y1_, y1)
+                y2 = max(y2_, y2)
+
+            ax.set_xlim(x1, x2)
+            ax.set_ylim(y1, y2)
         return collections
 
 if __name__ == '__main__':

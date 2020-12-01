@@ -205,6 +205,7 @@ class _PolyWarpMixin:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -225,6 +226,7 @@ class _PolyWarpMixin:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -235,6 +237,44 @@ class _PolyWarpMixin:
         new.data['exterior'] = new.data['exterior'].translate(
             offset, output_dims, inplace)
         new.data['interiors'] = [p.translate(offset, output_dims, inplace)
+                                 for p in new.data['interiors']]
+        return new
+
+    @profile
+    def rotate(self, theta, about=None, output_dims=None, inplace=False):
+        """
+        Rotate the polygon
+
+        Args:
+            theta (float):
+                rotation angle in radians
+
+            about (Tuple | None | str):
+                if unspecified rotates about the origin (0, 0). If "center"
+                then rotate around the center of this polygon. Otherwise the
+                rotation is about a custom specified point.
+
+            output_dims (Tuple): unused in non-raster spatial structures
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(10, rng=0)
+            >>> new = self.rotate(np.pi / 2, about='center')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> self.draw(color='red', alpha=0.5)
+            >>> new.draw(color='blue', alpha=0.5)
+        """
+        new = self if inplace else self.__class__(self.data.copy())
+
+        if isinstance(about, str) and about == 'center':
+            about = new.data['exterior'].data.mean(axis=0)
+
+        new.data['exterior'] = new.data['exterior'].rotate(
+            theta, about, output_dims, inplace)
+        new.data['interiors'] = [p.rotate(theta, about, output_dims, inplace)
                                  for p in new.data['interiors']]
         return new
 
@@ -885,6 +925,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
 
+        Args:
+            setlim (bool): if True ensures the limits of the axes contains the
+                polygon
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -950,6 +994,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         if setlim:
             x1, y1, x2, y2 = self.to_boxes().to_tlbr().data[0]
+
+            if setlim == 'grow':
+                # only allow growth
+                x1_, x2_ = ax.get_xlim()
+                x1 = min(x1_, x1)
+                x2 = max(x2_, x2)
+
+                y1_, y2_ = ax.get_ylim()
+                y1 = min(y1_, y1)
+                y2 = max(y2_, y2)
+
             ax.set_xlim(x1, x2)
             ax.set_ylim(y1, y2)
         return patch

@@ -13,6 +13,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.10 - Released 2020-11-24
 
+### 
+* Added rotate to Coords and Polygon
+
 ### Fixed
 * GPG Keys needed to be renewed
 
