@@ -163,7 +163,6 @@ class _DetDrawMixin:
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
-        # import kwimage
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
