@@ -362,16 +362,23 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
 
     Args:
         tlbr (ndarray[float32]): Nx4 boxes in tlbr format
+
         scores (ndarray[float32]): score for each bbox
+
         thresh (float): iou threshold.
             Boxes are removed if they overlap greater than this threshold
             (i.e. Boxes are removed if iou > threshold).
             Thresh = 0 is the most strict, resulting in the fewest boxes, and 1
             is the most permissive resulting in the most.
+
         bias (float): bias for iou computation either 0 or 1
+
         classes (ndarray[int64] or None): integer classes.
             If specified NMS is done on a perclass basis.
-        impl (str): implementation can be auto, python, cython_cpu, or gpu
+
+        impl (str): implementation can be "auto", "python", "cython_cpu",
+            "gpu", "torch", or "torchvision".
+
         device_id (int): used if impl is gpu, device id to work on. If not
             specified `torch.cuda.current_device()` is used.
 

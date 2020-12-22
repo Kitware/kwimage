@@ -135,7 +135,8 @@ class BoxFormat:
     # Column-Major-Formats
     XYWH  = _register('xywh')   # (x1, y1, w, h)
     CXYWH = _register('cxywh')  # (cx, cy, w, h)
-    TLBR  = _register('tlbr')   # (x1, y1, x2, y2)
+    LTBR  = _register('ltbr')   # (x1, y1, x2, y2)
+    TLBR  = LTBR  # deprecated, but kept for backwards compatability
     XXYY  = _register('xxyy')   # (x1, x2, y1, y2)
 
     # Row-Major-Formats
@@ -1354,7 +1355,7 @@ class _BoxDrawMixins(object):
                                  lw=lw, ax=ax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=None,
-                copy=False, thickness=2):
+                copy=False, thickness=2, label_loc='top_left'):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -1372,6 +1373,9 @@ class _BoxDrawMixins(object):
 
             thickness (int, default=2): rectangle thickness, negative values
                 will draw a filled rectangle.
+
+            label_loc (str): indicates where labels (if specified) should be
+                drawn.
 
         Example:
             >>> from kwimage.structs.boxes import *  # NOQA
@@ -1473,12 +1477,28 @@ class _BoxDrawMixins(object):
         if labels is None or labels is False:
             labels = [None] * num
 
+        if label_loc == 'top_left':
+            # Create a relative origin for the text
+            text_relxy_org = np.array([0, 0])
+            valign = 'bottom'
+            halign = 'left'
+            y_shift_sign = -1
+        elif label_loc == 'bottom_left':
+            # Create a relative origin for the text
+            text_relxy_org = np.array([0, 1])
+            valign = 'top'
+            halign = 'left'
+            y_shift_sign = +1
+        else:
+            raise KeyError(label_loc)
+
+        rel_x, rel_y = text_relxy_org
+
         for tlbr, label, alpha_, col in zip(tlbr_list, labels, alpha, colors):
             x1, y1, x2, y2 = tlbr
             pt1 = _coords(x1, y1)
             pt2 = _coords(x2, y2)
-            x, y = pt1
-            org = (x, y - (rectkw['thickness'] * 2))
+
             # Note cv2.rectangle does work inplace
             if alpha_ < 1.0:
                 background = image.copy()
@@ -1487,8 +1507,16 @@ class _BoxDrawMixins(object):
             # blending with the background image.
             image = cv2.rectangle(image, pt1, pt2, color=col, **rectkw)
             if label:
+                # Compute the prefered location of the text origin
+                x1, y1 = pt1
+                x2, y2 = pt2
+                y_shift = y_shift_sign * (rectkw['thickness'] * 2)
+                org_x = (x1 * (1 - rel_x)) + (x2 * rel_x)
+                org_y = (y1 * (1 - rel_y)) + (y2 * rel_y) + y_shift
+                org = (org_x, org_y)
                 image = kwimage.draw_text_on_image(
-                    image, text=label, org=org, color=col, **fontkw)
+                    image, text=label, org=org, color=col, valign=valign,
+                    halign=halign, **fontkw)
             if alpha_ < 1.0:
                 # We could get away with only doing this to a slice of the
                 # image. It might result in a significant speedup. We would
@@ -1947,7 +1975,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         TODO:
             - [ ] Add pairwise flag to toggle between one-vs-one and all-vs-all
-                  computation.
+                  computation. I.E. Add option for componentwise calculation.
 
         Args:
             other (Boxes): boxes to compare IoUs against
@@ -2125,7 +2153,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def intersection(self, other):
         """
-        Pairwise intersection between two sets of Boxes
+        ~~Pairwise~~ Componentwise intersection between two sets of Boxes
 
         Returns:
             Boxes: intersected boxes
@@ -2150,6 +2178,43 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         tl = np.maximum(self_tlbr[..., :2], other_tlbr[..., :2])
         br = np.minimum(self_tlbr[..., 2:], other_tlbr[..., 2:])
+
+        is_bad = np.any(tl > br, axis=1)
+        tlbr = np.concatenate([tl, br], axis=-1)
+
+        tlbr[is_bad] = np.nan
+
+        isect = Boxes(tlbr, 'tlbr')
+
+        return isect
+
+    def union(self, other):
+        """
+        Componentwise union between two sets of Boxes
+
+        Returns:
+            Boxes: unioned boxes
+
+        Examples:
+            >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> self = Boxes.random(5, rng=0).scale(10.)
+            >>> other = self.translate(1)
+            >>> new = self.union(other)
+            >>> new_area = np.nan_to_num(new.area).ravel()
+            >>> alt_area = np.diag(self.isect_area(other))
+            >>> close = np.isclose(new_area, alt_area)
+            >>> assert np.all(close)
+        """
+        other_is_1d = (len(other.shape) == 1)
+        if other_is_1d:
+            other = other[None, :]
+
+        self_tlbr = self.to_tlbr(copy=False).data
+        other_tlbr = other.to_tlbr(copy=False).data
+
+        tl = np.minimum(self_tlbr[..., :2], other_tlbr[..., :2])
+        br = np.maximum(self_tlbr[..., 2:], other_tlbr[..., 2:])
 
         is_bad = np.any(tl > br, axis=1)
         tlbr = np.concatenate([tl, br], axis=-1)

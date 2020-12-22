@@ -105,12 +105,26 @@ class _DetDrawMixin:
             ax.set_ylim(ymin, ymax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
-                kpts=True, sseg=True, boxes=True, ssegkw=None):
+                kpts=True, sseg=True, boxes=True, ssegkw=None,
+                label_loc='top_left'):
         """
         Draws boxes directly on the image using OpenCV
 
         Args:
             image (ndarray[uint8]): must be in uint8 format
+
+            color (str | ColorLike | List[ColorLike]):
+                one color for all boxes or a list of colors for each box
+
+            alpha (float): transparency of overlay
+
+            labels (bool | str | List[str]):
+                if True, use categorie names as the labels. See _make_labels
+                for details. Otherwise a manually specified text label for each
+                box
+
+            label_loc (str): indicates where labels (if specified) should be
+                drawn.
 
         Returns:
             ndarray[uint8]: image with labeled boxes drawn on it
@@ -164,7 +178,7 @@ class _DetDrawMixin:
 
         if boxes:
             image = self.boxes.draw_on(image, color=color, alpha=alpha,
-                                       labels=labels)
+                                       labels=labels, label_loc=label_loc)
 
         keypoints = self.data.get('keypoints', None)
         if kpts and keypoints is not None:

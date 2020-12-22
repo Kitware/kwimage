@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### 
 * Added rotate to Coords and Polygon
+* Added arg to control where text is drawn on `Boxes.draw_on`.
 
 ### Fixed
 * GPG Keys needed to be renewed

@@ -151,7 +151,8 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
         ordered_keep = (n_conflicts == 0)
 
     # Unsort, so keep is aligned with input boxes
-    keep = ordered_keep.new(*ordered_keep.size())
+    shape = ordered_keep.size()
+    keep = ordered_keep.new(*shape)
     keep.scatter_(0, order, ordered_keep)
     return keep
 
