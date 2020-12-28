@@ -2155,6 +2155,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         ~~Pairwise~~ Componentwise intersection between two sets of Boxes
 
+        intersections of boxes are always boxes, so this works
+
         Returns:
             Boxes: intersected boxes
 
@@ -2173,24 +2175,26 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if other_is_1d:
             other = other[None, :]
 
-        self_tlbr = self.to_tlbr(copy=False).data
-        other_tlbr = other.to_tlbr(copy=False).data
+        self_ltrb = self.to_tlbr(copy=False).data
+        other_ltrb = other.to_tlbr(copy=False).data
 
-        tl = np.maximum(self_tlbr[..., :2], other_tlbr[..., :2])
-        br = np.minimum(self_tlbr[..., 2:], other_tlbr[..., 2:])
+        tl = np.minimum(self_ltrb[..., :2], other_ltrb[..., :2])
+        br = np.maximum(self_ltrb[..., 2:], other_ltrb[..., 2:])
 
         is_bad = np.any(tl > br, axis=1)
-        tlbr = np.concatenate([tl, br], axis=-1)
+        ltrb = np.concatenate([tl, br], axis=-1)
 
-        tlbr[is_bad] = np.nan
+        ltrb[is_bad] = np.nan
 
-        isect = Boxes(tlbr, 'tlbr')
+        isect = Boxes(ltrb, 'ltrb')
 
         return isect
 
-    def union(self, other):
+    def union_hull(self, other):
         """
-        Componentwise union between two sets of Boxes
+        Componentwise hull union between two sets of Boxes
+
+        NOTE: convert to polygon to do a real union.
 
         Returns:
             Boxes: unioned boxes
