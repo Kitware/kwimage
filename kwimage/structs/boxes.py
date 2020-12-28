@@ -2178,8 +2178,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         self_ltrb = self.to_tlbr(copy=False).data
         other_ltrb = other.to_tlbr(copy=False).data
 
-        tl = np.minimum(self_ltrb[..., :2], other_ltrb[..., :2])
-        br = np.maximum(self_ltrb[..., 2:], other_ltrb[..., 2:])
+        tl = np.maximum(self_ltrb[..., :2], other_ltrb[..., :2])
+        br = np.minimum(self_ltrb[..., 2:], other_ltrb[..., 2:])
 
         is_bad = np.any(tl > br, axis=1)
         ltrb = np.concatenate([tl, br], axis=-1)
