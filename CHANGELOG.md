@@ -4,11 +4,18 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.6.11 - Unreleased
+## Version 0.7.0 - Unreleased
 
 ### Fixed
 * `kwimage.Detections` now correctly handles `None` data values. Previously
   `None` was converted to an `array(None, dtype=object)`.
+
+* demodata images now have the correct extension
+
+
+### Changed
+
+* BREAKING: TLBR has been internally switched to LTRB 
 
 
 ## Version 0.6.10 - Released 2020-11-24

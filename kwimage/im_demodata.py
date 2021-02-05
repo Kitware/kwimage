@@ -7,7 +7,7 @@ from . import im_cv2
 
 _TEST_IMAGES = {
     'airport': {
-        'fname': 'airport.png',
+        'fname': 'airport.jpg',
         'sha1': '52f15b9cccf2cc95a82ccacd96f1f15dc76a8544',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
     },
@@ -22,9 +22,9 @@ _TEST_IMAGES = {
         'url': 'https://i.imgur.com/KXhKM72.png',
     },
     'carl': {
-        'fname': 'carl.png',
+        'fname': 'carl.jpg',
         'sha1': 'f498fa6f6b24b4fa79322612144fedd5fad85bc3',
-        'url': 'https://i.imgur.com/flTHWFD.png',
+        'url': 'https://i.imgur.com/flTHWFD.png',  # imgur thinks this is a PNG for some reason
     },
     'paraview': {
         'fname': 'paraview.png',

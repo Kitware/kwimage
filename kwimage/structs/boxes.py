@@ -15,7 +15,7 @@ THE BOX FORMAT.
 There are 3 main bounding box formats:
     xywh: top left xy-coordinates and width height offsets
     cxywh: center xy-coordinates and width height offsets
-    tlbr: top left and bottom right xy coordinates
+    ltrb: top left and bottom right xy coordinates
 
 Here is some example usage
 
@@ -26,9 +26,9 @@ Example:
     >>>                  [10,  0, 20, 10],
     >>>                  [20,  0, 30, 10]])
     >>> # Note that the format of raw data is ambiguous, so you must specify
-    >>> boxes = Boxes(data, 'tlbr')
+    >>> boxes = Boxes(data, 'ltrb')
     >>> print('boxes = {!r}'.format(boxes))
-    boxes = <Boxes(tlbr,
+    boxes = <Boxes(ltrb,
         array([[ 0,  0, 10, 10],
                [ 5,  5, 50, 50],
                [10,  0, 20, 10],
@@ -36,7 +36,7 @@ Example:
 
     >>> # Now you can operate on those boxes easily
     >>> print(boxes.translate((10, 10)))
-    <Boxes(tlbr,
+    <Boxes(ltrb,
         array([[10., 10., 20., 20.],
                [15., 15., 60., 60.],
                [20., 10., 30., 20.],
@@ -104,7 +104,7 @@ class BoxFormat:
     """
     # xywh = 'xywh'
     # cxywh = 'cxywh'
-    # xy1xy2 = 'tlbr'
+    # xy1xy2 = 'ltrb'
     # xx1yy2 = 'extent'
 
     # Note: keep the strings as the "old"-style names for now
@@ -112,7 +112,7 @@ class BoxFormat:
     #     - [x] bump versions
     #     - [x] use the later in the or statements
     #     - [ ] ensure nothing depends on the old values.
-    #     - [ ] Change cannonical TLBR to LTRB
+    #     - [x] Change cannonical TLBR to LTRB
 
     # Definitions:
     #     x1 = top-left-x
@@ -135,8 +135,8 @@ class BoxFormat:
     # Column-Major-Formats
     XYWH  = _register('xywh')   # (x1, y1, w, h)
     CXYWH = _register('cxywh')  # (cx, cy, w, h)
-    LTBR  = _register('ltbr')   # (x1, y1, x2, y2)
-    TLBR  = LTBR  # deprecated, but kept for backwards compatability
+    LTRB  = _register('ltrb')   # (x1, y1, x2, y2)
+    TLBR  = LTRB  # deprecated, but kept for backwards compatability
     XXYY  = _register('xxyy')   # (x1, x2, y1, y2)
 
     # Row-Major-Formats
@@ -154,10 +154,10 @@ class BoxFormat:
 
         'cxywh': CXYWH,
 
-        'tlbr': TLBR,  # note tlbr is a confusing code, its actually LTRB. For legacy reasons we are retaining it for now.
-        'ltrb': TLBR,  # left-top-right-bottom
-        'xyxy': TLBR,
-        'xy1xy2': TLBR,
+        'tlbr': LTRB,  # note tlbr is a confusing code, its actually LTRB. For legacy reasons we are retaining it for now.
+        'ltrb': LTRB,  # left-top-right-bottom
+        'xyxy': LTRB,
+        'xy1xy2': LTRB,
 
         'xxyy': XXYY,
         'xx1yy2': XXYY,
@@ -169,7 +169,7 @@ class BoxFormat:
         # Explicit tuple format
         'cx,cy,w,h'           : CXYWH,
         'tl_x,tl_y,w,h'       : XYWH,
-        'tl_x,tl_y,br_x,br_y' : TLBR,
+        'tl_x,tl_y,br_x,br_y' : LTRB,
         'x1,x2,y1,y2'         : XXYY,
     }
     for key in cannonical:
@@ -184,11 +184,11 @@ class BoxFormat:
     ]
 
 
-def box_ious(tlbr1, tlbr2, bias=0, impl=None):
+def box_ious(ltrb1, ltrb2, bias=0, impl=None):
     """
     Args:
-        tlbr1 (ndarray): (N, 4) tlbr format
-        tlbr2 (ndarray): (K, 4) tlbr format
+        ltrb1 (ndarray): (N, 4) ltrb format
+        ltrb2 (ndarray): (K, 4) ltrb format
         bias (int): either 0 or 1, does tl=br have area of 0 or 1?
 
     Benchmark:
@@ -196,9 +196,9 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE
-        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').data
-        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').data
-        >>> ious = box_ious(tlbr1, tlbr2)
+        >>> ltrb1 = Boxes.random(5, scale=10.0, rng=0, format='ltrb').data
+        >>> ltrb2 = Boxes.random(7, scale=10.0, rng=1, format='ltrb').data
+        >>> ious = box_ious(ltrb1, ltrb2)
         >>> print(ub.repr2(ious.tolist(), precision=2))
         [
             [0.00, 0.00, 0.00, 0.00, 0.00, 0.01, 0.01],
@@ -209,67 +209,67 @@ def box_ious(tlbr1, tlbr2, bias=0, impl=None):
         ]
 
     Example:
-        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').data
-        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').data
+        >>> ltrb1 = Boxes.random(5, scale=10.0, rng=0, format='ltrb').data
+        >>> ltrb2 = Boxes.random(7, scale=10.0, rng=1, format='ltrb').data
         >>> if _bbox_ious_c is not None:
-        >>>     ious_c = box_ious(tlbr1, tlbr2, bias=0, impl='c')
-        >>>     ious_py = box_ious(tlbr1, tlbr2, bias=0, impl='py')
+        >>>     ious_c = box_ious(ltrb1, ltrb2, bias=0, impl='c')
+        >>>     ious_py = box_ious(ltrb1, ltrb2, bias=0, impl='py')
         >>>     assert np.all(np.isclose(ious_c, ious_py))
-        >>>     ious_c = box_ious(tlbr1, tlbr2, bias=1, impl='c')
-        >>>     ious_py = box_ious(tlbr1, tlbr2, bias=1, impl='py')
+        >>>     ious_c = box_ious(ltrb1, ltrb2, bias=1, impl='c')
+        >>>     ious_py = box_ious(ltrb1, ltrb2, bias=1, impl='py')
         >>>     assert np.all(np.isclose(ious_c, ious_py))
     """
     if impl is None or impl == 'auto':
-        if torch is not None and torch.is_tensor(tlbr1):
+        if torch is not None and torch.is_tensor(ltrb1):
             impl = 'torch'
         else:
             impl = 'py' if _bbox_ious_c is None else 'c'
 
-    if impl == 'torch' or (torch is not None and torch.is_tensor(tlbr1)):
+    if impl == 'torch' or (torch is not None and torch.is_tensor(ltrb1)):
         # TODO: add tests for equality with other methods or show why it should
         # be different.
         # NOTE: this is done in boxes.ious
-        return _box_ious_torch(tlbr1, tlbr2, bias)
+        return _box_ious_torch(ltrb1, ltrb2, bias)
     elif impl == 'c':
         if _bbox_ious_c is None:
             raise Exception('The Boxes C module is not available')
-        return _bbox_ious_c(tlbr1.astype(np.float32),
-                            tlbr2.astype(np.float32), bias)
+        return _bbox_ious_c(ltrb1.astype(np.float32),
+                            ltrb2.astype(np.float32), bias)
     elif impl == 'py':
-        return _box_ious_py(tlbr1, tlbr2, bias)
+        return _box_ious_py(ltrb1, ltrb2, bias)
     else:
         raise KeyError(impl)
 
 
-def _box_ious_torch(tlbr1, tlbr2, bias=0):
+def _box_ious_torch(ltrb1, ltrb2, bias=0):
     """
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
-        >>> tlbr1 = Boxes.random(5, scale=10.0, rng=0, format='tlbr').tensor().data
-        >>> tlbr2 = Boxes.random(7, scale=10.0, rng=1, format='tlbr').tensor().data
+        >>> ltrb1 = Boxes.random(5, scale=10.0, rng=0, format='ltrb').tensor().data
+        >>> ltrb2 = Boxes.random(7, scale=10.0, rng=1, format='ltrb').tensor().data
         >>> bias = 0
-        >>> ious = _box_ious_torch(tlbr1, tlbr2, bias)
-        >>> ious_np = _box_ious_py(tlbr1.numpy(), tlbr2.numpy(), bias)
+        >>> ious = _box_ious_torch(ltrb1, ltrb2, bias)
+        >>> ious_np = _box_ious_py(ltrb1.numpy(), ltrb2.numpy(), bias)
         >>> assert np.all(ious_np == ious.numpy())
     """
-    # tlbr1 = tlbr1.view(-1, 4)
-    # tlbr2 = tlbr2.view(-1, 4)
+    # ltrb1 = ltrb1.view(-1, 4)
+    # ltrb2 = ltrb2.view(-1, 4)
 
-    w1 = tlbr1[..., 2] - tlbr1[..., 0] + bias
-    h1 = tlbr1[..., 3] - tlbr1[..., 1] + bias
-    w2 = tlbr2[..., 2] - tlbr2[..., 0] + bias
-    h2 = tlbr2[..., 3] - tlbr2[..., 1] + bias
+    w1 = ltrb1[..., 2] - ltrb1[..., 0] + bias
+    h1 = ltrb1[..., 3] - ltrb1[..., 1] + bias
+    w2 = ltrb2[..., 2] - ltrb2[..., 0] + bias
+    h2 = ltrb2[..., 3] - ltrb2[..., 1] + bias
 
     areas1 = w1 * h1
     areas2 = w2 * h2
 
-    x_maxs = torch.min(tlbr1[..., 2][..., None], tlbr2[..., 2])
-    x_mins = torch.max(tlbr1[..., 0][..., None], tlbr2[..., 0])
+    x_maxs = torch.min(ltrb1[..., 2][..., None], ltrb2[..., 2])
+    x_mins = torch.max(ltrb1[..., 0][..., None], ltrb2[..., 0])
 
     iws = (x_maxs - x_mins + bias).clamp(0, float('inf'))
 
-    y_maxs = torch.min(tlbr1[..., 3][..., None], tlbr2[..., 3])
-    y_mins = torch.max(tlbr1[..., 1][..., None], tlbr2[..., 1])
+    y_maxs = torch.min(ltrb1[..., 3][..., None], ltrb2[..., 3])
+    y_mins = torch.max(ltrb1[..., 1][..., None], ltrb2[..., 1])
 
     ihs = (y_maxs - y_mins + bias).clamp(0, float('inf'))
 
@@ -281,27 +281,27 @@ def _box_ious_torch(tlbr1, tlbr2, bias=0):
     return ious
 
 
-def _box_ious_py(tlbr1, tlbr2, bias=0):
+def _box_ious_py(ltrb1, ltrb2, bias=0):
     """
     This is the fastest python implementation of bbox_ious I found
     """
-    w1 = tlbr1[:, 2] - tlbr1[:, 0] + bias
-    h1 = tlbr1[:, 3] - tlbr1[:, 1] + bias
-    w2 = tlbr2[:, 2] - tlbr2[:, 0] + bias
-    h2 = tlbr2[:, 3] - tlbr2[:, 1] + bias
+    w1 = ltrb1[:, 2] - ltrb1[:, 0] + bias
+    h1 = ltrb1[:, 3] - ltrb1[:, 1] + bias
+    w2 = ltrb2[:, 2] - ltrb2[:, 0] + bias
+    h2 = ltrb2[:, 3] - ltrb2[:, 1] + bias
 
     areas1 = w1 * h1
     areas2 = w2 * h2
 
-    x_maxs = np.minimum(tlbr1[:, 2][:, None], tlbr2[:, 2])
-    x_mins = np.maximum(tlbr1[:, 0][:, None], tlbr2[:, 0])
+    x_maxs = np.minimum(ltrb1[:, 2][:, None], ltrb2[:, 2])
+    x_mins = np.maximum(ltrb1[:, 0][:, None], ltrb2[:, 0])
 
     iws = np.maximum(x_maxs - x_mins + bias, 0)
     # note: it would be possible to significantly reduce the computation by
     # filtering any box pairs where iws <= 0. Not sure how to do with numpy.
 
-    y_maxs = np.minimum(tlbr1[:, 3][:, None], tlbr2[:, 3])
-    y_mins = np.maximum(tlbr1[:, 1][:, None], tlbr2[:, 1])
+    y_maxs = np.minimum(ltrb1[:, 3][:, None], ltrb2[:, 3])
+    y_mins = np.maximum(ltrb1[:, 1][:, None], ltrb2[:, 1])
 
     ihs = np.maximum(y_maxs - y_mins + bias, 0)
 
@@ -313,19 +313,19 @@ def _box_ious_py(tlbr1, tlbr2, bias=0):
     return ious
 
 
-def _isect_areas(tlbr1, tlbr2, bias=0):
+def _isect_areas(ltrb1, ltrb2, bias=0):
     """
     Returns only the area of the intersection
     """
-    x_maxs = np.minimum(tlbr1[:, 2][:, None], tlbr2[:, 2])
-    x_mins = np.maximum(tlbr1[:, 0][:, None], tlbr2[:, 0])
+    x_maxs = np.minimum(ltrb1[:, 2][:, None], ltrb2[:, 2])
+    x_mins = np.maximum(ltrb1[:, 0][:, None], ltrb2[:, 0])
 
     iws = np.maximum(x_maxs - x_mins + bias, 0)
     # note: it would be possible to significantly reduce the computation by
     # filtering any box pairs where iws <= 0. Not sure how to do with numpy.
 
-    y_maxs = np.minimum(tlbr1[:, 3][:, None], tlbr2[:, 3])
-    y_mins = np.maximum(tlbr1[:, 1][:, None], tlbr2[:, 1])
+    y_maxs = np.minimum(ltrb1[:, 3][:, None], ltrb2[:, 3])
+    y_mins = np.maximum(ltrb1[:, 1][:, None], ltrb2[:, 1])
 
     ihs = np.maximum(y_maxs - y_mins + bias, 0)
 
@@ -369,8 +369,8 @@ class _BoxConversionMixins(object):
         Example:
             >>> boxes = Boxes.random(2, scale=10, rng=0)
 
-            >>> boxes.toformat('tlbr')
-            <Boxes(tlbr,
+            >>> boxes.toformat('ltrb')
+            <Boxes(ltrb,
                 array([[5, 5, 6, 7],
                        [4, 6, 4, 8]]))>
 
@@ -387,7 +387,7 @@ class _BoxConversionMixins(object):
             >>> boxes.toformat('_yyxx')
             >>> boxes.toformat('_rchw')
             >>> boxes.toformat('xywh')
-            >>> boxes.toformat('tlbr')
+            >>> boxes.toformat('ltrb')
             ...
         """
         key = BoxFormat.aliases.get(format, format)
@@ -402,10 +402,10 @@ class _BoxConversionMixins(object):
         if self.format == BoxFormat.XXYY:
             return self.copy() if copy else self
         else:
-            # Only difference between tlbr and extent=xxyy is the column order
+            # Only difference between ltrb and extent=xxyy is the column order
             # xxyy: is x1, x2, y1, y2
-            tlbr = self.to_tlbr().data
-            xxyy = tlbr[..., [0, 2, 1, 3]]
+            ltrb = self.to_tlbr().data
+            xxyy = ltrb[..., [0, 2, 1, 3]]
         return Boxes(xxyy, BoxFormat.XXYY, check=False)
 
     to_extent = to_xxyy
@@ -418,7 +418,7 @@ class _BoxConversionMixins(object):
             cx, cy, w, h = self.components
             x1 = cx - w / 2
             y1 = cy - h / 2
-        elif self.format == BoxFormat.TLBR:
+        elif self.format == BoxFormat.LTRB:
             x1, y1, x2, y2 = self.components
             w = x2 - x1
             h = y2 - y1
@@ -446,7 +446,7 @@ class _BoxConversionMixins(object):
             x1, y1, w, h = self.components
             cx = x1 + (w / 2)
             cy = y1 + (h / 2)
-        elif self.format == BoxFormat.TLBR:
+        elif self.format == BoxFormat.LTRB:
             x1, y1, x2, y2 = self.components
             w = x2 - x1
             h = y2 - y1
@@ -467,9 +467,9 @@ class _BoxConversionMixins(object):
         cxywh = _cat([cx, cy, w, h])
         return Boxes(cxywh, BoxFormat.CXYWH, check=False)
 
-    @_register_convertor(BoxFormat.TLBR)
-    def to_tlbr(self, copy=True):
-        if self.format == BoxFormat.TLBR:
+    @_register_convertor(BoxFormat.LTRB)
+    def to_ltrb(self, copy=True):
+        if self.format == BoxFormat.LTRB:
             return self.copy() if copy else self
         elif self.format == BoxFormat.XXYY:
             x1, x2, y1, y2 = self.components
@@ -493,8 +493,10 @@ class _BoxConversionMixins(object):
             y2 = y1 + h
         else:
             raise KeyError(self.format)
-        tlbr = _cat([x1, y1, x2, y2])
-        return Boxes(tlbr, BoxFormat.TLBR, check=False)
+        ltrb = _cat([x1, y1, x2, y2])
+        return Boxes(ltrb, BoxFormat.LTRB, check=False)
+
+    to_tlbr = to_ltrb
 
     @_register_convertor(BoxFormat._RCHW)
     def _to_rchw(self, copy=True):
@@ -510,7 +512,7 @@ class _BoxConversionMixins(object):
     def _to_yyxx(self, copy=True):
         if self.format == BoxFormat._YYXX:
             return self.copy() if copy else self
-        if self.format == BoxFormat.TLBR:
+        if self.format == BoxFormat.LTRB:
             _yyxx = self.data[..., [1, 3, 0, 2]]
         else:
             _yyxx = self.to_tlbr(copy)._to_yyxx(copy)
@@ -523,7 +525,7 @@ class _BoxConversionMixins(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
-            >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
+            >>> self = Boxes([[25, 30, 15, 10]], 'ltrb')
             >>> bboi = self.to_imgaug((10, 10))
         """
         import imgaug
@@ -540,8 +542,8 @@ class _BoxConversionMixins(object):
             import kwarray
             shape = tuple(kwarray.ArrayAPI.list(shape))
 
-        tlbr = self.to_tlbr(copy=False).data
-        bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in tlbr]
+        ltrb = self.to_tlbr(copy=False).data
+        bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in ltrb]
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
         return bboi
 
@@ -574,15 +576,15 @@ class _BoxConversionMixins(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
-            >>> orig = Boxes.random(5, format='tlbr')
+            >>> orig = Boxes.random(5, format='ltrb')
             >>> bboi = orig.to_imgaug(shape=(500, 500))
             >>> self = Boxes.from_imgaug(bboi)
             >>> assert np.all(self.data == orig.data)
         """
-        tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
+        ltrb = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
                          for bb in bboi.bounding_boxes])
-        tlbr = tlbr.reshape(-1, 4)
-        return Boxes(tlbr, format=BoxFormat.TLBR, check=False)
+        ltrb = ltrb.reshape(-1, 4)
+        return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
 
     def to_coco(self, style='orig'):
         """
@@ -606,8 +608,8 @@ class _BoxConversionMixins(object):
         """
         import kwimage
         poly_list = []
-        for tlbr in self.to_tlbr().data:
-            x1, y1, x2, y2 = tlbr
+        for ltrb in self.to_tlbr().data:
+            x1, y1, x2, y2 = ltrb
             # Exteriors are counterlockwise
             exterior = np.array([
                 [x1, y1],
@@ -662,7 +664,7 @@ class _BoxPropertyMixins(object):
         Top left x coordinate
 
         Example:
-            >>> Boxes([25, 30, 35, 40], 'tlbr').tl_x
+            >>> Boxes([25, 30, 35, 40], 'ltrb').tl_x
             array([25])
         """
         return self.to_tlbr(copy=False)._component(0)
@@ -673,7 +675,7 @@ class _BoxPropertyMixins(object):
         Top left y coordinate
 
         Example:
-            >>> Boxes([25, 30, 35, 40], 'tlbr').tl_y
+            >>> Boxes([25, 30, 35, 40], 'ltrb').tl_y
             array([30])
         """
         return self.to_tlbr(copy=False)._component(1)
@@ -684,7 +686,7 @@ class _BoxPropertyMixins(object):
         Bottom right x coordinate
 
         Example:
-            >>> Boxes([25, 30, 35, 40], 'tlbr').br_x
+            >>> Boxes([25, 30, 35, 40], 'ltrb').br_x
             array([35])
         """
         return self.to_tlbr(copy=False)._component(2)
@@ -695,7 +697,7 @@ class _BoxPropertyMixins(object):
         Bottom right y coordinate
 
         Example:
-            >>> Boxes([25, 30, 35, 40], 'tlbr').br_y
+            >>> Boxes([25, 30, 35, 40], 'ltrb').br_y
             array([40])
         """
         return self.to_tlbr(copy=False)._component(3)
@@ -794,11 +796,11 @@ class _BoxTransformMixins(object):
         new = self if inplace else self.__class__(self.data, self.format)
         bboi = self.to_imgaug(shape=input_dims)
         bboi = augmenter.augment_bounding_boxes([bboi])[0]
-        tlbr = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
+        ltrb = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
                          for bb in bboi.bounding_boxes])
-        tlbr = tlbr.reshape(-1, 4)
-        new.data = tlbr
-        new.format = BoxFormat.TLBR
+        ltrb = ltrb.reshape(-1, 4)
+        new.data = ltrb
+        new.format = BoxFormat.LTRB
         if self._impl.is_tensor:
             new = new.tensor()
         return new
@@ -965,7 +967,7 @@ class _BoxTransformMixins(object):
                 x2_new[:, None], y2_new[:, None],
             ])
             new.data = data_new
-            new.format = 'tlbr'
+            new.format = 'ltrb'
 
         return new
 
@@ -994,7 +996,7 @@ class _BoxTransformMixins(object):
         """
         Scale a bounding boxes by a factor.
 
-        works natively with tlbr, cxywh, xywh, xy, or wh formats
+        works natively with ltrb, cxywh, xywh, xy, or wh formats
 
         Args:
             factor (float or Tuple[float, float]):
@@ -1019,13 +1021,13 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> x = Boxes([25., 30., 15., 10.], 'tlbr')
+            >>> x = Boxes([25., 30., 15., 10.], 'ltrb')
             >>> x.scale(2)
             >>> print(x)
-            <Boxes(tlbr, array([25., 30., 15., 10.]))>
+            <Boxes(ltrb, array([25., 30., 15., 10.]))>
             >>> x.scale(2.0, inplace=True)
             >>> print(x)
-            <Boxes(tlbr, array([50., 60., 30., 20.]))>
+            <Boxes(ltrb, array([50., 60., 30., 20.]))>
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1038,7 +1040,7 @@ class _BoxTransformMixins(object):
                       [ 2.84,  5.23,  0.  ,  1.74],
                       [ 1.42, 24.98,  0.4 , 16.65]], dtype=np.float64)
             >>> y0 = boxes.toformat('xywh').scale(scale_xy).toformat('xywh')
-            >>> y1 = boxes.toformat('tlbr').scale(scale_xy).toformat('xywh')
+            >>> y1 = boxes.toformat('ltrb').scale(scale_xy).toformat('xywh')
             >>> y2 = boxes.toformat('xxyy').scale(scale_xy).toformat('xywh')
             >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
 
@@ -1049,7 +1051,7 @@ class _BoxTransformMixins(object):
             >>> scale_xy = (2, 4)
             >>> print(ub.repr2(self.scale(scale_xy, about='center').data, precision=2))
             >>> y0 = self.toformat('xywh').scale(scale_xy, about='center').toformat('cxywh')
-            >>> y1 = self.toformat('tlbr').scale(scale_xy, about='center').toformat('cxywh')
+            >>> y1 = self.toformat('ltrb').scale(scale_xy, about='center').toformat('cxywh')
             >>> y2 = self.toformat('xxyy').scale(scale_xy, about='center').toformat('cxywh')
             >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
         """
@@ -1083,7 +1085,7 @@ class _BoxTransformMixins(object):
 
             if about is None:
                 # scale about the origin
-                if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.TLBR]:
+                if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH, BoxFormat.LTRB]:
                     new_data[..., 0] *= sx
                     new_data[..., 1] *= sy
                     new_data[..., 2] *= sx
@@ -1104,7 +1106,7 @@ class _BoxTransformMixins(object):
                     new_data[..., 1] = (new_data[..., 1] - about_y) * sy + about_y
                     new_data[..., 2] *= sx
                     new_data[..., 3] *= sy
-                elif self.format in [BoxFormat.TLBR]:
+                elif self.format in [BoxFormat.LTRB]:
                     new_data[..., 0] = (new_data[..., 0] - about_x) * sx + about_x
                     new_data[..., 1] = (new_data[..., 1] - about_y) * sy + about_y
                     new_data[..., 2] = (new_data[..., 2] - about_x) * sx + about_x
@@ -1133,17 +1135,17 @@ class _BoxTransformMixins(object):
             <Boxes(xywh, array([35., 40., 15., 10.]))>
             >>> Boxes([25, 30, 15, 10], 'xywh').translate((10, 0))
             <Boxes(xywh, array([35., 30., 15., 10.]))>
-            >>> Boxes([25, 30, 15, 10], 'tlbr').translate((10, 5))
+            >>> Boxes([25, 30, 15, 10], 'ltrb').translate((10, 5))
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> x = Boxes([25, 30, 15, 10], 'tlbr')
+            >>> x = Boxes([25, 30, 15, 10], 'ltrb')
             >>> x.translate((10, 5))
             >>> print(x)
-            <Boxes(tlbr, array([25, 30, 15, 10]))>
+            <Boxes(ltrb, array([25, 30, 15, 10]))>
             >>> x.translate((10, 5), inplace=True)
             >>> print(x)
-            <Boxes(tlbr, array([35, 35, 25, 15]))>
+            <Boxes(ltrb, array([35, 35, 25, 15]))>
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1157,7 +1159,7 @@ class _BoxTransformMixins(object):
                        [ 8.,  9.,  0.,  2.],
                        [21.,  1.,  2.,  2.]]))>
             >>> y0 = boxes.toformat('xywh').translate(dxdy).toformat('xywh')
-            >>> y1 = boxes.toformat('tlbr').translate(dxdy).toformat('xywh')
+            >>> y1 = boxes.toformat('ltrb').translate(dxdy).toformat('xywh')
             >>> y2 = boxes.toformat('xxyy').translate(dxdy).toformat('xywh')
             >>> assert ub.allsame([y0, y1, y2])
         """
@@ -1185,7 +1187,7 @@ class _BoxTransformMixins(object):
             if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH]:
                 new_data[..., 0] += tx
                 new_data[..., 1] += ty
-            elif self.format in [BoxFormat.TLBR]:
+            elif self.format in [BoxFormat.LTRB]:
                 new_data[..., 0] += tx
                 new_data[..., 1] += ty
                 new_data[..., 2] += tx
@@ -1201,25 +1203,25 @@ class _BoxTransformMixins(object):
 
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
-        Clip boxes to image boundaries.  If box is in tlbr format, inplace
+        Clip boxes to image boundaries.  If box is in ltrb format, inplace
         operation is an option.
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> self = boxes = Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'tlbr')
+            >>> self = boxes = Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'ltrb')
             >>> clipped = boxes.clip(0, 0, 110, 100, inplace=False)
             >>> assert np.any(boxes.data != clipped.data)
             >>> clipped2 = boxes.clip(0, 0, 110, 100, inplace=True)
             >>> assert clipped2.data is boxes.data
             >>> assert np.all(clipped2.data == clipped.data)
             >>> print(clipped)
-            <Boxes(tlbr,
+            <Boxes(ltrb,
                 array([[  0,   0, 110, 100],
                        [  1,   0,  30,  50]]))>
         """
         if inplace:
-            if self.format != BoxFormat.TLBR:
-                raise ValueError('Must be in tlbr format to operate inplace')
+            if self.format != BoxFormat.LTRB:
+                raise ValueError('Must be in ltrb format to operate inplace')
             self2 = self
         else:
             self2 = self.to_tlbr(copy=True)
@@ -1253,8 +1255,8 @@ class _BoxTransformMixins(object):
         Reflects box coordinates about the line y=x.
 
         Example:
-            >>> Boxes([[0, 1, 2, 4]], 'tlbr').transpose()
-            <Boxes(tlbr, array([[1, 0, 4, 2]]))>
+            >>> Boxes([[0, 1, 2, 4]], 'ltrb').transpose()
+            <Boxes(ltrb, array([[1, 0, 4, 2]]))>
         """
         x, y, w, h = self.to_xywh().components
         self2 = self.__class__(_cat([y, x, h, w]), format=BoxFormat.XYWH)
@@ -1273,7 +1275,7 @@ class _BoxDrawMixins(object):
         >>> # which each column represents. The major formats are:
         >>> #     'xywh'  -  (x1, y1, w, h)
         >>> #     'cxywh' -  (cx, cy, w, h)
-        >>> #     'ltbr'  -  (x1, y1, x2, y2)  # formerly tlbr
+        >>> #     'ltrb'  -  (x1, y1, x2, y2)  # formerly tlbr
         >>> #     'xxyy'  -  (x1, x2, y1, y2)
         >>> # (see kwimage.structs.boxes.BoxFormat for more format details)
         >>> #
@@ -1315,7 +1317,7 @@ class _BoxDrawMixins(object):
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.boxes import *  # NOQA
-            >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='tlbr')
+            >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='ltrb')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> #image = (np.random.rand(256, 256) * 255).astype(np.uint8)
@@ -1379,7 +1381,7 @@ class _BoxDrawMixins(object):
 
         Example:
             >>> from kwimage.structs.boxes import *  # NOQA
-            >>> self = Boxes.random(num=10, scale=256, rng=0, format='tlbr')
+            >>> self = Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'
             >>> image = (np.random.rand(256, 256, 3) * 255).astype(np.uint8)
@@ -1494,8 +1496,8 @@ class _BoxDrawMixins(object):
 
         rel_x, rel_y = text_relxy_org
 
-        for tlbr, label, alpha_, col in zip(tlbr_list, labels, alpha, colors):
-            x1, y1, x2, y2 = tlbr
+        for ltrb, label, alpha_, col in zip(tlbr_list, labels, alpha, colors):
+            x1, y1, x2, y2 = ltrb
             pt1 = _coords(x1, y1)
             pt2 = _coords(x2, y2)
 
@@ -1556,12 +1558,12 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> Boxes([25, 30, 15, 10], 'xywh').to_cxywh()
         <Boxes(cxywh, array([32.5, 35. , 15. , 10. ]))>
         >>> Boxes([25, 30, 15, 10], 'xywh').to_tlbr()
-        <Boxes(tlbr, array([25, 30, 40, 40]))>
+        <Boxes(ltrb, array([25, 30, 40, 40]))>
         >>> Boxes([25, 30, 15, 10], 'xywh').scale(2).to_tlbr()
-        <Boxes(tlbr, array([50., 60., 80., 80.]))>
+        <Boxes(ltrb, array([50., 60., 80., 80.]))>
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_tlbr()
-        <Boxes(tlbr, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
+        <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
     Example:
         >>> datas = [
@@ -1632,7 +1634,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Example:
             >>> box0 = box1 = Boxes([[1, 2, 3, 4]], 'xywh')
-            >>> box2 = Boxes(box0.data, 'tlbr')
+            >>> box2 = Boxes(box0.data, 'ltrb')
             >>> box3 = Boxes([[0, 2, 3, 4]], box0.format)
             >>> box4 = Boxes(box0.data, box2.format)
             >>> assert box0 == box1
@@ -1666,7 +1668,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Args:
             num (int): number of boxes to generate
             scale (float | Tuple[float, float]): size of imgdims
-            format (str): format of boxes to be created (e.g. tlbr, xywh)
+            format (str): format of boxes to be created (e.g. ltrb, xywh)
             anchors (ndarray): normalized width / heights of anchor boxes to
                 perterb and randomly place. (must be in range 0-1)
             anchor_std (float): magnitude of noise applied to anchor shapes
@@ -1712,17 +1714,17 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             as_integer = isinstance(scale, int)
 
         if anchors is None:
-            tlbr = rng.rand(num, 4).astype(np.float32)
+            ltrb = rng.rand(num, 4).astype(np.float32)
 
-            tl_x = np.minimum(tlbr[:, 0], tlbr[:, 2])
-            tl_y = np.minimum(tlbr[:, 1], tlbr[:, 3])
-            br_x = np.maximum(tlbr[:, 0], tlbr[:, 2])
-            br_y = np.maximum(tlbr[:, 1], tlbr[:, 3])
+            tl_x = np.minimum(ltrb[:, 0], ltrb[:, 2])
+            tl_y = np.minimum(ltrb[:, 1], ltrb[:, 3])
+            br_x = np.maximum(ltrb[:, 0], ltrb[:, 2])
+            br_y = np.maximum(ltrb[:, 1], ltrb[:, 3])
 
-            tlbr[:, 0] = tl_x
-            tlbr[:, 1] = tl_y
-            tlbr[:, 2] = br_x
-            tlbr[:, 3] = br_y
+            ltrb[:, 0] = tl_x
+            ltrb[:, 1] = tl_y
+            ltrb[:, 2] = br_x
+            ltrb[:, 3] = br_y
         else:
             anchors = np.asarray(anchors, dtype=np.float32)
             if np.any(anchors > 1.0) or np.any(anchors < 0.0):
@@ -1737,9 +1739,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             rel_cxy = rng.rand(num, 2).astype(np.float32) * .99
             rand_cxwy = rel_cxy * (max_cxy - min_cxy) + min_cxy
             cxywh = np.hstack([rand_cxwy, rand_whs])
-            tlbr = Boxes(cxywh, BoxFormat.CXYWH, check=False).to_tlbr().data
+            ltrb = Boxes(cxywh, BoxFormat.CXYWH, check=False).to_tlbr().data
 
-        boxes = Boxes(tlbr, format=BoxFormat.TLBR, check=False)
+        boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False)
         boxes = boxes.scale(scale, inplace=True)
         if as_integer:
             boxes.data = boxes.data.astype(np.int)
@@ -1800,11 +1802,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             inplace (bool): if True, modifies this object
 
         Example:
-            >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
+            >>> self = Boxes([[25, 30, 15, 10]], 'ltrb')
             >>> self.compress([True])
-            <Boxes(tlbr, array([[25, 30, 15, 10]]))>
+            <Boxes(ltrb, array([[25, 30, 15, 10]]))>
             >>> self.compress([False])
-            <Boxes(tlbr, array([], shape=(0, 4), dtype=int64))>
+            <Boxes(ltrb, array([], shape=(0, 4), dtype=int64))>
         """
         if len(self.data.shape) != 2 and _numel(self.data) > 0:
             raise ValueError('data must be 2d got {}d'.format(
@@ -1827,11 +1829,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             inplace (bool): if True, modifies this object
 
         Example:
-            >>> self = Boxes([[25, 30, 15, 10]], 'tlbr')
+            >>> self = Boxes([[25, 30, 15, 10]], 'ltrb')
             >>> self.take([0])
-            <Boxes(tlbr, array([[25, 30, 15, 10]]))>
+            <Boxes(ltrb, array([[25, 30, 15, 10]]))>
             >>> self.take([])
-            <Boxes(tlbr, array([], shape=(0, 4), dtype=int64))>
+            <Boxes(ltrb, array([], shape=(0, 4), dtype=int64))>
         """
         if len(self.data.shape) != 2 and _numel(self.data) > 0:
             raise ValueError('data must be 2d got {}d'.format(
@@ -1997,10 +1999,24 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> import kwimage
             >>> self = kwimage.Boxes(np.array([[ 0,  0, 10, 10],
             >>>                                [10,  0, 20, 10],
-            >>>                                [20,  0, 30, 10]]), 'tlbr')
-            >>> other = kwimage.Boxes(np.array([6, 2, 20, 10]), 'tlbr')
+            >>>                                [20,  0, 30, 10]]), 'ltrb')
+            >>> other = kwimage.Boxes(np.array([6, 2, 20, 10]), 'ltrb')
             >>> overlaps = self.ious(other, bias=1).round(2)
             >>> assert np.all(np.isclose(overlaps, [0.21, 0.63, 0.04])), repr(overlaps)
+
+
+        Examples:
+            >>> import kwimage
+            >>> boxes1 = kwimage.Boxes(np.array([[ 0,  0, 10, 10],
+            >>>                                  [10,  0, 20, 10],
+            >>>                                  [20,  0, 30, 10]]), 'ltrb')
+            >>> other = kwimage.Boxes(np.array([[6, 2, 20, 10],
+            >>>                                 [100, 200, 300, 300]]), 'ltrb')
+            >>> overlaps = boxes1.ious(other)
+            >>> print('{}'.format(ub.repr2(overlaps, precision=2, nl=1)))
+            np.array([[0.18, 0.  ],
+                      [0.61, 0.  ],
+                      [0.  , 0.  ]]...)
 
         Examples:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -2103,7 +2119,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Examples:
             >>> self = Boxes(np.array([[ 0,  0, 10, 10],
             >>>                        [10,  0, 20, 10],
-            >>>                        [20,  0, 30, 10]]), 'tlbr')
+            >>>                        [20,  0, 30, 10]]), 'ltrb')
             >>> other = Boxes(np.array([[6, 2, 20, 10], [0, 0, 0, 3]]), 'xywh')
             >>> coverage = self.iooas(other, bias=0).round(2)
             >>> print('coverage = {!r}'.format(coverage))
@@ -2122,8 +2138,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Examples:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> self = Boxes.random(5, scale=10.0, rng=0, format='tlbr')
-            >>> other = Boxes.random(3, scale=10.0, rng=1, format='tlbr')
+            >>> self = Boxes.random(5, scale=10.0, rng=0, format='ltrb')
+            >>> other = Boxes.random(3, scale=10.0, rng=1, format='ltrb')
             >>> isect = self.isect_area(other, bias=0)
             >>> ious_v1 = isect / ((self.area + other.area.T) - isect)
             >>> ious_v2 = self.ious(other, bias=0)
@@ -2204,11 +2220,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> from kwimage.structs.boxes import *  # NOQA
             >>> self = Boxes.random(5, rng=0).scale(10.)
             >>> other = self.translate(1)
-            >>> new = self.union(other)
+            >>> new = self.union_hull(other)
             >>> new_area = np.nan_to_num(new.area).ravel()
-            >>> alt_area = np.diag(self.isect_area(other))
-            >>> close = np.isclose(new_area, alt_area)
-            >>> assert np.all(close)
         """
         other_is_1d = (len(other.shape) == 1)
         if other_is_1d:
@@ -2221,11 +2234,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         br = np.maximum(self_tlbr[..., 2:], other_tlbr[..., 2:])
 
         is_bad = np.any(tl > br, axis=1)
-        tlbr = np.concatenate([tl, br], axis=-1)
+        ltrb = np.concatenate([tl, br], axis=-1)
 
-        tlbr[is_bad] = np.nan
+        ltrb[is_bad] = np.nan
 
-        isect = Boxes(tlbr, 'tlbr')
+        isect = Boxes(ltrb, 'ltrb')
 
         return isect
 
@@ -2250,7 +2263,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> flags = self.contains(self.xy_center)
             >>> assert np.all(np.diag(flags))
         """
-        tlbr = self.to_tlbr()
+        ltrb = self.to_tlbr()
 
         try:
             # other = Points.coerce(other)?
@@ -2261,10 +2274,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             pt_x, pt_y = other.T
 
         flags = (
-            (tlbr.tl_x <= pt_x) &
-            (tlbr.tl_y <= pt_y) &
-            (tlbr.br_x >= pt_x) &
-            (tlbr.br_y >= pt_y)
+            (ltrb.tl_x <= pt_x) &
+            (ltrb.tl_y <= pt_y) &
+            (ltrb.br_x >= pt_x) &
+            (ltrb.br_y >= pt_y)
         )
         return flags
 
@@ -2276,7 +2289,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Boxes.random(6, scale=10.0, rng=0, format='xywh').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
-            >>> self = Boxes.random(6, scale=10.0, rng=0, format='tlbr').tensor()
+            >>> self = Boxes.random(6, scale=10.0, rng=0, format='ltrb').tensor()
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
         """
         data_ = _view(self.data, *shape)
