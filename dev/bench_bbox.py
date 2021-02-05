@@ -27,41 +27,41 @@ def bench_bbox_iou_method():
         ti = ub.Timerit(N, bestof=10)
 
         # Setup input dat
-        boxes1 = kwimage.Boxes.random(num, scale=10.0, rng=0, format='tlbr')
-        boxes2 = kwimage.Boxes.random(num + 1, scale=10.0, rng=1, format='tlbr')
+        boxes1 = kwimage.Boxes.random(num, scale=10.0, rng=0, format='ltrb')
+        boxes2 = kwimage.Boxes.random(num + 1, scale=10.0, rng=1, format='ltrb')
 
-        tlbr1 = boxes1.tensor().data
-        tlbr2 = boxes2.tensor().data
+        ltrb1 = boxes1.tensor().data
+        ltrb2 = boxes2.tensor().data
         for timer in ti.reset('iou-torch-cpu'):
             with timer:
-                out = _box_ious_torch(tlbr1, tlbr2, bias)
+                out = _box_ious_torch(ltrb1, ltrb2, bias)
         results[ti.label] = out.data.cpu().numpy()
         ydata[ti.label].append(ti.mean())
 
         gpu = torch.device(0)
-        tlbr1 = boxes1.tensor().data.to(gpu)
-        tlbr2 = boxes2.tensor().data.to(gpu)
+        ltrb1 = boxes1.tensor().data.to(gpu)
+        ltrb2 = boxes2.tensor().data.to(gpu)
         for timer in ti.reset('iou-torch-gpu'):
             with timer:
-                out = _box_ious_torch(tlbr1, tlbr2, bias)
+                out = _box_ious_torch(ltrb1, ltrb2, bias)
                 torch.cuda.synchronize()
         results[ti.label] = out.data.cpu().numpy()
         ydata[ti.label].append(ti.mean())
 
-        tlbr1 = boxes1.numpy().data
-        tlbr2 = boxes2.numpy().data
+        ltrb1 = boxes1.numpy().data
+        ltrb2 = boxes2.numpy().data
         for timer in ti.reset('iou-numpy'):
             with timer:
-                out = _box_ious_py(tlbr1, tlbr2, bias)
+                out = _box_ious_py(ltrb1, ltrb2, bias)
         results[ti.label] = out
         ydata[ti.label].append(ti.mean())
 
         if _bbox_ious_c:
-            tlbr1 = boxes1.numpy().data.astype(np.float32)
-            tlbr2 = boxes2.numpy().data.astype(np.float32)
+            ltrb1 = boxes1.numpy().data.astype(np.float32)
+            ltrb2 = boxes2.numpy().data.astype(np.float32)
             for timer in ti.reset('iou-cython'):
                 with timer:
-                    out = _bbox_ious_c(tlbr1, tlbr2, bias)
+                    out = _bbox_ious_c(ltrb1, ltrb2, bias)
             results[ti.label] = out
             ydata[ti.label].append(ti.mean())
 

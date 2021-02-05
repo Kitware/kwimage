@@ -15,14 +15,14 @@ except Exception:
     torch = None
 
 
-def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
+def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
                     stop_size=2048, recsize=2048, impl='auto', device_id=None):
     """
     Divide and conquor speedup non-max-supression algorithm for when bboxes
     have a known max size
 
     Args:
-        tlbr (ndarray): boxes in (tlx, tly, brx, bry) format
+        ltrb (ndarray): boxes in (tlx, tly, brx, bry) format
 
         scores (ndarray): scores of each box
 
@@ -60,10 +60,10 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
         >>> boxes.data.T[2] = 10
         >>> boxes.data.T[3] = 10
         >>> #
-        >>> tlbr = boxes.to_tlbr().data.astype(np.float32)
-        >>> scores = np.arange(0, len(tlbr)).astype(np.float32)
+        >>> ltrb = boxes.to_ltrb().data.astype(np.float32)
+        >>> scores = np.arange(0, len(ltrb)).astype(np.float32)
         >>> #
-        >>> n_megabytes = (tlbr.size * tlbr.dtype.itemsize) / (2 ** 20)
+        >>> n_megabytes = (ltrb.size * ltrb.dtype.itemsize) / (2 ** 20)
         >>> print('n_megabytes = {!r}'.format(n_megabytes))
         >>> #
         >>> thresh = iou_thresh = 0.01
@@ -76,12 +76,12 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
         >>> import ubelt as ub
         >>> #
         >>> with ub.Timer(label='daq'):
-        >>>     keep1 = daq_spatial_nms(tlbr, scores,
+        >>>     keep1 = daq_spatial_nms(ltrb, scores,
         >>>         diameter=diameter, thresh=thresh, max_depth=max_depth,
         >>>         stop_size=stop_size, recsize=recsize, impl=impl)
         >>> #
         >>> with ub.Timer(label='full'):
-        >>>     keep2 = non_max_supression(tlbr, scores,
+        >>>     keep2 = non_max_supression(ltrb, scores,
         >>>         thresh=thresh, impl=impl)
         >>> #
         >>> # Due to the greedy nature of the algorithm, there will be slight
@@ -89,7 +89,7 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
         >>> similarity = len(set(keep1) & set(keep2)) / len(set(keep1) | set(keep2))
         >>> print('similarity = {!r}'.format(similarity))
     """
-    def _rectify(tlbr, both_keep, needs_rectify):
+    def _rectify(ltrb, both_keep, needs_rectify):
         if len(needs_rectify) == 0:
             keep = sorted(both_keep)
         else:
@@ -97,52 +97,52 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
             nr = needs_rectify
             bk = set(both_keep)
             rectified_keep = non_max_supression(
-                tlbr[nr_arr], scores[nr_arr], thresh=thresh,
+                ltrb[nr_arr], scores[nr_arr], thresh=thresh,
                 impl=impl, device_id=device_id)
             rk = set(nr_arr[rectified_keep])
             keep = sorted((bk - nr) | rk)
         return keep
 
-    def _recurse(tlbr, scores, dim, depth, diameter_wh):
+    def _recurse(ltrb, scores, dim, depth, diameter_wh):
         """
         Args:
             dim (int): flips between 0 and 1
             depth (int): recursion depth
         """
         # print('recurse')
-        n_boxes = len(tlbr)
+        n_boxes = len(ltrb)
         if depth >= max_depth or n_boxes < stop_size:
             # print('n_boxes = {!r}'.format(n_boxes))
             # print('depth = {!r}'.format(depth))
             # print('stop')
-            keep = non_max_supression(tlbr, scores, thresh=thresh, impl=impl)
+            keep = non_max_supression(ltrb, scores, thresh=thresh, impl=impl)
             both_keep = sorted(keep)
             needs_rectify = set()
         else:
             # Break up the NMS into two subproblems.
-            middle = np.median(tlbr.T[dim])
-            left_flags = tlbr.T[dim] < middle
+            middle = np.median(ltrb.T[dim])
+            left_flags = ltrb.T[dim] < middle
             right_flags = ~left_flags
 
             left_idxs = np.where(left_flags)[0]
             right_idxs = np.where(right_flags)[0]
 
             left_scores = scores[left_idxs]
-            left_tlbr = tlbr[left_idxs]
+            left_ltrb = ltrb[left_idxs]
 
             right_scores = scores[right_idxs]
-            right_tlbr = tlbr[right_idxs]
+            right_ltrb = ltrb[right_idxs]
 
             next_depth = depth + 1
             next_dim = 1 - dim
 
             # Solve each subproblem
             left_keep_, lrec_ = _recurse(
-                left_tlbr, left_scores, depth=next_depth, dim=next_dim,
+                left_ltrb, left_scores, depth=next_depth, dim=next_dim,
                 diameter_wh=diameter_wh)
 
             right_keep_, rrec_ = _recurse(
-                right_tlbr, right_scores, depth=next_depth, dim=next_dim,
+                right_ltrb, right_scores, depth=next_depth, dim=next_dim,
                 diameter_wh=diameter_wh)
 
             # Recombine the results (note that because we have a diameter_wh,
@@ -156,7 +156,7 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
             both_keep = np.hstack([left_keep, right_keep])
             both_keep.sort()
 
-            dist_to_middle = np.abs(tlbr[both_keep].T[dim] - middle)
+            dist_to_middle = np.abs(ltrb[both_keep].T[dim] - middle)
 
             # Find all surviving boxes that are close to the midpoint.  We will
             # need to recheck these because they may overlap, but they also may
@@ -170,7 +170,7 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
             nrec = len(needs_rectify)
             # print('nrec = {!r}'.format(nrec))
             if nrec > recsize:
-                both_keep = _rectify(tlbr, both_keep, needs_rectify)
+                both_keep = _rectify(ltrb, both_keep, needs_rectify)
                 needs_rectify = set()
         return both_keep, needs_rectify
 
@@ -181,9 +181,9 @@ def daq_spatial_nms(tlbr, scores, diameter, thresh, max_depth=6,
 
     depth = 0
     dim = 0
-    both_keep, needs_rectify = _recurse(tlbr, scores, dim=dim, depth=depth,
+    both_keep, needs_rectify = _recurse(ltrb, scores, dim=dim, depth=depth,
                                         diameter_wh=diameter_wh)
-    keep = _rectify(tlbr, both_keep, needs_rectify)
+    keep = _rectify(ltrb, both_keep, needs_rectify)
     return keep
 
 
@@ -355,13 +355,13 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
     return impl
 
 
-def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
+def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
                        impl='auto', device_id=None):
     """
     Non-Maximum Suppression - remove redundant bounding boxes
 
     Args:
-        tlbr (ndarray[float32]): Nx4 boxes in tlbr format
+        ltrb (ndarray[float32]): Nx4 boxes in ltrb format
 
         scores (ndarray[float32]): score for each bbox
 
@@ -399,53 +399,53 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
     Example:
         >>> from kwimage.algo.algo_nms import *
         >>> from kwimage.algo.algo_nms import _impls
-        >>> tlbr = np.array([
+        >>> ltrb = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
         >>>     [10, 10, 100, 100],
         >>>     [50, 50, 100, 100],
         >>> ], dtype=np.float32)
         >>> scores = np.array([.1, .5, .9, .1])
-        >>> keep = non_max_supression(tlbr, scores, thresh=0.5, impl='numpy')
+        >>> keep = non_max_supression(ltrb, scores, thresh=0.5, impl='numpy')
         >>> print('keep = {!r}'.format(keep))
         >>> assert keep == [2, 1, 3]
         >>> thresh = 0.0
-        >>> non_max_supression(tlbr, scores, thresh, impl='numpy')
+        >>> non_max_supression(ltrb, scores, thresh, impl='numpy')
         >>> if 'numpy' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='numpy')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='numpy')
         >>>     assert list(keep) == [2, 1]
         >>> if 'cython_cpu' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_cpu')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_cpu')
         >>>     assert list(keep) == [2, 1]
         >>> if 'cython_gpu' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_gpu')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_gpu')
         >>>     assert list(keep) == [2, 1]
         >>> if 'torch' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torch')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torch')
         >>>     assert set(keep.tolist()) == {2, 1}
         >>> if 'torchvision' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torchvision')  # note torchvision has no bias
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torchvision')  # note torchvision has no bias
         >>>     assert list(keep) == [2]
         >>> thresh = 1.0
         >>> if 'numpy' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='numpy')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='numpy')
         >>>     assert list(keep) == [2, 1, 3, 0]
         >>> if 'cython_cpu' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_cpu')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_cpu')
         >>>     assert list(keep) == [2, 1, 3, 0]
         >>> if 'cython_gpu' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='cython_gpu')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_gpu')
         >>>     assert list(keep) == [2, 1, 3, 0]
         >>> if 'torch' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torch')
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torch')
         >>>     assert set(keep.tolist()) == {2, 1, 3, 0}
         >>> if 'torchvision' in available_nms_impls():
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl='torchvision')  # note torchvision has no bias
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torchvision')  # note torchvision has no bias
         >>>     assert set(kwarray.ArrayAPI.tolist(keep)) == {2, 1, 3, 0}
 
     Example:
         >>> import ubelt as ub
-        >>> tlbr = np.array([
+        >>> ltrb = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
         >>>     [10, 10, 100, 100],
@@ -454,13 +454,13 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         >>>     [120, 100, 180, 101],
         >>>     [150, 100, 200, 101],
         >>> ], dtype=np.float32)
-        >>> scores = np.linspace(0, 1, len(tlbr))
+        >>> scores = np.linspace(0, 1, len(ltrb))
         >>> thresh = .2
         >>> solutions = {}
         >>> if not _impls._funcs:
         >>>     _impls._lazy_init()
         >>> for impl in _impls._funcs:
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl=impl)
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl=impl)
         >>>     solutions[impl] = sorted(keep)
         >>> assert 'numpy' in solutions
         >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
@@ -472,7 +472,7 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
     Example:
         >>> import ubelt as ub
         >>> # Check that zero-area boxes are ok
-        >>> tlbr = np.array([
+        >>> ltrb = np.array([
         >>>     [0, 0, 0, 0],
         >>>     [0, 0, 0, 0],
         >>>     [10, 10, 10, 10],
@@ -483,7 +483,7 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         >>> if not _impls._funcs:
         >>>     _impls._lazy_init()
         >>> for impl in _impls._funcs:
-        >>>     keep = non_max_supression(tlbr, scores, thresh, impl=impl)
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl=impl)
         >>>     solutions[impl] = sorted(keep)
         >>> assert 'numpy' in solutions
         >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
@@ -512,14 +512,14 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
     if not _impls._funcs:
         _impls._lazy_init()
 
-    if tlbr.shape[0] == 0:
+    if ltrb.shape[0] == 0:
         return []
 
     if impl == 'auto':
-        is_tensor = torch is not None and torch.is_tensor(tlbr)
-        num = len(tlbr)
+        is_tensor = torch is not None and torch.is_tensor(ltrb)
+        num = len(ltrb)
         if is_tensor:
-            if tlbr.device.type == 'cuda':
+            if ltrb.device.type == 'cuda':
                 code = 'tensor0'
             else:
                 code = 'tensor'
@@ -544,25 +544,25 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
     if classes is not None:
         keep = []
         for idxs in ub.group_items(range(len(classes)), classes).values():
-            # cls_tlbr = tlbr.take(idxs, axis=0)
+            # cls_ltrb = ltrb.take(idxs, axis=0)
             # cls_scores = scores.take(idxs, axis=0)
-            cls_tlbr = tlbr[idxs]
+            cls_ltrb = ltrb[idxs]
             cls_scores = scores[idxs]
-            cls_keep = non_max_supression(cls_tlbr, cls_scores, thresh=thresh,
+            cls_keep = non_max_supression(cls_ltrb, cls_scores, thresh=thresh,
                                           bias=bias, impl=impl)
             keep.extend(list(ub.take(idxs, cls_keep)))
         return keep
     else:
 
         if impl == 'numpy':
-            api = kwarray.ArrayAPI.coerce(tlbr)
-            tlbr = api.numpy(tlbr)
+            api = kwarray.ArrayAPI.coerce(ltrb)
+            ltrb = api.numpy(ltrb)
             scores = api.numpy(scores)
             func = _impls._funcs['numpy']
-            keep = func(tlbr, scores, thresh, bias=float(bias))
+            keep = func(ltrb, scores, thresh, bias=float(bias))
         elif impl == 'torch' or impl == 'torchvision':
-            api = kwarray.ArrayAPI.coerce(tlbr)
-            tlbr = api.tensor(tlbr).float()
+            api = kwarray.ArrayAPI.coerce(ltrb)
+            ltrb = api.tensor(ltrb).float()
             scores = api.tensor(scores).float()
             # Default output of torch impl is a mask
             if impl == 'torchvision':
@@ -570,10 +570,10 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
                 #     warnings.warn('torchvision only supports bias==1')
                 func = _impls._funcs['torchvision']
                 # Torchvision returns indices
-                keep = func(tlbr, scores, iou_threshold=thresh)
+                keep = func(ltrb, scores, iou_threshold=thresh)
             else:
                 func = _impls._funcs['torch']
-                flags = func(tlbr, scores, thresh=thresh, bias=float(bias))
+                flags = func(ltrb, scores, thresh=thresh, bias=float(bias))
                 keep = torch.nonzero(flags).view(-1)
 
             # Ensure than input type is the same as output type
@@ -581,9 +581,9 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
         else:
             # TODO: it would be nice to be able to pass torch tensors here
             nms = _impls._funcs[impl]
-            tlbr = kwarray.ArrayAPI.numpy(tlbr)
+            ltrb = kwarray.ArrayAPI.numpy(ltrb)
             scores = kwarray.ArrayAPI.numpy(scores)
-            tlbr = tlbr.astype(np.float32)
+            ltrb = ltrb.astype(np.float32)
             scores = scores.astype(np.float32)
             if impl == 'cython_gpu':
                 # TODO: if the data is already on a torch GPU can we just
@@ -591,10 +591,10 @@ def non_max_supression(tlbr, scores, thresh, bias=0.0, classes=None,
                 # HACK: we should parameterize which device is used
                 if device_id is None:
                     device_id = torch.cuda.current_device()
-                keep = nms(tlbr, scores, float(thresh), bias=float(bias),
+                keep = nms(ltrb, scores, float(thresh), bias=float(bias),
                            device_id=device_id)
             elif impl == 'cython_cpu':
-                keep = nms(tlbr, scores, float(thresh), bias=float(bias))
+                keep = nms(ltrb, scores, float(thresh), bias=float(bias))
             else:
                 raise KeyError(impl)
         return keep

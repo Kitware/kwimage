@@ -767,10 +767,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def to_boxes(self):
         import kwimage
         xys = self.data['exterior'].data
-        tl = xys.min(axis=0)
-        br = xys.max(axis=0)
-        tlbr = np.hstack([tl, br])[None, :]
-        boxes = kwimage.Boxes(tlbr, 'tlbr')
+        lt = xys.min(axis=0)
+        rb = xys.max(axis=0)
+        ltrb = np.hstack([lt, rb])[None, :]
+        boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
 
     def copy(self):
@@ -993,7 +993,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         ax.add_patch(patch)
 
         if setlim:
-            x1, y1, x2, y2 = self.to_boxes().to_tlbr().data[0]
+            x1, y1, x2, y2 = self.to_boxes().to_ltrb().data[0]
 
             if setlim == 'grow':
                 # only allow growth
@@ -1083,14 +1083,14 @@ class MultiPolygon(_generic.ObjectList):
             >>> assert np.allclose(areas1, areas2)
         """
         import kwimage
-        tl = np.array([np.inf, np.inf])
-        br = np.array([-np.inf, -np.inf])
+        lt = np.array([np.inf, np.inf])
+        rb = np.array([-np.inf, -np.inf])
         for data in self.data:
             xys = data.data['exterior'].data
-            tl = np.minimum(tl, xys.min(axis=0))
-            br = np.maximum(br, xys.max(axis=0))
-        tlbr = np.hstack([tl, br])[None, :]
-        boxes = kwimage.Boxes(tlbr, 'tlbr')
+            lt = np.minimum(lt, xys.min(axis=0))
+            rb = np.maximum(rb, xys.max(axis=0))
+        ltrb = np.hstack([lt, rb])[None, :]
+        boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
 
     def to_mask(self, dims=None):

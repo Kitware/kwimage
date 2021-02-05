@@ -1564,13 +1564,13 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     cxywh = impl.cat([xc_[:, None], yc_[:, None], w[:, None], h[:, None]], axis=1)
 
     import kwimage
-    tlbr = kwimage.Boxes(cxywh, 'cxywh').toformat('tlbr')
+    ltrb = kwimage.Boxes(cxywh, 'cxywh').toformat('ltrb')
     scores = probs[flags]
 
     # TODO:
     # Can we extract the detected segmentation mask/poly here as well?
 
-    dets = kwimage.Detections(boxes=tlbr, scores=scores)
+    dets = kwimage.Detections(boxes=ltrb, scores=scores)
 
     # Get per-class probs for each detection
     if class_probs is not None:

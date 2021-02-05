@@ -4,9 +4,9 @@ cythonize -a -i ~/code/kwimage/kwimage/algo/_nms_backend/cpu_soft_nms.pyx
 python -c "
 import numpy as np
 from kwimage.algo._nms_backend import cpu_soft_nms
-tlbr = np.array([[0, 0, 100, 100], [100, 100, 10, 10]], dtype=np.float32)
+ltrb = np.array([[0, 0, 100, 100], [100, 100, 10, 10]], dtype=np.float32)
 scores = np.array([.1, .2], dtype=np.float32)
-keep = cpu_soft_nms.soft_nms(tlbr, scores, thresh=.1)
+keep = cpu_soft_nms.soft_nms(ltrb, scores, thresh=.1)
 print(keep)
 """
 # ----------------------------------------------------------
@@ -42,7 +42,7 @@ cdef inline np.float32_t min(np.float32_t a, np.float32_t b) nogil:
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.wraparound(False)
-def soft_nms(np.ndarray[np.float32_t, ndim=2] tlbr,
+def soft_nms(np.ndarray[np.float32_t, ndim=2] ltrb,
              np.ndarray[np.float32_t, ndim=1] scores,
              float thresh=0.001,
              float overlap_thresh=0.3,
@@ -58,11 +58,11 @@ def soft_nms(np.ndarray[np.float32_t, ndim=2] tlbr,
 
     cdef SIZE_T i = 0
     cdef SIZE_T pos = 0
-    cdef SIZE_T N = tlbr.shape[0]
+    cdef SIZE_T N = ltrb.shape[0]
 
     cdef SIZE_T ti
 
-    cdef float[:, :] bbox_view = tlbr
+    cdef float[:, :] bbox_view = ltrb
     cdef float[:] score_view = scores
 
     cdef np.ndarray[SIZE_T, ndim=1] inds = np.arange(N, dtype=SIZE_T_DTYPE)

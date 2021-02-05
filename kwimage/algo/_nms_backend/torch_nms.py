@@ -13,14 +13,14 @@ else:
     _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
-def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
+def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
     """
     Non maximum suppression implemented with pytorch tensors
 
     CURRENTLY NOT WORKING
 
     Args:
-        tlbr (Tensor): Bounding boxes of one image in the format (tlbr)
+        ltrb (Tensor): Bounding boxes of one image in the format (ltrb)
         scores (Tensor): Scores of each box
         classes (Tensor, optional): the classes of each box. If specified nms is applied to each class separately.
         thresh (float): iou threshold
@@ -33,7 +33,7 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import torch
         >>> import numpy as np
-        >>> tlbr = torch.FloatTensor(np.array([
+        >>> ltrb = torch.FloatTensor(np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
         >>>     [10, 10, 100, 100],
@@ -45,10 +45,10 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
         >>> scores = torch.FloatTensor(np.array([.1, .5, .9, .1, .3, .5, .4]))
         >>> classes = torch.LongTensor(np.array([0, 0, 0, 0, 0, 0, 0]))
         >>> thresh = .5
-        >>> flags = torch_nms(tlbr, scores, classes, thresh)
+        >>> flags = torch_nms(ltrb, scores, classes, thresh)
         >>> keep = np.nonzero(flags).view(-1)
-        >>> tlbr[flags]
-        >>> tlbr[keep]
+        >>> ltrb[flags]
+        >>> ltrb[keep]
 
     Example:
         >>> # DISABLE_DOCTEST
@@ -56,18 +56,18 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
         >>> import torch
         >>> import numpy as np
         >>> # Test to check that conflicts are correctly resolved
-        >>> tlbr = torch.FloatTensor(np.array([
+        >>> ltrb = torch.FloatTensor(np.array([
         >>>     [100, 100, 150, 101],
         >>>     [120, 100, 180, 101],
         >>>     [150, 100, 200, 101],
         >>> ], dtype=np.float32))
-        >>> scores = torch.FloatTensor(np.linspace(.8, .9, len(tlbr)))
+        >>> scores = torch.FloatTensor(np.linspace(.8, .9, len(ltrb)))
         >>> classes = None
         >>> thresh = .3
-        >>> keep = torch_nms(tlbr, scores, classes, thresh, fast=False)
+        >>> keep = torch_nms(ltrb, scores, classes, thresh, fast=False)
         >>> bboxes[keep]
     """
-    if tlbr.numel() == 0:
+    if ltrb.numel() == 0:
         return []
 
     # Sort coordinates by descending score
@@ -75,11 +75,11 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
 
     import kwimage
 
-    boxes = kwimage.Boxes(tlbr[order], 'tlbr')
+    boxes = kwimage.Boxes(ltrb[order], 'ltrb')
     ious = boxes.ious(boxes, bias=bias)
 
     # if False:
-    #     x1, y1, x2, y2 = tlbr[order].split(1, 1)
+    #     x1, y1, x2, y2 = ltrb[order].split(1, 1)
 
     #     # Compute dx and dy between each pair of boxes (these mat contain every pair twice...)
     #     dx = (x2.min(x2.t()) - x1.max(x1.t())).clamp_(min=0)
@@ -133,7 +133,7 @@ def torch_nms(tlbr, scores, classes=None, thresh=.5, bias=0, fast=False):
                 if not supress[i]:
                     ordered_keep[i] = 1
                     supress[row] = 1
-            ordered_keep = torch.ByteTensor(ordered_keep).to(tlbr.device)
+            ordered_keep = torch.ByteTensor(ordered_keep).to(ltrb.device)
         else:
             # Marginally slower: best=1.382 ms,
             n_conflicts_post = n_conflicts.cpu()
@@ -168,31 +168,31 @@ def test_class_torch():
 
     num = 500
     rng = kwarray.ensure_rng(0)
-    cpu_boxes = kwimage.Boxes.random(num, scale=400.0, rng=rng, format='tlbr', tensor=True)
-    cpu_tlbr = cpu_boxes.to_tlbr().data
-    # cpu_scores = torch.Tensor(rng.rand(len(cpu_tlbr)))
+    cpu_boxes = kwimage.Boxes.random(num, scale=400.0, rng=rng, format='ltrb', tensor=True)
+    cpu_ltrb = cpu_boxes.to_ltrb().data
+    # cpu_scores = torch.Tensor(rng.rand(len(cpu_ltrb)))
     # make all scores unique to ensure comparability
-    cpu_scores = torch.Tensor(np.linspace(0, 1, len(cpu_tlbr)))
-    cpu_cls = torch.LongTensor(rng.randint(0, 10, len(cpu_tlbr)))
+    cpu_scores = torch.Tensor(np.linspace(0, 1, len(cpu_ltrb)))
+    cpu_cls = torch.LongTensor(rng.randint(0, 10, len(cpu_ltrb)))
 
-    tlbr = cpu_boxes.to_tlbr().data.to('cuda')
+    ltrb = cpu_boxes.to_ltrb().data.to('cuda')
     scores = cpu_scores.to('cuda')
     classes = cpu_cls.to('cuda')
 
     keep1 = []
     for idxs in ub.group_items(range(len(classes)), classes.cpu().numpy()).values():
-        # cls_tlbr = tlbr.take(idxs, axis=0)
+        # cls_ltrb = ltrb.take(idxs, axis=0)
         # cls_scores = scores.take(idxs, axis=0)
-        cls_tlbr = tlbr[idxs]
+        cls_ltrb = ltrb[idxs]
         cls_scores = scores[idxs]
-        cls_keep = torch_nms(cls_tlbr, cls_scores, thresh=thresh, bias=0)
+        cls_keep = torch_nms(cls_ltrb, cls_scores, thresh=thresh, bias=0)
         keep1.extend(list(ub.compress(idxs, cls_keep.cpu().numpy())))
     keep1 = sorted(keep1)
 
-    keep_ = torch_nms(tlbr, scores, classes=classes, thresh=thresh, bias=0)
+    keep_ = torch_nms(ltrb, scores, classes=classes, thresh=thresh, bias=0)
     keep2 = np.where(keep_.cpu().numpy())[0].tolist()
 
-    keep3 = kwimage.non_max_supression(tlbr.cpu().numpy(),
+    keep3 = kwimage.non_max_supression(ltrb.cpu().numpy(),
                                        scores.cpu().numpy(),
                                        classes=classes.cpu().numpy(),
                                        thresh=thresh, bias=0, impl='gpu')

@@ -829,7 +829,7 @@ def subpixel_slice(inputs, index):
         >>> ospc_feats = np.tile(np.arange(9 * 9).reshape(1, 9, 9), (1024, 1, 1))
         >>> inputs = torch.from_numpy(ospc_feats)
         >>> # We detected a box in the input space
-        >>> ispc_bbox = kwimage.Boxes([[64,  65, 100, 120]], 'tlbr')
+        >>> ispc_bbox = kwimage.Boxes([[64,  65, 100, 120]], 'ltrb')
         >>> # Get coordinates in the output space
         >>> ospc_bbox = ispc_bbox.scale(1 / 64)
         >>> tl_x, tl_y, br_x, br_y = ospc_bbox.data[0]

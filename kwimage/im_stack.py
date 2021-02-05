@@ -384,8 +384,8 @@ def _efficient_rectangle_packing():
         w = all_rects[:, 3]
         h = all_rects[:, 4]
 
-        tlbr = kwimage.Boxes(all_rects[:, 1:5], 'xywh').to_tlbr()
-        canvas_w, canvas_h = tlbr.data[:, 2:4].max(axis=0)
+        ltrb = kwimage.Boxes(all_rects[:, 1:5], 'xywh').to_ltrb()
+        canvas_w, canvas_h = ltrb.data[:, 2:4].max(axis=0)
 
         canvas = np.zeros((canvas_h, canvas_w), dtype=np.float32)
 

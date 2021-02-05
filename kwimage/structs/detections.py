@@ -94,7 +94,7 @@ class _DetDrawMixin:
             keypoints.draw(color=color, radius=radius)
 
         if setlim:
-            x1, y1, x2, y2 = self.boxes.to_tlbr().components
+            x1, y1, x2, y2 = self.boxes.to_ltrb().components
             xmax = x2.max()
             xmin = x1.min()
             ymax = y2.max()
@@ -267,7 +267,7 @@ class _DetAlgoMixin:
         if len(self) <= 0:
             return []
 
-        tlbr = self.boxes.to_tlbr().data
+        ltrb = self.boxes.to_ltrb().data
         scores = self.data.get('scores', None)
         if scores is None:
             scores = np.ones(len(self), dtype=np.float32)
@@ -284,10 +284,10 @@ class _DetAlgoMixin:
                 else:
                     daqkw['diameter'] = 10  # hack
 
-            keep = kwimage.daq_spatial_nms(tlbr, scores, device_id=device_id,
+            keep = kwimage.daq_spatial_nms(ltrb, scores, device_id=device_id,
                                            **daqkw)
         else:
-            keep = kwimage.non_max_supression(tlbr, scores, thresh=thresh,
+            keep = kwimage.non_max_supression(ltrb, scores, thresh=thresh,
                                               classes=classes, impl=impl,
                                               device_id=device_id)
         return keep

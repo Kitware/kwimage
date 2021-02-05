@@ -39,7 +39,7 @@ SIZE_T_DTYPE = np.intp
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.wraparound(False)
-def cpu_nms(np.ndarray[np.float32_t, ndim=2] tlbr,
+def cpu_nms(np.ndarray[np.float32_t, ndim=2] ltrb,
             np.ndarray[np.float32_t, ndim=1] scores,
             np.float thresh, np.float bias=0.0):
     """
@@ -50,7 +50,7 @@ def cpu_nms(np.ndarray[np.float32_t, ndim=2] tlbr,
 
     Example:
         >>> from kwimage.algo._nms_backend.cpu_nms import cpu_nms
-        >>> tlbr = np.array([
+        >>> ltrb = np.array([
         >>>     [0, 0, 10, 10],
         >>>     [0, 0, 10, 10],
         >>>     [0, 0, 10, 10],
@@ -59,24 +59,24 @@ def cpu_nms(np.ndarray[np.float32_t, ndim=2] tlbr,
         >>> scores = np.array([.1, .3, .4, .5], dtype=np.float32)
         >>> thresh = .5
         >>> bias = 0.0
-        >>> cpu_nms(tlbr, scores, thresh, bias)
+        >>> cpu_nms(ltrb, scores, thresh, bias)
 
         >>> from kwimage.algo._nms_backend.cpu_nms import cpu_nms
-        >>> tlbr = np.array([
+        >>> ltrb = np.array([
         >>>     [0, 0, 0, 0],
         >>>     [0, 0, 0, 0],
         >>> ], dtype=np.float32)
         >>> scores = np.array([.1, .3], dtype=np.float32)
         >>> thresh = .5
         >>> bias = 0.0
-        >>> cpu_nms(tlbr, scores, thresh, bias)
+        >>> cpu_nms(ltrb, scores, thresh, bias)
     """
-    cdef int n_boxes = tlbr.shape[0]
+    cdef int n_boxes = ltrb.shape[0]
 
-    cdef np.ndarray[np.float32_t, ndim=1] x1 = tlbr[:, 0]
-    cdef np.ndarray[np.float32_t, ndim=1] y1 = tlbr[:, 1]
-    cdef np.ndarray[np.float32_t, ndim=1] x2 = tlbr[:, 2]
-    cdef np.ndarray[np.float32_t, ndim=1] y2 = tlbr[:, 3]
+    cdef np.ndarray[np.float32_t, ndim=1] x1 = ltrb[:, 0]
+    cdef np.ndarray[np.float32_t, ndim=1] y1 = ltrb[:, 1]
+    cdef np.ndarray[np.float32_t, ndim=1] x2 = ltrb[:, 2]
+    cdef np.ndarray[np.float32_t, ndim=1] y2 = ltrb[:, 3]
 
     cdef np.ndarray[np.float32_t, ndim=1] areas = (x2 - x1 + bias) * (y2 - y1 + bias)
     cdef np.ndarray[SIZE_T, ndim=1] order = scores.argsort()[::-1].astype(SIZE_T_DTYPE)

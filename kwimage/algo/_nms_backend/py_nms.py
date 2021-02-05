@@ -10,7 +10,7 @@ import numpy as np
 import warnings
 
 
-def py_nms(np_tlbr, np_scores, thresh, bias=1):
+def py_nms(np_ltrb, np_scores, thresh, bias=1):
     """
     Pure Python NMS baseline.
 
@@ -18,7 +18,7 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
         https://github.com/rbgirshick/fast-rcnn/blob/master/lib/utils/nms.py
 
     Example:
-        >>> np_tlbr = np.array([
+        >>> np_ltrb = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
@@ -28,39 +28,39 @@ def py_nms(np_tlbr, np_scores, thresh, bias=1):
         >>>     [120, 100, 180, 101],
         >>>     [150, 100, 200, 101],
         >>> ], dtype=np.float32)
-        >>> np_scores = np.linspace(0, 1, len(np_tlbr))
+        >>> np_scores = np.linspace(0, 1, len(np_ltrb))
         >>> thresh = 0.1
         >>> bias = 0.0
-        >>> keep = sorted(py_nms(np_tlbr, np_scores, thresh, bias))
+        >>> keep = sorted(py_nms(np_ltrb, np_scores, thresh, bias))
         >>> print('keep = {!r}'.format(keep))
         keep = [2, 4, 5, 7]
 
     Example:
         >>> from kwimage.algo._nms_backend.py_nms import *  # NOQA
-        >>> np_tlbr = np.array([
+        >>> np_ltrb = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [100, 100, 10, 10],
         >>>     [10, 10, 100, 100],
         >>>     [50, 50, 100, 100],
         >>> ], dtype=np.float32)
         >>> np_scores = np.array([.1, .5, .9, .1])
-        >>> keep = list(py_nms(np_tlbr, np_scores, thresh=0.0, bias=1.0))
+        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=0.0, bias=1.0))
         >>> print('keep@0.0 = {!r}'.format(keep))
-        >>> keep = list(py_nms(np_tlbr, np_scores, thresh=0.2, bias=1.0))
+        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=0.2, bias=1.0))
         >>> print('keep@0.2 = {!r}'.format(keep))
-        >>> keep = list(py_nms(np_tlbr, np_scores, thresh=0.5, bias=1.0))
+        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=0.5, bias=1.0))
         >>> print('keep@0.5 = {!r}'.format(keep))
-        >>> keep = list(py_nms(np_tlbr, np_scores, thresh=1.0, bias=1.0))
+        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=1.0, bias=1.0))
         >>> print('keep@1.0 = {!r}'.format(keep))
         keep@0.0 = [2, 1]
         keep@0.2 = [2, 1]
         keep@0.5 = [2, 1, 3]
         keep@1.0 = [2, 1, 3, 0]
     """
-    x1 = np_tlbr[:, 0]
-    y1 = np_tlbr[:, 1]
-    x2 = np_tlbr[:, 2]
-    y2 = np_tlbr[:, 3]
+    x1 = np_ltrb[:, 0]
+    y1 = np_ltrb[:, 1]
+    x2 = np_ltrb[:, 2]
+    y2 = np_ltrb[:, 3]
 
     areas = (x2 - x1 + bias) * (y2 - y1 + bias)
 
