@@ -646,7 +646,7 @@ class _MaskDrawMixin(object):
             from matplotlib import pyplot as plt
             ax = plt.gca()
 
-        mask = self.to_c_mask().data
+        mask = self.to_c_mask().numpy().data
         rgb01 = list(kwimage.Color(color).as01())
         rgba01 = np.array(rgb01 + [1])[None, None, :]
         alpha_mask = rgba01 * mask[:, :, None]

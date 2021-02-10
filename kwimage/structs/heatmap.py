@@ -3,6 +3,10 @@
 TODO:
     - [ ] Remove doctest dependency on ndsampler?
 
+    - [ ] Remove the datakeys that tries to define what heatmap should represent
+          (e.g. class_probs, keypoints, etc...) and instead just focus on a
+          data structure that stores a [C, H, W] or [H, W] tensor?
+
 CommandLine:
     xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py __doc__
 
@@ -108,12 +112,16 @@ class _HeatmapDrawMixin(object):
         backup_colors = iter(kwimage.Color.distinct(len(classes)))
 
         name_to_color = {}
-        name_to_color = nx.get_node_attributes(classes.graph, 'color')
-        for node in classes.graph.nodes:
-            color = classes.graph.nodes[node].get('color', None)
-            if color is None:
-                color = next(backup_colors)
-            name_to_color[node] = kwimage.Color(color).as01()
+
+        if hasattr(classes, 'graph'):
+            name_to_color = nx.get_node_attributes(classes.graph, 'color')
+            for node in classes.graph.nodes:
+                color = classes.graph.nodes[node].get('color', None)
+                if color is None:
+                    color = next(backup_colors)
+                name_to_color[node] = kwimage.Color(color).as01()
+        else:
+            name_to_color = ub.dzip(classes, backup_colors)
 
         cx_to_color = np.array([name_to_color[cname] for cname in classes])
         colorized = cx_to_color[cidxs]
@@ -186,6 +194,10 @@ class _HeatmapDrawMixin(object):
             # Another hacky mode
             # data = a.data['class_energy']
             import kwimage
+
+            if len(data.shape) == 2:
+                # add in prefix channel if its not there
+                data = data[None, :, :]
 
             # Define default colors
             default_cidx_to_color = kwimage.Color.distinct(len(data))
@@ -383,15 +395,17 @@ class _HeatmapDrawMixin(object):
         import kwplot
         kwplot.imshow(image)
 
-    def draw_on(self, image, channel=None, invert=False, with_alpha=1.0,
+    def draw_on(self, image=None, channel=None, invert=False, with_alpha=1.0,
                 interpolation='linear', vecs=False, kpts=None, imgspace=None):
         """
         Overlays a heatmap channel on top of an image
 
         Args:
-            image (ndarray): image to draw on
+            image (ndarray): image to draw on, if unspecified one is created.
+
             channel (int | str): category index to visualize, or special key.
                 special keys are: class_idx, class_probs, class_idx
+
             imgspace (bool, default=False): colorize the image after
                 warping into the image space.
 
@@ -440,8 +454,31 @@ class _HeatmapDrawMixin(object):
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> import kwimage
+            >>> mask = np.random.rand(32, 32)
+            >>> self = kwimage.Heatmap(
+            >>>     class_probs=mask,
+            >>>     img_dims=mask.shape[0:2],
+            >>>     tf_data_to_img=np.eye(3),
+            >>> )
+            >>> canvas = self.draw_on()
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(canvas)
+
+            import xdev
+            globals().update(xdev.get_func_kwargs(Heatmap.draw_on))
+
         """
         import kwimage
+
+        if image is None:
+            image = np.zeros(self.img_dims)
 
         if channel is None:
             if 'class_idx' in self.data:
@@ -1072,7 +1109,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             keypoints (ArrayLike[2, K, H, W] | ArrayLike[3, K, D, H, W], optional):
                 y/x offsets for K different keypoint classes
 
-        data (Dict[str, object]): dictionary containing miscellanious metadata
+        meta (Dict[str, object]): dictionary containing miscellanious metadata
             about the heatmap data. Valid keys are as follows.
 
             img_dims (Tuple[H, W] | Tuple[D, H, W]):
@@ -1080,22 +1117,27 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
             tf_data_to_image (skimage.transform._geometric.GeometricTransform):
                 transformation matrix (typically similarity or affine) that
-                projects the given1.8719898042840075, heatmap onto the image dimensions such that
+                projects the given, heatmap onto the image dimensions such that
                 the image and heatmap are spatially aligned.
 
             classes (List[str] | ndsampler.CategoryTree):
                 information about which index in `data['class_probs']`
                 corresponds to which semantic class.
 
+        dims (Tuple): dimensions of the heatmap (See `image_dims) for the
+            original image dimensions.
+
         **kwargs: any key that is accepted by the `data` or `meta` dictionaries
             can be specified as a keyword argument to this class and it will
             be properly placed in the appropriate internal dictionary.
+
 
     CommandLine:
         xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py Heatmap --show
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> from kwimage.structs.heatmap import *  # NOQA
         >>> import kwimage
         >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
         >>> img_dims = (220, 220)
@@ -1104,6 +1146,17 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>>                tf_data_to_img=tf_data_to_img)
         >>> aligned = self.upscale()
         >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(aligned[0])
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import kwimage
+        >>> self = Heatmap.random()
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> self.draw()
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(aligned[0])
@@ -1133,6 +1186,13 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             # Perform input checks whenever kwargs is given
             data = {key: kwargs.pop(key) for key in _datakeys if key in kwargs}
             meta = {key: kwargs.pop(key) for key in _metakeys if key in kwargs}
+
+            tf_data_to_img = meta.get('tf_data_to_img', None)
+            if tf_data_to_img is not None:
+                if isinstance(tf_data_to_img, np.ndarray):
+                    meta['tf_data_to_img'] = skimage.transform.AffineTransform(
+                        matrix=tf_data_to_img)
+
             if kwargs:
                 raise ValueError(
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
@@ -1210,6 +1270,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
         Args:
             dims (Tuple): dimensions of the heatmap
+
             img_dims (Tuple): dimensions of the image the heatmap corresponds to
 
         Example:

@@ -546,6 +546,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         TODO:
             - [ ] currently not efficient
 
+        Args:
+            dims (Tuple): height and width of the output mask
+
+        Returns:
+            Mask
+
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
@@ -564,6 +570,32 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         value = 1
         self.fill(c_mask, value)
         mask = kwimage.Mask(c_mask, 'c_mask')
+        return mask
+
+    def to_relative_mask(self):
+        """
+        Returns a translated mask such the mask dimensions are minimal.
+
+        In other words, we move the polygon all the way to the top-left and
+        return a mask just big enough to fit the polygon.
+
+        Returns:
+            Mask
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random().scale(8).translate(100, 100)
+            >>> mask = self.to_relative_mask()
+            >>> assert mask.shape <= (8, 8)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> mask.draw(color='blue')
+            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
+        """
+        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         return mask
 
     def fill(self, image, value=1):
@@ -765,6 +797,18 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return MultiPolygon([self])
 
     def to_boxes(self):
+        """
+        Deprecated: lossy conversion use 'bounding_box' instead
+        """
+        return self.bounding_box()
+
+    def bounding_box(self):
+        """
+        Returns an axis-aligned bounding box for the segmentation
+
+        Returns:
+            kwimage.Boxes
+        """
         import kwimage
         xys = self.data['exterior'].data
         lt = xys.min(axis=0)
@@ -1068,10 +1112,17 @@ class MultiPolygon(_generic.ObjectList):
 
     def to_boxes(self):
         """
+        Deprecated: lossy conversion use 'bounding_box' instead
+        """
+        return self.bounding_box()
+
+    def bounding_box(self):
+        """
         Return the bounding box of the multi polygon
 
         Returns:
-            kwimage.Boxes:
+            kwimage.Boxes: a Boxes object with one box that encloses all
+                polygons
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -1123,6 +1174,20 @@ class MultiPolygon(_generic.ObjectList):
             if p is not None:
                 p.fill(c_mask, value=1)
         mask = kwimage.Mask(c_mask, 'c_mask')
+        return mask
+
+    def to_relative_mask(self):
+        """
+        Returns a translated mask such the mask dimensions are minimal.
+
+        In other words, we move the polygon all the way to the top-left and
+        return a mask just big enough to fit the polygon.
+
+        Returns:
+            Mask
+        """
+        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         return mask
 
     @classmethod

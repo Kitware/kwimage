@@ -1924,6 +1924,34 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         new.data = self._impl.round(new.data)
         return new
 
+    def quantize(self, dtype=np.int32):
+        """
+        Converts the box to integer coordinates by taking the floor of the
+        left side and the ceil of the right side.
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(3)
+            >>> new = self.quantize()
+            >>> assert self._impl.all(new.data[:, 0] == 0)
+            >>> assert np.all(new.data[:, 1] == 0)
+            >>> assert np.all(new.data[:, 2] == 1)
+            >>> assert np.all(new.data[:, 3] == 1)
+        """
+        _impl = self._impl
+        _ceil = _impl.ceil
+        _floor = _impl.floor
+        _astype = _impl.astype
+
+        new = self.to_ltrb(copy=True)
+        new_data = _impl.empty_like(new.data, dtype=dtype)
+        new_data[..., 0] = _astype(_floor(new.data[..., 0]), dtype=dtype)
+        new_data[..., 1] = _astype(_floor(new.data[..., 1]), dtype=dtype)
+        new_data[..., 2] = _astype(_ceil(new.data[..., 2]), dtype=dtype)
+        new_data[..., 3] = _astype(_ceil(new.data[..., 3]), dtype=dtype)
+        new.data = new_data
+        return new
+
     def numpy(self):
         """
         Converts tensors to numpy. Does not change memory if possible.
