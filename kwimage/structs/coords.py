@@ -796,6 +796,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 index_a = [slice(None)] * ndims
                 for axes_idx, axes_coord in zip(coord_axes, tofill_coords_):
                     index_a[axes_idx] = axes_coord
+                index_a = tuple(index_a)
 
                 cov = radius
                 rv = multivariate_normal(mean=pt, cov=cov)
