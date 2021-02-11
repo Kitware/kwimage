@@ -748,6 +748,71 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                                           coord_axes=coord_axes, interp=interp)
         return image
 
+    def soft_fill(self, image, coord_axes=None, radius=5):
+        """
+        Used for drawing keypoint truth in heatmaps
+
+        References:
+            https://stackoverflow.com/questions/54726703/generating-keypoint-heatmaps-in-tensorflow
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> s = 256
+            >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
+            >>> self.data[0] = [10, 10]
+            >>> self.data[1] = [20, 40]
+            >>> #image = np.zeros((s, s, 3))
+            >>> image = np.zeros((s, s))
+            >>> fill_value = 1
+            >>> coord_axes = [1, 0]
+            >>> radius = 20
+            >>> image = self.soft_fill(image, coord_axes=coord_axes, radius=radius)
+            >>> kwplot.imshow(image)
+        """
+        from scipy.stats import multivariate_normal
+        for pt in self.data:
+            low = np.floor(pt - radius).astype(np.int)
+            high = np.ceil(pt + radius).astype(np.int)
+            # extent = high - low
+            # Coordinates to fill
+            pos = np.dstack(np.mgrid[tuple(slice(s, t) for s, t in zip(low, high))])
+
+            # Note: Do we just use kwimage.gaussian_patch instead?
+
+            # cov = 0.3 * ((extent - 1) * 0.5 - 1) + 0.8
+
+            # Convert to native coords wrt to the image
+            rows_of_coords = pos.reshape(-1, pos.shape[-1])
+            rows_of_coords = rows_of_coords[(rows_of_coords >= 0).all(axis=1)]
+
+            coord_max = [image.shape[i] for i in coord_axes]
+            flags2 = (rows_of_coords < np.array(coord_max)[None, :]).all(axis=1)
+            rows_of_coords = rows_of_coords[flags2]
+
+            if len(rows_of_coords) > 0:
+                tofill_coords_ = tuple(rows_of_coords.T)
+
+                ndims = len(image.shape)
+                index_a = [slice(None)] * ndims
+                for axes_idx, axes_coord in zip(coord_axes, tofill_coords_):
+                    index_a[axes_idx] = axes_coord
+
+                cov = radius
+                rv = multivariate_normal(mean=pt, cov=cov)
+                new_values = rv.pdf(rows_of_coords)
+                new_values = new_values / new_values.max()
+
+                prev_values = image[index_a]
+
+                # HACK: wont generalize?
+                if len(prev_values.shape) != len(new_values.shape):
+                    new_values = new_values[:, None]
+
+                # blend mode = maximum
+                image[index_a] = np.maximum(prev_values, new_values)
+
+        return image
+
     def draw_on(self, image=None, fill_value=1, coord_axes=[1, 0],
                 interp='bilinear'):
         """

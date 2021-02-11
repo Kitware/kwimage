@@ -317,7 +317,7 @@ class _DetAlgoMixin:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.detections import *  # NOQA
             >>> self, iminfo, sampler = Detections.demo()
-            >>> image = iminfo['imdata']
+            >>> image = iminfo['imdata'][:]
             >>> input_dims = iminfo['imdata'].shape[0:2]
             >>> bg_size = [100, 100]
             >>> heatmap = self.rasterize(bg_size, input_dims)

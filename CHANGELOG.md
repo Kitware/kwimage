@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+* Add `soft_fill` to `Coords`, which aims to paint Gaussian blobs as coordinate
+  locations.
+
 * Added quantize method to bounding boxes which pushes the left-top coordinates
   to their floor and the right-bottom coordinates to their ceiling.
 
