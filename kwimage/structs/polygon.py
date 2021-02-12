@@ -697,13 +697,37 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             data_geojson (dict): geojson data
 
+        References:
+            https://geojson.org/geojson-spec.html
+
         Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=2)
             >>> data_geojson = self.to_geojson()
             >>> new = Polygon.from_geojson(data_geojson)
         """
-        exterior = np.array(data_geojson['coordinates'][0])
-        interiors = [np.array(h) for h in data_geojson['coordinates'][1:]]
+        # By the spec a Polygon should have 3 levels of nesting, but lets
+        # handle the common case (mistake?) where there are only two
+        geojson_type = data_geojson.get('type', 'Polygon').lower()
+        if geojson_type != 'polygon':
+            raise ValueError('Type is {}, not Polygon'.format(geojson_type))
+
+        # TODO: better method for checking nest depth
+        coords = data_geojson['coordinates']
+        def check_depth(data):
+            if isinstance(data, list) and len(data):
+                return check_depth(data[0]) + 1
+            else:
+                return 0
+        depth = check_depth(coords)
+        if depth == 2:
+            exterior = np.array(coords)
+            interiors = []
+        elif depth == 3:
+            exterior = np.array(coords[0])
+            interiors = [np.array(h) for h in coords[1:]]
+        else:
+            raise Exception('Unknown geojson format')
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
