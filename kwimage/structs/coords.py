@@ -752,65 +752,132 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Used for drawing keypoint truth in heatmaps
 
+        Args:
+            coord_axes (Tuple): specify which image axes each coordinate dim
+                corresponds to.  For 2D images, if you are storing r/c data,
+                set to [0,1], if you are storing x/y data, set to [1,0].
+
+                In other words the i-th entry in coord_axes specifies which
+                row-major spatial dimension the i-th column of a coordinate
+                corresponds to. The index is the coordinate dimension and the
+                value is the axes dimension.
+
         References:
             https://stackoverflow.com/questions/54726703/generating-keypoint-heatmaps-in-tensorflow
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
-            >>> s = 256
+            >>> s = 64
             >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
-            >>> self.data[0] = [10, 10]
-            >>> self.data[1] = [20, 40]
-            >>> #image = np.zeros((s, s, 3))
-            >>> image = np.zeros((s, s))
+            >>> # Put points on edges to to verify "edge cases"
+            >>> self.data[1] = [0, 0]       # top left
+            >>> self.data[2] = [s, s]       # bottom right
+            >>> self.data[3] = [0, s + 10]  # bottom left
+            >>> self.data[4] = [-3, s // 2] # middle left
+            >>> self.data[5] = [s + 1, -1]  # top right
+            >>> # Put points in the middle to verify overlap blending
+            >>> self.data[6] = [32.5, 32.5] # middle
+            >>> self.data[7] = [34.5, 34.5] # middle
             >>> fill_value = 1
             >>> coord_axes = [1, 0]
-            >>> radius = 20
-            >>> image = self.soft_fill(image, coord_axes=coord_axes, radius=radius)
-            >>> kwplot.imshow(image)
+            >>> radius = 10
+            >>> image1 = np.zeros((s, s))
+            >>> self.soft_fill(image1, coord_axes=coord_axes, radius=radius)
+            >>> radius = 3.0
+            >>> image2 = np.zeros((s, s))
+            >>> self.soft_fill(image2, coord_axes=coord_axes, radius=radius)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image1, pnum=(1, 2, 1))
+            >>> kwplot.imshow(image2, pnum=(1, 2, 2))
         """
-        from scipy.stats import multivariate_normal
+        import scipy.stats
+
+        if radius <= 0:
+            raise ValueError('radius must be positive')
+
+        # OH! How I HATE the squeeze function!
+        SCIPY_STILL_USING_SQUEEZE_FUNC = True
+
+        blend_mode = 'maximum'
+
+        image_ndims = len(image.shape)
+
         for pt in self.data:
+
+            # Find a grid of coordinates on the image to fill for this point
             low = np.floor(pt - radius).astype(np.int)
             high = np.ceil(pt + radius).astype(np.int)
-            # extent = high - low
-            # Coordinates to fill
-            pos = np.dstack(np.mgrid[tuple(slice(s, t) for s, t in zip(low, high))])
+            grid = np.dstack(np.mgrid[tuple(
+                slice(s, t) for s, t in zip(low, high))])
 
-            # Note: Do we just use kwimage.gaussian_patch instead?
+            # Flatten the grid into a list of coordinates to be filled
+            rows_of_coords = grid.reshape(-1, grid.shape[-1])
 
-            # cov = 0.3 * ((extent - 1) * 0.5 - 1) + 0.8
-
-            # Convert to native coords wrt to the image
-            rows_of_coords = pos.reshape(-1, pos.shape[-1])
-            rows_of_coords = rows_of_coords[(rows_of_coords >= 0).all(axis=1)]
-
-            coord_max = [image.shape[i] for i in coord_axes]
-            flags2 = (rows_of_coords < np.array(coord_max)[None, :]).all(axis=1)
-            rows_of_coords = rows_of_coords[flags2]
+            # Remove grid coordinates that are out of bounds
+            lower_bound = np.array([0, 0])
+            upper_bound = np.array([
+                image.shape[i] for i in coord_axes
+            ])[None, :]
+            in_bounds_flags1 = (rows_of_coords >= lower_bound).all(axis=1)
+            rows_of_coords = rows_of_coords[in_bounds_flags1]
+            in_bounds_flags2 = (rows_of_coords < upper_bound).all(axis=1)
+            rows_of_coords = rows_of_coords[in_bounds_flags2]
 
             if len(rows_of_coords) > 0:
-                tofill_coords_ = tuple(rows_of_coords.T)
+                # Create a index into the image and insert the columns of
+                # coordinates to fill into the appropirate dimensions
+                img_index = [slice(None)] * image_ndims
+                for axes_idx, coord_col in zip(coord_axes, rows_of_coords.T):
+                    img_index[axes_idx] = coord_col
+                img_index = tuple(img_index)
 
-                ndims = len(image.shape)
-                index_a = [slice(None)] * ndims
-                for axes_idx, axes_coord in zip(coord_axes, tofill_coords_):
-                    index_a[axes_idx] = axes_coord
-                index_a = tuple(index_a)
-
+                # Note: Do we just use kwimage.gaussian_patch for the 2D case
+                # instead?
+                # TODO: is there a better method for making a "brush stroke"?
+                # cov = 0.3 * ((extent - 1) * 0.5 - 1) + 0.8
                 cov = radius
-                rv = multivariate_normal(mean=pt, cov=cov)
+                rv = scipy.stats.multivariate_normal(mean=pt, cov=cov)
                 new_values = rv.pdf(rows_of_coords)
-                new_values = new_values / new_values.max()
 
-                prev_values = image[index_a]
+                # the mean will be the maximum values of the normal
+                # distribution, normalize by that.
+                max_val = float(rv.pdf(pt))
+
+                if SCIPY_STILL_USING_SQUEEZE_FUNC:
+                    # If multivariate_normal was implemented right we would not
+                    # need to check for scalar values
+                    # See: https://github.com/scipy/scipy/issues/7689
+                    if len(rows_of_coords) == 1:
+                        if len(new_values.shape) != 0:
+                            import warnings
+                            warnings.warn(ub.paragraph(
+                                '''
+                                Scipy fixed the bug in multivariate_normal!
+                                We can remove this stupid hack!
+                                '''))
+                        else:
+                            # Ensure new_values is always a list of scalars
+                            new_values = new_values[None]
+
+                new_values = new_values / max_val
+
+                # Blend the sampled values onto the existing pixels
+                prev_values = image[img_index]
 
                 # HACK: wont generalize?
                 if len(prev_values.shape) != len(new_values.shape):
                     new_values = new_values[:, None]
 
-                # blend mode = maximum
-                image[index_a] = np.maximum(prev_values, new_values)
+                if blend_mode == 'maximum':
+                    blended = np.maximum(prev_values, new_values)
+                else:
+                    raise KeyError(blend_mode)
+
+                # Draw the blended pixels inplace
+                image[img_index] = blended
 
         return image
 
@@ -844,9 +911,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='bilinear')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='nearest')
             >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwplot
-            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(image)
             >>> self.draw(radius=3, alpha=.5, coord_axes=[1, 0])
         """
