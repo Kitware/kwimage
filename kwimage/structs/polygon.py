@@ -721,8 +721,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                 return 0
         depth = check_depth(coords)
         if depth == 2:
-            exterior = np.array(coords)
-            interiors = []
+            raise Exception('The GEOJSON spec has a depth of 3!')
+            # exterior = np.array(coords)
+            # interiors = []
         elif depth == 3:
             exterior = np.array(coords[0])
             interiors = [np.array(h) for h in coords[1:]]

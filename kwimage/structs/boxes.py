@@ -2270,6 +2270,30 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         return isect
 
+    def bounding_box(self):
+        """
+        Returns the box that bounds all of the contained bo
+
+        Returns:
+            Boxes: a single box
+
+        Examples:
+            >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> self = Boxes.random(5, rng=0).scale(10.)
+            >>> other = self.translate(1)
+            >>> new = self.union_hull(other)
+            >>> new_area = np.nan_to_num(new.area).ravel()
+        """
+        min_xs, min_ys, max_xs, max_ys = self.to_ltrb().components
+        min_x = min_xs.min()
+        min_y = min_ys.min()
+        max_x = max_xs.max()
+        max_y = max_ys.max()
+        new_ltrb = np.array([[min_x, min_y, max_x, max_y]])
+        new = Boxes(new_ltrb, format='ltrb')
+        return new
+
     def contains(self, other):
         """
         Determine of points are completely contained by these boxes

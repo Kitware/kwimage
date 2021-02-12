@@ -388,10 +388,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 warnings.warn('gdal/osr is not installed')
             else:
                 if isinstance(transform, osr.CoordinateTransformation):
+                    # NOTE: We are expecting lon/lat here for wgs84
                     new_pts = []
                     for x, y in new.data:
                         x, y, z = transform.TransformPoint(x, y, 0)
-                        assert z == 0
+                        if z != 0:
+                            raise AssertionError('z = {}'.format(z))
                         new_pts.append((x, y))
                     new.data = np.array(new_pts, dtype=new.data.dtype)
                     return new
