@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+* Add `.j2` to known GDAL extensions.
+
 * Add `soft_fill` to `Coords`, which aims to paint Gaussian blobs as coordinate
   locations.
 

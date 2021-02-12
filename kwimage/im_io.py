@@ -13,7 +13,7 @@ from . import im_core
 IMAGE_EXTENSIONS = (
     '.bmp', '.pgm', '.jpg', '.jpeg', '.png', '.tif', '.tiff',
     '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif', '.r0',
-    '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+    '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf', '.j2',
 )
 
 
@@ -171,6 +171,7 @@ def imread(fpath, space='auto', backend='auto'):
         GDAL_EXTENSIONS = (
             '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
             '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+            '.j2',
         )
         JPG_EXTENSIONS = (
             '.jpg', '.jpeg'
