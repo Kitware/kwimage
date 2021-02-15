@@ -206,6 +206,9 @@ class _DetDrawMixin:
         Either passes through user specified labels or chooses a sensible
         default
         """
+        def _fixsore(s):
+            return float('nan') if s is None else s
+
         if labels:
             if labels is True:
                 parts = []
@@ -225,9 +228,9 @@ class _DetDrawMixin:
                 if labels in ['class']:
                     labels = identifers
                 elif labels in ['score']:
-                    labels = ['{:.4f}'.format(score) for score in self.scores]
+                    labels = ['{:.4f}'.format(_fixsore(score)) for score in self.scores]
                 elif labels in ['class+score']:
-                    labels = ['{} @ {:.4f}'.format(cid, score)
+                    labels = ['{} @ {:.4f}'.format(cid, _fixsore(score))
                               for cid, score in zip(identifers, self.scores)]
                 else:
                     raise KeyError('unknown labels key {!r}'.format(labels))

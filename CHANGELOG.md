@@ -26,6 +26,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Fixed issue with channelless data in `Heatmap.draw_on`
 
+* Bug in `Detections._make_labels` when scores are List[None]
+
 ### Changed
 
 * BREAKING: TLBR has been internally switched to LTRB 
