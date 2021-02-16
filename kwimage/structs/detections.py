@@ -146,6 +146,19 @@ class _DetDrawMixin:
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> import kwplot
+            >>> self = Detections.random(num=10, scale=512, rng=0)
+            >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
+            >>> image2 = self.draw_on(image, color='classes')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> # xdoc: +REQUIRES(--profile)
             >>> import kwplot
             >>> self = Detections.random(num=100, scale=512, rng=0, keypoints=True, segmentations=True)
@@ -163,6 +176,9 @@ class _DetDrawMixin:
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
+
+        if isinstance(color, six.string_types):
+            color = self._make_colors(color)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
@@ -187,6 +203,46 @@ class _DetDrawMixin:
 
         image = dtype_fixer(image, copy=False)
         return image
+
+    def _make_colors(self, color):
+        """
+        Handles special settings of color.
+
+        If color == 'classes', then choose a distinct color for each category
+        """
+        # Draw each category as a different color
+        if color == 'classes':
+            import kwimage
+            class_idxs = self.class_idxs
+            if class_idxs is None:
+                color = 'blue'
+            else:
+                classes = self.classes
+                if classes is None:
+                    classes = list(range(max(class_idxs) + 1))
+
+                # TODO: allow specified color scheme
+                backup_colors = iter(kwimage.Color.distinct(len(classes)))
+
+                # Respect colors stored in classes if given
+                if hasattr(classes, 'idx_to_node'):
+                    cname_to_color = {
+                        cid: cat.get('color', None)
+                        for cid, cat in classes.cats.items()
+                    }
+                    cidx_to_color = [
+                        cname_to_color[cname]
+                        for cname in classes.idx_to_node
+                    ]
+                else:
+                    cidx_to_color = [None] * len(classes)
+
+                for cidx, color in enumerate(cidx_to_color):
+                    if color is None:
+                        cidx_to_color[cidx] = next(backup_colors)
+
+                color = [cidx_to_color[cidx] for cidx in class_idxs]
+        return color
 
     def _make_alpha(self, alpha):
         """
