@@ -20,6 +20,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * `Detections.draw_on` can now accept color='classes'
 
+* expose `thickness` in `Detections.draw_on`.
+
 ### Fixed
 * `kwimage.Detections` now correctly handles `None` data values. Previously
   `None` was converted to an `array(None, dtype=object)`.

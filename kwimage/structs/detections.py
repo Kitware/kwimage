@@ -106,7 +106,7 @@ class _DetDrawMixin:
 
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
                 kpts=True, sseg=True, boxes=True, ssegkw=None,
-                label_loc='top_left'):
+                label_loc='top_left', thickness=2):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -116,15 +116,29 @@ class _DetDrawMixin:
             color (str | ColorLike | List[ColorLike]):
                 one color for all boxes or a list of colors for each box
 
-            alpha (float): transparency of overlay
+            alpha (float): Transparency of overlay. can be a scalar or a list
+                for each box
 
             labels (bool | str | List[str]):
                 if True, use categorie names as the labels. See _make_labels
                 for details. Otherwise a manually specified text label for each
-                box
+                box.
+
+            boxes (bool): if True draw the boxes
+
+            kpts (bool): if True draw the keypoints
+
+            sseg (bool): if True draw the segmentations
+
+            ssegkw (dict): extra arguments passed to `segmentations.draw_on`
+
+            radius (float): passed to `keypoints.draw_on`
 
             label_loc (str): indicates where labels (if specified) should be
-                drawn.
+                drawn. passed to `boxes.draw_on`
+
+            thickness (int, default=2): rectangle thickness, negative values
+                will draw a filled rectangle. passed to `boxes.draw_on`
 
         Returns:
             ndarray[uint8]: image with labeled boxes drawn on it
@@ -191,7 +205,8 @@ class _DetDrawMixin:
 
         if boxes:
             image = self.boxes.draw_on(image, color=color, alpha=alpha,
-                                       labels=labels, label_loc=label_loc)
+                                       labels=labels, label_loc=label_loc,
+                                       thickness=thickness)
 
         keypoints = self.data.get('keypoints', None)
         if kpts and keypoints is not None:
