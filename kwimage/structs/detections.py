@@ -176,9 +176,7 @@ class _DetDrawMixin:
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
-
-        if isinstance(color, six.string_types):
-            color = self._make_colors(color)
+        color = self._make_colors(color)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
