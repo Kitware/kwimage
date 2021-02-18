@@ -200,7 +200,9 @@ def clean():
             toremove.append(d)
 
     enqueue(join(repodir, 'htmlcov'))
-    enqueue(join(repodir, 'htmlcov'))
+    enqueue(join(repodir, 'build.ninja'))
+    enqueue(join(repodir, 'cmake_install.cmake'))
+
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.c'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.cpp'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/gpu_nms.cpp'))
