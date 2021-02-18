@@ -215,8 +215,8 @@ def clean():
     enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.c'))
     enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.html'))
 
-    enqueue(join(repodir, 'kwimage/structs/mask_backend/CMakeFiles'))
-    enqueue(join(repodir, 'kwimage/structs/mask_backend/cmake_install.cmake'))
+    enqueue(join(repodir, 'kwimage/structs/_mask_backend/CMakeFiles'))
+    enqueue(join(repodir, 'kwimage/structs/_mask_backend/cmake_install.cmake'))
 
     for d in glob.glob(join(repodir, 'kwimage/algo/_nms_backend/*_nms.*so')):
         enqueue(d)
