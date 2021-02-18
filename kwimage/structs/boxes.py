@@ -2197,7 +2197,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def intersection(self, other):
         """
-        ~~Pairwise~~ Componentwise intersection between two sets of Boxes
+        Componentwise intersection between two sets of Boxes
 
         intersections of boxes are always boxes, so this works
 

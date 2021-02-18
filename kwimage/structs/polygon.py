@@ -414,7 +414,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         def _gen_polygon2(n, irregularity, spikeyness):
             """
             Creates the polygon by sampling points on a circle around the centre.
-            Randon noise is added by varying the angular spacing between sequential points,
+            Random noise is added by varying the angular spacing between sequential points,
             and by varying the radial distance of each point from the centre.
 
             Based on original code by Mike Ounsworth

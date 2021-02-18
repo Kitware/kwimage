@@ -200,11 +200,22 @@ def clean():
             toremove.append(d)
 
     enqueue(join(repodir, 'htmlcov'))
+    enqueue(join(repodir, 'htmlcov'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.c'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/cpu_nms.cpp'))
     enqueue(join(repodir, 'kwimage/algo/_nms_backend/gpu_nms.cpp'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/gpu_nms.cxx'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/CMakeFiles'))
+    enqueue(join(repodir, 'kwimage/algo/_nms_backend/cmake_install.cmake'))
+
+    enqueue(join(repodir, 'kwimage/structs/_boxes_backend/CMakeFiles'))
+    enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cmake_install.cmake'))
     enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.c'))
     enqueue(join(repodir, 'kwimage/structs/_boxes_backend/cython_boxes.html'))
+
+    enqueue(join(repodir, 'kwimage/structs/mask_backend/CMakeFiles'))
+    enqueue(join(repodir, 'kwimage/structs/mask_backend/cmake_install.cmake'))
+
     for d in glob.glob(join(repodir, 'kwimage/algo/_nms_backend/*_nms.*so')):
         enqueue(d)
 
