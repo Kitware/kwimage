@@ -288,13 +288,43 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     holes should be clockwise.
 
     Example:
+        >>> import kwimage
         >>> data = {
         >>>     'exterior': np.array([[13,  1], [13, 19], [25, 19], [25,  1]]),
         >>>     'interiors': [
-        >>>         np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18], [24, 19], [14, 19], [13, 18]]),
-        >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11], [24, 12], [14, 12], [13, 11]])]
+        >>>         np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18],
+        >>>                   [24, 19], [14, 19], [13, 18]]),
+        >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11],
+        >>>                   [24, 12], [14, 12], [13, 11]])]
         >>> }
-        >>> self = Polygon(**data)
+        >>> self = kwimage.Polygon(**data)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=True)
+
+    Example:
+        >>> import kwimage
+        >>> self = kwimage.Polygon.random(
+        >>>     n=5, n_holes=1, convex=False, rng=0)
+        >>> print('self = {}'.format(self))
+        self = <Polygon({
+            'exterior': <Coords(data=
+                            array([[0.30371392, 0.97195856],
+                                   [0.24372304, 0.60568445],
+                                   [0.21408694, 0.34884262],
+                                   [0.5799477 , 0.44020379],
+                                   [0.83720288, 0.78367234]]))>,
+            'interiors': [<Coords(data=
+                             array([[0.50164209, 0.83520279],
+                                    [0.25835064, 0.40313428],
+                                    [0.28778562, 0.74758761],
+                                    [0.30341266, 0.93748088]]))>],
+        })>
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=True)
     """
     __datakeys__ = ['exterior', 'interiors']
     __metakeys__ = ['classes']

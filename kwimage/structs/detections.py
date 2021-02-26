@@ -527,6 +527,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         >>>     metakeys=['mymeta'],
         >>>     checks=True,
         >>> )
+        >>> print('dets = {}'.format(dets))
+        dets = <Detections(3)>
     """
     # __slots__ = ('data', 'meta',)
 
@@ -1418,6 +1420,36 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets.data['keypoints'].meta
             >>> dets = kwimage.Detections.random(keypoints='dense')
             >>> dets = kwimage.Detections.random(keypoints='dense', segmentations=True).scale(1000)
+            >>> # xdoctest:+REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> dets.draw(setlim=True)
+
+        Example:
+            >>> import kwimage
+            >>> dets = kwimage.Detections.random(
+            >>>     keypoints='jagged', segmentations=True).scale(1000)
+            >>> print('dets = {}'.format(dets))
+            dets = <Detections(10)>
+            >>> print('dets.data = {}'.format(ub.repr2(
+            >>>     dets.data, nl=1, precision=1, with_dtype=False, strvals=True)))
+            dets.data = {
+                'boxes': <Boxes(xywh,
+                             array([[149.16074276, 515.35844803, 229.3741107 , 392.23647118],
+                                    [ 54.51877788, 139.93643224, 339.40789104, 636.64191961],
+                                    [372.54348397, 313.38202953, 466.49780869, 299.76755381],
+                                    [535.65436602, 465.02283216, 361.48905754, 246.62610888],
+                                    [262.4194622 , 377.42933631,  16.48575068, 227.14182734],
+                                    [188.00985813, 283.9075923 ,  98.81737828,  38.82277012],
+                                    [702.72445679, 670.19832134, 124.04632568, 233.88844728],
+                                    [781.57305717, 595.015347  , 110.41098833, 152.10676193],
+                                    [580.31201363,   2.41809688,  40.8436656 , 247.44227529],
+                                    [596.25965357, 219.59610283, 182.12157488, 618.9647913 ]]))>,
+                'class_idxs': [0, 2, 1, 0, 1, 1, 1, 1, 2, 1],
+                'keypoints': <PointsList(n=10)>,
+                'scores': [0.1, 0.3, 0.3, 0.4, 0.2, 0.4, 0.2, 0.5, 0.5, 0.4],
+                'segmentations': <SegmentationList(n=10)>,
+            }
             >>> # xdoctest:+REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
