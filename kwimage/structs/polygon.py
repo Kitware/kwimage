@@ -316,6 +316,24 @@ class _PolyWarpMixin:
             about_ = about if ub.iterable(about) else [about] * self.dim
         return about_
 
+    def swap_axes(self, inplace=False):
+        """
+        Swap the x and y coordinate axes
+
+        Args:
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Polygon: modified polygon
+        """
+        new = self if inplace else self.__class__(self.data.copy())
+        new.data['exterior'] = new.data['exterior'].reorder_axes(
+            (1, 0), inplace=inplace)
+        new.data['interiors'] = [
+            p.reorder_axes((1, 0), inplace=inplace)
+            for p in new.data['interiors']]
+        return new
+
 
 class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     """
@@ -1407,6 +1425,12 @@ class MultiPolygon(_generic.ObjectList):
         """
         return [item.to_coco(style=style) for item in self.data]
 
+    def swap_axes(self, inplace=False):
+        newdata = [None if item is None else
+                   item.swap_axes(inplace=inplace)
+                   for item in self.data]
+        return self.__class__(newdata, self.meta)
+
     # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
     #     """
     #     Faster version
@@ -1452,3 +1476,9 @@ class PolygonList(_generic.ObjectList):
             for item in self
         ])
         return new
+
+    def swap_axes(self, inplace=False):
+        newdata = [None if item is None else
+                   item.swap_axes(inplace=inplace)
+                   for item in self.data]
+        return self.__class__(newdata, self.meta)
