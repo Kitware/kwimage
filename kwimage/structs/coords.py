@@ -27,10 +27,10 @@ except ImportError:
 
 class Coords(_generic.Spatial, ub.NiceRepr):
     """
-    This stores arbitrary sparse n-dimensional coordinate geometry.
+    A data structure to store n-dimensional coordinate geometry.
 
-    You can specify data, but you don't have to.
-    We dont care what it is, we just warp it.
+    Currently it is up to the user to maintain what coordinate system this
+    geometry belongs to.
 
     NOTE:
         This class was designed to hold coordinates in r/c format, but in
@@ -38,6 +38,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         consistent. However, there are two places where this matters:
             (1) drawing and (2) gdal/imgaug-warping. In these places we will
             assume x/y for legacy reasons. This may change in the future.
+
+        The term axes with resepct to ``Coords`` always refers to the final
+        numpy axis. In other words the final numpy-axis represents ALL of the
+        coordinate-axes.
 
     CommandLine:
         xdoctest -m kwimage.structs.coords Coords
@@ -334,21 +338,39 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def reorder_axes(self, new_order, inplace=False):
         """
-        Change the ordering of the data axes
+        Change the ordering of the coordinate axes.
 
         Args:
-            new_order (Tuple[int]): `new_order[i]` should specify
+            new_order (Tuple[int]): ``new_order[i]`` should specify
                 which axes in the original coordinates should be mapped to the
-                `i-th` position in the returned axes.
+                ``i-th`` position in the returned axes.
 
             inplace (bool, default=False): if True, modifies data inplace
 
         Returns:
             Coords: modified coordinates
 
+        Note:
+            This is the ordering of the "columns" in final numpy axis, not the
+            numpy axes themselves.
+
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
-            >>> self = Coords.random(10000, rng=0)
+            >>> self = Coords(data=np.array([
+            >>>     [7, 11],
+            >>>     [13, 17],
+            >>>     [21, 23],
+            >>> ]))
+            >>> new = self.reorder_axes((1, 0))
+            >>> print('new = {!r}'.format(new))
+            new = <Coords(data=
+                array([[11,  7],
+                       [17, 13],
+                       [23, 21]]))>
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, rng=0)
             >>> new = self.reorder_axes((1, 0))
             >>> # Remapping using 1, 0 reverses the axes
             >>> assert np.all(new.data[:, 0] == self.data[:, 1])
@@ -866,13 +888,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Sets sub-coordinate locations in a grid to a particular value
 
-        Returns:
-            ndarray: image with coordinates rasterized on it
-
         Args:
             coord_axes (Tuple): specify which image axes each coordinate dim
                 corresponds to.  For 2D images, if you are storing r/c data,
                 set to [0,1], if you are storing x/y data, set to [1,0].
+
+        Returns:
+            ndarray: image with coordinates rasterized on it
         """
         import kwimage
         index = self.data
