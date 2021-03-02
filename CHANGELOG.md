@@ -13,7 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add `soft_fill` to `Coords`, which aims to paint Gaussian blobs as coordinate
   locations.
 
-* Add `remap_axes` to `Coords`, which can change xy to yx representations etc...
+* Add `reorder_axes` to `Coords`, which can change xy to yx representations etc...
 
 * Added `Boxes.bounding_box` method 
 

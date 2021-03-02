@@ -332,7 +332,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def remap_axes(self, new_order, inplace=False):
+    def reorder_axes(self, new_order, inplace=False):
         """
         Change the ordering of the data axes
 
@@ -349,15 +349,15 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10000, rng=0)
-            >>> new = self.remap_axes((1, 0))
+            >>> new = self.reorder_axes((1, 0))
             >>> # Remapping using 1, 0 reverses the axes
             >>> assert np.all(new.data[:, 0] == self.data[:, 1])
             >>> assert np.all(new.data[:, 1] == self.data[:, 0])
             >>> # Remapping using 0, 1 does nothing
-            >>> eye = self.remap_axes((0, 1))
+            >>> eye = self.reorder_axes((0, 1))
             >>> assert np.all(eye.data == self.data)
             >>> # Remapping using 0, 0, destroys the 1-th column
-            >>> bad = self.remap_axes((0, 0))
+            >>> bad = self.reorder_axes((0, 0))
             >>> assert np.all(bad.data[:, 0] == self.data[:, 0])
             >>> assert np.all(bad.data[:, 1] == self.data[:, 0])
         """
