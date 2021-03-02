@@ -12,7 +12,8 @@ from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
 from .im_color import (BASE_COLORS, CSS4_COLORS, Color, TABLEAU_COLORS,
                        XKCD_COLORS,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                      make_channels_comparable, normalize, num_channels,)
+                      make_channels_comparable, normalize, num_channels,
+                      padded_slice)
 from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,)
 from .im_demodata import (grab_test_image, grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
@@ -52,4 +53,4 @@ __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
            'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
            'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_image', 'warp_points', 'warp_tensor']
+           'warp_image', 'warp_points', 'warp_tensor', 'padded_slice']
