@@ -197,13 +197,16 @@ class _PolyWarpMixin:
         return new
 
     @profile
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale a polygon by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+            about (Tuple | None):
+                if unspecified scales about the origin (0, 0), otherwise the
+                rotation is about this point.
             output_dims (Tuple): unused in non-raster spatial structures
             inplace (bool, default=False): if True, modifies data inplace
 
@@ -211,10 +214,26 @@ class _PolyWarpMixin:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.scale(10)
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(10, rng=0).translate((0.5))
+            >>> new = self.scale(1.5, about='center')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> self.draw(color='red', alpha=0.5)
+            >>> new.draw(color='blue', alpha=0.5, setlim=True)
         """
         new = self if inplace else self.__class__(self.data.copy())
-        new.data['exterior'] = new.data['exterior'].scale(factor, output_dims, inplace)
-        new.data['interiors'] = [p.scale(factor, output_dims, inplace) for p in new.data['interiors']]
+        about = self._rectify_about(about)
+        new.data['exterior'] = new.data['exterior'].scale(
+            factor, about=about, output_dims=output_dims, inplace=inplace)
+        new.data['interiors'] = [
+            p.scale(factor, about=about, output_dims=output_dims,
+                    inplace=inplace)
+            for p in new.data['interiors']]
         return new
 
     @profile
@@ -268,15 +287,34 @@ class _PolyWarpMixin:
             >>> new.draw(color='blue', alpha=0.5)
         """
         new = self if inplace else self.__class__(self.data.copy())
-
-        if isinstance(about, str) and about == 'center':
-            about = new.data['exterior'].data.mean(axis=0)
-
+        about = self._rectify_about(about)
         new.data['exterior'] = new.data['exterior'].rotate(
             theta, about, output_dims, inplace)
         new.data['interiors'] = [p.rotate(theta, about, output_dims, inplace)
                                  for p in new.data['interiors']]
         return new
+
+    def _rectify_about(self, about):
+        """
+        Ensures that about returns a specified point. Allows for special keys
+        like center to be used.
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(10, rng=0)
+            >>> self._rectify_about('center')
+        """
+        if about is None:
+            about_ = None
+        if isinstance(about, str):
+            if about == 'center':
+                centroid = self.to_shapely().centroid
+                about_ = (centroid.x, centroid.y)
+            else:
+                raise KeyError(about)
+        else:
+            about_ = about if ub.iterable(about) else [about] * self.dim
+        return about_
 
 
 class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):

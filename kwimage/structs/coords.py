@@ -671,13 +671,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return self
 
     @profile
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale coordinates by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or per-dimension tuple.
+            about (Tuple | None):
+                if unspecified scales about the origin (0, 0), otherwise the
+                rotation is about this point.
             output_dims (Tuple): unused in non-raster spatial structures
             inplace (bool, default=False): if True, modifies data inplace
 
@@ -716,7 +719,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 data = self._impl.astype(data, factor_.dtype)
 
             assert factor_.shape == (dim,)
-            data *= factor_
+
+            if about is None:
+                data *= factor_
+            else:
+                about_ = self._rectify_about(about)
+                data -= about_
+                data *= factor_
+                data += about_
         new.data = data
         return new
 
@@ -760,6 +770,24 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             offset_ = impl.astype(offset_, data.dtype)
             data += offset_
         return new
+
+    def _rectify_about(self, about):
+        """
+        Ensures that about returns a specified point. Allows for special keys
+        like center to be used.
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, dim=2, rng=0)
+            pass
+        """
+        if about is None:
+            about_ = None
+        if isinstance(about, str):
+            raise KeyError('coords has no special keys')
+        else:
+            about_ = about if ub.iterable(about) else [about] * self.dim
+        return about_
 
     @profile
     def rotate(self, theta, about=None, output_dims=None, inplace=False):
@@ -830,8 +858,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             rot_ = np.array([[cos_, -sin_],
                              [sin_,  cos_]], dtype=dtype)
         else:
-            dim = self.dim
-            about_ = about if ub.iterable(about) else [about] * dim
+            about_ = self._rectify_about(about)
             """
             # Construct a general closed-form affine matrix about a point
             # Shows the symbolic construction of the code
