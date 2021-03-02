@@ -921,6 +921,20 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
 
+    def bounding_box_polygon(self):
+        """
+        Returns an axis-aligned bounding polygon for the segmentation.
+
+        Notes:
+            This Polygon will be a Box, not a convex hull! Use shapely for
+            convex hulls.
+
+        Returns:
+            kwimage.Polygon
+        """
+        new = self.bounding_box().to_polygons()[0]
+        return new
+
     def copy(self):
         self2 = Polygon(self.data, self.meta)
         self2.data['exterior'] = self2.data['exterior'].copy()
