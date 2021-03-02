@@ -198,6 +198,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Args:
             dtype : new type
             inplace (bool, default=False): if True, modifies this object
+
+        Returns:
+            Coords: modified coordinates
         """
         new = self if inplace else self.__class__(self.data, self.meta)
         new.data = self._impl.astype(new.data, dtype, copy=not inplace)
@@ -225,6 +228,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Args:
             *shape : new shape of the data
+
+        Returns:
+            Coords: modified coordinates
 
         Example:
             >>> self = Coords.random(6, dim=4).numpy()
@@ -290,6 +296,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Converts numpy to tensors. Does not change memory if possible.
 
+        Returns:
+            Coords: modified coordinates
+
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Coords.random(3).numpy()
@@ -307,6 +316,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Converts tensors to numpy. Does not change memory if possible.
 
+        Returns:
+            Coords: modified coordinates
+
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Coords.random(3).tensor()
@@ -318,6 +330,78 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         newdata = self._impl.numpy(self.data)
         new = self.__class__(newdata, self.meta)
+        return new
+
+    def remap_axes(self, new_order, inplace=False):
+        """
+        Change the ordering of the data axes
+
+        Args:
+            new_order (Tuple[int]): `new_order[i]` should specify
+                which axes in the original coordinates should be mapped to the
+                `i-th` position in the returned axes.
+
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10000, rng=0)
+            >>> new = self.remap_axes((1, 0))
+            >>> # Remapping using 1, 0 reverses the axes
+            >>> assert np.all(new.data[:, 0] == self.data[:, 1])
+            >>> assert np.all(new.data[:, 1] == self.data[:, 0])
+            >>> # Remapping using 0, 1 does nothing
+            >>> eye = self.remap_axes((0, 1))
+            >>> assert np.all(eye.data == self.data)
+            >>> # Remapping using 0, 0, destroys the 1-th column
+            >>> bad = self.remap_axes((0, 0))
+            >>> assert np.all(bad.data[:, 0] == self.data[:, 0])
+            >>> assert np.all(bad.data[:, 1] == self.data[:, 0])
+        """
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+
+        if True:
+            # --- Method 1 - Slicing ---
+            # This will use slicing tricks to avoid a copy operation, but the
+            # data.flags will be modified and contiguous-ness is not preserved
+            new.data = new.data[..., new_order]
+
+        if False:
+            # --- Method 2 - Overwrite ---
+            # This will cause a copy operation, but the data.flags will remain
+            # the same, i.e. contiguous arrays will remain contiguous.
+            new.data[..., :] = new.data[..., new_order]
+
+        if False:
+            # Benchmark different methods, using slicing tricks seems
+            # to have the best default behavior
+            import timerit
+            ti = timerit.Timerit(100, bestof=10, verbose=2)
+            for timer in ti.reset('method2-apply'):
+                new = self.copy()
+                with timer:
+                    new.data[..., :] = new.data[..., new_order]
+
+            for timer in ti.reset('method1-apply'):
+                new = self.copy()
+                with timer:
+                    new.data = new.data[..., new_order]
+
+            for timer in ti.reset('method2-use'):
+                new = self.copy()
+                new.data[..., :] = new.data[..., new_order]
+                with timer:
+                    new.data += 10
+
+            for timer in ti.reset('method1-use'):
+                new = self.copy()
+                new.data = new.data[..., new_order]
+                with timer:
+                    new.data += 10
         return new
 
     # @profile
@@ -339,6 +423,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 for compatibility.
 
             inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
 
         Notes:
             Let D = self.dims
@@ -518,6 +605,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     # @profile
     def to_imgaug(self, input_dims):
         """
+        Translate to an imgaug object
+
+        Returns:
+            imgaug.KeypointsOnImage: imgaug data structure
+
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.coords import *  # NOQA
@@ -567,6 +659,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             output_dims (Tuple): unused in non-raster spatial structures
             inplace (bool, default=False): if True, modifies data inplace
 
+        Returns:
+            Coords: modified coordinates
+
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10, rng=0)
@@ -614,6 +709,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             output_dims (Tuple): unused in non-raster spatial structures
             inplace (bool, default=False): if True, modifies data inplace
 
+        Returns:
+            Coords: modified coordinates
+
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10, dim=3, rng=0)
@@ -658,11 +756,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
             inplace (bool, default=False): if True, modifies data inplace
 
+        Returns:
+            Coords: modified coordinates
+
         TODO:
             - [ ] Generalized ND Rotations?
 
         References:
-            https://math.stackexchange.com/questions/197772/generalized-rotation-matrix-in-n-dimensional-space-around-n-2-unit-vector
+            https://math.stackexchange.com/questions/197772/gen-rot-matrix
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -765,6 +866,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Sets sub-coordinate locations in a grid to a particular value
 
+        Returns:
+            ndarray: image with coordinates rasterized on it
+
         Args:
             coord_axes (Tuple): specify which image axes each coordinate dim
                 corresponds to.  For 2D images, if you are storing r/c data,
@@ -789,6 +893,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 row-major spatial dimension the i-th column of a coordinate
                 corresponds to. The index is the coordinate dimension and the
                 value is the axes dimension.
+
+        Returns:
+            ndarray: image with coordinates rasterized on it
 
         References:
             https://stackoverflow.com/questions/54726703/generating-keypoint-heatmaps-in-tensorflow
@@ -925,6 +1032,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 corresponds to. The index is the coordinate dimension and the
                 value is the axes dimension.
 
+        Returns:
+            ndarray: image with coordinates drawn on it
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
@@ -965,11 +1075,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             setlim (bool): if True ensures the limits of the axes contains the
                 polygon
 
-        Args:
             coord_axes (Tuple): specify which image axes each coordinate dim
                 corresponds to.  For 2D images,
                     if you are storing r/c data, set to [0,1],
                     if you are storing x/y data, set to [1,0].
+
+        Returns:
+            List[mpl.collections.PatchCollection]: drawn matplotlib objects
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
