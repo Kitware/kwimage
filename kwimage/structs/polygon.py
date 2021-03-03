@@ -1189,17 +1189,67 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             ax.set_ylim(y1, y2)
         return patch
 
+    def _ensure_vertex_order(self, inplace=False):
+        """
+        Fixes vertex ordering so the exterior ring is CCW and the interior rings
+        are CW.
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(n=3, n_holes=2, rng=0)
+            >>> print('self = {!r}'.format(self))
+            >>> new = self._ensure_vertex_order()
+            >>> print('new = {!r}'.format(new))
+
+            >>> self = kwimage.Polygon.random(n=3, n_holes=2, rng=0).swap_axes()
+            >>> print('self = {!r}'.format(self))
+            >>> new = self._ensure_vertex_order()
+            >>> print('new = {!r}'.format(new))
+        """
+        new = self if inplace else self.__class__(self.data.copy())
+
+        exterior = new.data['exterior']
+
+        if _is_clockwise(exterior.data):
+            # ensure exterior is CCW
+            exterior.data = exterior.data[::-1]
+            pass
+
+        for interior in new.data['interiors']:
+            if not _is_clockwise(interior.data):
+                interior.data = interior.data[::-1]
+        return new
+
+
+def _is_clockwise(verts):
+    """
+    References:
+        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order#:~:text=If%20the%20determinant%20is%20negative,q%20and%20r%20are%20collinear.
+
+    Ignore:
+        verts = poly.data['exterior'].data[::-1]
+    """
+    cross_product = np.cross(verts[:-1], verts[1:])
+    is_clockwise = cross_product.sum() > 0
+    return is_clockwise
+
 
 def _order_vertices(verts):
     """
     References:
         https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
+
+    Ignore:
+        verts = poly.data['exterior'].data[::-1]
     """
-    mlat = verts.T[0].sum() / len(verts)
-    mlng = verts.T[1].sum() / len(verts)
+    mean_x = verts.T[0].sum() / len(verts)
+    mean_y = verts.T[1].sum() / len(verts)
+
+    delta_x = mean_x - verts.T[0]
+    delta_y = verts.T[1] - mean_y
 
     tau = np.pi * 2
-    angle = (np.arctan2(mlat - verts.T[0], verts.T[1] - mlng) + tau) % tau
+    angle = (np.arctan2(delta_x, delta_y) + tau) % tau
     sortx = angle.argsort()
     verts = verts.take(sortx, axis=0)
     return verts
