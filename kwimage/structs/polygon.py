@@ -1215,7 +1215,7 @@ class MultiPolygon(_generic.ObjectList):
     """
 
     @classmethod
-    def random(self, n=3, rng=None, tight=False):
+    def random(self, n=3, n_holes=0, rng=None, tight=False):
         """
         Create a random MultiPolygon
 
@@ -1224,7 +1224,8 @@ class MultiPolygon(_generic.ObjectList):
         """
         import kwarray
         rng = kwarray.ensure_rng(rng)
-        data = [Polygon.random(rng=rng, tight=tight) for _ in range(n)]
+        data = [Polygon.random(rng=rng, n_holes=n_holes, tight=tight)
+                for _ in range(n)]
         self = MultiPolygon(data)
         return self
 
@@ -1426,10 +1427,7 @@ class MultiPolygon(_generic.ObjectList):
         return [item.to_coco(style=style) for item in self.data]
 
     def swap_axes(self, inplace=False):
-        newdata = [None if item is None else
-                   item.swap_axes(inplace=inplace)
-                   for item in self.data]
-        return self.__class__(newdata, self.meta)
+        return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
     # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
     #     """
@@ -1478,7 +1476,45 @@ class PolygonList(_generic.ObjectList):
         return new
 
     def swap_axes(self, inplace=False):
-        newdata = [None if item is None else
-                   item.swap_axes(inplace=inplace)
-                   for item in self.data]
-        return self.__class__(newdata, self.meta)
+        return self.apply(lambda item: item.swap_axes(inplace=inplace))
+
+    def to_geojson(self, as_collection=False):
+        """
+        Converts a list of polygons/multipolygons to a geojson structure
+
+        Args:
+            as_collection (bool): if True, wraps the polygon geojson items in a
+                geojson feature collection, otherwise just return a list of
+                items.
+
+        Returns:
+            List[Dict] | Dict: items or geojson data
+
+        Example:
+            >>> import kwimage
+            >>> data = [kwimage.Polygon.random(),
+            >>>         kwimage.Polygon.random(n_holes=1),
+            >>>         kwimage.MultiPolygon.random(n_holes=1),
+            >>>         kwimage.MultiPolygon.random()]
+            >>> self = kwimage.PolygonList(data)
+            >>> geojson = self.to_geojson(as_collection=True)
+            >>> items = self.to_geojson(as_collection=False)
+            >>> print('geojson = {}'.format(ub.repr2(geojson, nl=-2, precision=1)))
+            >>> print('items = {}'.format(ub.repr2(items, nl=-2, precision=1)))
+        """
+        items = [poly.to_geojson() for poly in self.data]
+        if as_collection:
+            geojson = {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": item,
+                        "properties": {}
+                    }
+                    for item in items
+                ]
+            }
+            return geojson
+        else:
+            return items
