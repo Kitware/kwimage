@@ -616,6 +616,7 @@ class _BoxConversionMixins(object):
                 [x1, y2],
                 [x2, y2],
                 [x2, y1],
+                [x1, y1],
             ])
             poly = kwimage.Polygon(exterior=exterior)
             poly_list.append(poly)
