@@ -1659,8 +1659,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             POLYGON ((5 5, 5 50, 50 50, 50 5, 5 5)),
             POLYGON ((20 0, 20 10, 30 10, 30 0, 20 0)),
         ]
+        >>> # xdoctest: +REQUIRES(module:imgaug)
         >>> print(ub.repr2(boxes[0:1].to_imgaug(shape=(100, 100)), sv=1))
         BoundingBoxesOnImage([BoundingBox(x1=0.0000, y1=0.0000, x2=10.0000, y2=10.0000, label=None)], shape=(100, 100))
+        >>> # xdoctest: -REQUIRES(module:imgaug)
         >>> print(ub.repr2(list(boxes.to_coco()), sv=1))
         [
             [0, 0, 10, 10],
