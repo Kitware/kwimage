@@ -1,4 +1,9 @@
 """
+The Kitware Image Module (kwimage) contains functions to accomplish lower-level
+image operations via a high level API.
+"""
+
+__devnotes__ = """
 mkinit ~/code/kwimage/kwimage/algo/__init__.py --relative -w --nomod
 mkinit ~/code/kwimage/kwimage/structs/__init__.py --relative -w --nomod
 mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  -w

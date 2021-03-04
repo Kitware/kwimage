@@ -1401,8 +1401,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return self, iminfo, sampler
 
     @classmethod
-    def random(cls, num=10, scale=1.0, rng=None, classes=3, keypoints=False,
-               tensor=False, segmentations=False):
+    def random(cls, num=10, scale=1.0, classes=3, keypoints=False,
+               segmentations=False, tensor=False, rng=None):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -1410,7 +1410,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             num (int): number of boxes
             scale (float | tuple, default=1.0): bounding image size
             classes (int | Sequence): list of class labels or number of classes
-            tensor (bool, default=False): determines backend
+            keypoints (bool, default=False):
+                if True include random keypoints for each box.
+            segmentations (bool, default=False):
+                if True include random segmentations for each box.
+            tensor (bool, default=False): determines backend.
+                DEPRECATED.  Call tensor on resulting object instead.
             rng (np.random.RandomState): random state
 
         Example:
@@ -1428,26 +1433,27 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Example:
             >>> import kwimage
             >>> dets = kwimage.Detections.random(
-            >>>     keypoints='jagged', segmentations=True).scale(1000)
+            >>>     keypoints='jagged', segmentations=True, rng=0).scale(1000)
             >>> print('dets = {}'.format(dets))
             dets = <Detections(10)>
+            >>> dets.data['boxes'].quantize(inplace=True)
             >>> print('dets.data = {}'.format(ub.repr2(
-            >>>     dets.data, nl=1, precision=1, with_dtype=False, strvals=True)))
+            >>>     dets.data, nl=1, with_dtype=False, strvals=True)))
             dets.data = {
                 'boxes': <Boxes(xywh,
-                             array([[149.16074276, 515.35844803, 229.3741107 , 392.23647118],
-                                    [ 54.51877788, 139.93643224, 339.40789104, 636.64191961],
-                                    [372.54348397, 313.38202953, 466.49780869, 299.76755381],
-                                    [535.65436602, 465.02283216, 361.48905754, 246.62610888],
-                                    [262.4194622 , 377.42933631,  16.48575068, 227.14182734],
-                                    [188.00985813, 283.9075923 ,  98.81737828,  38.82277012],
-                                    [702.72445679, 670.19832134, 124.04632568, 233.88844728],
-                                    [781.57305717, 595.015347  , 110.41098833, 152.10676193],
-                                    [580.31201363,   2.41809688,  40.8436656 , 247.44227529],
-                                    [596.25965357, 219.59610283, 182.12157488, 618.9647913 ]]))>,
-                'class_idxs': [0, 2, 1, 0, 1, 1, 1, 1, 2, 1],
+                             array([[548, 544,  55, 172],
+                                    [423, 645,  15, 247],
+                                    [791, 383, 173, 146],
+                                    [ 71,  87, 498, 839],
+                                    [ 20, 832, 759,  39],
+                                    [461, 780, 518,  20],
+                                    [118, 639,  26, 306],
+                                    [264, 414, 258, 361],
+                                    [ 18, 568, 439,  50],
+                                    [612, 616, 332,  66]], dtype=int32))>,
+                'class_idxs': [1, 2, 0, 0, 2, 0, 0, 0, 0, 0],
                 'keypoints': <PointsList(n=10)>,
-                'scores': [0.1, 0.3, 0.3, 0.4, 0.2, 0.4, 0.2, 0.5, 0.5, 0.4],
+                'scores': [0.3595079 , 0.43703195, 0.6976312 , 0.06022547, 0.66676672, 0.67063787,0.21038256, 0.1289263 , 0.31542835, 0.36371077],
                 'segmentations': <SegmentationList(n=10)>,
             }
             >>> # xdoctest:+REQUIRES(--show)

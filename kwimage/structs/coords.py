@@ -723,7 +723,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             if about is None:
                 data *= factor_
             else:
+                print('about = {!r}'.format(about))
                 about_ = self._rectify_about(about)
+                print('about_ = {!r}'.format(about_))
                 data -= about_
                 data *= factor_
                 data += about_
@@ -770,24 +772,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             offset_ = impl.astype(offset_, data.dtype)
             data += offset_
         return new
-
-    def _rectify_about(self, about):
-        """
-        Ensures that about returns a specified point. Allows for special keys
-        like center to be used.
-
-        Example:
-            >>> from kwimage.structs.coords import *  # NOQA
-            >>> self = Coords.random(10, dim=2, rng=0)
-            pass
-        """
-        if about is None:
-            about_ = None
-        if isinstance(about, str):
-            raise KeyError('coords has no special keys')
-        else:
-            about_ = about if ub.iterable(about) else [about] * self.dim
-        return about_
 
     @profile
     def rotate(self, theta, about=None, output_dims=None, inplace=False):
@@ -858,7 +842,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             rot_ = np.array([[cos_, -sin_],
                              [sin_,  cos_]], dtype=dtype)
         else:
+            print('about = {!r}'.format(about))
             about_ = self._rectify_about(about)
+            print('about_ = {!r}'.format(about_))
             """
             # Construct a general closed-form affine matrix about a point
             # Shows the symbolic construction of the code
@@ -910,6 +896,27 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 [ sin_,  cos_, -x0 * sin_ - y0 * cos_ + y0],
                 [    0,     0,                           1]])
         return self.warp(rot_, output_dims=output_dims, inplace=inplace)
+
+    def _rectify_about(self, about):
+        """
+        Ensures that about returns a specified point. Allows for special keys
+        like center to be used.
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, dim=2, rng=0)
+        """
+        if about is None:
+            about_ = None
+        else:
+            if isinstance(about, str):
+                if about == 'origin':
+                    about_ = (0, 0)
+                else:
+                    raise KeyError(about)
+            else:
+                about_ = about if ub.iterable(about) else [about] * self.dim
+        return about_
 
     def fill(self, image, value, coord_axes=None, interp='bilinear'):
         """

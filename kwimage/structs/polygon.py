@@ -279,6 +279,7 @@ class _PolyWarpMixin:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.rotate(np.pi / 2, about='center')
+            >>> new2 = self.rotate(np.pi / 2)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -306,14 +307,17 @@ class _PolyWarpMixin:
         """
         if about is None:
             about_ = None
-        if isinstance(about, str):
-            if about == 'center':
-                centroid = self.to_shapely().centroid
-                about_ = (centroid.x, centroid.y)
-            else:
-                raise KeyError(about)
         else:
-            about_ = about if ub.iterable(about) else [about] * self.dim
+            if isinstance(about, str):
+                if about == 'origin':
+                    about_ = (0., 0.)
+                elif about == 'center':
+                    centroid = self.to_shapely().centroid
+                    about_ = (centroid.x, centroid.y)
+                else:
+                    raise KeyError(about)
+            else:
+                about_ = about if ub.iterable(about) else [about] * 2
         return about_
 
     def swap_axes(self, inplace=False):
@@ -430,6 +434,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             meta = {}
         self.data = data
         self.meta = meta
+
+    @property
+    def exterior(self):
+        return self.data['exterior']
+
+    @property
+    def interiors(self):
+        return self.data['interiors']
 
     def __nice__(self):
         return ub.repr2(self.data, nl=1)
@@ -636,7 +648,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             dims (Tuple): height and width of the output mask
 
         Returns:
-            Mask
+            kwimage.Mask
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -666,7 +678,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return a mask just big enough to fit the polygon.
 
         Returns:
-            Mask
+            kwimage.Mask
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -725,9 +737,28 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         Try to autodetermine format of input polygon and coerce it into a
         kwimage.Polygon.
+
+        Args:
+            data (object): some type of data that can be interpreted as a
+                polygon.
+
+        Returns:
+            kwimage.Polygon
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random()
+            >>> self.coerce(self)
+            >>> self.coerce(self.exterior)
+            >>> self.coerce(self.exterior.data)
+            >>> self.coerce(self.data)
+            >>> self.coerce(self.to_geojson())
         """
+        import kwimage
         if isinstance(data, Polygon):
             return data
+        if isinstance(data, (np.ndarray, kwimage.Coords)):
+            return Polygon(exterior=data)  # TODO accept torch
         if isinstance(data, str):
             return Polygon.from_wkt(data)
         if isinstance(data, dict):
@@ -751,6 +782,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         Args:
             geom (shapely.geometry.polygon.Polygon): a shapely polygon
+
+        Returns:
+            kwimage.Polygon
         """
         exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
@@ -765,10 +799,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             data (str): a WKT polygon string
 
+        Returns:
+            kwimage.Polygon
+
         Example:
-            data = kwimage.Polygon.random().to_shapely().to_wkt()
-            data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
-            self = Polygon.from_wkt(data)
+            >>> import kwimage
+            >>> data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
+            >>> self = kwimage.Polygon.from_wkt(data)
+            >>> assert len(self.exterior) == 4
         """
         from shapely import wkt
         geom = wkt.loads(data)
@@ -852,6 +890,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         Converts polygon to a geojson structure
 
+        Returns:
+            Dict[str, object]
+
         Example:
             >>> import kwimage
             >>> self = kwimage.Polygon.random()
@@ -891,7 +932,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             else:
                 self = cls(exterior=[])
         elif isinstance(data, dict):
-            assert 'exterior' in data
+            if 'exterior' not in data:
+                raise ValueError('dict requires exterior key')
             self = cls(**data)
         else:
             raise TypeError(type(data))
@@ -901,6 +943,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return self.to_coco(style=style)
 
     def to_coco(self, style='orig'):
+        """
+        Returns:
+            List | Dict : coco-style polygons
+        """
         interiors = self.data.get('interiors', [])
         if style == 'orig':
             if interiors:

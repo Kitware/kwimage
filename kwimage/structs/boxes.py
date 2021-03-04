@@ -2,15 +2,14 @@
 """
 Vectorized Bounding Boxes
 
-kwimage.Boxes is a tool for efficiently transporting a set of bounding boxes
-within python as well as methods for operating on bounding boxes. It is a VERY
-thin wrapper around a pure numpy/torch array/tensor representation, and thus it
-is very fast.
+:class:`kwimage.Boxes` is a tool for efficiently transporting a set of bounding
+boxes within python as well as methods for operating on bounding boxes. It is a
+VERY thin wrapper around a pure numpy/torch array/tensor representation, and
+thus it is very fast.
 
 Raw bounding boxes come in lots of different formats. There are lots of ways to
 parameterize two points! Because of this THE USER MUST ALWAYS BE EXPLICIT ABOUT
 THE BOX FORMAT.
-
 
 There are 3 main bounding box formats:
     xywh: top left xy-coordinates and width height offsets
@@ -547,7 +546,7 @@ class _BoxConversionMixins(object):
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
         return bboi
 
-    def to_shapley(self):
+    def to_shapely(self):
         """
         Convert boxes to a list of shapely polygons
 
@@ -567,6 +566,8 @@ class _BoxConversionMixins(object):
         #     for minx, miny, maxx, maxy in zip(x1, y1, x2, y2)
         # ]
         return regions
+
+    to_shapley = to_shapely  # originally had incorrect spelling
 
     @classmethod
     def from_imgaug(Boxes, bboi):
@@ -1534,13 +1535,9 @@ class _BoxDrawMixins(object):
         return image
 
 
-# Note: should we inherit from nh.util.Boxes (which is basically the same
-# object) so isinstance works outside of the internal lib?
-
-
 class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             _BoxDrawMixins, ub.NiceRepr):  # _generic.Spatial
-    """
+    r"""
     Converts boxes between different formats as long as the last dimension
     contains 4 coordinates and the format is specified.
 
@@ -1549,6 +1546,178 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     the raw data and let the class be garbage collected. This will help ensure
     that your code is portable and understandable if this class is not
     available.
+
+    Example:
+        >>> # xdoctest: +IGNORE_WHITESPACE
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Given an array / tensor that represents one or more boxes
+        >>> data = np.array([[ 0,  0, 10, 10],
+        >>>                  [ 5,  5, 50, 50],
+        >>>                  [20,  0, 30, 10]])
+        >>> # The kwimage.Boxes data structure is a thin fast wrapper
+        >>> # that provides methods for operating on the boxes.
+        >>> # It requires that the user explicitly provide a code that denotes
+        >>> # the format of the boxes (i.e. what each column represents)
+        >>> boxes = kwimage.Boxes(data, 'ltrb')
+        >>> # This means that there is no ambiguity about box format
+        >>> # The representation string of the Boxes object demonstrates this
+        >>> print('boxes = {!r}'.format(boxes))
+        boxes = <Boxes(ltrb,
+            array([[ 0,  0, 10, 10],
+                   [ 5,  5, 50, 50],
+                   [20,  0, 30, 10]]))>
+        >>> # if you pass this data around. You can convert to other formats
+        >>> # For docs on available format codes see :class:`BoxFormat`.
+        >>> # In this example we will convert (left, top, right, bottom)
+        >>> # to (left-x, top-y, width, height).
+        >>> boxes.toformat('xywh')
+        <Boxes(xywh,
+            array([[ 0,  0, 10, 10],
+                   [ 5,  5, 45, 45],
+                   [20,  0, 10, 10]]))>
+        >>> # In addition to format conversion there are other operations
+        >>> # We can quickly (using a C-backend) find IoUs
+        >>> ious = boxes.ious(boxes)
+        >>> print('{}'.format(ub.repr2(ious, nl=1, precision=2, with_dtype=False)))
+        np.array([[1.  , 0.01, 0.  ],
+                  [0.01, 1.  , 0.02],
+                  [0.  , 0.02, 1.  ]])
+        >>> # We can ask for the area of each box
+        >>> print('boxes.area = {}'.format(ub.repr2(boxes.area, nl=0, with_dtype=False)))
+        boxes.area = np.array([[ 100],[2025],[ 100]])
+        >>> # We can ask for the center of each box
+        >>> print('boxes.center = {}'.format(ub.repr2(boxes.center, nl=1, with_dtype=False)))
+        boxes.center = (
+            np.array([[ 5. ],[27.5],[25. ]]),
+            np.array([[ 5. ],[27.5],[ 5. ]]),
+        )
+        >>> # We can translate / scale the boxes
+        >>> boxes.translate((10, 10)).scale(100)
+        <Boxes(ltrb,
+            array([[1000., 1000., 2000., 2000.],
+                   [1500., 1500., 6000., 6000.],
+                   [3000., 1000., 4000., 2000.]]))>
+        >>> # We can clip the bounding boxes
+        >>> boxes.translate((10, 10)).scale(100).clip(1200, 1200, 1700, 1800)
+        <Boxes(ltrb,
+            array([[1200., 1200., 1700., 1800.],
+                   [1500., 1500., 1700., 1800.],
+                   [1700., 1200., 1700., 1800.]]))>
+        >>> # We can perform arbitrary warping of the boxes
+        >>> # (note that if the transform is not axis aligned, the axis aligned
+        >>> #  bounding box of the transform result will be returned)
+        >>> transform = np.array([[-0.83907153,  0.54402111,  0. ],
+        >>>                       [-0.54402111, -0.83907153,  0. ],
+        >>>                       [ 0.        ,  0.        ,  1. ]])
+        >>> boxes.warp(transform)
+        <Boxes(ltrb,
+            array([[ -8.3907153 , -13.8309264 ,   5.4402111 ,   0.        ],
+                   [-39.23347095, -69.154632  ,  23.00569785,  -6.9154632 ],
+                   [-25.1721459 , -24.7113486 , -11.3412195 , -10.8804222 ]]))>
+        >>> # Note, that we can transform the box to a Polygon for more
+        >>> # accurate warping.
+        >>> transform = np.array([[-0.83907153,  0.54402111,  0. ],
+        >>>                       [-0.54402111, -0.83907153,  0. ],
+        >>>                       [ 0.        ,  0.        ,  1. ]])
+        >>> warped_polys = boxes.to_polygons().warp(transform)
+        >>> print(ub.repr2(warped_polys.data, sv=1))
+        [
+            <Polygon({
+                'exterior': <Coords(data=
+                                array([[  0.       ,   0.       ],
+                                       [  5.4402111,  -8.3907153],
+                                       [ -2.9505042, -13.8309264],
+                                       [ -8.3907153,  -5.4402111],
+                                       [  0.       ,   0.       ]]))>,
+                'interiors': [],
+            })>,
+            <Polygon({
+                'exterior': <Coords(data=
+                                array([[ -1.4752521 ,  -6.9154632 ],
+                                       [ 23.00569785, -44.67368205],
+                                       [-14.752521  , -69.154632  ],
+                                       [-39.23347095, -31.39641315],
+                                       [ -1.4752521 ,  -6.9154632 ]]))>,
+                'interiors': [],
+            })>,
+            <Polygon({
+                'exterior': <Coords(data=
+                                array([[-16.7814306, -10.8804222],
+                                       [-11.3412195, -19.2711375],
+                                       [-19.7319348, -24.7113486],
+                                       [-25.1721459, -16.3206333],
+                                       [-16.7814306, -10.8804222]]))>,
+                'interiors': [],
+            })>,
+        ]
+        >>> # The kwimage.Boxes data structure is also convertable to
+        >>> # several alternative data structures, like shapely, coco, and imgaug.
+        >>> print(ub.repr2(boxes.to_shapely(), sv=1))
+        [
+            POLYGON ((0 0, 0 10, 10 10, 10 0, 0 0)),
+            POLYGON ((5 5, 5 50, 50 50, 50 5, 5 5)),
+            POLYGON ((20 0, 20 10, 30 10, 30 0, 20 0)),
+        ]
+        >>> print(ub.repr2(boxes[0:1].to_imgaug(shape=(100, 100)), sv=1))
+        BoundingBoxesOnImage([BoundingBox(x1=0.0000, y1=0.0000, x2=10.0000, y2=10.0000, label=None)], shape=(100, 100))
+        >>> print(ub.repr2(list(boxes.to_coco()), sv=1))
+        [
+            [0, 0, 10, 10],
+            [5, 5, 45, 45],
+            [20, 0, 10, 10],
+        ]
+        >>> # Finally, when you are done with your boxes object, you can
+        >>> # unwrap the raw data by using the ``.data`` attribute
+        >>> # all operations are done on this data, which gives the
+        >>> # kwiamge.Boxes data structure almost no overhead when
+        >>> # inserted into existing code.
+        >>> print('boxes.data =\n{}'.format(ub.repr2(boxes.data, nl=1)))
+        boxes.data =
+        np.array([[ 0,  0, 10, 10],
+                  [ 5,  5, 50, 50],
+                  [20,  0, 30, 10]], dtype=np.int64)
+        >>> # xdoctest: +REQUIRES(module:torch)
+        >>> # This data structure was designed for use with both torch
+        >>> # and numpy, the underlying data can be either an array or tensor.
+        >>> boxes.tensor()
+        <Boxes(ltrb,
+            tensor([[ 0,  0, 10, 10],
+                    [ 5,  5, 50, 50],
+                    [20,  0, 30, 10]]))>
+        >>> boxes.numpy()
+        <Boxes(ltrb,
+            array([[ 0,  0, 10, 10],
+                   [ 5,  5, 50, 50],
+                   [20,  0, 30, 10]]))>
+
+    Example:
+        >>> # xdoctest: +IGNORE_WHITESPACE
+        >>> from kwimage.structs.boxes import *  # NOQA
+        >>> # Demo of conversion methods
+        >>> import kwimage
+        >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh')
+        <Boxes(xywh, array([[25, 30, 15, 10]]))>
+        >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh').to_xywh()
+        <Boxes(xywh, array([[25, 30, 15, 10]]))>
+        >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh').to_cxywh()
+        <Boxes(cxywh, array([[32.5, 35. , 15. , 10. ]]))>
+        >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh').to_ltrb()
+        <Boxes(ltrb, array([[25, 30, 40, 40]]))>
+        >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh').scale(2).to_ltrb()
+        <Boxes(ltrb, array([[50., 60., 80., 80.]]))>
+        >>> # xdoctest: +REQUIRES(module:torch)
+        >>> kwimage.Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
+        <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
+
+    Notes:
+        In the following examples we show cases where :class:`Boxes` can hold a
+        single 1-dimensional box array. This is a holdover from an older
+        codebase, and some functions may assume that the input is at least 2-D.
+        Thus when representing a single bounding box it is best practice to
+        view it as a list of 1 box. While many function will work in the 1-D
+        case, not all functions have been tested and thus we cannot gaurentee
+        correctness.
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1650,7 +1819,6 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         return len(self.data)
 
     def __nice__(self):
-        # return self.format + ', shape=' + str(list(self.data.shape))
         data_repr = repr(self.data)
         if '\n' in data_repr:
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
@@ -1911,46 +2079,87 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def round(self, inplace=False):
         """
-        Rounds data to the nearest integer
+        Rounds data coordinates to the nearest integer.
+
+        This operation is applied directly to the box coordinates, so its
+        output will depend on the format the boxes are stored in.
 
         Args:
             inplace (bool, default=False): if True, modifies this object
 
+        SeeAlso:
+            :method:`Boxes.quantize`
+
         Example:
             >>> import kwimage
-            >>> self = kwimage.Boxes.random(3).scale(10)
-            >>> self.round()
+            >>> self = kwimage.Boxes.random(3, rng=0).scale(10)
+            >>> new = self.round()
+            >>> print('self = {!r}'.format(self))
+            >>> print('new = {!r}'.format(new))
+            self = <Boxes(xywh,
+                array([[5.48813522, 5.44883192, 0.53949833, 1.70306146],
+                       [4.23654795, 6.4589411 , 0.13932407, 2.45878875],
+                       [7.91725039, 3.83441508, 1.71937704, 1.45453393]]))>
+            new = <Boxes(xywh,
+                array([[5., 5., 1., 2.],
+                       [4., 6., 0., 2.],
+                       [8., 4., 2., 1.]]))>
         """
         new = self if inplace else self.__class__(self.data, self.format)
         new.data = self._impl.round(new.data)
         return new
 
-    def quantize(self, dtype=np.int32):
+    def quantize(self, inplace=False, dtype=np.int32):
         """
-        Converts the box to integer coordinates by taking the floor of the
-        left side and the ceil of the right side.
+        Converts the box to integer coordinates.
+
+        This operation takes the floor of the left side and the ceil of the
+        right side. Thus the area of the box will never decreases.
+
+        Args:
+            inplace (bool, default=False): if True, modifies this object
+            dtype (type): type to cast as
+
+        SeeAlso:
+            :method:`Boxes.round`
 
         Example:
             >>> import kwimage
-            >>> self = kwimage.Boxes.random(3)
+            >>> self = kwimage.Boxes.random(3, rng=0).scale(10)
             >>> new = self.quantize()
-            >>> assert self._impl.all(new.data[:, 0] == 0)
-            >>> assert np.all(new.data[:, 1] == 0)
-            >>> assert np.all(new.data[:, 2] == 1)
-            >>> assert np.all(new.data[:, 3] == 1)
+            >>> print('self = {!r}'.format(self))
+            >>> print('new = {!r}'.format(new))
+            self = <Boxes(xywh,
+                array([[5.48813522, 5.44883192, 0.53949833, 1.70306146],
+                       [4.23654795, 6.4589411 , 0.13932407, 2.45878875],
+                       [7.91725039, 3.83441508, 1.71937704, 1.45453393]]))>
+            new = <Boxes(xywh,
+                array([[5, 5, 2, 3],
+                       [4, 6, 1, 3],
+                       [7, 3, 3, 3]], dtype=int32))>
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(3, rng=0)
+            >>> orig = self.copy()
+            >>> self.quantize(inplace=True)
+            >>> assert np.any(self.data != orig.data)
         """
+        new = self if inplace else self.__class__(self.data, self.format)
         _impl = self._impl
         _ceil = _impl.ceil
         _floor = _impl.floor
         _astype = _impl.astype
 
-        new = self.to_ltrb(copy=True)
-        new_data = _impl.empty_like(new.data, dtype=dtype)
-        new_data[..., 0] = _astype(_floor(new.data[..., 0]), dtype=dtype)
-        new_data[..., 1] = _astype(_floor(new.data[..., 1]), dtype=dtype)
-        new_data[..., 2] = _astype(_ceil(new.data[..., 2]), dtype=dtype)
-        new_data[..., 3] = _astype(_ceil(new.data[..., 3]), dtype=dtype)
-        new.data = new_data
+        ltrb_box = new.to_ltrb(copy=False)
+        ltrb = ltrb_box.data
+        new_ltrb = _impl.empty_like(ltrb, dtype=dtype)
+        new_ltrb[..., 0] = _astype(_floor(ltrb[..., 0]), dtype=dtype)
+        new_ltrb[..., 1] = _astype(_floor(ltrb[..., 1]), dtype=dtype)
+        new_ltrb[..., 2] = _astype(_ceil(ltrb[..., 2]), dtype=dtype)
+        new_ltrb[..., 3] = _astype(_ceil(ltrb[..., 3]), dtype=dtype)
+        ltrb_box.data = new_ltrb
+        new.data = ltrb_box.toformat(new.format, copy=False).data
         return new
 
     def numpy(self):
@@ -2273,7 +2482,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def bounding_box(self):
         """
-        Returns the box that bounds all of the contained bo
+        Returns the box that bounds all of the contained boxes
 
         Returns:
             Boxes: a single box

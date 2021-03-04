@@ -27,9 +27,11 @@ Notes:
 # This file does only contain a selection of the most common options. For a
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/stable/config
+import sphinx_rtd_theme
 from os.path import exists
 from os.path import dirname
 from os.path import join
+
 
 # -- Path setup --------------------------------------------------------------
 
@@ -90,7 +92,6 @@ version = '.'.join(release.split('.')[0:2])
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'autoapi.extension',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
@@ -99,16 +100,28 @@ extensions = [
     'sphinx.ext.autosummary',
 ]
 
-autoapi_modules = {
-    modname: {
-        'override': False,
-        'output': 'auto'
+# TODO: figure out how to use autoapi
+USE_AUTOAPI = True
+if USE_AUTOAPI:
+    # redirects = {
+    #     "index": "autoapi/kwcoco/index.html",
+    # }
+
+    autoapi_modules = {
+        modname: {
+            'override': False,
+            'output': 'auto'
+        }
     }
-}
 
+    autoapi_dirs = [f'../../{modname}']
+    # autoapi_keep_files = True
 
-autoapi_dirs = [f'../../{modname}']
-# autoapi_keep_files = True
+    extensions.extend([
+        'autoapi.extension',
+        # 'sphinx.ext.inheritance_diagram',
+        # 'autoapi.sphinx',
+    ])
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -249,4 +262,3 @@ html_theme_options = {
     # 'navigation_depth': 4,
     # 'logo_only': True,
 }
-
