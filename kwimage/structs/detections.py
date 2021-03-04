@@ -94,7 +94,7 @@ class _DetDrawMixin:
             keypoints.draw(color=color, radius=radius)
 
         if setlim:
-            x1, y1, x2, y2 = self.boxes.to_tlbr().components
+            x1, y1, x2, y2 = self.boxes.to_ltrb().components
             xmax = x2.max()
             xmin = x1.min()
             ymax = y2.max()
@@ -105,12 +105,40 @@ class _DetDrawMixin:
             ax.set_ylim(ymin, ymax)
 
     def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
-                kpts=True, sseg=True, boxes=True, ssegkw=None):
+                kpts=True, sseg=True, boxes=True, ssegkw=None,
+                label_loc='top_left', thickness=2):
         """
         Draws boxes directly on the image using OpenCV
 
         Args:
             image (ndarray[uint8]): must be in uint8 format
+
+            color (str | ColorLike | List[ColorLike]):
+                one color for all boxes or a list of colors for each box
+
+            alpha (float): Transparency of overlay. can be a scalar or a list
+                for each box
+
+            labels (bool | str | List[str]):
+                if True, use categorie names as the labels. See _make_labels
+                for details. Otherwise a manually specified text label for each
+                box.
+
+            boxes (bool): if True draw the boxes
+
+            kpts (bool): if True draw the keypoints
+
+            sseg (bool): if True draw the segmentations
+
+            ssegkw (dict): extra arguments passed to `segmentations.draw_on`
+
+            radius (float): passed to `keypoints.draw_on`
+
+            label_loc (str): indicates where labels (if specified) should be
+                drawn. passed to `boxes.draw_on`
+
+            thickness (int, default=2): rectangle thickness, negative values
+                will draw a filled rectangle. passed to `boxes.draw_on`
 
         Returns:
             ndarray[uint8]: image with labeled boxes drawn on it
@@ -124,6 +152,19 @@ class _DetDrawMixin:
             >>> self = Detections.random(num=10, scale=512, rng=0)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color='blue')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> import kwplot
+            >>> self = Detections.random(num=10, scale=512, rng=0)
+            >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
+            >>> image2 = self.draw_on(image, color='classes')
             >>> # xdoc: +REQUIRES(--show)
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
@@ -149,7 +190,7 @@ class _DetDrawMixin:
         """
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
-        # import kwimage
+        color = self._make_colors(color)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
@@ -164,7 +205,8 @@ class _DetDrawMixin:
 
         if boxes:
             image = self.boxes.draw_on(image, color=color, alpha=alpha,
-                                       labels=labels)
+                                       labels=labels, label_loc=label_loc,
+                                       thickness=thickness)
 
         keypoints = self.data.get('keypoints', None)
         if kpts and keypoints is not None:
@@ -174,6 +216,46 @@ class _DetDrawMixin:
 
         image = dtype_fixer(image, copy=False)
         return image
+
+    def _make_colors(self, color):
+        """
+        Handles special settings of color.
+
+        If color == 'classes', then choose a distinct color for each category
+        """
+        # Draw each category as a different color
+        if color == 'classes':
+            import kwimage
+            class_idxs = self.class_idxs
+            if class_idxs is None:
+                color = 'blue'
+            else:
+                classes = self.classes
+                if classes is None:
+                    classes = list(range(max(class_idxs) + 1))
+
+                # TODO: allow specified color scheme
+                backup_colors = iter(kwimage.Color.distinct(len(classes)))
+
+                # Respect colors stored in classes if given
+                if hasattr(classes, 'idx_to_node'):
+                    cname_to_color = {
+                        cid: cat.get('color', None)
+                        for cid, cat in classes.cats.items()
+                    }
+                    cidx_to_color = [
+                        cname_to_color[cname]
+                        for cname in classes.idx_to_node
+                    ]
+                else:
+                    cidx_to_color = [None] * len(classes)
+
+                for cidx, color in enumerate(cidx_to_color):
+                    if color is None:
+                        cidx_to_color[cidx] = next(backup_colors)
+
+                color = [cidx_to_color[cidx] for cidx in class_idxs]
+        return color
 
     def _make_alpha(self, alpha):
         """
@@ -193,6 +275,9 @@ class _DetDrawMixin:
         Either passes through user specified labels or chooses a sensible
         default
         """
+        def _fixsore(s):
+            return float('nan') if s is None else s
+
         if labels:
             if labels is True:
                 parts = []
@@ -212,9 +297,9 @@ class _DetDrawMixin:
                 if labels in ['class']:
                     labels = identifers
                 elif labels in ['score']:
-                    labels = ['{:.4f}'.format(score) for score in self.scores]
+                    labels = ['{:.4f}'.format(_fixsore(score)) for score in self.scores]
                 elif labels in ['class+score']:
-                    labels = ['{} @ {:.4f}'.format(cid, score)
+                    labels = ['{} @ {:.4f}'.format(cid, _fixsore(score))
                               for cid, score in zip(identifers, self.scores)]
                 else:
                     raise KeyError('unknown labels key {!r}'.format(labels))
@@ -254,7 +339,7 @@ class _DetAlgoMixin:
         if len(self) <= 0:
             return []
 
-        tlbr = self.boxes.to_tlbr().data
+        ltrb = self.boxes.to_ltrb().data
         scores = self.data.get('scores', None)
         if scores is None:
             scores = np.ones(len(self), dtype=np.float32)
@@ -271,10 +356,10 @@ class _DetAlgoMixin:
                 else:
                     daqkw['diameter'] = 10  # hack
 
-            keep = kwimage.daq_spatial_nms(tlbr, scores, device_id=device_id,
+            keep = kwimage.daq_spatial_nms(ltrb, scores, device_id=device_id,
                                            **daqkw)
         else:
-            keep = kwimage.non_max_supression(tlbr, scores, thresh=thresh,
+            keep = kwimage.non_max_supression(ltrb, scores, thresh=thresh,
                                               classes=classes, impl=impl,
                                               device_id=device_id)
         return keep
@@ -304,7 +389,7 @@ class _DetAlgoMixin:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.detections import *  # NOQA
             >>> self, iminfo, sampler = Detections.demo()
-            >>> image = iminfo['imdata']
+            >>> image = iminfo['imdata'][:]
             >>> input_dims = iminfo['imdata'].shape[0:2]
             >>> bg_size = [100, 100]
             >>> heatmap = self.rasterize(bg_size, input_dims)
@@ -442,6 +527,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         >>>     metakeys=['mymeta'],
         >>>     checks=True,
         >>> )
+        >>> print('dets = {}'.format(dets))
+        dets = <Detections(3)>
     """
     # __slots__ = ('data', 'meta',)
 
@@ -463,9 +550,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         Construct a Detections object by either explicitly specifying the
         internal data and meta dictionary structures or by passing expected
-        attribute names as kwargs. Note that custom data and metadata can be
-        specified as long as you pass the names of these keys in the `datakeys`
-        and/or `metakeys` kwargs.
+        attribute names as kwargs.
 
         Args:
             data (Dict[str, ArrayLike]): explicitly specify the data dictionary
@@ -478,6 +563,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 kwargs, then check / ensure that all types are compatible
             **kwargs:
                 specify any key for the data or meta dictionaries.
+
+        Notes:
+            Custom data and metadata can be specified as long as you pass the
+            names of these keys in the `datakeys` and/or `metakeys` kwargs.
+
+            In the case where you specify a custom attribute as a list, it will
+            "currently" (we may change this behavior in the future) be coerced
+            into a numpy or torch array. If you want to store a generic Python
+            list, wrap the custom list in a ``_generic.ObjectList``.
 
         Example:
             >>> # Coerce to numpy
@@ -544,7 +638,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         data['segmentations'])
 
                 for k, v in data.items():
-                    if _generic._isinstance2(v, _generic.ObjectList):
+                    if v is None:
+                        objlist.append(v)
+                    elif _generic._isinstance2(v, _generic.ObjectList):
                         objlist.append(v)
                     elif _generic._isinstance2(v, _boxes.Boxes):
                         if v.is_numpy():
@@ -1305,8 +1401,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return self, iminfo, sampler
 
     @classmethod
-    def random(cls, num=10, scale=1.0, rng=None, classes=3, keypoints=False,
-               tensor=False, segmentations=False):
+    def random(cls, num=10, scale=1.0, classes=3, keypoints=False,
+               segmentations=False, tensor=False, rng=None):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -1314,7 +1410,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             num (int): number of boxes
             scale (float | tuple, default=1.0): bounding image size
             classes (int | Sequence): list of class labels or number of classes
-            tensor (bool, default=False): determines backend
+            keypoints (bool, default=False):
+                if True include random keypoints for each box.
+            segmentations (bool, default=False):
+                if True include random segmentations for each box.
+            tensor (bool, default=False): determines backend.
+                DEPRECATED.  Call tensor on resulting object instead.
             rng (np.random.RandomState): random state
 
         Example:
@@ -1324,6 +1425,37 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets.data['keypoints'].meta
             >>> dets = kwimage.Detections.random(keypoints='dense')
             >>> dets = kwimage.Detections.random(keypoints='dense', segmentations=True).scale(1000)
+            >>> # xdoctest:+REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> dets.draw(setlim=True)
+
+        Example:
+            >>> import kwimage
+            >>> dets = kwimage.Detections.random(
+            >>>     keypoints='jagged', segmentations=True, rng=0).scale(1000)
+            >>> print('dets = {}'.format(dets))
+            dets = <Detections(10)>
+            >>> dets.data['boxes'].quantize(inplace=True)
+            >>> print('dets.data = {}'.format(ub.repr2(
+            >>>     dets.data, nl=1, with_dtype=False, strvals=True)))
+            dets.data = {
+                'boxes': <Boxes(xywh,
+                             array([[548, 544,  55, 172],
+                                    [423, 645,  15, 247],
+                                    [791, 383, 173, 146],
+                                    [ 71,  87, 498, 839],
+                                    [ 20, 832, 759,  39],
+                                    [461, 780, 518,  20],
+                                    [118, 639,  26, 306],
+                                    [264, 414, 258, 361],
+                                    [ 18, 568, 439,  50],
+                                    [612, 616, 332,  66]], dtype=int32))>,
+                'class_idxs': [1, 2, 0, 0, 2, 0, 0, 0, 0, 0],
+                'keypoints': <PointsList(n=10)>,
+                'scores': [0.3595079 , 0.43703195, 0.6976312 , 0.06022547, 0.66676672, 0.67063787,0.21038256, 0.1289263 , 0.31542835, 0.36371077],
+                'segmentations': <SegmentationList(n=10)>,
+            }
             >>> # xdoctest:+REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -1653,6 +1785,67 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     'dets had keypoints, but we didnt encode them, were the kp classes missing?')
 
     return fcn_target
+
+
+class _UnitDoctTests:
+    """
+    Hacking in unit tests as doctests the file itself so it is easy to move to
+    kwannot when I finally get around to that.
+    """
+
+    def _test_foreign_keys_compress():
+        """
+        A detections object should be able to maintain foreign keys through
+        compress operations.
+
+        Example:
+            >>> from kwimage.structs.detections import _UnitDoctTests
+            >>> from kwimage.structs.detections import _generic
+            >>> _UnitDoctTests._test_foreign_keys_compress()
+        """
+        import kwimage
+        n = 5
+        dets = kwimage.Detections.random(num=n)
+        flags = dets.scores > np.median(dets.scores)
+
+        # Test normal compress
+        reduced = dets.compress(flags)
+        m = len(reduced)
+
+        # Test case with None attribute
+        dets2 = kwimage.Detections(**{
+            'boxes': dets.data['boxes'],
+            'custom': None,
+            'datakeys': ['custom'],
+        })
+        reduced2 = dets2.compress(flags)
+        assert dets2.data['custom'] is None, 'should be able to specify None value'
+        assert reduced2.data['custom'] is None, 'should be able to specify None value'
+
+        # Test case with _generic.ObjectList[None] attribute
+        dets3 = kwimage.Detections(**{
+            'boxes': dets.data['boxes'],
+            'custom': _generic.ObjectList([None] * n),
+            'datakeys': ['custom'],
+        })
+        reduced3 = dets3.compress(flags)
+        assert dets3.data['custom'].data == [None] * n, 'should be able to specify ObjectList[None] value'
+        assert reduced3.data['custom'].data == [None] * m, 'should be able to specify ObjectList[None] value'
+        assert len(reduced3.data['custom']) == m, 'compress failed'
+
+        # NOTE: We expect Lists to always be coreced to arrays
+        # Test case with List[None] attribute
+        dets4 = kwimage.Detections(**{
+            'boxes': dets.data['boxes'],
+            'custom': [None] * n,
+            'datakeys': ['custom'],
+        })
+        reduced4 = dets4.compress(flags)
+        assert dets4.data['custom'].dtype.kind == 'O', (
+            'we currently expect list to be coerced (may change in the future)')
+        assert reduced4.data['custom'].dtype.kind == 'O', (
+            'we currently expect list to be coerced (may change in the future)')
+        assert len(reduced4.data['custom']) == m, 'compress failed'
 
 
 if __name__ == '__main__':

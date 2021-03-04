@@ -27,10 +27,10 @@ except ImportError:
 
 class Coords(_generic.Spatial, ub.NiceRepr):
     """
-    This stores arbitrary sparse n-dimensional coordinate geometry.
+    A data structure to store n-dimensional coordinate geometry.
 
-    You can specify data, but you don't have to.
-    We dont care what it is, we just warp it.
+    Currently it is up to the user to maintain what coordinate system this
+    geometry belongs to.
 
     NOTE:
         This class was designed to hold coordinates in r/c format, but in
@@ -38,6 +38,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         consistent. However, there are two places where this matters:
             (1) drawing and (2) gdal/imgaug-warping. In these places we will
             assume x/y for legacy reasons. This may change in the future.
+
+        The term axes with resepct to ``Coords`` always refers to the final
+        numpy axis. In other words the final numpy-axis represents ALL of the
+        coordinate-axes.
 
     CommandLine:
         xdoctest -m kwimage.structs.coords Coords
@@ -47,11 +51,37 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         >>> import kwarray
         >>> rng = kwarray.ensure_rng(0)
         >>> self = Coords.random(num=4, dim=3, rng=rng)
+        >>> print('self = {}'.format(self))
+        self = <Coords(data=
+            array([[0.5488135 , 0.71518937, 0.60276338],
+                   [0.54488318, 0.4236548 , 0.64589411],
+                   [0.43758721, 0.891773  , 0.96366276],
+                   [0.38344152, 0.79172504, 0.52889492]]))>
         >>> matrix = rng.rand(4, 4)
         >>> self.warp(matrix)
+        <Coords(data=
+            array([[0.71037426, 1.25229659, 1.39498435],
+                   [0.60799503, 1.26483447, 1.42073131],
+                   [0.72106004, 1.39057144, 1.38757508],
+                   [0.68384299, 1.23914654, 1.29258196]]))>
         >>> self.translate(3, inplace=True)
+        <Coords(data=
+            array([[3.5488135 , 3.71518937, 3.60276338],
+                   [3.54488318, 3.4236548 , 3.64589411],
+                   [3.43758721, 3.891773  , 3.96366276],
+                   [3.38344152, 3.79172504, 3.52889492]]))>
         >>> self.translate(3, inplace=True)
+        <Coords(data=
+            array([[6.5488135 , 6.71518937, 6.60276338],
+                   [6.54488318, 6.4236548 , 6.64589411],
+                   [6.43758721, 6.891773  , 6.96366276],
+                   [6.38344152, 6.79172504, 6.52889492]]))>
         >>> self.scale(2)
+        <Coords(data=
+            array([[13.09762701, 13.43037873, 13.20552675],
+                   [13.08976637, 12.8473096 , 13.29178823],
+                   [12.87517442, 13.783546  , 13.92732552],
+                   [12.76688304, 13.58345008, 13.05778984]]))>
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> self.tensor()
         >>> self.tensor().tensor().numpy().numpy()
@@ -172,6 +202,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Args:
             dtype : new type
             inplace (bool, default=False): if True, modifies this object
+
+        Returns:
+            Coords: modified coordinates
         """
         new = self if inplace else self.__class__(self.data, self.meta)
         new.data = self._impl.astype(new.data, dtype, copy=not inplace)
@@ -199,6 +232,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Args:
             *shape : new shape of the data
+
+        Returns:
+            Coords: modified coordinates
 
         Example:
             >>> self = Coords.random(6, dim=4).numpy()
@@ -264,6 +300,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Converts numpy to tensors. Does not change memory if possible.
 
+        Returns:
+            Coords: modified coordinates
+
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Coords.random(3).numpy()
@@ -281,6 +320,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         Converts tensors to numpy. Does not change memory if possible.
 
+        Returns:
+            Coords: modified coordinates
+
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Coords.random(3).tensor()
@@ -292,6 +334,96 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         newdata = self._impl.numpy(self.data)
         new = self.__class__(newdata, self.meta)
+        return new
+
+    def reorder_axes(self, new_order, inplace=False):
+        """
+        Change the ordering of the coordinate axes.
+
+        Args:
+            new_order (Tuple[int]): ``new_order[i]`` should specify
+                which axes in the original coordinates should be mapped to the
+                ``i-th`` position in the returned axes.
+
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
+
+        Note:
+            This is the ordering of the "columns" in final numpy axis, not the
+            numpy axes themselves.
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords(data=np.array([
+            >>>     [7, 11],
+            >>>     [13, 17],
+            >>>     [21, 23],
+            >>> ]))
+            >>> new = self.reorder_axes((1, 0))
+            >>> print('new = {!r}'.format(new))
+            new = <Coords(data=
+                array([[11,  7],
+                       [17, 13],
+                       [23, 21]]))>
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, rng=0)
+            >>> new = self.reorder_axes((1, 0))
+            >>> # Remapping using 1, 0 reverses the axes
+            >>> assert np.all(new.data[:, 0] == self.data[:, 1])
+            >>> assert np.all(new.data[:, 1] == self.data[:, 0])
+            >>> # Remapping using 0, 1 does nothing
+            >>> eye = self.reorder_axes((0, 1))
+            >>> assert np.all(eye.data == self.data)
+            >>> # Remapping using 0, 0, destroys the 1-th column
+            >>> bad = self.reorder_axes((0, 0))
+            >>> assert np.all(bad.data[:, 0] == self.data[:, 0])
+            >>> assert np.all(bad.data[:, 1] == self.data[:, 0])
+        """
+        impl = self._impl
+        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+
+        if True:
+            # --- Method 1 - Slicing ---
+            # This will use slicing tricks to avoid a copy operation, but the
+            # data.flags will be modified and contiguous-ness is not preserved
+            new.data = new.data[..., new_order]
+
+        if False:
+            # --- Method 2 - Overwrite ---
+            # This will cause a copy operation, but the data.flags will remain
+            # the same, i.e. contiguous arrays will remain contiguous.
+            new.data[..., :] = new.data[..., new_order]
+
+        if False:
+            # Benchmark different methods, using slicing tricks seems
+            # to have the best default behavior
+            import timerit
+            ti = timerit.Timerit(100, bestof=10, verbose=2)
+            for timer in ti.reset('method2-apply'):
+                new = self.copy()
+                with timer:
+                    new.data[..., :] = new.data[..., new_order]
+
+            for timer in ti.reset('method1-apply'):
+                new = self.copy()
+                with timer:
+                    new.data = new.data[..., new_order]
+
+            for timer in ti.reset('method2-use'):
+                new = self.copy()
+                new.data[..., :] = new.data[..., new_order]
+                with timer:
+                    new.data += 10
+
+            for timer in ti.reset('method1-use'):
+                new = self.copy()
+                new.data = new.data[..., new_order]
+                with timer:
+                    new.data += 10
         return new
 
     # @profile
@@ -313,6 +445,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 for compatibility.
 
             inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
 
         Notes:
             Let D = self.dims
@@ -388,10 +523,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 warnings.warn('gdal/osr is not installed')
             else:
                 if isinstance(transform, osr.CoordinateTransformation):
+                    # NOTE: We are expecting lon/lat here for wgs84
                     new_pts = []
                     for x, y in new.data:
                         x, y, z = transform.TransformPoint(x, y, 0)
-                        assert z == 0
+                        if z != 0:
+                            raise AssertionError('z = {}'.format(z))
                         new_pts.append((x, y))
                     new.data = np.array(new_pts, dtype=new.data.dtype)
                     return new
@@ -490,6 +627,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     # @profile
     def to_imgaug(self, input_dims):
         """
+        Translate to an imgaug object
+
+        Returns:
+            imgaug.KeypointsOnImage: imgaug data structure
+
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.coords import *  # NOQA
@@ -529,14 +671,21 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return self
 
     @profile
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale coordinates by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or per-dimension tuple.
+            about (Tuple | None):
+                if unspecified scales about the origin (0, 0), otherwise the
+                rotation is about this point.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -570,7 +719,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 data = self._impl.astype(data, factor_.dtype)
 
             assert factor_.shape == (dim,)
-            data *= factor_
+
+            if about is None:
+                data *= factor_
+            else:
+                print('about = {!r}'.format(about))
+                about_ = self._rectify_about(about)
+                print('about_ = {!r}'.format(about_))
+                data -= about_
+                data *= factor_
+                data += about_
         new.data = data
         return new
 
@@ -583,6 +741,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             offset (float or Tuple[float]):
                 transation offset as either a scalar or a per-dimension tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
@@ -611,6 +773,151 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data += offset_
         return new
 
+    @profile
+    def rotate(self, theta, about=None, output_dims=None, inplace=False):
+        """
+        Rotate the coordinates about a point.
+
+        Args:
+            theta (float):
+                rotation angle in radians
+
+            about (Tuple | None):
+                if unspecified rotates about the origin (0, 0), otherwise the
+                rotation is about this point.
+
+            output_dims (Tuple): unused in non-raster spatial structures
+
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Coords: modified coordinates
+
+        TODO:
+            - [ ] Generalized ND Rotations?
+
+        References:
+            https://math.stackexchange.com/questions/197772/gen-rot-matrix
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, dim=2, rng=0)
+            >>> theta = np.pi / 2
+            >>> new = self.rotate(theta)
+
+            >>> # Test rotate agrees with warp
+            >>> sin_ = np.sin(theta)
+            >>> cos_ = np.cos(theta)
+            >>> rot_ = np.array([[cos_, -sin_], [sin_,  cos_]])
+            >>> new2 = self.warp(rot_)
+            >>> assert np.allclose(new.data, new2.data)
+
+            >>> #
+            >>> # Rotate about a custom point
+            >>> theta = np.pi / 2
+            >>> new3 = self.rotate(theta, about=(0.5, 0.5))
+            >>> #
+            >>> # Rotate about the center of mass
+            >>> about = self.data.mean(axis=0)
+            >>> new4 = self.rotate(theta, about=about)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> plt = kwplot.autoplt()
+            >>> self.draw(radius=0.01, color='blue', alpha=.5, coord_axes=[1, 0], setlim='grow')
+            >>> plt.gca().set_aspect('equal')
+            >>> new3.draw(radius=0.01, color='red', alpha=.5, coord_axes=[1, 0], setlim='grow')
+        """
+        if self.dim != 2:
+            raise NotImplementedError('only 2D rotations for now')
+
+        dtype = self.dtype
+        if isinstance(about, str):
+            raise NotImplementedError(about)
+
+        if about is None:
+            sin_ = np.sin(theta)
+            cos_ = np.cos(theta)
+            rot_ = np.array([[cos_, -sin_],
+                             [sin_,  cos_]], dtype=dtype)
+        else:
+            print('about = {!r}'.format(about))
+            about_ = self._rectify_about(about)
+            print('about_ = {!r}'.format(about_))
+            """
+            # Construct a general closed-form affine matrix about a point
+            # Shows the symbolic construction of the code
+            # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
+            import sympy
+            sx, sy, theta, shear_y, shear_x, tx, ty, x0, y0 = sympy.symbols(
+                'sx, sy, theta, shear_y, shear_x, tx, ty, x0, y0')
+
+            # Construct an general origin centered affine matrix
+            sin_ = sympy.sin(theta)
+            cos_ = sympy.cos(theta)
+            R = np.array([[cos_, -sin_,  0],
+                          [sin_,  cos_,  0],
+                          [   0,     0,  1]])
+            H = np.array([[      1, shear_x, 0],
+                          [shear_y,       1, 0],
+                          [      0,       0, 1]])
+            S = np.array([[sx,  0, 0],
+                          [ 0, sy, 0],
+                          [ 0,  0, 1]])
+            T = np.array([[1, 0, tx],
+                          [0, 1, ty],
+                          [0, 0,  1]])
+
+            # combine simple transformations into an affine transform
+            Aff_0 = sympy.Matrix(T @ S @ R @ H)
+            Aff_0 = sympy.simplify(Aff_0)
+            print(ub.hzcat(['Aff_0 = ', repr(Aff_0)]))
+
+            # move to center xy0, apply affine transform, then move back
+            tr1 = np.array([[1, 0, -x0],
+                            [0, 1, -y0],
+                            [0, 0,   1]])
+            tr2 = np.array([[1, 0, x0],
+                            [0, 1, y0],
+                            [0, 0,  1]])
+            AffAbout = tr2 @ Aff_0 @ tr1
+            AffAbout = sympy.simplify(AffAbout)
+            print(ub.hzcat(['AffAbout = ', repr(AffAbout)]))
+
+            # Get the special case for rotation about
+            print(repr(AffAbout.subs(dict(shear_x=0, shear_y=0, sx=1, sy=1, tx=0, ty=0))))
+            """
+            x0, y0 = about_
+            sin_ = np.sin(theta)
+            cos_ = np.cos(theta)
+            rot_ = np.array([
+                [ cos_, -sin_, -x0 * cos_ + y0 * sin_ + x0],
+                [ sin_,  cos_, -x0 * sin_ - y0 * cos_ + y0],
+                [    0,     0,                           1]])
+        return self.warp(rot_, output_dims=output_dims, inplace=inplace)
+
+    def _rectify_about(self, about):
+        """
+        Ensures that about returns a specified point. Allows for special keys
+        like center to be used.
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> self = Coords.random(10, dim=2, rng=0)
+        """
+        if about is None:
+            about_ = None
+        else:
+            if isinstance(about, str):
+                if about == 'origin':
+                    about_ = (0, 0)
+                else:
+                    raise KeyError(about)
+            else:
+                about_ = about if ub.iterable(about) else [about] * self.dim
+        return about_
+
     def fill(self, image, value, coord_axes=None, interp='bilinear'):
         """
         Sets sub-coordinate locations in a grid to a particular value
@@ -619,11 +926,150 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             coord_axes (Tuple): specify which image axes each coordinate dim
                 corresponds to.  For 2D images, if you are storing r/c data,
                 set to [0,1], if you are storing x/y data, set to [1,0].
+
+        Returns:
+            ndarray: image with coordinates rasterized on it
         """
         import kwimage
         index = self.data
         image = kwimage.subpixel_setvalue(image, index, value,
                                           coord_axes=coord_axes, interp=interp)
+        return image
+
+    def soft_fill(self, image, coord_axes=None, radius=5):
+        """
+        Used for drawing keypoint truth in heatmaps
+
+        Args:
+            coord_axes (Tuple): specify which image axes each coordinate dim
+                corresponds to.  For 2D images, if you are storing r/c data,
+                set to [0,1], if you are storing x/y data, set to [1,0].
+
+                In other words the i-th entry in coord_axes specifies which
+                row-major spatial dimension the i-th column of a coordinate
+                corresponds to. The index is the coordinate dimension and the
+                value is the axes dimension.
+
+        Returns:
+            ndarray: image with coordinates rasterized on it
+
+        References:
+            https://stackoverflow.com/questions/54726703/generating-keypoint-heatmaps-in-tensorflow
+
+        Example:
+            >>> from kwimage.structs.coords import *  # NOQA
+            >>> s = 64
+            >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
+            >>> # Put points on edges to to verify "edge cases"
+            >>> self.data[1] = [0, 0]       # top left
+            >>> self.data[2] = [s, s]       # bottom right
+            >>> self.data[3] = [0, s + 10]  # bottom left
+            >>> self.data[4] = [-3, s // 2] # middle left
+            >>> self.data[5] = [s + 1, -1]  # top right
+            >>> # Put points in the middle to verify overlap blending
+            >>> self.data[6] = [32.5, 32.5] # middle
+            >>> self.data[7] = [34.5, 34.5] # middle
+            >>> fill_value = 1
+            >>> coord_axes = [1, 0]
+            >>> radius = 10
+            >>> image1 = np.zeros((s, s))
+            >>> self.soft_fill(image1, coord_axes=coord_axes, radius=radius)
+            >>> radius = 3.0
+            >>> image2 = np.zeros((s, s))
+            >>> self.soft_fill(image2, coord_axes=coord_axes, radius=radius)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image1, pnum=(1, 2, 1))
+            >>> kwplot.imshow(image2, pnum=(1, 2, 2))
+        """
+        import scipy.stats
+
+        if radius <= 0:
+            raise ValueError('radius must be positive')
+
+        # OH! How I HATE the squeeze function!
+        SCIPY_STILL_USING_SQUEEZE_FUNC = True
+
+        blend_mode = 'maximum'
+
+        image_ndims = len(image.shape)
+
+        for pt in self.data:
+
+            # Find a grid of coordinates on the image to fill for this point
+            low = np.floor(pt - radius).astype(np.int)
+            high = np.ceil(pt + radius).astype(np.int)
+            grid = np.dstack(np.mgrid[tuple(
+                slice(s, t) for s, t in zip(low, high))])
+
+            # Flatten the grid into a list of coordinates to be filled
+            rows_of_coords = grid.reshape(-1, grid.shape[-1])
+
+            # Remove grid coordinates that are out of bounds
+            lower_bound = np.array([0, 0])
+            upper_bound = np.array([
+                image.shape[i] for i in coord_axes
+            ])[None, :]
+            in_bounds_flags1 = (rows_of_coords >= lower_bound).all(axis=1)
+            rows_of_coords = rows_of_coords[in_bounds_flags1]
+            in_bounds_flags2 = (rows_of_coords < upper_bound).all(axis=1)
+            rows_of_coords = rows_of_coords[in_bounds_flags2]
+
+            if len(rows_of_coords) > 0:
+                # Create a index into the image and insert the columns of
+                # coordinates to fill into the appropirate dimensions
+                img_index = [slice(None)] * image_ndims
+                for axes_idx, coord_col in zip(coord_axes, rows_of_coords.T):
+                    img_index[axes_idx] = coord_col
+                img_index = tuple(img_index)
+
+                # Note: Do we just use kwimage.gaussian_patch for the 2D case
+                # instead?
+                # TODO: is there a better method for making a "brush stroke"?
+                # cov = 0.3 * ((extent - 1) * 0.5 - 1) + 0.8
+                cov = radius
+                rv = scipy.stats.multivariate_normal(mean=pt, cov=cov)
+                new_values = rv.pdf(rows_of_coords)
+
+                # the mean will be the maximum values of the normal
+                # distribution, normalize by that.
+                max_val = float(rv.pdf(pt))
+
+                if SCIPY_STILL_USING_SQUEEZE_FUNC:
+                    # If multivariate_normal was implemented right we would not
+                    # need to check for scalar values
+                    # See: https://github.com/scipy/scipy/issues/7689
+                    if len(rows_of_coords) == 1:
+                        if len(new_values.shape) != 0:
+                            import warnings
+                            warnings.warn(ub.paragraph(
+                                '''
+                                Scipy fixed the bug in multivariate_normal!
+                                We can remove this stupid hack!
+                                '''))
+                        else:
+                            # Ensure new_values is always a list of scalars
+                            new_values = new_values[None]
+
+                new_values = new_values / max_val
+
+                # Blend the sampled values onto the existing pixels
+                prev_values = image[img_index]
+
+                # HACK: wont generalize?
+                if len(prev_values.shape) != len(new_values.shape):
+                    new_values = new_values[:, None]
+
+                if blend_mode == 'maximum':
+                    blended = np.maximum(prev_values, new_values)
+                else:
+                    raise KeyError(blend_mode)
+
+                # Draw the blended pixels inplace
+                image[img_index] = blended
+
         return image
 
     def draw_on(self, image=None, fill_value=1, coord_axes=[1, 0],
@@ -642,6 +1088,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 corresponds to. The index is the coordinate dimension and the
                 value is the axes dimension.
 
+        Returns:
+            ndarray: image with coordinates drawn on it
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
@@ -656,9 +1105,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='bilinear')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='nearest')
             >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwplot
-            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(image)
             >>> self.draw(radius=3, alpha=.5, coord_axes=[1, 0])
         """
@@ -672,23 +1122,29 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return image
 
     def draw(self, color='blue', ax=None, alpha=None, coord_axes=[1, 0],
-             radius=1):
+             radius=1, setlim=False):
         """
         Note:
             unlike other methods, the defaults assume x/y internal data
 
         Args:
+            setlim (bool): if True ensures the limits of the axes contains the
+                polygon
+
             coord_axes (Tuple): specify which image axes each coordinate dim
                 corresponds to.  For 2D images,
                     if you are storing r/c data, set to [0,1],
                     if you are storing x/y data, set to [1,0].
+
+        Returns:
+            List[mpl.collections.PatchCollection]: drawn matplotlib objects
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10)
             >>> # xdoc: +REQUIRES(--show)
-            >>> self.draw(radius=3.0)
+            >>> self.draw(radius=3.0, setlim=True)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> self.draw(radius=3.0)
@@ -727,6 +1183,22 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             col = mpl.collections.PatchCollection(patches, match_original=True)
             collections.append(col)
             ax.add_collection(col)
+
+        if setlim:
+            x1, y1 = self.data.min(axis=0)
+            x2, y2 = self.data.max(axis=0)
+
+            if setlim == 'grow':
+                # only allow growth
+                x1_, x2_ = ax.get_xlim()
+                y1_, y2_ = ax.get_ylim()
+                x1 = min(x1_, x1)
+                x2 = max(x2_, x2)
+                y1 = min(y1_, y1)
+                y2 = max(y2_, y2)
+
+            ax.set_xlim(x1, x2)
+            ax.set_ylim(y1, y2)
         return collections
 
 if __name__ == '__main__':

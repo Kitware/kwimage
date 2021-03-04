@@ -108,48 +108,48 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 
 #         if measure_cpu:
 #             cpu_dets = np_dets.tensor(None)
-#             cpu_tlbr = cpu_dets.boxes.to_tlbr().data
+#             cpu_ltrb = cpu_dets.boxes.to_ltrb().data
 #             cpu_scores = cpu_dets.scores
 #             for timer in ti.reset('torch(cpu)'):
 #                 with timer:
-#                     keep = torch_nms(cpu_tlbr, cpu_scores, thresh=thresh)
+#                     keep = torch_nms(cpu_ltrb, cpu_scores, thresh=thresh)
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
 #         if measure_gpu:
 #             gpu_dets = np_dets.tensor(gpu)
 #             # Move boxes to the GPU
-#             gpu_tlbr = gpu_dets.boxes.to_tlbr().data
+#             gpu_ltrb = gpu_dets.boxes.to_ltrb().data
 #             gpu_scores = gpu_dets.scores
 
 #             for timer in ti.reset('torch(gpu)'):
 #                 with timer:
-#                     keep = torch_nms(gpu_tlbr, gpu_scores, thresh=thresh)
+#                     keep = torch_nms(gpu_ltrb, gpu_scores, thresh=thresh)
 #                     torch.cuda.synchronize()
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
-#             np_tlbr = np_dets.boxes.to_tlbr().data
+#             np_ltrb = np_dets.boxes.to_ltrb().data
 #             np_scores = np_dets.scores
 #             for timer in ti.reset('cython(gpu)'):
 #                 with timer:
-#                     keep = kwimage.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='gpu')
+#                     keep = kwimage.non_max_supression(np_ltrb, np_scores, thresh=thresh, impl='gpu')
 #                     torch.cuda.synchronize()
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
 #         if True:
-#             np_tlbr = np_dets.boxes.to_tlbr().data
+#             np_ltrb = np_dets.boxes.to_ltrb().data
 #             np_scores = np_dets.scores
 #             for timer in ti.reset('cython(cpu)'):
 #                 with timer:
-#                     keep = kwimage.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='cpu')
+#                     keep = kwimage.non_max_supression(np_ltrb, np_scores, thresh=thresh, impl='cpu')
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
 #             for timer in ti.reset('numpy(cpu)'):
 #                 with timer:
-#                     keep = kwimage.non_max_supression(np_tlbr, np_scores, thresh=thresh, impl='py')
+#                     keep = kwimage.non_max_supression(np_ltrb, np_scores, thresh=thresh, impl='py')
 #             ydata[ti.label].append(ti.min())
 #             outputs[ti.label] = ensure_numpy_indices(keep)
 
@@ -157,7 +157,7 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
 
 #         # Check that all kept boxes do not have more than `threshold` ious
 #         for key, keep_idxs in outputs.items():
-#             kept = kwimage.Boxes(np_tlbr[keep_idxs], 'tlbr')
+#             kept = kwimage.Boxes(np_ltrb[keep_idxs], 'ltrb')
 #             ious = kept.ious(kept)
 #             max_iou = (np.tril(ious) - np.eye(len(ious))).max()
 #             if max_iou > thresh:

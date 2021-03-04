@@ -4,7 +4,54 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.6.10 - Unreleased
+## Version 0.7.0 - Unreleased
+
+### Added
+
+* Add `.jp2` to known GDAL extensions.
+
+* Add `soft_fill` to `Coords`, which aims to paint Gaussian blobs as coordinate
+  locations.
+
+* Add `kwimage.padded_slice` ported and refactored from ndsampler.
+
+* Add `reorder_axes` to `Coords`, which can change xy to yx representations etc...
+
+* Added `Boxes.bounding_box` method 
+
+* Added quantize method to bounding boxes which pushes the left-top coordinates
+  to their floor and the right-bottom coordinates to their ceiling.
+
+* `Detections.draw_on` can now accept color='classes'
+
+* expose `thickness` in `Detections.draw_on`.
+
+* Added `about` to Polygon and Coords scale and rotate.
+
+* Add `to_geojson` to `PolygonList`
+
+### Fixed
+* `kwimage.Detections` now correctly handles `None` data values. Previously
+  `None` was converted to an `array(None, dtype=object)`.
+
+* demodata images now have the correct extension
+
+* Fixed issue with channelless data in `Heatmap.draw_on`
+
+* Bug in `Detections._make_labels` when scores are List[None]
+
+### Changed
+
+* BREAKING: TLBR has been internally switched to LTRB 
+
+* Better Polygon coercion from geojson
+
+
+## Version 0.6.10 - Released 2020-11-24
+
+### 
+* Added rotate to Coords and Polygon
+* Added arg to control where text is drawn on `Boxes.draw_on`.
 
 ### Fixed
 * GPG Keys needed to be renewed

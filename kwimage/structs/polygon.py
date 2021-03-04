@@ -197,23 +197,43 @@ class _PolyWarpMixin:
         return new
 
     @profile
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale a polygon by a factor
 
         Args:
             factor (float or Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+            about (Tuple | None):
+                if unspecified scales about the origin (0, 0), otherwise the
+                rotation is about this point.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.scale(10)
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(10, rng=0).translate((0.5))
+            >>> new = self.scale(1.5, about='center')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> self.draw(color='red', alpha=0.5)
+            >>> new.draw(color='blue', alpha=0.5, setlim=True)
         """
         new = self if inplace else self.__class__(self.data.copy())
-        new.data['exterior'] = new.data['exterior'].scale(factor, output_dims, inplace)
-        new.data['interiors'] = [p.scale(factor, output_dims, inplace) for p in new.data['interiors']]
+        about = self._rectify_about(about)
+        new.data['exterior'] = new.data['exterior'].scale(
+            factor, about=about, output_dims=output_dims, inplace=inplace)
+        new.data['interiors'] = [
+            p.scale(factor, about=about, output_dims=output_dims,
+                    inplace=inplace)
+            for p in new.data['interiors']]
         return new
 
     @profile
@@ -225,6 +245,7 @@ class _PolyWarpMixin:
             factor (float or Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+            inplace (bool, default=False): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -238,6 +259,85 @@ class _PolyWarpMixin:
                                  for p in new.data['interiors']]
         return new
 
+    @profile
+    def rotate(self, theta, about=None, output_dims=None, inplace=False):
+        """
+        Rotate the polygon
+
+        Args:
+            theta (float):
+                rotation angle in radians
+
+            about (Tuple | None | str):
+                if unspecified rotates about the origin (0, 0). If "center"
+                then rotate around the center of this polygon. Otherwise the
+                rotation is about a custom specified point.
+
+            output_dims (Tuple): unused in non-raster spatial structures
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(10, rng=0)
+            >>> new = self.rotate(np.pi / 2, about='center')
+            >>> new2 = self.rotate(np.pi / 2)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.autompl()
+            >>> self.draw(color='red', alpha=0.5)
+            >>> new.draw(color='blue', alpha=0.5)
+        """
+        new = self if inplace else self.__class__(self.data.copy())
+        about = self._rectify_about(about)
+        new.data['exterior'] = new.data['exterior'].rotate(
+            theta, about, output_dims, inplace)
+        new.data['interiors'] = [p.rotate(theta, about, output_dims, inplace)
+                                 for p in new.data['interiors']]
+        return new
+
+    def _rectify_about(self, about):
+        """
+        Ensures that about returns a specified point. Allows for special keys
+        like center to be used.
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(10, rng=0)
+            >>> self._rectify_about('center')
+        """
+        if about is None:
+            about_ = None
+        else:
+            if isinstance(about, str):
+                if about == 'origin':
+                    about_ = (0., 0.)
+                elif about == 'center':
+                    centroid = self.to_shapely().centroid
+                    about_ = (centroid.x, centroid.y)
+                else:
+                    raise KeyError(about)
+            else:
+                about_ = about if ub.iterable(about) else [about] * 2
+        return about_
+
+    def swap_axes(self, inplace=False):
+        """
+        Swap the x and y coordinate axes
+
+        Args:
+            inplace (bool, default=False): if True, modifies data inplace
+
+        Returns:
+            Polygon: modified polygon
+        """
+        new = self if inplace else self.__class__(self.data.copy())
+        new.data['exterior'] = new.data['exterior'].reorder_axes(
+            (1, 0), inplace=inplace)
+        new.data['interiors'] = [
+            p.reorder_axes((1, 0), inplace=inplace)
+            for p in new.data['interiors']]
+        return new
+
 
 class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     """
@@ -248,13 +348,43 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     holes should be clockwise.
 
     Example:
+        >>> import kwimage
         >>> data = {
         >>>     'exterior': np.array([[13,  1], [13, 19], [25, 19], [25,  1]]),
         >>>     'interiors': [
-        >>>         np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18], [24, 19], [14, 19], [13, 18]]),
-        >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11], [24, 12], [14, 12], [13, 11]])]
+        >>>         np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18],
+        >>>                   [24, 19], [14, 19], [13, 18]]),
+        >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11],
+        >>>                   [24, 12], [14, 12], [13, 11]])]
         >>> }
-        >>> self = Polygon(**data)
+        >>> self = kwimage.Polygon(**data)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=True)
+
+    Example:
+        >>> import kwimage
+        >>> self = kwimage.Polygon.random(
+        >>>     n=5, n_holes=1, convex=False, rng=0)
+        >>> print('self = {}'.format(self))
+        self = <Polygon({
+            'exterior': <Coords(data=
+                            array([[0.30371392, 0.97195856],
+                                   [0.24372304, 0.60568445],
+                                   [0.21408694, 0.34884262],
+                                   [0.5799477 , 0.44020379],
+                                   [0.83720288, 0.78367234]]))>,
+            'interiors': [<Coords(data=
+                             array([[0.50164209, 0.83520279],
+                                    [0.25835064, 0.40313428],
+                                    [0.28778562, 0.74758761],
+                                    [0.30341266, 0.93748088]]))>],
+        })>
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=True)
     """
     __datakeys__ = ['exterior', 'interiors']
     __metakeys__ = ['classes']
@@ -304,6 +434,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             meta = {}
         self.data = data
         self.meta = meta
+
+    @property
+    def exterior(self):
+        return self.data['exterior']
+
+    @property
+    def interiors(self):
+        return self.data['interiors']
 
     def __nice__(self):
         return ub.repr2(self.data, nl=1)
@@ -374,7 +512,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         def _gen_polygon2(n, irregularity, spikeyness):
             """
             Creates the polygon by sampling points on a circle around the centre.
-            Randon noise is added by varying the angular spacing between sequential points,
+            Random noise is added by varying the angular spacing between sequential points,
             and by varying the radial distance of each point from the centre.
 
             Based on original code by Mike Ounsworth
@@ -506,6 +644,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         TODO:
             - [ ] currently not efficient
 
+        Args:
+            dims (Tuple): height and width of the output mask
+
+        Returns:
+            kwimage.Mask
+
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
@@ -524,6 +668,32 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         value = 1
         self.fill(c_mask, value)
         mask = kwimage.Mask(c_mask, 'c_mask')
+        return mask
+
+    def to_relative_mask(self):
+        """
+        Returns a translated mask such the mask dimensions are minimal.
+
+        In other words, we move the polygon all the way to the top-left and
+        return a mask just big enough to fit the polygon.
+
+        Returns:
+            kwimage.Mask
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random().scale(8).translate(100, 100)
+            >>> mask = self.to_relative_mask()
+            >>> assert mask.shape <= (8, 8)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> mask.draw(color='blue')
+            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
+        """
+        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         return mask
 
     def fill(self, image, value=1):
@@ -567,9 +737,28 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         Try to autodetermine format of input polygon and coerce it into a
         kwimage.Polygon.
+
+        Args:
+            data (object): some type of data that can be interpreted as a
+                polygon.
+
+        Returns:
+            kwimage.Polygon
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random()
+            >>> self.coerce(self)
+            >>> self.coerce(self.exterior)
+            >>> self.coerce(self.exterior.data)
+            >>> self.coerce(self.data)
+            >>> self.coerce(self.to_geojson())
         """
+        import kwimage
         if isinstance(data, Polygon):
             return data
+        if isinstance(data, (np.ndarray, kwimage.Coords)):
+            return Polygon(exterior=data)  # TODO accept torch
         if isinstance(data, str):
             return Polygon.from_wkt(data)
         if isinstance(data, dict):
@@ -593,6 +782,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         Args:
             geom (shapely.geometry.polygon.Polygon): a shapely polygon
+
+        Returns:
+            kwimage.Polygon
         """
         exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
@@ -607,10 +799,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             data (str): a WKT polygon string
 
+        Returns:
+            kwimage.Polygon
+
         Example:
-            data = kwimage.Polygon.random().to_shapely().to_wkt()
-            data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
-            self = Polygon.from_wkt(data)
+            >>> import kwimage
+            >>> data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
+            >>> self = kwimage.Polygon.from_wkt(data)
+            >>> assert len(self.exterior) == 4
         """
         from shapely import wkt
         geom = wkt.loads(data)
@@ -625,13 +821,49 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             data_geojson (dict): geojson data
 
+        References:
+            https://geojson.org/geojson-spec.html
+
         Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=2)
             >>> data_geojson = self.to_geojson()
             >>> new = Polygon.from_geojson(data_geojson)
         """
-        exterior = np.array(data_geojson['coordinates'][0])
-        interiors = [np.array(h) for h in data_geojson['coordinates'][1:]]
+        # By the spec a Polygon should have 3 levels of nesting, but lets
+        # handle the common case (mistake?) where there are only two
+        geojson_type = data_geojson.get('type', 'Polygon').lower()
+        if geojson_type != 'polygon':
+            raise ValueError('Type is {}, not Polygon'.format(geojson_type))
+
+        # TODO: better method for checking nest depth
+        coords = data_geojson['coordinates']
+        def check_depth(data):
+            if isinstance(data, list) and len(data):
+                return check_depth(data[0]) + 1
+            else:
+                return 0
+        depth = check_depth(coords)
+        if depth == 2:
+            raise Exception(ub.codeblock(
+                '''
+                The GEOJSON spec has a depth of 3!
+
+                coodinates should be:
+                    'coordinates': [
+                       [ [x_1, y_1], ... , [x_n, y_n] ],  # exterior
+                       [ [x_1, y_1], ... , [x_n, y_n] ],  # hole 1
+                       [ [x_1, y_1], ... , [x_n, y_n] ],  # hole 2
+                    ]
+
+                '''))
+            # exterior = np.array(coords)
+            # interiors = []
+        elif depth == 3:
+            exterior = np.array(coords[0])
+            interiors = [np.array(h) for h in coords[1:]]
+        else:
+            raise Exception('Unknown geojson format')
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
@@ -657,6 +889,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def to_geojson(self):
         """
         Converts polygon to a geojson structure
+
+        Returns:
+            Dict[str, object]
 
         Example:
             >>> import kwimage
@@ -697,7 +932,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             else:
                 self = cls(exterior=[])
         elif isinstance(data, dict):
-            assert 'exterior' in data
+            if 'exterior' not in data:
+                raise ValueError('dict requires exterior key')
             self = cls(**data)
         else:
             raise TypeError(type(data))
@@ -707,6 +943,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return self.to_coco(style=style)
 
     def to_coco(self, style='orig'):
+        """
+        Returns:
+            List | Dict : coco-style polygons
+        """
         interiors = self.data.get('interiors', [])
         if style == 'orig':
             if interiors:
@@ -725,13 +965,39 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return MultiPolygon([self])
 
     def to_boxes(self):
+        """
+        Deprecated: lossy conversion use 'bounding_box' instead
+        """
+        return self.bounding_box()
+
+    def bounding_box(self):
+        """
+        Returns an axis-aligned bounding box for the segmentation
+
+        Returns:
+            kwimage.Boxes
+        """
         import kwimage
         xys = self.data['exterior'].data
-        tl = xys.min(axis=0)
-        br = xys.max(axis=0)
-        tlbr = np.hstack([tl, br])[None, :]
-        boxes = kwimage.Boxes(tlbr, 'tlbr')
+        lt = xys.min(axis=0)
+        rb = xys.max(axis=0)
+        ltrb = np.hstack([lt, rb])[None, :]
+        boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
+
+    def bounding_box_polygon(self):
+        """
+        Returns an axis-aligned bounding polygon for the segmentation.
+
+        Notes:
+            This Polygon will be a Box, not a convex hull! Use shapely for
+            convex hulls.
+
+        Returns:
+            kwimage.Polygon
+        """
+        new = self.bounding_box().to_polygons()[0]
+        return new
 
     def copy(self):
         self2 = Polygon(self.data, self.meta)
@@ -885,6 +1151,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
 
+        Args:
+            setlim (bool): if True ensures the limits of the axes contains the
+                polygon
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -949,22 +1219,83 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         ax.add_patch(patch)
 
         if setlim:
-            x1, y1, x2, y2 = self.to_boxes().to_tlbr().data[0]
+            x1, y1, x2, y2 = self.to_boxes().to_ltrb().data[0]
+
+            if setlim == 'grow':
+                # only allow growth
+                x1_, x2_ = ax.get_xlim()
+                x1 = min(x1_, x1)
+                x2 = max(x2_, x2)
+
+                y1_, y2_ = ax.get_ylim()
+                y1 = min(y1_, y1)
+                y2 = max(y2_, y2)
+
             ax.set_xlim(x1, x2)
             ax.set_ylim(y1, y2)
         return patch
+
+    def _ensure_vertex_order(self, inplace=False):
+        """
+        Fixes vertex ordering so the exterior ring is CCW and the interior rings
+        are CW.
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(n=3, n_holes=2, rng=0)
+            >>> print('self = {!r}'.format(self))
+            >>> new = self._ensure_vertex_order()
+            >>> print('new = {!r}'.format(new))
+
+            >>> self = kwimage.Polygon.random(n=3, n_holes=2, rng=0).swap_axes()
+            >>> print('self = {!r}'.format(self))
+            >>> new = self._ensure_vertex_order()
+            >>> print('new = {!r}'.format(new))
+        """
+        new = self if inplace else self.__class__(self.data.copy())
+
+        exterior = new.data['exterior']
+
+        if _is_clockwise(exterior.data):
+            # ensure exterior is CCW
+            exterior.data = exterior.data[::-1]
+            pass
+
+        for interior in new.data['interiors']:
+            if not _is_clockwise(interior.data):
+                interior.data = interior.data[::-1]
+        return new
+
+
+def _is_clockwise(verts):
+    """
+    References:
+        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order#:~:text=If%20the%20determinant%20is%20negative,q%20and%20r%20are%20collinear.
+
+    Ignore:
+        verts = poly.data['exterior'].data[::-1]
+    """
+    cross_product = np.cross(verts[:-1], verts[1:])
+    is_clockwise = cross_product.sum() > 0
+    return is_clockwise
 
 
 def _order_vertices(verts):
     """
     References:
         https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
+
+    Ignore:
+        verts = poly.data['exterior'].data[::-1]
     """
-    mlat = verts.T[0].sum() / len(verts)
-    mlng = verts.T[1].sum() / len(verts)
+    mean_x = verts.T[0].sum() / len(verts)
+    mean_y = verts.T[1].sum() / len(verts)
+
+    delta_x = mean_x - verts.T[0]
+    delta_y = verts.T[1] - mean_y
 
     tau = np.pi * 2
-    angle = (np.arctan2(mlat - verts.T[0], verts.T[1] - mlng) + tau) % tau
+    angle = (np.arctan2(delta_x, delta_y) + tau) % tau
     sortx = angle.argsort()
     verts = verts.take(sortx, axis=0)
     return verts
@@ -980,7 +1311,7 @@ class MultiPolygon(_generic.ObjectList):
     """
 
     @classmethod
-    def random(self, n=3, rng=None, tight=False):
+    def random(self, n=3, n_holes=0, rng=None, tight=False):
         """
         Create a random MultiPolygon
 
@@ -989,7 +1320,8 @@ class MultiPolygon(_generic.ObjectList):
         """
         import kwarray
         rng = kwarray.ensure_rng(rng)
-        data = [Polygon.random(rng=rng, tight=tight) for _ in range(n)]
+        data = [Polygon.random(rng=rng, n_holes=n_holes, tight=tight)
+                for _ in range(n)]
         self = MultiPolygon(data)
         return self
 
@@ -1013,10 +1345,17 @@ class MultiPolygon(_generic.ObjectList):
 
     def to_boxes(self):
         """
+        Deprecated: lossy conversion use 'bounding_box' instead
+        """
+        return self.bounding_box()
+
+    def bounding_box(self):
+        """
         Return the bounding box of the multi polygon
 
         Returns:
-            kwimage.Boxes:
+            kwimage.Boxes: a Boxes object with one box that encloses all
+                polygons
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -1028,14 +1367,14 @@ class MultiPolygon(_generic.ObjectList):
             >>> assert np.allclose(areas1, areas2)
         """
         import kwimage
-        tl = np.array([np.inf, np.inf])
-        br = np.array([-np.inf, -np.inf])
+        lt = np.array([np.inf, np.inf])
+        rb = np.array([-np.inf, -np.inf])
         for data in self.data:
             xys = data.data['exterior'].data
-            tl = np.minimum(tl, xys.min(axis=0))
-            br = np.maximum(br, xys.max(axis=0))
-        tlbr = np.hstack([tl, br])[None, :]
-        boxes = kwimage.Boxes(tlbr, 'tlbr')
+            lt = np.minimum(lt, xys.min(axis=0))
+            rb = np.maximum(rb, xys.max(axis=0))
+        ltrb = np.hstack([lt, rb])[None, :]
+        boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
 
     def to_mask(self, dims=None):
@@ -1068,6 +1407,20 @@ class MultiPolygon(_generic.ObjectList):
             if p is not None:
                 p.fill(c_mask, value=1)
         mask = kwimage.Mask(c_mask, 'c_mask')
+        return mask
+
+    def to_relative_mask(self):
+        """
+        Returns a translated mask such the mask dimensions are minimal.
+
+        In other words, we move the polygon all the way to the top-left and
+        return a mask just big enough to fit the polygon.
+
+        Returns:
+            Mask
+        """
+        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         return mask
 
     @classmethod
@@ -1169,6 +1522,9 @@ class MultiPolygon(_generic.ObjectList):
         """
         return [item.to_coco(style=style) for item in self.data]
 
+    def swap_axes(self, inplace=False):
+        return self.apply(lambda item: item.swap_axes(inplace=inplace))
+
     # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
     #     """
     #     Faster version
@@ -1214,3 +1570,47 @@ class PolygonList(_generic.ObjectList):
             for item in self
         ])
         return new
+
+    def swap_axes(self, inplace=False):
+        return self.apply(lambda item: item.swap_axes(inplace=inplace))
+
+    def to_geojson(self, as_collection=False):
+        """
+        Converts a list of polygons/multipolygons to a geojson structure
+
+        Args:
+            as_collection (bool): if True, wraps the polygon geojson items in a
+                geojson feature collection, otherwise just return a list of
+                items.
+
+        Returns:
+            List[Dict] | Dict: items or geojson data
+
+        Example:
+            >>> import kwimage
+            >>> data = [kwimage.Polygon.random(),
+            >>>         kwimage.Polygon.random(n_holes=1),
+            >>>         kwimage.MultiPolygon.random(n_holes=1),
+            >>>         kwimage.MultiPolygon.random()]
+            >>> self = kwimage.PolygonList(data)
+            >>> geojson = self.to_geojson(as_collection=True)
+            >>> items = self.to_geojson(as_collection=False)
+            >>> print('geojson = {}'.format(ub.repr2(geojson, nl=-2, precision=1)))
+            >>> print('items = {}'.format(ub.repr2(items, nl=-2, precision=1)))
+        """
+        items = [poly.to_geojson() for poly in self.data]
+        if as_collection:
+            geojson = {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": item,
+                        "properties": {}
+                    }
+                    for item in items
+                ]
+            }
+            return geojson
+        else:
+            return items

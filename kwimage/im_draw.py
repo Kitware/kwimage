@@ -303,7 +303,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
         >>> color = 'dodgerblue'
         >>> thickness = 1
-        >>> boxes = kwimage.Boxes([[1, 1, 8, 8]], 'tlbr')
+        >>> boxes = kwimage.Boxes([[1, 1, 8, 8]], 'ltrb')
         >>> img2 = draw_boxes_on_image(img, boxes, color, thickness)
         >>> assert tuple(img2[1, 1]) == (30, 144, 255)
         >>> # xdoc: +REQUIRES(--show)
@@ -320,9 +320,9 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         boxes = kwimage.Boxes(boxes, box_format)
 
     color = kwimage.Color(color)._forimage(img, colorspace)
-    tlbr = boxes.to_tlbr().data
+    ltrb = boxes.to_ltrb().data
     img2 = img.copy()
-    for x1, y1, x2, y2 in tlbr:
+    for x1, y1, x2, y2 in ltrb:
         # pt1 = (int(round(x1)), int(round(y1)))
         # pt2 = (int(round(x2)), int(round(y2)))
         pt1 = (int(x1), int(y1))
