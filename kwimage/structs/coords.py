@@ -723,9 +723,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             if about is None:
                 data *= factor_
             else:
-                print('about = {!r}'.format(about))
                 about_ = self._rectify_about(about)
-                print('about_ = {!r}'.format(about_))
                 data -= about_
                 data *= factor_
                 data += about_
@@ -842,9 +840,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             rot_ = np.array([[cos_, -sin_],
                              [sin_,  cos_]], dtype=dtype)
         else:
-            print('about = {!r}'.format(about))
             about_ = self._rectify_about(about)
-            print('about_ = {!r}'.format(about_))
             """
             # Construct a general closed-form affine matrix about a point
             # Shows the symbolic construction of the code

@@ -10,10 +10,28 @@ from . import im_core
 
 
 # Common image extensions
+JPG_EXTENSIONS = (
+    '.jpg', '.jpeg'
+)
+
+# These should be supported by opencv / PIL
+_WELL_KNOWN_EXTENSIONS = (
+    JPG_EXTENSIONS +
+    ('.bmp', '.pgm', '.png',)
+)
+
+
+# Extensions that usually will require GDAL
+GDAL_EXTENSIONS = (
+    '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
+    '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+    '.jp2',
+)
+
 IMAGE_EXTENSIONS = (
-    '.bmp', '.pgm', '.jpg', '.jpeg', '.png', '.tif', '.tiff',
-    '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif', '.r0',
-    '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf', '.jp2',
+    _WELL_KNOWN_EXTENSIONS +
+    ('.tif', '.tiff',) +
+    GDAL_EXTENSIONS
 )
 
 
@@ -168,14 +186,6 @@ def imread(fpath, space='auto', backend='auto'):
         # Determine the backend reader using the file extension
         _fpath_lower = fpath.lower()
         # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
-        GDAL_EXTENSIONS = (
-            '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
-            '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
-            '.jp2',
-        )
-        JPG_EXTENSIONS = (
-            '.jpg', '.jpeg'
-        )
         if _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
         elif _fpath_lower.endswith(('.tif', '.tiff')):
@@ -562,6 +572,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                 backend = 'gdal'
             else:
                 backend = 'skimage'
+        elif fpath.endswith(GDAL_EXTENSIONS):
+            if _have_gdal():
+                backend = 'gdal'
         else:
             backend = 'cv2'
 
