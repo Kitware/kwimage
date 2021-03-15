@@ -838,12 +838,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         # TODO: better method for checking nest depth
         coords = data_geojson['coordinates']
-        def check_depth(data):
-            if isinstance(data, list) and len(data):
-                return check_depth(data[0]) + 1
-            else:
-                return 0
-        depth = check_depth(coords)
+        def check_leftmost_depth(data):
+            # quick check leftmost depth of a nested struct
+            item = data
+            depth = 0
+            while isinstance(item, list):
+                if len(item) == 0:
+                    raise Exception('no child node')
+                item = item[0]
+                depth += 1
+            return depth
+        depth = check_leftmost_depth(coords)
         if depth == 2:
             raise Exception(ub.codeblock(
                 '''
