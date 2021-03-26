@@ -200,6 +200,13 @@ def rle_translate(rle, offset, output_shape=None):
          [0 0 0]
          [0 1 0]]
     """
+    if set(rle.keys()) == {'size', 'counts'}:
+        # Handle coco rle's
+        rle = rle.copy()
+        rle['shape'] = rle['size']
+        rle['order'] = 'F'
+        rle['binary'] = True
+
     if not rle['binary']:
         raise NotImplementedError(
             'only binary rle translation is implemented')

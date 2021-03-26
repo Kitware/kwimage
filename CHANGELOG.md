@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.1 - Unreleased
 
+### Fixed
+
+* Issue with RLE to fortran mask conversion: https://gitlab.kitware.com/computer-vision/kwimage/-/issues/2
+
 
 ## Version 0.7.0 - Released 2021-03-04
 
