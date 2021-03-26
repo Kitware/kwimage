@@ -256,6 +256,37 @@ stages:
 # ---------------
 # Python 3.8 Jobs
 
+build/cp39-cp39-manylinux2010:
+    <<: 
+        - *manylinux_build_template
+
+test_full/cp39-cp39-manylinux2010:
+    <<: 
+        - *test_full_template
+    image:
+        python:3.9
+
+test_minimal/cp39-cp39-manylinux2010:
+    <<: 
+        - *test_minimal_template
+    image:
+        python:3.9
+
+gpgsign/cp39-cp39-manylinux2010:
+    <<: 
+        - *gpgsign_template
+    image:
+        python:3.9
+
+deploy/cp39-cp39-manylinux2010:
+    <<: 
+        - *deploy_template
+    image:
+        python:3.9
+
+# ---------------
+# Python 3.8 Jobs
+
 build/cp38-cp38-manylinux2010:
     <<: 
         - *manylinux_build_template
