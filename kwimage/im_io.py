@@ -780,6 +780,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         options (List[str]): other gdal options
 
+    Returns:
+        str: the file path where the data was written
+
     References:
         https://geoexamples.com/other/2019/02/08/cog-tutorial.html#create-a-cog-using-gdal-python
         http://osgeo-org.1560.x6.nabble.com/gdal-dev-Creating-Cloud-Optimized-GeoTIFFs-td5320101.html
@@ -829,6 +832,29 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> assert main_band.GetOverviewCount() == 3
 
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=[2, 4])
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
+        >>> import tempfile
+        >>> import kwimage
+        >>> # Test with uint16
+        >>> shape = (100, 100, 1)
+        >>> dtype = np.uint16
+        >>> dinfo = np.iinfo(np.uint16)
+        >>> data = kwimage.normalize(kwimage.gaussian_patch(shape))
+        >>> data = ((data - dinfo.min) * (dinfo.max - dinfo.min)).astype(dtype)
+        >>> import tempfile
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> kwimage.imwrite(fpath, data)
+        >>> loaded = kwimage.imread(fpath)
+        >>> assert np.all(loaded.ravel() == data.ravel())
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.imshow(loaded / dinfo.max)
+        >>> kwplot.show_if_requested()
     """
     import gdal
     if len(data.shape) == 2:
