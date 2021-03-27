@@ -30,6 +30,8 @@ notes:
         python run_tests.py
 
 
+MB_PYTHON_TAG=cp39-cp39 ./run_manylinux_build.sh
+
 MB_PYTHON_TAG=cp37-cp37m ./run_manylinux_build.sh
 
 MB_PYTHON_TAG=cp36-cp36m ./run_manylinux_build.sh

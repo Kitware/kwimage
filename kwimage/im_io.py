@@ -10,10 +10,28 @@ from . import im_core
 
 
 # Common image extensions
+JPG_EXTENSIONS = (
+    '.jpg', '.jpeg'
+)
+
+# These should be supported by opencv / PIL
+_WELL_KNOWN_EXTENSIONS = (
+    JPG_EXTENSIONS +
+    ('.bmp', '.pgm', '.png',)
+)
+
+
+# Extensions that usually will require GDAL
+GDAL_EXTENSIONS = (
+    '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
+    '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+    '.jp2',
+)
+
 IMAGE_EXTENSIONS = (
-    '.bmp', '.pgm', '.jpg', '.jpeg', '.png', '.tif', '.tiff',
-    '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif', '.r0',
-    '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf', '.jp2',
+    _WELL_KNOWN_EXTENSIONS +
+    ('.tif', '.tiff',) +
+    GDAL_EXTENSIONS
 )
 
 
@@ -168,14 +186,6 @@ def imread(fpath, space='auto', backend='auto'):
         # Determine the backend reader using the file extension
         _fpath_lower = fpath.lower()
         # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
-        GDAL_EXTENSIONS = (
-            '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
-            '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
-            '.jp2',
-        )
-        JPG_EXTENSIONS = (
-            '.jpg', '.jpeg'
-        )
         if _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
         elif _fpath_lower.endswith(('.tif', '.tiff')):
@@ -562,6 +572,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                 backend = 'gdal'
             else:
                 backend = 'skimage'
+        elif fpath.endswith(GDAL_EXTENSIONS):
+            if _have_gdal():
+                backend = 'gdal'
         else:
             backend = 'cv2'
 
@@ -767,6 +780,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         options (List[str]): other gdal options
 
+    Returns:
+        str: the file path where the data was written
+
     References:
         https://geoexamples.com/other/2019/02/08/cog-tutorial.html#create-a-cog-using-gdal-python
         http://osgeo-org.1560.x6.nabble.com/gdal-dev-Creating-Cloud-Optimized-GeoTIFFs-td5320101.html
@@ -816,6 +832,29 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> assert main_band.GetOverviewCount() == 3
 
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=[2, 4])
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
+        >>> import tempfile
+        >>> import kwimage
+        >>> # Test with uint16
+        >>> shape = (100, 100, 1)
+        >>> dtype = np.uint16
+        >>> dinfo = np.iinfo(np.uint16)
+        >>> data = kwimage.normalize(kwimage.gaussian_patch(shape))
+        >>> data = ((data - dinfo.min) * (dinfo.max - dinfo.min)).astype(dtype)
+        >>> import tempfile
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> kwimage.imwrite(fpath, data)
+        >>> loaded = kwimage.imread(fpath)
+        >>> assert np.all(loaded.ravel() == data.ravel())
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.imshow(loaded / dinfo.max)
+        >>> kwplot.show_if_requested()
     """
     import gdal
     if len(data.shape) == 2:

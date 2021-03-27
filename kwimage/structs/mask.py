@@ -255,12 +255,45 @@ class _MaskConversionMixin(object):
             import kwimage
             f_mask = self.to_fortran_mask().data
             encoded = kwimage.encode_run_length(f_mask, binary=True, order='F')
+            # NOTE: Generally `size` means (width, height) and `shape` means
+            # (height, width) but shape in this case is in F-order, which means
+            # it is (width, hight), so it can be used directly as size
             encoded['size'] = encoded['shape']  # hack in size
             self = Mask(encoded, format=MaskFormat.ARRAY_RLE)
         return self
 
     @_register_convertor(MaskFormat.F_MASK)
     def to_fortran_mask(self, copy=False):
+        """
+        Convert the mask format to a dense mask array in columnwise (F) order
+
+        Args:
+            copy (bool, default=True):
+                if True, we always return copy of the data.
+                if False, we try not to return a copy unless necessary.
+
+        Returns:
+            Mask : the converted mask
+
+        Example:
+            >>> import kwimage
+            >>> # This is modified version of a segmentation from COCO
+            >>> # We have some hard-coded assumptions when handling rles
+            >>> # that dont specify shape, order, and binary.
+            >>> coco_sseg = {
+            >>>     "size": (51, 50),
+            >>>     "counts": [26, 2, 651, 3, 13, 1, 313, 12, 6, 3, 12, 322, 11, 323, 10, 325, 8, 93, 416]
+            >>> }
+            >>> rle = kwimage.Mask(coco_sseg, 'array_rle')
+            >>> fmask = rle.to_fortran_mask()
+            >>> fmask.data.sum()
+            >>> # Note that the returned RLE is in our more explicit encoding
+            >>> rle2 = fmask.to_array_rle()
+            >>> assert rle2.data['counts'].tolist() == rle.data['counts']
+            >>> assert rle2.data['order'] == 'F'
+            >>> assert rle2.data['binary'] == True
+            >>> assert rle2.data['shape'] == rle.data['size']
+        """
         if self.format == MaskFormat.F_MASK:
             return self.copy() if copy else self
         elif self.format == MaskFormat.C_MASK:
@@ -269,7 +302,24 @@ class _MaskConversionMixin(object):
         elif self.format == MaskFormat.ARRAY_RLE:
             import kwimage
             encoded = dict(self.data)
-            encoded.pop('size', None)
+            # NOTE: Generally `size` means (width, height) and `shape` means
+            # (height, width) but shape in this case is in F-order, which means
+            # it is (width, hight), so it can be used directly as size
+            # Ideally we are given "shape" instead of "size", but the original
+            # COCO RLE's use "size", so we have to accept that here.
+
+            # Handle RLE is in COCO format, thus the defaults passed to
+            # decode_run_length should be specified with coco assumptions
+            encoded = {
+                'counts': self.data['counts'],
+                'binary': self.data.get('binary', True),
+                'order': self.data.get('order', 'F'),
+            }
+            if 'shape' in self.data:
+                encoded['shape'] = self.data['shape']
+            else:
+                encoded['shape'] = self.data['size']
+
             f_mask = kwimage.decode_run_length(**encoded)
         else:
             # NOTE: inefficient, could be improved
