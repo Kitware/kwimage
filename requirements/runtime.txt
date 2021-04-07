@@ -2,7 +2,11 @@ scipy >= 1.2.1
 numpy >= 1.9.0
 shapely
 Pillow >= 5.2.0
+
+# TODO:
+# can we also accept opencv-python-headless to satisfy this? 
 opencv-python >= 3.4.1.15
+
 scikit-image >= 0.14
 six >= 1.11.0
 ubelt >= 0.7.1

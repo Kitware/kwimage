@@ -1481,6 +1481,12 @@ class MaskList(_generic.ObjectList):
         ])
         return new
 
+    def to_mask_list(self):
+        """
+        returns this object
+        """
+        return self
+
 
 if __name__ == '__main__':
     """

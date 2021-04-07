@@ -1562,6 +1562,17 @@ class PolygonList(_generic.ObjectList):
     same image.
     """
 
+    def to_mask_list(self, dims=None):
+        """
+        Converts all items to masks
+        """
+        import kwimage
+        new = kwimage.MaskList([
+            None if item is None else item.to_mask(dims=dims)
+            for item in self
+        ])
+        return new
+
     def to_polygon_list(self):
         return self
 

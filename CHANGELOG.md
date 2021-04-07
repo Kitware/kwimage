@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.7.2 - Unreleased
 
 
+### Fixed
+
+* Using `from osgeo import gdal` instead of `import gdal` to fix for gdal 3.2.1
+
+
 ## Version 0.7.1 - Released 2021-03-26
 
 ### Fixed
