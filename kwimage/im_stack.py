@@ -335,7 +335,7 @@ def _efficient_rectangle_packing():
         >>> anchors = anchors=[[1, 1], [3 / 4, 1], [1, 3 / 4]]
         >>> boxes = kwimage.Boxes.random(num=100, anchors=anchors).scale((100, 100)).to_xywh()
         >>> # Create a bunch of rectangles (width, height)
-        >>> sizes = boxes.data[:, 2:4].astype(np.int).tolist()
+        >>> sizes = boxes.data[:, 2:4].astype(int).tolist()
         >>> import rpack
         >>> positions = rpack.pack(sizes)
         >>> boxes.data[:, 0:2] = positions

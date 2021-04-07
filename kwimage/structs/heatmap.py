@@ -103,7 +103,7 @@ class _HeatmapDrawMixin(object):
     def _colorize_class_idx(self):
         """
         """
-        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(np.int)
+        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int)
 
         import networkx as nx
         import kwimage
@@ -779,7 +779,7 @@ class _HeatmapWarpMixin(object):
                 ]))
                 corners2 = corners.warp(mat.numpy())
                 wh2 = corners2.data.clip(1, None).max(axis=0)
-                w2, h2 = np.ceil(wh2).astype(np.int).tolist()
+                w2, h2 = np.ceil(wh2).astype(int).tolist()
                 output_dims = (w2, h2)
                 return output_dims
             output_dims = _auto_select_warped_output_shape(mat_notrans)
@@ -1340,7 +1340,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
                 scale=scale, translation=translation)
 
             wh_dims = dims[::-1]
-            img_wh_dims = tuple(np.ceil(tf_data_to_img([wh_dims]))[0].astype(np.int).tolist())
+            img_wh_dims = tuple(np.ceil(tf_data_to_img([wh_dims]))[0].astype(int).tolist())
             img_dims = img_wh_dims[::-1]
         else:
             img_dims = np.array(img_dims)

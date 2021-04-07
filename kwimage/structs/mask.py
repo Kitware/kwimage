@@ -488,7 +488,7 @@ class _MaskTransformMixin(object):
         else:
             sx, sy = factor
         if output_dims is None:
-            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(np.int)
+            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(int)
         # FIXME: the warp breaks when the third row is left out
         transform = np.array([[sx, 0.0, 0.0], [0.0, sy, 0.0], [0, 0, 1]])
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
@@ -995,7 +995,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
         """
-        x, y, w, h = self.get_xywh().astype(np.int).tolist()
+        x, y, w, h = self.get_xywh().astype(int).tolist()
         output_dims = (h, w)
         xy_offset = (-x, -y)
         temp = self.translate(xy_offset, output_dims)
@@ -1150,7 +1150,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             offset = (-p, -p)
         else:
             # It should be faster to only extract the patch of non-zero values
-            x, y, w, h = self.get_xywh().astype(np.int).tolist()
+            x, y, w, h = self.get_xywh().astype(int).tolist()
             output_dims = (h, w)
             xy_offset = (-x, -y)
             temp = self.translate(xy_offset, output_dims)
@@ -1275,7 +1275,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         import cv2
         p = 2
         # It should be faster to only exact the patch of non-zero values
-        x, y, w, h = self.get_xywh().astype(np.int).tolist()
+        x, y, w, h = self.get_xywh().astype(int).tolist()
         if w > 0 and h > 0:
             output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
             xy_offset = (-x, -y)

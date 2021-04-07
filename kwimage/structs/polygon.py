@@ -728,7 +728,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         data = self.data
         coords = [data['exterior']] + data['interiors']
-        cv_contours = [np.expand_dims(c.data.astype(np.int), axis=1)
+        cv_contours = [np.expand_dims(c.data.astype(int), axis=1)
                        for c in coords]
         return cv_contours
 

@@ -1154,7 +1154,7 @@ class _BoxTransformMixins(object):
             >>> import kwimage
             >>> rng = kwarray.ensure_rng(0)
             >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng)
-            >>> dxdy = (10 * rng.randn(len(boxes), 2)).astype(np.int)
+            >>> dxdy = (10 * rng.randn(len(boxes), 2)).astype(int)
             >>> boxes.translate(dxdy)
             <Boxes(xywh,
                 array([[12.,  6.,  1.,  2.],
@@ -1915,7 +1915,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False)
         boxes = boxes.scale(scale, inplace=True)
         if as_integer:
-            boxes.data = boxes.data.astype(np.int)
+            boxes.data = boxes.data.astype(int)
         boxes = boxes.toformat(format, copy=False)
         if tensor:
             boxes = boxes.tensor()

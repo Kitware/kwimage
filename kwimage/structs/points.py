@@ -28,7 +28,7 @@ class _PointsWarpMixin:
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
 
-            >>> self = Points(xy=(np.random.rand(10, 2) * 10).astype(np.int))
+            >>> self = Points(xy=(np.random.rand(10, 2) * 10).astype(int))
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
 
@@ -283,7 +283,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         self = Points(xy=rng.rand(*shape))
         self.data['visible'] = np.full(len(self), fill_value=2)
         if classes is not None:
-            class_idxs = (rng.rand(len(self)) * len(classes)).astype(np.int)
+            class_idxs = (rng.rand(len(self)) * len(classes)).astype(int)
             self.data['class_idxs'] = class_idxs
             self.meta['classes'] = classes
         return self
