@@ -1298,7 +1298,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
 
     if mode == 'bilinear':
         mode = 'linear'
-    flags = kwimage.im_cv2._rectify_interpolation(mode)
+    flags = kwimage.im_cv2._coerce_interpolation(mode)
     input_shape = inputs.shape
     if len(input_shape) < 2:
         raise ValueError('height x width must be last two dims')

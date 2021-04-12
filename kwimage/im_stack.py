@@ -222,8 +222,8 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         partB = (part1 * (1.0 - alpha)) + (part2 * (alpha))
         return partB
 
-    interpolation = im_cv2._rectify_interpolation(interpolation,
-                                                  default=cv2.INTER_NEAREST)
+    interpolation = im_cv2._coerce_interpolation(interpolation,
+                                                 default=cv2.INTER_NEAREST)
 
     img1, img2 = im_core.make_channels_comparable(img1, img2)
     nChannels = im_core.num_channels(img1)

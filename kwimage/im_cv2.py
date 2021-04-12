@@ -95,16 +95,6 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation, type(interpolation)))
 
 
-def _rectify_interpolation(*args, **kwargs):
-    if False:
-        # TODO: Enable warning once internals are switched over
-        import warnings
-        warnings.warn(
-            '_rectify_interpolation is deprecated use _coerce_interpolation',
-            DeprecationWarning)
-    return _coerce_interpolation(*args, **kwargs)
-
-
 def imscale(img, scale, interpolation=None, return_scale=False):
     """
     Resizes an image by a scale factor.
