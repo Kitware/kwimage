@@ -1297,6 +1297,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             >>> self = kwimage.Heatmap.random(dims=(50, 200), dets='coco',
             >>>                               keypoints=True)
             >>> image = np.zeros(self.img_dims)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> toshow = self.draw_on(image, 1, vecs=True, kpts=0, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
