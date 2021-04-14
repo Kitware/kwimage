@@ -720,6 +720,7 @@ class _HeatmapWarpMixin(object):
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> self = kwimage.Heatmap.random(dims=(100, 100), dets='coco', keypoints=True)
             >>> image = np.zeros(self.img_dims)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> toshow = self.draw_on(image, 1, vecs=True, with_alpha=0.85)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
