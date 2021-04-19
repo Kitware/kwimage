@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides functions ``imread`` and ``imwrite`` which are wrappers
+around concrete readers/writers provided by other libraries. This allows us to
+support a wider array of formats than any of individual backends.
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 import warnings  # NOQA
@@ -25,7 +30,7 @@ _WELL_KNOWN_EXTENSIONS = (
 GDAL_EXTENSIONS = (
     '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
     '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
-    '.jp2',
+    '.jp2', '.vrt',
 )
 
 IMAGE_EXTENSIONS = (
