@@ -34,7 +34,7 @@ except Exception:
     warnings.warn(msg)
 
 
-__version__ = '0.7.2'
+__version__ = '0.7.3'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
