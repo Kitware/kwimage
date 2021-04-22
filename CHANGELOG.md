@@ -14,6 +14,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fixed numpy warning by using `int` instead of `np.int`.
 
 
+### Changed
+
+* opencv-python and opencv-python-headless are now optional dependencies.
+
+
 ## Version 0.7.1 - Released 2021-03-26
 
 ### Fixed

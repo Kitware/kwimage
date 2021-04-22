@@ -119,6 +119,57 @@ underlying data representation.
 Most of the compositie strucutres also have a ``self.meta`` attribute, which
 holds user-level metadata (e.g. info about the classes).
 
+
+Installation 
+------------
+
+There are a few small quirks with installing kwimage. There is an issue with
+the opencv python bindings such that we could rely on either the
+`opencv-python` or `opencv-python-headless` package. If you have either of
+these module already installed you can simply `pip install kwimage` without
+encountering any issues related to this. But if you do not already have a
+module that provides `import cv2` installed, then you should install kwimage
+with one of the following "extra install" tags:
+
+.. code-block:: bash
+
+    # We recommend using the headless version
+    pip install kwimage[headless]
+
+    # OR
+
+    # If other parts of your system depend on the opencv qt libs 
+    # (this can conflict with pyqt5)
+    pip install kwimage[graphics]
+
+
+On linux, pip install commands will download precompiled manylinux wheels. On
+other operating systems, or if you are installing from source, you may need to
+compile C-extension modules. However, there are equivalent python-only
+implementations of almost every c-extension.  You can disable compilation or
+loading of c-extensions at compile or runtime by setting the environment
+variable: `KWIMAGE_DISABLE_C_EXTENSIONS=1`.
+
+
+Also note, that when building from source, the build may fail if you not in a
+fresh state (related to
+`skbuild-386 <https://github.com/scikit-build/scikit-build/issues/386>`_. You
+can mitigate this by running ``python setup.py clean`` to remove build
+artifacts. Building from a clean environment should work.
+
+A Note on GDAL
+--------------
+
+The kwimage library can use `GDAL <https://github.com/OSGeo/gdal/>`_ library
+for certain tasks (e.g. IO of geotiffs).  GDAL can be a pain to install without
+relying on conda.  Kitware also has a pypi index that hosts GDAL wheels for
+linux systems:
+
+.. code-block:: bash
+
+    pip install --find-links https://girder.github.io/large_image_wheels GDAL
+
+
     
 .. |Pypi| image:: https://img.shields.io/pypi/v/kwimage.svg
    :target: https://pypi.python.org/pypi/kwimage
