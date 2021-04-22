@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides functions ``imread`` and ``imwrite`` which are wrappers
+around concrete readers/writers provided by other libraries. This allows us to
+support a wider array of formats than any of individual backends.
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 import warnings  # NOQA
@@ -25,7 +30,7 @@ _WELL_KNOWN_EXTENSIONS = (
 GDAL_EXTENSIONS = (
     '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
     '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
-    '.jp2',
+    '.jp2', '.vrt',
 )
 
 IMAGE_EXTENSIONS = (
@@ -344,7 +349,10 @@ def _imread_cv2(fpath):
 
 def _imread_gdal(fpath):
     """ gdal imread backend """
-    import gdal
+    try:
+        from osgeo import gdal
+    except ImportError:
+        import gdal
     try:
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
@@ -492,6 +500,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
     Benchmark:
         >>> import timerit
+        >>> import os
         >>> import kwimage
         >>> import tempfile
         >>> #
@@ -532,6 +541,12 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='gdal', compress='LZW')
         >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
         >>> #
+        >>> for timer in ti.reset('imwrite-gdal-zstd'):
+        >>>     with timer:
+        >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>>         kwimage.imwrite(tmp.name, img1, space=space, backend='gdal', compress='ZSTD')
+        >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
+        >>> #
         >>> for timer in ti.reset('imwrite-gdal-deflate'):
         >>>     with timer:
         >>>         tmp = tempfile.NamedTemporaryFile(suffix='.tif')
@@ -545,6 +560,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>     file_sizes[ti.label] = os.stat(tmp.name).st_size
         >>> #
         >>> file_sizes = ub.sorted_vals(file_sizes)
+        >>> import xdev
         >>> file_sizes_human = ub.map_vals(lambda x: xdev.byte_str(x, 'MB'), file_sizes)
         >>> print('ti.rankings = {}'.format(ub.repr2(ti.rankings, nl=2)))
         >>> print('file_sizes = {}'.format(ub.repr2(file_sizes_human, nl=1)))
@@ -805,7 +821,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         xdoctest -m kwimage.im_io _imwrite_cloud_optimized_geotiff
 
     Example:
-        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import tempfile
@@ -825,7 +841,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
 
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=3)
-        >>> import gdal
+        >>> from osgeo import gdal
         >>> ds = gdal.Open(fpath, gdal.GA_ReadOnly)
         >>> filename = ds.GetDescription()
         >>> main_band = ds.GetRasterBand(1)
@@ -834,7 +850,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=[2, 4])
 
     Example:
-        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import tempfile
@@ -856,7 +872,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> kwplot.imshow(loaded / dinfo.max)
         >>> kwplot.show_if_requested()
     """
-    import gdal
+    from osgeo import gdal
     if len(data.shape) == 2:
         data = data[:, :, None]
 
@@ -935,7 +951,7 @@ def _numpy_to_gdal_dtype(numpy_dtype):
     """
     maps numpy dtypes to gdal dtypes
     """
-    import gdal
+    from osgeo import gdal
     if not hasattr(numpy_dtype, 'kind'):
         # convert to the dtype instance object
         numpy_dtype = numpy_dtype().dtype
@@ -968,7 +984,7 @@ def _gdal_to_numpy_dtype(gdal_dtype):
     maps gdal dtypes to numpy dtypes
 
     Example:
-        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> numpy_types = [np.uint8, np.uint16, np.int16, np.uint32, np.int32,
         >>>                np.float32, np.float64, np.complex64,
         >>>                np.complex128]
@@ -980,7 +996,7 @@ def _gdal_to_numpy_dtype(gdal_dtype):
         >>>     assert gdal_dtype2 == gdal_dtype1
         >>>     assert _dtype_equality(numpy_dtype1, numpy_dtype2)
     """
-    import gdal
+    from osgeo import gdal
     _GDAL_DTYPE_LUT = {
         gdal.GDT_Byte: np.uint8,
         gdal.GDT_UInt16: np.uint16,
@@ -1009,8 +1025,11 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
     Returns:
         str: gdal compression code
 
+    References:
+        https://kokoalberti.com/articles/geotiff-compression-optimization-guide/
+
     Example:
-        >>> # xdoctest: +REQUIRES(module:gdal)
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> assert _gdal_auto_compress(src_fpath='foo.jpg') == 'JPEG'
         >>> assert _gdal_auto_compress(src_fpath='foo.png') == 'LZW'
         >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'RAW'

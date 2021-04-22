@@ -95,16 +95,6 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation, type(interpolation)))
 
 
-def _rectify_interpolation(*args, **kwargs):
-    if False:
-        # TODO: Enable warning once internals are switched over
-        import warnings
-        warnings.warn(
-            '_rectify_interpolation is deprecated use _coerce_interpolation',
-            DeprecationWarning)
-    return _coerce_interpolation(*args, **kwargs)
-
-
 def imscale(img, scale, interpolation=None, return_scale=False):
     """
     Resizes an image by a scale factor.
@@ -319,11 +309,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         unequal_sxy = (target_size / orig_size)
         equal_sxy = unequal_sxy.min()
         # Whats the closest integer size we can resize to?
-        embed_size = np.round(orig_size * equal_sxy).astype(np.int)
+        embed_size = np.round(orig_size * equal_sxy).astype(int)
         # Determine how much padding we need for the top/left side
         # Note: the right/bottom side might need an extra pixel of padding
         # depending on rounding issues.
-        offset = np.round((target_size - embed_size) / 2).astype(np.int)
+        offset = np.round((target_size - embed_size) / 2).astype(int)
         scale = embed_size / orig_size
 
         left, top = offset

@@ -488,7 +488,7 @@ class _MaskTransformMixin(object):
         else:
             sx, sy = factor
         if output_dims is None:
-            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(np.int)
+            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(int)
         # FIXME: the warp breaks when the third row is left out
         transform = np.array([[sx, 0.0, 0.0], [0.0, sy, 0.0], [0, 0, 1]])
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
@@ -995,7 +995,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
         """
-        x, y, w, h = self.get_xywh().astype(np.int).tolist()
+        x, y, w, h = self.get_xywh().astype(int).tolist()
         output_dims = (h, w)
         xy_offset = (-x, -y)
         temp = self.translate(xy_offset, output_dims)
@@ -1150,7 +1150,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             offset = (-p, -p)
         else:
             # It should be faster to only extract the patch of non-zero values
-            x, y, w, h = self.get_xywh().astype(np.int).tolist()
+            x, y, w, h = self.get_xywh().astype(int).tolist()
             output_dims = (h, w)
             xy_offset = (-x, -y)
             temp = self.translate(xy_offset, output_dims)
@@ -1271,21 +1271,38 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
             self.to_array_rle().to_c_mask().data.sum()
             temp.to_c_mask().data.sum()
+
+        Example:
+
+            >>> # TODO: how do we correctly handle the 1 or 2 point to a poly
+            >>> # case?
+            >>> import kwimage
+            >>> data = np.zeros((8, 8), dtype=np.uint8)
+            >>> data[0, 3:5] = 1
+            >>> data[7, 3:5] = 1
+            >>> data[3:5, 0:2] = 1
+            >>> self = kwimage.Mask.coerce(data)
+            >>> polys = self.to_multi_polygon()
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(data)
+            >>> polys.draw(border=True, linewidth=5, alpha=0.5, radius=0.2)
         """
         import cv2
         p = 2
         # It should be faster to only exact the patch of non-zero values
-        x, y, w, h = self.get_xywh().astype(np.int).tolist()
-        if w > 0 and h > 0:
+        x, y, w, h = self.get_xywh().astype(int).tolist()
+        if w > 0 or h > 0:
             output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
             xy_offset = (-x, -y)
 
             # FIXME: In the case where
             temp = self.translate(xy_offset, output_dims)
-            mask = temp.to_c_mask().data
+            temp_mask = temp.to_c_mask().data
             offset = (x - p, y - p)
 
-            padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
+            padded_mask = cv2.copyMakeBorder(temp_mask, p, p, p, p,
                                              cv2.BORDER_CONSTANT, value=0)
 
             # https://docs.opencv.org/3.1.0/d3/dc0/
@@ -1311,9 +1328,13 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 # This only works in RETR_CCOMP mode
                 nxt, prev, child, parent = row[0:4]
                 if parent != -1:
-                    polys[parent]['interiors'].append(_contours[i][:, 0, :])
+                    coords = _contours[i][:, 0, :]
+                    polys[parent]['interiors'].append(coords)
                 else:
-                    polys[i]['exterior'] = _contours[i][:, 0, :]
+                    coords = _contours[i][:, 0, :]
+                    # if len(coords) < 3:
+                    #     raise Exception
+                    polys[i]['exterior'] = coords
 
             from kwimage.structs.polygon import Polygon, MultiPolygon
             poly_list = [Polygon(**data) for data in polys.values()]
@@ -1480,6 +1501,12 @@ class MaskList(_generic.ObjectList):
             for item in self
         ])
         return new
+
+    def to_mask_list(self):
+        """
+        returns this object
+        """
+        return self
 
 
 if __name__ == '__main__':

@@ -284,6 +284,9 @@ if __name__ == '__main__':
             'all': parse_requirements('requirements.txt'),
             'tests': parse_requirements('requirements/tests.txt'),
             'build': parse_requirements('requirements/build.txt'),
+            # Really annoying that this is the best we can do
+            'headless': ['opencv-python-headless'],
+            'graphics': ['opencv-python'],
         },
         license='Apache 2',
         packages=find_packages(include='kwimage.*'),

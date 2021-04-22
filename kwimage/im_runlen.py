@@ -213,7 +213,7 @@ def rle_translate(rle, offset, output_shape=None):
 
     # Careful of residuals
     orig_offset = np.array(offset)
-    offset = np.round(orig_offset).astype(np.int)
+    offset = np.round(orig_offset).astype(int)
     residual = orig_offset - offset.astype(orig_offset.dtype)
 
     if not np.all(np.abs(residual) < 1e-6):
@@ -277,7 +277,7 @@ def rle_translate(rle, offset, output_shape=None):
 
     # Now that new start-stop locations have been added,
     # translate the points that indices where non-zero data should go.
-    new_pts = np.array(scanline_pts, dtype=np.int) + rc_offset[:, None]
+    new_pts = np.array(scanline_pts, dtype=int) + rc_offset[:, None]
 
     # <handle_out_of_bounds>
     # Note: all of the following logic relies on the fact that each run can
@@ -322,7 +322,7 @@ def rle_translate(rle, offset, output_shape=None):
     new_indices = np.ravel_multi_index(new_pts, new_shape, order=rle['order'])
     new_indices[1::2] += 1
 
-    count_dtype = np.int  # use in to eventually support non-binary RLE
+    count_dtype = int  # use in to eventually support non-binary RLE
     new_indices = new_indices.astype(count_dtype)
 
     total = int(np.prod(new_shape))

@@ -694,7 +694,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert new.data.max() <= 10
 
             >>> self = Coords.random(10, rng=0)
-            >>> self.data = (self.data * 10).astype(np.int)
+            >>> self.data = (self.data * 10).astype(int)
             >>> new = self.scale(10)
             >>> assert new.data.dtype.kind == 'i'
             >>> new = self.scale(10.0)
@@ -995,8 +995,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         for pt in self.data:
 
             # Find a grid of coordinates on the image to fill for this point
-            low = np.floor(pt - radius).astype(np.int)
-            high = np.ceil(pt + radius).astype(np.int)
+            low = np.floor(pt - radius).astype(int)
+            high = np.ceil(pt + radius).astype(int)
             grid = np.dstack(np.mgrid[tuple(
                 slice(s, t) for s, t in zip(low, high))])
 

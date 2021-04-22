@@ -728,7 +728,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         data = self.data
         coords = [data['exterior']] + data['interiors']
-        cv_contours = [np.expand_dims(c.data.astype(np.int), axis=1)
+        cv_contours = [np.expand_dims(c.data.astype(int), axis=1)
                        for c in coords]
         return cv_contours
 
@@ -1561,6 +1561,17 @@ class PolygonList(_generic.ObjectList):
     Stores and allows manipluation of multiple polygons, usually within the
     same image.
     """
+
+    def to_mask_list(self, dims=None):
+        """
+        Converts all items to masks
+        """
+        import kwimage
+        new = kwimage.MaskList([
+            None if item is None else item.to_mask(dims=dims)
+            for item in self
+        ])
+        return new
 
     def to_polygon_list(self):
         return self

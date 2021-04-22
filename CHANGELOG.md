@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.1 - Unreleased
+## Version 0.7.2 - Unreleased
+
+
+### Fixed
+
+* Using `from osgeo import gdal` instead of `import gdal` to fix for gdal 3.2.1
+
+* Fixed numpy warning by using `int` instead of `np.int`.
+
+
+## Version 0.7.1 - Released 2021-03-26
 
 ### Fixed
 

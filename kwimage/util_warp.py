@@ -301,7 +301,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> def fmt(a):
         >>>     return ub.repr2(a.numpy(), precision=2)
         >>> s = 2.5
-        >>> output_dims = tuple(np.round((np.array(input_dims) * s)).astype(np.int).tolist())
+        >>> output_dims = tuple(np.round((np.array(input_dims) * s)).astype(int).tolist())
         >>> mat = torch.FloatTensor([[s, 0, 0], [0, s, 0], [0, 0, 1]])
         >>> inv = mat.inverse()
         >>> warp_tensor(inputs, mat, output_dims)
@@ -538,7 +538,7 @@ def subpixel_align(dst, src, index, interp_axes=None):
     if not ub.iterable(src):
         # Broadcast scalars
         impl = kwarray.ArrayAPI.impl(dst)
-        shape = tuple(raw_extent.astype(np.int).tolist())
+        shape = tuple(raw_extent.astype(int).tolist())
         src = impl.full(shape, dtype=dst.dtype, fill_value=src)
 
     if not np.all(np.isclose(src.shape, raw_extent, atol=0.3)):
@@ -570,8 +570,8 @@ def subpixel_align(dst, src, index, interp_axes=None):
 
     # Construct the slice in dst that will correspond to the aligned src
     aligned_index = tuple([
-        slice(s, t) for s, t in zip(np.floor(subpixel_starts).astype(np.int),
-                                    np.ceil(subpixel_stops).astype(np.int))])
+        slice(s, t) for s, t in zip(np.floor(subpixel_starts).astype(int),
+                                    np.ceil(subpixel_stops).astype(int))])
     # Align the source coordinates with the destination coordinates
     output_shape = [sl.stop - sl.start for sl in aligned_index]
 
@@ -877,7 +877,7 @@ def subpixel_slice(inputs, index):
         if np.any(output_shape % 1 > 0):
             output_shape = np.ceil(output_shape)
             # raise ValueError('the slice length must be integral')
-        output_shape = output_shape.astype(np.int)
+        output_shape = output_shape.astype(int)
         outputs = subpixel_translate(inputs, shift, interp_axes=interp_axes,
                                      output_shape=output_shape)
     return outputs
@@ -1298,7 +1298,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
 
     if mode == 'bilinear':
         mode = 'linear'
-    flags = kwimage.im_cv2._rectify_interpolation(mode)
+    flags = kwimage.im_cv2._coerce_interpolation(mode)
     input_shape = inputs.shape
     if len(input_shape) < 2:
         raise ValueError('height x width must be last two dims')
@@ -1557,7 +1557,7 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
         coord_axes = list(range(len(ptsT)))
 
     if interp == 'nearest':
-        r, c = impl.iround(ptsT, dtype=np.int)
+        r, c = impl.iround(ptsT, dtype=int)
         ndims = len(img.shape)
         index_a = [slice(None)] * ndims
         i, j = coord_axes
@@ -1641,7 +1641,7 @@ def subpixel_setvalue(img, pts, value, coord_axes=None,
         coord_axes = list(range(len(ptsT)))
 
     if interp == 'nearest':
-        r, c = impl.iround(ptsT, dtype=np.int)
+        r, c = impl.iround(ptsT, dtype=int)
         index_a = [slice(None)] * ndims
         i, j = coord_axes
         index_a[i] = r

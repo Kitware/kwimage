@@ -145,8 +145,8 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
     fpath = grab_test_image_fpath(key)
     bgr = cv2.imread(fpath)
     if dsize:
-        interpolation = im_cv2._rectify_interpolation(interpolation,
-                                                      cv2.INTER_LANCZOS4)
+        interpolation = im_cv2._coerce_interpolation(interpolation,
+                                                     cv2.INTER_LANCZOS4)
         bgr = cv2.resize(bgr, dsize, interpolation=interpolation)
     image = im_cv2.convert_colorspace(bgr, 'bgr', dst_space=space,
                                       implicit=True)
