@@ -870,7 +870,7 @@ class _BoxTransformMixins(object):
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
-                new_data = self.data.astype(np.float, copy=True)
+                new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
 
         try:
@@ -1072,7 +1072,7 @@ class _BoxTransformMixins(object):
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
-                new_data = self.data.astype(np.float, copy=True)
+                new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:
@@ -1182,7 +1182,7 @@ class _BoxTransformMixins(object):
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
-                new_data = self.data.astype(np.float, copy=True)
+                new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:

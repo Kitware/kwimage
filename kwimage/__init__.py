@@ -12,7 +12,7 @@ mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  -w
 import ubelt as ub
 try:
     import cv2  # NOQA
-except Exception:
+except ImportError as ex:
     msg = ub.paragraph(
         '''
         The kwimage module failed to import the cv2 module.  This may be due to
@@ -29,9 +29,10 @@ except Exception:
         `pip install opencv-python`.
 
         We appologize for this issue and hope this documentation is sufficient.
-        ''')
-    import warnings
-    warnings.warn(msg)
+
+        orig_ex={!r}
+        ''').format(ex)
+    raise ImportError(msg)
 
 
 __version__ = '0.7.3'
