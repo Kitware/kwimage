@@ -13,6 +13,10 @@ import ubelt as ub
 from . import im_cv2
 from . import im_core
 
+__all__ = [
+    'imread', 'imwrite', 'load_image_shape',
+]
+
 
 # Common image extensions
 JPG_EXTENSIONS = (

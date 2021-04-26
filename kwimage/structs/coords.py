@@ -470,8 +470,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(self.warp(np.eye(2)).data == self.data)
 
         Doctest:
-            >>> # xdoctest: +REQUIRES(module:osr)
-            >>> import osr
+            >>> # xdoctest: +REQUIRES(module:osgeo)
+            >>> from osgeo import osr
             >>> wgs84_crs = osr.SpatialReference()
             >>> wgs84_crs.ImportFromEPSG(4326)
             >>> dst_crs = osr.SpatialReference()
@@ -517,10 +517,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
             ### Try to accept GDAL tranforms ###
             try:
-                import osr
+                from osgeo import osr
             except ImportError:
                 import warnings
-                warnings.warn('gdal/osr is not installed')
+                warnings.warn('osgeo is not installed')
             else:
                 if isinstance(transform, osr.CoordinateTransformation):
                     # NOTE: We are expecting lon/lat here for wgs84
