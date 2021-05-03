@@ -452,6 +452,9 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
     Allows slices with out-of-bound coordinates.  Any out of bounds coordinate
     will be sampled via padding.
 
+    DEPRECATED FOR THE VERSION IN KWARRAY (slices are more array-ish than
+    image-ish)
+
     Note:
         Negative slices have a different meaning here then they usually do.
         Normally, they indicate a wrap-around or a reversed stride, but here
@@ -489,6 +492,8 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
                     st_dims: a list indicating the low and high space-time
                         coordinate values of the returned data slice.
 
+                The structure of this dictionary mach change in the future
+
     Example:
         >>> data = np.arange(5)
         >>> in_slice = [slice(-2, 7)]
@@ -504,8 +509,11 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         >>> data_sliced = padded_slice(data, slice(3, 4), pad=[(1, 0)])
         >>> print(ub.repr2(data_sliced, with_dtype=False))
         np.array([2, 3])
-
     """
+    import warnings
+    warnings.warn('Deprecated use kwarray.padded_slice instead',
+                  DeprecationWarning)
+
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 

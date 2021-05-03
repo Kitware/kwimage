@@ -499,7 +499,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         import kwimage
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
-        if isinstance(transform, _generic.ARRAY_TYPES):
+        if transform is None:
+            return new
+        elif isinstance(transform, _generic.ARRAY_TYPES):
             matrix = transform
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params

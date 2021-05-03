@@ -177,7 +177,9 @@ class _PolyWarpMixin:
         """
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
-        if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
+        if transform is None:
+            return new
+        elif not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
             try:
                 import imgaug
             except ImportError:

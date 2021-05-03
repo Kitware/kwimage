@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+TODO:
+    - [ ] Replace internal padded slice with kwarray.padded_slice
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import numpy as np
@@ -1114,6 +1118,7 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         np.array([2, 3])
         [(2, 4)]
     """
+    # TODO: use kwarray instead
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 

@@ -519,6 +519,10 @@ class _MaskTransformMixin(object):
         if torch is None:
             raise Exception('need torch to warp raster masks')
 
+        if transform is None:
+            new = self if inplace else Mask(self.data.copy(), self.format)
+            return new
+
         c_mask = self.to_c_mask(copy=False).data
         t_mask = torch.Tensor(c_mask)
         matrix = torch.Tensor(transform)

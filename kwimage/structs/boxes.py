@@ -873,6 +873,9 @@ class _BoxTransformMixins(object):
                 new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
 
+        if transform is None:
+            return new
+
         try:
             # First try to warp using simple calls to axis-aligned operations
             rotation = 0

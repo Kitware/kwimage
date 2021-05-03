@@ -1157,11 +1157,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>> import kwimage
         >>> self = Heatmap.random()
         >>> # xdoctest: +REQUIRES(--show)
-        >>> self.draw()
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(aligned[0])
-        >>> kwplot.show_if_requested()
+        >>> self.draw()
     """
     # Valid keys for the data dictionary
     __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints',
