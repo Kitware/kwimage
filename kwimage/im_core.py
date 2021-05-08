@@ -31,12 +31,15 @@ def num_channels(img):
     ndims = img.ndim
     if ndims == 2:
         n_channels = 1
-    elif ndims == 3 and img.shape[2] == 3:
-        n_channels = 3
-    elif ndims == 3 and img.shape[2] == 4:
-        n_channels = 4
-    elif ndims == 3 and img.shape[2] == 1:
-        n_channels = 1
+    elif ndims == 3:
+        if img.shape[2] in {1, 3, 4}:
+            n_channels = img.shape[2]
+        else:
+            n_channels = img.shape[2]
+            # raise ValueError((
+            #     'Image does not have a standard number of channels: '
+            #     'img.shape={}'
+            # ).format(img.shape))
     else:
         raise ValueError('Cannot determine number of channels '
                          'for img.shape={}'.format(img.shape))

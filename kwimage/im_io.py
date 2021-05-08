@@ -318,7 +318,8 @@ def _imread_skimage(fpath):
     elif n_channels == 1:
         src_space = 'gray'
     else:
-        raise NotImplementedError('unknown number of channels')
+        src_space = None
+        # raise NotImplementedError('unknown number of channels')
     auto_dst_space = src_space
     return image, src_space, auto_dst_space
 
