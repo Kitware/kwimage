@@ -9,7 +9,11 @@ import numpy as np
 
 def num_channels(img):
     """
-    Returns the number of color channels in an image
+    Returns the number of color channels in an image.
+
+    Assumes images are 2D and the the channels are the trailing dimension.
+    Returns 1 in the case with no trailing channel dimension, otherwise simply
+    returns ``img.shape[2]``.
 
     Args:
         img (ndarray): an image with 2 or 3 dimensions.
@@ -23,23 +27,14 @@ def num_channels(img):
         >>> assert num_channels(np.empty((W, H, 1))) == 1
         >>> assert num_channels(np.empty((W, H, 3))) == 3
         >>> assert num_channels(np.empty((W, H, 4))) == 4
-        >>> # xdoctest: +REQUIRES(module:pytest)
-        >>> import pytest
-        >>> with pytest.raises(ValueError):
-        ...     num_channels(np.empty((W, H, 2)))
+        >>> assert num_channels(np.empty((W, H, 2))) == 2
     """
     ndims = img.ndim
     if ndims == 2:
         n_channels = 1
     elif ndims == 3:
-        if img.shape[2] in {1, 3, 4}:
-            n_channels = img.shape[2]
-        else:
-            n_channels = img.shape[2]
-            # raise ValueError((
-            #     'Image does not have a standard number of channels: '
-            #     'img.shape={}'
-            # ).format(img.shape))
+        # Previously threw an error when n_channels was not 1, 3, or 4
+        n_channels = img.shape[2]
     else:
         raise ValueError('Cannot determine number of channels '
                          'for img.shape={}'.format(img.shape))
