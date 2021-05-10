@@ -9,7 +9,11 @@ import numpy as np
 
 def num_channels(img):
     """
-    Returns the number of color channels in an image
+    Returns the number of color channels in an image.
+
+    Assumes images are 2D and the the channels are the trailing dimension.
+    Returns 1 in the case with no trailing channel dimension, otherwise simply
+    returns ``img.shape[2]``.
 
     Args:
         img (ndarray): an image with 2 or 3 dimensions.
@@ -23,20 +27,14 @@ def num_channels(img):
         >>> assert num_channels(np.empty((W, H, 1))) == 1
         >>> assert num_channels(np.empty((W, H, 3))) == 3
         >>> assert num_channels(np.empty((W, H, 4))) == 4
-        >>> # xdoctest: +REQUIRES(module:pytest)
-        >>> import pytest
-        >>> with pytest.raises(ValueError):
-        ...     num_channels(np.empty((W, H, 2)))
+        >>> assert num_channels(np.empty((W, H, 2))) == 2
     """
     ndims = img.ndim
     if ndims == 2:
         n_channels = 1
-    elif ndims == 3 and img.shape[2] == 3:
-        n_channels = 3
-    elif ndims == 3 and img.shape[2] == 4:
-        n_channels = 4
-    elif ndims == 3 and img.shape[2] == 1:
-        n_channels = 1
+    elif ndims == 3:
+        # Previously threw an error when n_channels was not 1, 3, or 4
+        n_channels = img.shape[2]
     else:
         raise ValueError('Cannot determine number of channels '
                          'for img.shape={}'.format(img.shape))
@@ -452,6 +450,9 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
     Allows slices with out-of-bound coordinates.  Any out of bounds coordinate
     will be sampled via padding.
 
+    DEPRECATED FOR THE VERSION IN KWARRAY (slices are more array-ish than
+    image-ish)
+
     Note:
         Negative slices have a different meaning here then they usually do.
         Normally, they indicate a wrap-around or a reversed stride, but here
@@ -469,6 +470,10 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         return_info (bool, default=False): if True, return extra information
             about the transform.
 
+    SeeAlso:
+        _padded_slice_embed - finds the embedded slice and padding
+        _padded_slice_apply - applies padding to sliced data
+
     Returns:
 
         Sliceable:
@@ -485,6 +490,8 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
                     st_dims: a list indicating the low and high space-time
                         coordinate values of the returned data slice.
 
+                The structure of this dictionary mach change in the future
+
     Example:
         >>> data = np.arange(5)
         >>> in_slice = [slice(-2, 7)]
@@ -500,21 +507,38 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         >>> data_sliced = padded_slice(data, slice(3, 4), pad=[(1, 0)])
         >>> print(ub.repr2(data_sliced, with_dtype=False))
         np.array([2, 3])
-
     """
+    import warnings
+    warnings.warn('Deprecated use kwarray.padded_slice instead',
+                  DeprecationWarning)
+
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 
     ndim = len(in_slice)
-
     data_dims = data.shape[:ndim]
 
-    data_slice, extra_padding = _pad_slice(in_slice, data_dims, pad=pad)
+    # separate requested slice into an in-bounds part and a padding part
+    data_slice, extra_padding = _padded_slice_embed(in_slice, data_dims,
+                                                    pad=pad)
 
-    in_slice_clipped = tuple(slice(*d) for d in data_slice)
-    # Get the parts of the image that are in bounds
-    data_clipped = data[in_slice_clipped]
+    # Get the parts of the image that are in-bounds
+    data_clipped = data[data_slice]
 
+    # Apply the padding part
+    data_sliced, transform = _padded_slice_apply(
+        data_clipped, data_slice, extra_padding, padkw=padkw)
+
+    if return_info:
+        return data_sliced, transform
+    else:
+        return data_sliced
+
+
+def _padded_slice_apply(data_clipped, data_slice, extra_padding, padkw=None):
+    """
+    Applies requested padding to an extracted data slice.
+    """
     # Add any padding that is needed to behave like negative dims exist
     if sum(map(sum, extra_padding)) == 0:
         # The slice was completely in bounds
@@ -524,29 +548,29 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
             padkw = {
                 'mode': 'constant',
             }
-        if len(data.shape) != len(extra_padding):
-            extra_padding = extra_padding + [(0, 0)]
+        trailing_dims = len(data_clipped.shape) - len(extra_padding)
+        if trailing_dims > 0:
+            extra_padding = extra_padding + ([(0, 0)] * trailing_dims)
         data_sliced = np.pad(data_clipped, extra_padding, **padkw)
 
-    st_dims = data_slice[0:ndim]
-    pad_dims = extra_padding[0:ndim]
-
-    st_dims = [(s - pad_[0], t + pad_[1])
-               for (s, t), pad_ in zip(st_dims, pad_dims)]
+    st_dims = [(sl.start - pad_[0], sl.stop + pad_[1])
+               for sl, pad_ in zip(data_slice, extra_padding)]
 
     # TODO: return a better transform back to the original space
-    if return_info:
-        transform = {
-            'st_dims': st_dims,
-            'st_offset': [d[0] for d in st_dims]
-        }
-        return data_sliced, transform
-    else:
-        return data_sliced
+    transform = {
+        'st_dims': st_dims,
+        'st_offset': [d[0] for d in st_dims]
+    }
+    return data_sliced, transform
 
 
-def _pad_slice(in_slice, data_dims, pad=None):
+def _padded_slice_embed(in_slice, data_dims, pad=None):
     """
+    Embeds a "padded-slice" inside known data dimension.
+
+    Returns the valid data portion of the slice with extra padding for regions
+    outside of the available dimension.
+
     Given a slices for each dimension, image dimensions, and a padding get the
     corresponding slice from the image and any extra padding needed to achieve
     the requested window size.
@@ -562,22 +586,22 @@ def _pad_slice(in_slice, data_dims, pad=None):
 
     Returns:
         Tuple:
-            data_slice - low and high values of a fancy slice corresponding to
-                the image with shape `data_dims`. This slice may not correspond
-                to the full window size if the requested bounding box goes out
-                of bounds.
+            data_slice - Tuple[slice] a slice that can be applied to an array
+                with with shape `data_dims`. This slice will not correspond to
+                the full window size if the requested slice is out of bounds.
             extra_padding - extra padding needed after slicing to achieve
                 the requested window size.
 
     Example:
         >>> # Case where slice is inside the data dims on left edge
+        >>> from kwimage.im_core import *  # NOQA
         >>> in_slice = (slice(0, 10), slice(0, 10))
         >>> data_dims  = [300, 300]
         >>> pad        = [10, 5]
-        >>> a, b = _pad_slice(in_slice, data_dims, pad)
+        >>> a, b = _padded_slice_embed(in_slice, data_dims, pad)
         >>> print('data_slice = {!r}'.format(a))
         >>> print('extra_padding = {!r}'.format(b))
-        data_slice = [(0, 20), (0, 15)]
+        data_slice = (slice(0, 20, None), slice(0, 15, None))
         extra_padding = [(10, 0), (5, 0)]
 
     Example:
@@ -585,10 +609,10 @@ def _pad_slice(in_slice, data_dims, pad=None):
         >>> in_slice = (slice(-10, 400), slice(-10, 400))
         >>> data_dims  = [300, 300]
         >>> pad        = [10, 5]
-        >>> a, b = _pad_slice(in_slice, data_dims, pad)
+        >>> a, b = _padded_slice_embed(in_slice, data_dims, pad)
         >>> print('data_slice = {!r}'.format(a))
         >>> print('extra_padding = {!r}'.format(b))
-        data_slice = [(0, 300), (0, 300)]
+        data_slice = (slice(0, 300, None), slice(0, 300, None))
         extra_padding = [(20, 110), (15, 105)]
 
     Example:
@@ -596,17 +620,17 @@ def _pad_slice(in_slice, data_dims, pad=None):
         >>> in_slice = (slice(10, 40), slice(10, 40))
         >>> data_dims  = [300, 300]
         >>> pad        = None
-        >>> a, b = _pad_slice(in_slice, data_dims, pad)
+        >>> a, b = _padded_slice_embed(in_slice, data_dims, pad)
         >>> print('data_slice = {!r}'.format(a))
         >>> print('extra_padding = {!r}'.format(b))
-        data_slice = [(10, 40), (10, 40)]
+        data_slice = (slice(10, 40, None), slice(10, 40, None))
         extra_padding = [(0, 0), (0, 0)]
     """
     low_dims = [sl.start for sl in in_slice]
     high_dims = [sl.stop for sl in in_slice]
 
     # Determine the real part of the image that can be sliced out
-    data_slice = []
+    data_slice_st = []
     extra_padding = []
     if pad is None:
         pad = 0
@@ -625,7 +649,7 @@ def _pad_slice(in_slice, data_dims, pad=None):
         # Clip the slice positions to the real part of the image
         sl_low = min(D_img, max(0, raw_low))
         sl_high = min(D_img, max(0, raw_high))
-        data_slice.append((sl_low, sl_high))
+        data_slice_st.append((sl_low, sl_high))
 
         # Add extra padding when the window extends past the real part
         low_diff = sl_low - raw_low
@@ -636,4 +660,6 @@ def _pad_slice(in_slice, data_dims, pad=None):
         extra_high = max(0, high_diff + min(0, low_diff))
         extra = (extra_low, extra_high)
         extra_padding.append(extra)
+
+    data_slice = tuple(slice(s, t) for s, t in data_slice_st)
     return data_slice, extra_padding

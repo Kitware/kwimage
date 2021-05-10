@@ -4,7 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.2 - Unreleased
+## Version 0.7.3 - Unreleased
+
+
+### Added
+* New `transform.py` module
+
+### Fixed
+* Fixed numpy warning by using `float` instead of `np.float`.
+
+### Changed
+* Errors instead of warns for opencv import issues
+* Warp methods now treat None as the identity transform.
+* `kwimage.num_channels` no longer errors when the number of channels is not 1, 3, or 4. 
+
+
+## Version 0.7.2 - Released 2021-04-22
 
 
 ### Fixed

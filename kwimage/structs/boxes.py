@@ -587,6 +587,98 @@ class _BoxConversionMixins(object):
         ltrb = ltrb.reshape(-1, 4)
         return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
 
+    @classmethod
+    def from_slice(Boxes, slices, shape=None):
+        """
+        Creates a box from a 2D slice
+
+        Notes:
+            The input slices and shape are y/x based because they are typically
+            used with c-style arrays. However, the returned boxes use x/y
+            ordering by default.
+
+        Args:
+            Tuple[slice, slice, ...]: a tuple where the first two
+                items are a slice in the y-dimension and x-dimension.
+
+            shape (Tuple[int, int]): the height / width of the canvas
+                the slices would be applied to. This is only necessary to
+                specify if the bounds of the slice are undefined or need to be
+                clipped.
+
+        Returns:
+            Boxes: a Boxes object containing one box corresponding to the
+            spatial dimensions of the slice.
+
+        Example:
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> # Normal case
+            >>> slices = (slice(10, 20), slice(11, 17))
+            >>> boxes = Boxes.from_slice(slices)
+            >>> assert np.all(boxes.data[0] == [11, 10, 17, 20])
+            >>> # Clipping case
+            >>> boxes = Boxes.from_slice(slices, shape=(1, 1))
+            >>> assert np.all(boxes.data[0] == [1, 1, 1, 1])
+            >>> # Empty slices
+            >>> boxes = Boxes.from_slice(None, shape=(10, 10))
+            >>> assert np.all(boxes.data[0] == [0, 0, 10, 10])
+            >>> boxes = Boxes.from_slice(tuple(), shape=(10, 10))
+            >>> assert np.all(boxes.data[0] == [0, 0, 10, 10])
+            >>> # Only one slice
+            >>> boxes = Boxes.from_slice(slice(2, 5), shape=(10, 10))
+            >>> assert np.all(boxes.data[0] == [0, 2, 10, 5])
+        """
+        # Rectify input slices to agree with a 2D canvas
+        if slices is None:
+            slices = (slice(None), slice(None))
+        if isinstance(slices, slice):
+            slices = (slices,)
+        if len(slices) < 2:
+            _tail = tuple([slice(None)] * (2 - len(slices)))
+            slices = tuple(slices) + _tail
+
+        y_sl, x_sl = slices[0:2]
+        tl_x = x_sl.start
+        tl_y = y_sl.start
+        rb_x = x_sl.stop
+        rb_y = y_sl.stop
+
+        if tl_x is None or tl_x < 0:
+            tl_x = 0
+
+        if tl_y is None or tl_y < 0:
+            tl_y = 0
+
+        if shape is not None:
+            height, width = shape[0:2]
+        else:
+            height, width = None, None
+
+        if rb_x is None:
+            if width is None:
+                raise Exception('shape required for unbounded slices')
+            rb_x = width
+        elif rb_x < 0:
+            if width is None:
+                raise Exception('shape required for unbounded slices')
+            rb_x = width + rb_x
+
+        if rb_y is None:
+            if height is None:
+                raise Exception('shape required for unbounded slices')
+            rb_y = height
+        elif rb_y < 0:
+            if height is None:
+                raise Exception('shape required for unbounded slices')
+            rb_y = height + rb_y
+
+        ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
+        box = Boxes(ltrb, 'ltrb')
+
+        if shape is not None:
+            box.clip(0, 0, width, height, inplace=True)
+        return box
+
     def to_coco(self, style='orig'):
         """
         Example:
@@ -870,8 +962,11 @@ class _BoxTransformMixins(object):
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
-                new_data = self.data.astype(np.float, copy=True)
+                new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
+
+        if transform is None:
+            return new
 
         try:
             # First try to warp using simple calls to axis-aligned operations
@@ -1072,7 +1167,7 @@ class _BoxTransformMixins(object):
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
-                new_data = self.data.astype(np.float, copy=True)
+                new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:
@@ -1182,7 +1277,7 @@ class _BoxTransformMixins(object):
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
-                new_data = self.data.astype(np.float, copy=True)
+                new_data = self.data.astype(float, copy=True)
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:
@@ -1205,8 +1300,19 @@ class _BoxTransformMixins(object):
 
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
-        Clip boxes to image boundaries.  If box is in ltrb format, inplace
+        Clip boxes to image boundaries. If box is in ltrb format, inplace
         operation is an option.
+
+        Args:
+            x_min (int): minimum x-coordinate
+            y_min (int): minimum x-coordinate
+            x_max (int): maximum x-coordinate
+            y_max (int): maximum y-coordinate
+            inplace (bool, default=False): if True and possible, perform
+                operation inplace.
+
+        Returns:
+            Boxes: clipped boxes
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1224,33 +1330,33 @@ class _BoxTransformMixins(object):
         if inplace:
             if self.format != BoxFormat.LTRB:
                 raise ValueError('Must be in ltrb format to operate inplace')
-            self2 = self
+            new = self
         else:
-            self2 = self.to_ltrb(copy=True)
-        if len(self2) == 0:
-            return self2
+            new = self.to_ltrb(copy=True)
+        if len(new) == 0:
+            return new
 
         if True:
             impl = self._impl
-            x1, y1, x2, y2 = impl.T(self2.data)
+            x1, y1, x2, y2 = impl.T(new.data)
             np.clip(x1, x_min, x_max, out=x1)
             np.clip(y1, y_min, y_max, out=y1)
             np.clip(x2, x_min, x_max, out=x2)
             np.clip(y2, y_min, y_max, out=y2)
         else:
-            if torch is not None and torch.is_tensor(self2.data):
-                x1, y1, x2, y2 = self2.data.t()
+            if torch is not None and torch.is_tensor(new.data):
+                x1, y1, x2, y2 = new.data.t()
                 x1.clamp_(x_min, x_max)
                 y1.clamp_(y_min, y_max)
                 x2.clamp_(x_min, x_max)
                 y2.clamp_(y_min, y_max)
             else:
-                x1, y1, x2, y2 = self2.data.T
+                x1, y1, x2, y2 = new.data.T
                 np.clip(x1, x_min, x_max, out=x1)
                 np.clip(y1, y_min, y_max, out=y1)
                 np.clip(x2, x_min, x_max, out=x2)
                 np.clip(y2, y_min, y_max, out=y2)
-        return self2
+        return new
 
     def transpose(self):
         """
@@ -1261,9 +1367,9 @@ class _BoxTransformMixins(object):
             <Boxes(ltrb, array([[1, 0, 4, 2]]))>
         """
         x, y, w, h = self.to_xywh().components
-        self2 = self.__class__(_cat([y, x, h, w]), format=BoxFormat.XYWH)
-        self2 = self2.toformat(self.format)
-        return self2
+        new = self.__class__(_cat([y, x, h, w]), format=BoxFormat.XYWH)
+        new = new.toformat(self.format)
+        return new
 
 
 class _BoxDrawMixins(object):
@@ -1828,7 +1934,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         return nice
 
     def __repr__(self):
-        return super(Boxes, self).__str__()
+        return super().__str__()
 
     @classmethod
     def random(Boxes, num=1, scale=1.0, format=BoxFormat.XYWH, anchors=None,
@@ -1985,10 +2091,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         newdata = _compress(self.data, flags, axis=axis)
         if inplace:
             self.data = newdata
-            self2 = self
+            new = self
         else:
-            self2 = self.__class__(newdata, self.format)
-        return self2
+            new = self.__class__(newdata, self.format)
+        return new
 
     def take(self, idxs, axis=0, inplace=False):
         """
@@ -2012,11 +2118,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if inplace:
             newdata = _take(self.data, idxs, axis=axis)
             self.data = newdata
-            self2 = self
+            new = self
         else:
             newdata = _take(self.data, idxs, axis=axis)
-            self2 = self.__class__(newdata, self.format)
-        return self2
+            new = self.__class__(newdata, self.format)
+        return new
 
     def is_tensor(self):
         """ is the backend fueled by torch? """

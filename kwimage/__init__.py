@@ -7,12 +7,13 @@ __devnotes__ = """
 mkinit ~/code/kwimage/kwimage/algo/__init__.py --relative -w --nomod
 mkinit ~/code/kwimage/kwimage/structs/__init__.py --relative -w --nomod
 mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  -w
+mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  --diff
 """
 
 import ubelt as ub
 try:
     import cv2  # NOQA
-except Exception:
+except ImportError as ex:
     msg = ub.paragraph(
         '''
         The kwimage module failed to import the cv2 module.  This may be due to
@@ -29,12 +30,13 @@ except Exception:
         `pip install opencv-python`.
 
         We appologize for this issue and hope this documentation is sufficient.
-        ''')
-    import warnings
-    warnings.warn(msg)
+
+        orig_ex={!r}
+        ''').format(ex)
+    raise ImportError(msg)
 
 
-__version__ = '0.7.2'
+__version__ = '0.7.3'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
@@ -43,7 +45,7 @@ from .im_color import (BASE_COLORS, CSS4_COLORS, Color, TABLEAU_COLORS,
                        XKCD_COLORS,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
                       make_channels_comparable, normalize, num_channels,
-                      padded_slice)
+                      padded_slice,)
 from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,)
 from .im_demodata import (grab_test_image, grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
@@ -78,9 +80,9 @@ __all__ = ['BASE_COLORS', 'Boxes', 'CSS4_COLORS', 'Color', 'Coords',
            'make_channels_comparable', 'make_heatmask', 'make_orimask',
            'make_vector_field', 'non_max_supression', 'normalize',
            'num_channels', 'overlay_alpha_images', 'overlay_alpha_layers',
-           'radial_fourier_mask', 'remove_homog', 'rle_translate',
-           'smooth_prob', 'stack_images', 'stack_images_grid',
+           'padded_slice', 'radial_fourier_mask', 'remove_homog',
+           'rle_translate', 'smooth_prob', 'stack_images', 'stack_images_grid',
            'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
            'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
            'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_image', 'warp_points', 'warp_tensor', 'padded_slice']
+           'warp_image', 'warp_points', 'warp_tensor']

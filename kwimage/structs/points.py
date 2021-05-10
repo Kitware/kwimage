@@ -107,6 +107,9 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        if transform is None:
+            return new
+
         if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
             try:
                 import imgaug

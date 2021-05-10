@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+TODO:
+    - [ ] Replace internal padded slice with kwarray.padded_slice
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import numpy as np
@@ -845,7 +849,7 @@ def subpixel_slice(inputs, index):
         >>> index = [slice(0.5, 3.5), slice(-0.5, 2.5)]
         >>> outputs = subpixel_slice(inputs, index)
 
-        >>> inputs = np.arange(5 * 5).reshape(1, 5, 5).astype(np.float)
+        >>> inputs = np.arange(5 * 5).reshape(1, 5, 5).astype(float)
         >>> index = [slice(None), slice(3, 6), slice(3, 6)]
         >>> outputs = subpixel_slice(inputs, index)
         >>> print(outputs)
@@ -1114,6 +1118,7 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         np.array([2, 3])
         [(2, 4)]
     """
+    # TODO: use kwarray instead
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
 
@@ -1610,7 +1615,7 @@ def subpixel_setvalue(img, pts, value, coord_axes=None,
 
     Example:
         >>> from kwimage.util_warp import *  # NOQA
-        >>> img = np.arange(3 * 3).reshape(3, 3).astype(np.float)
+        >>> img = np.arange(3 * 3).reshape(3, 3).astype(float)
         >>> pts = np.array([[1, 1], [1.5, 1.5], [1.9, 1.1]])
         >>> interp = 'bilinear'
         >>> value = 0

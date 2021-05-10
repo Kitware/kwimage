@@ -519,6 +519,10 @@ class _MaskTransformMixin(object):
         if torch is None:
             raise Exception('need torch to warp raster masks')
 
+        if transform is None:
+            new = self if inplace else Mask(self.data.copy(), self.format)
+            return new
+
         c_mask = self.to_c_mask(copy=False).data
         t_mask = torch.Tensor(c_mask)
         matrix = torch.Tensor(transform)
@@ -677,7 +681,7 @@ class _MaskDrawMixin(object):
                                           kwimage.Color(border_color).as255(),
                                           border_thick, cv2.LINE_AA)
 
-            canvas = canvas.astype(np.float) / 255.
+            canvas = canvas.astype(float) / 255.
 
         canvas = dtype_fixer(canvas, copy=False)
         return canvas
@@ -716,7 +720,7 @@ class _MaskDrawMixin(object):
                     (alpha_mask * 255.).astype(np.uint8),
                     contours, -1, border_color_tup, border_thick, cv2.LINE_AA)
 
-            alpha_mask = alpha_mask.astype(np.float) / 255.
+            alpha_mask = alpha_mask.astype(float) / 255.
 
         ax.imshow(alpha_mask)
 
