@@ -246,7 +246,7 @@ stages:
         - echo "Uploading wheels"
         # todo, can we tag the branch here as well?
         # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
-        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
             
     only:
         refs:
