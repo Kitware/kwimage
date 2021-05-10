@@ -114,7 +114,7 @@ stages:
         # FIXME: we should start from a docker iamge that already has LibGL setup
         - apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
         - ls wheelhouse
-        - MB_PYTHON_TAG=py2.py3-none-any
+        - MB_PYTHON_TAG=py3-none-any
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install $BDIST_WHEEL_PATH
@@ -448,7 +448,7 @@ deploy/cp36-cp36m-manylinux2010:
 
 # ---------------
 # Universal Python Jobs
-build/py2.py3-none-any:
+build/py3-none-any:
     <<: 
         - *common_template
 
@@ -467,9 +467,9 @@ build/py2.py3-none-any:
 
     script: 
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1
-        - python setup.py bdist_wheel --universal
+        - python setup.py bdist_wheel
         - ls dist
-        #- MB_PYTHON_TAG=py2.py3-none-any
+        #- MB_PYTHON_TAG=py3-none-any
         #- # VERSION=$(python -c "import setup; print(setup.VERSION)")
         #- # BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         #- # pip install $BDIST_WHEEL_PATH
@@ -489,7 +489,7 @@ build/py2.py3-none-any:
             - .cache/pip
 
 
-gpgsign/py2.py3-none-any:
+gpgsign/py3-none-any:
     <<: 
         - *common_template
 
@@ -498,7 +498,7 @@ gpgsign/py2.py3-none-any:
 
     script: 
         - ls dist
-        - MB_PYTHON_TAG=py2.py3-none-any
+        - MB_PYTHON_TAG=py3-none-any
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         # Decrypt and import GPG Keys / trust
@@ -535,7 +535,7 @@ gpgsign/py2.py3-none-any:
     image:
         python:3.7
 
-deploy/py2.py3-none-any:
+deploy/py3-none-any:
     <<: 
         - *common_template
 
@@ -547,7 +547,7 @@ deploy/py2.py3-none-any:
 
     script: 
         - ls dist
-        - MB_PYTHON_TAG=py2.py3-none-any
+        - MB_PYTHON_TAG=py3-none-any
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
