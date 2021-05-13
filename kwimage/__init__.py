@@ -36,7 +36,7 @@ except ImportError as ex:
     raise ImportError(msg)
 
 
-__version__ = '0.7.4'
+__version__ = '0.7.5'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
