@@ -1063,11 +1063,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         new.data['boxes'] = new.data['boxes'].warp(transform,
                                                    input_dims=input_dims,
                                                    inplace=inplace)
-        if 'keypoints' in new.data:
+        if new.data.get('keypoints', None) is not None:
             new.data['keypoints'] = new.data['keypoints'].warp(
                 transform, input_dims=input_dims, output_dims=output_dims,
                 inplace=inplace)
-        if 'segmentations' in new.data:
+        if new.data.get('segmentations', None) is not None:
             new.data['segmentations'] = new.data['segmentations'].warp(
                 transform, input_dims=input_dims, output_dims=output_dims,
                 inplace=inplace)
@@ -1088,10 +1088,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['boxes'] = new.data['boxes'].scale(factor, inplace=inplace)
-        if 'keypoints' in new.data:
+        if new.data.get('keypoints', None) is not None:
             new.data['keypoints'] = new.data['keypoints'].scale(
                 factor, output_dims=output_dims, inplace=inplace)
-        if 'segmentations' in new.data:
+        if new.data.get('segmentations', None) is not None:
             new.data['segmentations'] = new.data['segmentations'].scale(
                 factor, output_dims=output_dims, inplace=inplace)
         return new
@@ -1108,10 +1108,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['boxes'] = new.data['boxes'].translate(offset, inplace=inplace)
-        if 'keypoints' in new.data:
+        if new.data.get('keypoints', None) is not None:
             new.data['keypoints'] = new.data['keypoints'].translate(
                 offset, output_dims=output_dims)
-        if 'segmentations' in new.data:
+        if new.data.get('segmentations', None) is not None:
             new.data['segmentations'] = new.data['segmentations'].translate(
                 offset, output_dims=output_dims)
         return new
