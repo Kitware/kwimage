@@ -34,7 +34,7 @@ cibuildwheel:
 
     script:
         # - apt update && apt install podman git -y && rm -rf /var/lib/apt/lists/*  
-        - yum install git
+        - yum install git -y
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
         - |
