@@ -30,23 +30,34 @@ cibuildwheel:
         - docker
         - privileged
 
-    image: python:3.8
+    image: quay.io/containers/podman
 
-    # make a docker daemon available for cibuildwheel to use
-    #services:
-    #  - name: docker:dind
-    #    entrypoint: ["env", "-u", "DOCKER_HOST"]
-    #    command: ["dockerd-entrypoint.sh"]
-    #variables:
-    #    DOCKER_HOST: tcp://docker:2375/
-    #    DOCKER_DRIVER: overlay2
-    #    # See https://github.com/docker-library/docker/pull/166
-    #    DOCKER_TLS_CERTDIR: ""
     script:
         - apt update && apt install podman -y && rm -rf /var/lib/apt/lists/*  
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
-        - pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
+        - |
+                curl_verify_sha256(){
+                    URL=$1
+                    DST=$2
+                    EXPECTED_SHA256=$3
+                    curl $URL --output $DST
+                    GOT_SHA256=$(sha256sum $DST | cut -d" " -f1)
+                    echo "GOT_SHA256      = $GOT_SHA256"
+                    echo "EXPECTED_SHA256 = $EXPECTED_SHA256"
+                    # For security, it is important to verify the hash
+                    if [[ "$GOT_SHA256" != $EXPECTED_SHA256* ]]; then
+                        echo "Downloaded file does not match hash!"
+                        echo "DO NOT CONTINUE WITHOUT VALIDATING NEW VERSION AND UPDATING THE HASH!"
+                    else
+                        echo "Hashes match well enough"
+                    fi
+                }
+                curl_verify_sha256 https://bootstrap.pypa.io/get-pip.py get-pip.py f499d76e0149a673fb8246d88e116db589afbd291739bd84f2cd9a7bca7b6993
+                python3 get-pip.py
+                python3 -m pip config set global.disable-pip-version-check True
+                python3 -m pip install pip -U
+        - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
         - cibuildwheel --output-dir wheelhouse --platform linux
 
     artifacts:
@@ -81,7 +92,7 @@ cibuildwheel:
     stage: 
         build
 
-    image: quay.io/pypa/manylinux2010_x86_64
+    image: quay.io/manylinux2010_x86_64
 
     script: 
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
