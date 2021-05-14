@@ -29,22 +29,25 @@ cibuildwheel:
         - docker
         - linux
         - build
+        - privileged
 
     image: python:3.8
 
     # make a docker daemon available for cibuildwheel to use
-    services:
-      - name: docker:dind
-        entrypoint: ["env", "-u", "DOCKER_HOST"]
-        command: ["dockerd-entrypoint.sh"]
-    variables:
-        DOCKER_HOST: tcp://docker:2375/
-        DOCKER_DRIVER: overlay2
-        # See https://github.com/docker-library/docker/pull/166
-        DOCKER_TLS_CERTDIR: ""
+    #services:
+    #  - name: docker:dind
+    #    entrypoint: ["env", "-u", "DOCKER_HOST"]
+    #    command: ["dockerd-entrypoint.sh"]
+    #variables:
+    #    DOCKER_HOST: tcp://docker:2375/
+    #    DOCKER_DRIVER: overlay2
+    #    # See https://github.com/docker-library/docker/pull/166
+    #    DOCKER_TLS_CERTDIR: ""
     script:
-        - curl -sSL https://get.docker.com/ | sh
-        - python -m pip install cibuildwheel==1.11.0
+        - apt install podman
+        # - curl -sSL https://get.docker.com/ | sh
+        #- python -m pip install cibuildwheel==1.11.0
+        - python install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
         - cibuildwheel --output-dir wheelhouse
 
     artifacts:

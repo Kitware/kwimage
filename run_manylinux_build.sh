@@ -111,6 +111,14 @@ set -x
 export PIP_CACHE_DIR="$MB_WORKDIR/cache_pip"
 
 pip install pip -U
+pip install pip cibuildwheel -U
+
+cd $HOME
+git clone /io working_repo
+cd working_repo
+
+cibuildwheel --output-dir wheelhouse
+
 pip install pip setuptools -U
 pip install pip scikit-build -U
 pip install pip cmake -U
