@@ -47,7 +47,7 @@ cibuildwheel:
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
         - pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
-        - cibuildwheel --output-dir wheelhouse
+        - cibuildwheel --output-dir wheelhouse --platform linux
 
     artifacts:
         paths:
