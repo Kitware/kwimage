@@ -26,7 +26,6 @@ cibuildwheel:
 
     tags:
         # Tags define which runners will accept which jobs
-        - docker
         - linux
         - build
         - privileged
