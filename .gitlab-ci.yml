@@ -43,7 +43,7 @@ cibuildwheel:
     #    # See https://github.com/docker-library/docker/pull/166
     #    DOCKER_TLS_CERTDIR: ""
     script:
-        - apt install podman
+        - apt update && apt install podman -y && rm -rf /var/lib/apt/lists/*  
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
         - pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
