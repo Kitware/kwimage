@@ -12,10 +12,45 @@
 # (4) finally if we are on the release branch we will push the signed wheels to pypi
 
 stages:
+  - cibuildwheel
   - build
   - test
   - gpgsign
   - deploy
+
+
+# Test new type of jobs
+cibuildwheel: 
+    tags:
+        # Tags define which runners will accept which jobs
+        - docker
+        - linux
+        - build
+
+    image: python:3.8
+
+    # make a docker daemon available for cibuildwheel to use
+    services:
+      - name: docker:dind
+        entrypoint: ["env", "-u", "DOCKER_HOST"]
+        command: ["dockerd-entrypoint.sh"]
+    variables:
+        DOCKER_HOST: tcp://docker:2375/
+        DOCKER_DRIVER: overlay2
+        # See https://github.com/docker-library/docker/pull/166
+        DOCKER_TLS_CERTDIR: ""
+    script:
+        - curl -sSL https://get.docker.com/ | sh
+        - python -m pip install cibuildwheel==1.11.0
+        - cibuildwheel --output-dir wheelhouse
+
+    artifacts:
+        paths:
+            - wheelhouse/
+
+
+#cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
+#cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
 
 
 ### TEMPLATES ###
