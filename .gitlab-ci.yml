@@ -47,7 +47,7 @@ cibuildwheel:
         - apt install podman
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
-        - python install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
+        - pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
         - cibuildwheel --output-dir wheelhouse
 
     artifacts:
