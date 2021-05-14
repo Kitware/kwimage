@@ -27,7 +27,7 @@ cibuildwheel:
     tags:
         # Tags define which runners will accept which jobs
         - linux
-        - build
+        - docker
         - privileged
 
     image: python:3.8
