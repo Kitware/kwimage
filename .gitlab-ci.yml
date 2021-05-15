@@ -59,8 +59,10 @@ cibuildwheel:
                 python3 -m pip config set global.disable-pip-version-check True
                 python3 -m pip install pip -U
         - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
+        - ln -s $(pwd) /project || echo "project folder already exists"
         - pwd
         - ls -al
+        - ls -al /project
         - cibuildwheel --output-dir wheelhouse --platform linux
 
     artifacts:
