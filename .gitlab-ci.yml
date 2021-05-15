@@ -30,34 +30,35 @@ cibuildwheel:
         - docker
         - privileged
 
-    image: quay.io/containers/podman
+    image: ubuntu:21.04
+    #python:3.8
 
     script:
-        # - apt update && apt install podman git -y && rm -rf /var/lib/apt/lists/*  
-        - yum install git -y
+         - DEBIAN_FRONTEND=noninteractive apt update && apt install curl podman git python3-pip -y   # && rm -rf /var/lib/apt/lists/*  
+        # - yum install git -y
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
-        - |
-                curl_verify_sha256(){
-                    URL=$1
-                    DST=$2
-                    EXPECTED_SHA256=$3
-                    curl $URL --output $DST
-                    GOT_SHA256=$(sha256sum $DST | cut -d" " -f1)
-                    echo "GOT_SHA256      = $GOT_SHA256"
-                    echo "EXPECTED_SHA256 = $EXPECTED_SHA256"
-                    # For security, it is important to verify the hash
-                    if [[ "$GOT_SHA256" != $EXPECTED_SHA256* ]]; then
-                        echo "Downloaded file does not match hash!"
-                        echo "DO NOT CONTINUE WITHOUT VALIDATING NEW VERSION AND UPDATING THE HASH!"
-                    else
-                        echo "Hashes match well enough"
-                    fi
-                }
-                curl_verify_sha256 https://bootstrap.pypa.io/get-pip.py get-pip.py f499d76e0149a673fb8246d88e116db589afbd291739bd84f2cd9a7bca7b6993
-                python3 get-pip.py
-                python3 -m pip config set global.disable-pip-version-check True
-                python3 -m pip install pip -U
+        #- |
+        #        curl_verify_sha256(){
+        #            URL=$1
+        #            DST=$2
+        #            EXPECTED_SHA256=$3
+        #            curl $URL --output $DST
+        #            GOT_SHA256=$(sha256sum $DST | cut -d" " -f1)
+        #            echo "GOT_SHA256      = $GOT_SHA256"
+        #            echo "EXPECTED_SHA256 = $EXPECTED_SHA256"
+        #            # For security, it is important to verify the hash
+        #            if [[ "$GOT_SHA256" != $EXPECTED_SHA256* ]]; then
+        #                echo "Downloaded file does not match hash!"
+        #                echo "DO NOT CONTINUE WITHOUT VALIDATING NEW VERSION AND UPDATING THE HASH!"
+        #            else
+        #                echo "Hashes match well enough"
+        #            fi
+        #        }
+        #        curl_verify_sha256 https://bootstrap.pypa.io/get-pip.py get-pip.py f499d76e0149a673fb8246d88e116db589afbd291739bd84f2cd9a7bca7b6993
+        #        python3 get-pip.py
+        #        python3 -m pip config set global.disable-pip-version-check True
+        #        python3 -m pip install pip -U
         - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
         - ln -s $(pwd) /project || echo "project folder already exists"
         - pwd
