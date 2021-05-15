@@ -34,7 +34,8 @@ cibuildwheel:
     #python:3.8
 
     script:
-         - DEBIAN_FRONTEND=noninteractive apt update && apt install curl podman git python3-pip -y   # && rm -rf /var/lib/apt/lists/*  
+        - DEBIAN_FRONTEND=noninteractive apt update && apt install curl podman git python3-pip -y   
+        # && rm -rf /var/lib/apt/lists/*  
         # - yum install git -y
         # - curl -sSL https://get.docker.com/ | sh
         #- python -m pip install cibuildwheel==1.11.0
