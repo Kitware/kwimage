@@ -37,6 +37,7 @@ cibuildwheel:
         - export DEBIAN_FRONTEND=noninteractive
         - apt update && apt install curl podman git iptables aufs-tools python3-pip -y   
         - podman --version
+        - podman info --debug
         # && rm -rf /var/lib/apt/lists/*  
         # - yum install git -y
         # - curl -sSL https://get.docker.com/ | sh
