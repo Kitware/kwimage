@@ -12,7 +12,6 @@
 # (4) finally if we are on the release branch we will push the signed wheels to pypi
 
 stages:
-  - cibuildwheel
   - build
   - test
   - gpgsign
@@ -20,9 +19,9 @@ stages:
 
 
 # Test new type of jobs
-cibuildwheel: 
+.cibuildwheel_template: &cibuildwheel_template
     stage: 
-        cibuildwheel
+        build
 
     tags:
         # Tags define which runners will accept which jobs
@@ -38,7 +37,7 @@ cibuildwheel:
         - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
         - pwd
         - ls -al
-        - export CIBW_SKIP="pp* cp27-* cp35-* cp36-*"
+        - export CIBW_SKIP="pp* cp27-* cp35-*"
         - cibuildwheel --platform linux --print-build-identifiers
         - cibuildwheel --output-dir wheelhouse --platform linux
 
@@ -287,11 +286,13 @@ cibuildwheel:
 # Define the actual jobs
 
 # ---------------
-# Python 3.8 Jobs
+# Python 3.9 Jobs
 
-#build/cp39-cp39-manylinux2010:
-#    <<: 
-#        - *manylinux_build_template
+build/cp39-cp39-manylinux2010:
+    <<: 
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp39-*"
 
 test_full/cp39-cp39-manylinux2010:
     <<: 
@@ -320,9 +321,11 @@ deploy/cp39-cp39-manylinux2010:
 # ---------------
 # Python 3.8 Jobs
 
-#build/cp38-cp38-manylinux2010:
-#    <<: 
-#        - *manylinux_build_template
+build/cp38-cp38-manylinux2010:
+    <<: 
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp38-*"
 
 test_full/cp38-cp38-manylinux2010:
     <<: 
@@ -352,9 +355,11 @@ deploy/cp38-cp38-manylinux2010:
 # ---------------
 # Python 3.7 Jobs
 
-#build/cp37-cp37m-manylinux2010:
-#    <<: 
-#        - *manylinux_build_template
+build/cp37-cp37m-manylinux2010:
+    <<: 
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp37-*"
 
 test_full/cp37-cp37m-manylinux2010:
     <<: 
@@ -384,9 +389,11 @@ deploy/cp37-cp37m-manylinux2010:
 # ---------------
 # Python 3.6 Jobs
 
-#build/cp36-cp36m-manylinux2010:
-#    <<: 
-#        - *manylinux_build_template
+build/cp36-cp36m-manylinux2010:
+    <<: 
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp36-*"
 
 test_full/cp36-cp36m-manylinux2010:
     <<: 
