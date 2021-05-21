@@ -97,67 +97,14 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
 
 def imscale(img, scale, interpolation=None, return_scale=False):
     """
-    Resizes an image by a scale factor.
-
-    DEPRECATED
-
-    Because the result image must have an integer number of pixels, the scale
-    factor is rounded, and the rounded scale factor is optionaly returned.
-
-    Args:
-        img (ndarray): image to resize
-
-        scale (float or Tuple[float, float]):
-            desired floating point scale factor. If a tuple, the dimension
-            ordering is x,y.
-
-        interpolation (str | int): interpolation key or code (e.g. linear lanczos)
-
-        return_scale (bool, default=False):
-            if True returns both the new image and the actual scale factor used
-            to achive the new integer image size.
-
-    SeeAlso:
-        :func:`imresize`.
-
-    Example:
-        >>> import kwimage
-        >>> import numpy as np
-        >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
-        >>> new_img, new_scale = kwimage.imscale(img, scale=.85,
-        >>>                                      interpolation='nearest',
-        >>>                                      return_scale=True)
-        >>> assert new_scale == (.8, .8)
-        >>> assert new_img.shape == (8, 8, 3)
+    DEPRECATED and removed: use imresize instead
     """
-    import warnings
-    warnings.warn(
-        'imscale is deprecated, use imresize instead', DeprecationWarning)
-
-    dsize = img.shape[0:2][::-1]
-
-    try:
-        sx, sy = scale
-    except TypeError:
-        sx = sy = scale
-    w, h = dsize
-    new_w = int(np.round(w * sx))
-    new_h = int(np.round(h * sy))
-
-    new_scale = new_w / w, new_h / h
-    new_dsize = (new_w, new_h)
-
-    interpolation = _coerce_interpolation(interpolation)
-    new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
-
-    if return_scale:
-        return new_img, new_scale
-    else:
-        return new_img
+    raise Exception('imscale is deprecated, use imresize instead')
 
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
-             interpolation=None, letterbox=False, return_info=False):
+             interpolation=None, grow_interpolation=None, letterbox=False,
+             return_info=False):
     """
     Resize an image based on a scale factor, final size, or size and aspect
     ratio.
@@ -188,7 +135,14 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
         interpolation (str | int): interpolation key or code (e.g. linear
             lanczos). By default "area" is used if the image is shrinking and
-            "lanczos" is used if the image is growing.
+            "lanczos" is used if the image is growing. Note, if this is
+            explicitly set, then it will be used regardless of if the image is
+            growing or shrinking. Set ``grow_interpolation`` to change
+            the default for an enlarging interpolation.
+
+        grow_interpolation (str | int): The interpolation key or code to use
+            when the image is being enlarged. Does nothing if "interpolation"
+            is explicitly given. Defaults to "lanczos".
 
         letterbox (bool, default=False): if used in conjunction with
             dsize, then the image is scaled and translated to fit in the
@@ -263,6 +217,29 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> # Test letterbox resize
         >>> img = np.random.rand(100, 200)
         >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
+
+    Exammple:
+        >>> # Check aliasing
+        >>> img = kwimage.grab_test_image('checkerboard')
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> dsize = (14, 14)
+        >>> # When we set "grow_interpolation" for a "shrinking" resize it should
+        >>> # still do the "area" interpolation to antialias the results. But if we
+        >>> # use explicit interpolation it should alias.
+        >>> pnum_ = kwplot.PlotNums(nSubplots=7)
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, interpolation='area'), pnum=pnum_(), title='resize area')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, interpolation='linear'), pnum=pnum_(), title='resize linear')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, interpolation='nearest'), pnum=pnum_(), title='resize nearest')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, interpolation='cubic'), pnum=pnum_(), title='resize cubic')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, grow_interpolation='cubic'), pnum=pnum_(), title='resize grow cubic')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, grow_interpolation='linear'), pnum=pnum_(), title='resize grow linear')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, grow_interpolation='nearest'), pnum=pnum_(), title='resize grow nearest')
+
+    FIXME:
+        - [ ] When interpolation is area and the number of channels > 4
+              cv2.resize will error but it is fine for linear interpolation
     """
     old_w, old_h = img.shape[0:2][::-1]
 
@@ -300,6 +277,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         assert new_w is not None
         new_h = new_w * old_h / old_w
 
+    grow_interpolation = _coerce_interpolation(grow_interpolation)
+
     if letterbox:
         if dsize is None:
             raise ValueError('letterbox can only be used with dsize')
@@ -320,7 +299,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         right, bot = target_size - (embed_size + offset)
 
         interpolation = _coerce_interpolation(
-            interpolation, scale=equal_sxy)
+            interpolation, scale=equal_sxy, grow_default=grow_interpolation)
 
         embed_dsize = tuple(embed_size)
         embed_img = cv2.resize(img, embed_dsize, interpolation=interpolation)
@@ -344,7 +323,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
         new_scale = np.array(new_dsize) / np.array(old_dsize)
         interpolation = _coerce_interpolation(
-            interpolation, scale=new_scale.min())
+            interpolation, scale=new_scale.min(),
+            grow_default=grow_interpolation)
         new_img = cv2.resize(img, new_dsize, interpolation=interpolation)
         if return_info:
             info = {

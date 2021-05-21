@@ -142,14 +142,17 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>> grab_test_image('astro', dsize=(255, 255)).shape
         (255, 255, 3)
     """
-    fpath = grab_test_image_fpath(key)
-    bgr = cv2.imread(fpath)
+    if key == 'checkerboard':
+        image = checkerboard()
+    else:
+        fpath = grab_test_image_fpath(key)
+        bgr = cv2.imread(fpath)
+        image = im_cv2.convert_colorspace(bgr, 'bgr', dst_space=space,
+                                          implicit=True)
     if dsize:
         interpolation = im_cv2._coerce_interpolation(interpolation,
                                                      cv2.INTER_LANCZOS4)
-        bgr = cv2.resize(bgr, dsize, interpolation=interpolation)
-    image = im_cv2.convert_colorspace(bgr, 'bgr', dst_space=space,
-                                      implicit=True)
+        image = cv2.resize(image, dsize, interpolation=interpolation)
     return image
 
 
@@ -204,3 +207,29 @@ def grab_test_image_fpath(key='astro'):
 
 grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
+
+
+def checkerboard(num_squares=8, dsize=(512, 512)):
+    """
+    Creates a checkerboard image
+
+    Args:
+        num_squares (int): number of squares in a row
+        dsize (Tuple[int, int]): width and height
+
+    References:
+        https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
+
+    Example:
+        >>> from kwimage.im_demodata import *  # NOQA
+        >>> img = checkerboard()
+    """
+    import numpy as np
+    num_squares = 8
+    num_pairs = num_squares // 2
+    img_size = 512
+    b = img_size // num_squares
+    base = np.array([[1, 0] * num_pairs, [0, 1] * num_pairs] * num_pairs)
+    expansion = np.ones((b, b))
+    img = np.kron(base, expansion)
+    return img

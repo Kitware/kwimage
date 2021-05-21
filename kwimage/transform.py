@@ -267,7 +267,46 @@ class Affine(Projective):
         return self
 
     def decompose(self):
-        raise NotImplementedError
+        """
+        Decompose the affine matrix into its individual scale, translation,
+        rotation, and skew parameters.
+
+        References:
+            https://math.stackexchange.com/questions/612006/decomposing-an-affine-transformation
+
+        Example:
+            >>> self = Affine.random()
+            >>> params = self.decompose()
+            >>> recon = Affine.coerce(**params)
+            >>> params2 = recon.decompose()
+            >>> pt = np.vstack([np.random.rand(2, 1), [1]])
+            >>> result1 = self.matrix[0:2] @ pt
+            >>> result2 = recon.matrix[0:2] @ pt
+            >>> assert np.allclose(result1, result2)
+
+            >>> self = Affine.scale(0.001) @ Affine.random()
+            >>> params = self.decompose()
+            >>> self.det()
+        """
+        a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
+        sx = np.sqrt(a11 ** 2 + a21 ** 2)
+        theta = np.arctan2(a21, a11)
+        sin_t = np.sin(theta)
+        cos_t = np.cos(theta)
+        msy = a12 * cos_t + a22 * sin_t
+        if abs(cos_t) < abs(sin_t):
+            sy = (msy * cos_t - a12) / sin_t
+        else:
+            sy = (a22 - msy * sin_t) / cos_t
+        m = msy / sy
+        tx, ty = a13, a23
+        params = {
+            'offset': (tx, ty),
+            'scale': (sx, sy),
+            'shear': m,
+            'theta': theta,
+        }
+        return params
 
     @classmethod
     def scale(cls, scale):
