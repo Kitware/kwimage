@@ -19,7 +19,7 @@ import numpy as np
 
 
 def _read_gdal_v1(fpath):
-    import gdal
+    from osgeo import gdal
     try:
         gdal_dset = gdal.Open(fpath)
         if gdal_dset.RasterCount == 1:
@@ -112,23 +112,24 @@ def bench_imread():
 
     results = {}
 
-    fpath = '/home/joncrall/data/sample_ptif.ptif'
-    fpath = '/home/joncrall/data/sample_cog.cog.tif'
+    # fpath = '/home/joncrall/data/sample_ptif.ptif'
+    # fpath = '/home/joncrall/data/sample_cog.cog.tif'
 
-    for timer in ti.reset('gdal-v1'):
-        with timer:
-            image = _read_gdal_v1(fpath)
-    results[ti.label] = image.sum()
+    if 0:
+        for timer in ti.reset('gdal-v1'):
+            with timer:
+                image = _read_gdal_v1(fpath)
+        results[ti.label] = image.sum()
 
-    for timer in ti.reset('gdal-v2'):
-        with timer:
-            image = _read_gdal_v2(fpath)
-    results[ti.label] = image.sum()
+        for timer in ti.reset('gdal-v2'):
+            with timer:
+                image = _read_gdal_v2(fpath)
+        results[ti.label] = image.sum()
 
-    for timer in ti.reset('rasterio'):
-        with timer:
-            image = _read_rasterio(fpath)
-    results[ti.label] = image.sum()
+        for timer in ti.reset('rasterio'):
+            with timer:
+                image = _read_rasterio(fpath)
+        results[ti.label] = image.sum()
 
     import skimage.io
     """

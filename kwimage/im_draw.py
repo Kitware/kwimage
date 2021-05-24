@@ -26,7 +26,7 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
             was drawn on.
         **kwargs:
             color (tuple): default blue
-            thickneess (int): defaults to 2
+            thickness (int): defaults to 2
             fontFace (int): defaults to cv2.FONT_HERSHEY_SIMPLEX
             fontScale (float): defaults to 1.0
             valign (str, default='bottom'): either top, center, or bottom

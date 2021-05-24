@@ -18,6 +18,36 @@ stages:
   - deploy
 
 
+# Test new type of jobs
+.cibuildwheel_template: &cibuildwheel_template
+    stage: 
+        build
+
+    tags:
+        # Tags define which runners will accept which jobs
+        - linux
+        - docker
+        - privileged
+
+    image: gitlab.kitware.com:4567/computer-vision/ci-docker/podman
+
+    script:
+        - podman --version
+        - podman info --debug
+        - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
+        - pwd
+        - ls -al
+        - export CIBW_SKIP="pp* cp27-* cp35-*"
+        - cibuildwheel --platform linux --print-build-identifiers
+        - cibuildwheel --output-dir wheelhouse --platform linux
+
+    artifacts:
+        paths:
+            - wheelhouse/
+
+#cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
+
+
 ### TEMPLATES ###
 # Define common templates using YAML anchors
 
@@ -34,23 +64,23 @@ stages:
         PIP_CACHE_DIR: "$CI_PROJECT_DIR/mb_work/cache_pip"
     
     
-.manylinux_build_template: &manylinux_build_template
-    <<: 
-        - *common_template
+#.manylinux_build_template: &manylinux_build_template
+#    <<: 
+#        - *common_template
 
-    stage: 
-        build
+#    stage: 
+#        build
 
-    image: quay.io/pypa/manylinux2010_x86_64
+#    image: quay.io/manylinux2010_x86_64
 
-    script: 
-        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        - ls
-        - MB_PYTHON_TAG=$MB_PYTHON_TAG _INSIDE_DOCKER=YES ./run_manylinux_build.sh
+#    script: 
+#        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+#        - ls
+#        - MB_PYTHON_TAG=$MB_PYTHON_TAG _INSIDE_DOCKER=YES ./run_manylinux_build.sh
 
-    artifacts:
-        paths:
-            - wheelhouse/*.whl
+#    artifacts:
+#        paths:
+#            - wheelhouse/*.whl
 
 
 .test_full_template: &test_full_template
@@ -74,18 +104,18 @@ stages:
 
     script: 
         - echo "skipping tests for now"
-        ## FIXME: we should start from a docker iamge that already has LibGL setup
-        #- apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
-        #- ls wheelhouse
-        #- MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-        #- VERSION=$(python -c "import setup; print(setup.VERSION)")
-        #- BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux2010_x86_64.whl
-        #- pip install $BDIST_WHEEL_PATH
-        #- pip install pygments
-        ## - xdoctest -m kwimage --style=google all
-        ## - xdoctest kwimage --style=google all --mask 
-        ## Hack to test the installed wheel. TODO: make run_tests work better in this case.
-        #- mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+        # FIXME: we should start from a docker iamge that already has LibGL setup
+        - apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
+        - ls wheelhouse
+        - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux*_x86_64.whl
+        - pip install $BDIST_WHEEL_PATH
+        - pip install pygments
+        # - xdoctest -m kwimage --style=google all
+        # - xdoctest kwimage --style=google all --mask 
+        # Hack to test the installed wheel. TODO: make run_tests work better in this case.
+        - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           
     # Coverage is a regex that will parse the coverage from the test stdout
     coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
@@ -193,7 +223,7 @@ stages:
         - ls wheelhouse
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux2010_x86_64.whl
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux*_x86_64.whl
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=D297D757
@@ -256,11 +286,13 @@ stages:
 # Define the actual jobs
 
 # ---------------
-# Python 3.8 Jobs
+# Python 3.9 Jobs
 
 build/cp39-cp39-manylinux2010:
     <<: 
-        - *manylinux_build_template
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp39-*"
 
 test_full/cp39-cp39-manylinux2010:
     <<: 
@@ -291,7 +323,9 @@ deploy/cp39-cp39-manylinux2010:
 
 build/cp38-cp38-manylinux2010:
     <<: 
-        - *manylinux_build_template
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp38-*"
 
 test_full/cp38-cp38-manylinux2010:
     <<: 
@@ -323,7 +357,9 @@ deploy/cp38-cp38-manylinux2010:
 
 build/cp37-cp37m-manylinux2010:
     <<: 
-        - *manylinux_build_template
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp37-*"
 
 test_full/cp37-cp37m-manylinux2010:
     <<: 
@@ -355,7 +391,9 @@ deploy/cp37-cp37m-manylinux2010:
 
 build/cp36-cp36m-manylinux2010:
     <<: 
-        - *manylinux_build_template
+        - *cibuildwheel_template
+    variables:
+        CIBW_BUILD: "cp36-*"
 
 test_full/cp36-cp36m-manylinux2010:
     <<: 

@@ -4,7 +4,24 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.4 - Unreleased
+## Version 0.7.5 - Unreleased
+
+
+### Added
+
+* New CI for building wheels with cibuildwheel
+* Checkerboard demo image
+* `warp_affine` with antialiasing for downsampling by default
+* `Affine.decompose` which extracts the scale, translation, rotation, and shear
+  from an affine matrix.
+
+
+### Changed
+* `imscale` is deprecated and now results in an error
+* `warp_image`, which did not do what you think it does, is deprecated and now results in an error
+
+
+## Version 0.7.4 - Released 2021-05-13
 
 
 ## Version 0.7.3 - Released 2021-05-10
