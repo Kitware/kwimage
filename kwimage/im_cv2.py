@@ -105,7 +105,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
              interpolation=None, grow_interpolation=None, letterbox=False,
-             return_info=False, antialias=True):
+             return_info=False, antialias=False):
     """
     Resize an image based on a scale factor, final size, or size and aspect
     ratio.
@@ -553,7 +553,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
     return gausspatch
 
 
-def warp_affine(image, transform, dsize=None, antialias=True,
+def warp_affine(image, transform, dsize=None, antialias=False,
                 interpolation='linear'):
     """
     Applies an affine transformation to an image with optional antialiasing.
@@ -568,7 +568,7 @@ def warp_affine(image, transform, dsize=None, antialias=True,
             such that the positive coordinates of the warped image will fit in
             the new canvas. If None, then the image size will not change.
 
-        antialias (bool, default=True):
+        antialias (bool, default=False):
             if True determines if the transform is downsampling and applies
             antialiasing via gaussian a blur.
 
@@ -581,7 +581,7 @@ def warp_affine(image, transform, dsize=None, antialias=True,
         >>> import kwimage
         >>> from kwimage.transform import Affine
         >>> image = kwimage.grab_test_image('astro')
-        >>> image = kwimage.grab_test_image('checkerboard')
+        >>> #image = kwimage.grab_test_image('checkerboard')
         >>> transform = Affine.random() @ Affine.scale(0.05)
         >>> transform = Affine.scale(0.02)
         >>> warped1 = warp_affine(image, transform, dsize='auto', antialias=1, interpolation='nearest')
@@ -685,6 +685,12 @@ def _prepare_downscale(image, sx, sy):
     Does a partial downscale with antialiasing and prepares for a final
     downsampling. Only downscales by factors of 2, any residual scaling to
     be done is returned.
+
+    Example:
+        >>> s = 523
+        >>> image = np.random.rand(s, s)
+        >>> sx = sy = 1 / 11
+        >>> downsampled, rx, ry = _prepare_downscale(image, sx, sy)
     """
     max_scale = max(sx, sy)
     # The "fudge" factor limits the number of downsampled pyramid
@@ -792,6 +798,9 @@ def _pyrDownK(a, k=1):
     """
     if k == 0:
         a = a.copy()
+    borderType = cv2.BORDER_DEFAULT
+    # Note: pyrDown removes even pixels, which may introduce a bias towards the
+    # bottom right of the image.
     for _ in range(k):
-        a = cv2.pyrDown(a)
+        a = cv2.pyrDown(a, borderType=borderType)
     return a

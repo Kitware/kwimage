@@ -272,7 +272,7 @@ class Affine(Projective):
         rotation, and skew parameters.
 
         References:
-            https://math.stackexchange.com/questions/612006/decomposing-an-affine-transformation
+            https://math.stackexchange.com/questions/612006/decompose-affine
 
         Example:
             >>> self = Affine.random()
