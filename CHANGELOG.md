@@ -11,7 +11,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * New CI for building wheels with cibuildwheel
 * Checkerboard demo image
-* `warp_affine` with antialiasing for downsampling by default
+* `warp_affine` with optional antialiasing for downsample operations.
+* `imresize` now has optional antialiasing.
 * `Affine.decompose` which extracts the scale, translation, rotation, and shear
   from an affine matrix.
 
