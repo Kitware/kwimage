@@ -228,6 +228,10 @@ def clean():
     enqueue(join(repodir, '_cmake_test_compile'))
     enqueue(join(repodir, 'kwimage.egg-info'))
     enqueue(join(repodir, 'pip-wheel-metadata'))
+    # enqueue(join(repodir, 'MANIFEST'))
+    # enqueue(join(repodir, 'dist'))
+    # enqueue(join(repodir, 'build'))
+    # enqueue(join(repodir, 'wheelhouse'))
 
     for dpath in toremove:
         ub.delete(dpath, verbose=1)
@@ -239,25 +243,6 @@ compile_setup_kw = dict(
     cmake_source_dir='.',
     # cmake_source_dir='kwimage',
 )
-
-# try:
-#     import numpy as np
-#     # Note: without this skbuild will fail with `pip install -e .`
-#     # however, it will still work with `./setup.py develop`.
-#     # Not sure why this is, could it be an skbuild bug?
-
-#     # This should be something like:
-#     # /home/joncrall/venv3.6/lib/python3.6/site-packages/numpy/core/include
-#     # NOT:
-#     # /tmp/pip-build-env-dt0w6ib0/overlay/lib/python3.6/site-packages/numpy/core/include
-#     compile_setup_kw['cmake_args'] = [
-#         '-D NumPy_INCLUDE_DIR:PATH=' + np.get_include(),
-#         # '-D NPY_NO_DEPRECATED_API=TRUE',  # can cmake #define these?
-#         # '-D NPY_1_7_API_VERSION=TRUE',
-#     ]
-# except ImportError:
-#     pass
-
 
 NAME = 'kwimage'
 VERSION = parse_version('kwimage/__init__.py')  # needs to be a global var for git tags
@@ -301,10 +286,11 @@ if __name__ == '__main__':
             'License :: OSI Approved :: Apache Software License',
             # Supported Python versions
             # 'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.5',
+            # 'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
         ],
         **compile_setup_kw
     )

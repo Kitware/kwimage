@@ -931,7 +931,7 @@ class _BoxTransformMixins(object):
         Example:
             >>> import kwimage
             >>> # Can warp corners with a transformation matrix
-            >>> self = kwimage.Boxes.random(3).scale(100).round(0)
+            >>> self = kwimage.Boxes.random(3, rng=0).scale(100).round(0)
             >>> transform = np.array([[ 0.98412825,  0.0577905 ,  0.16778511],
             >>>                       [-0.05968319,  0.99819777,  0.00625538],
             >>>                       [-0.16712122, -0.01617005,  0.98580375]])
