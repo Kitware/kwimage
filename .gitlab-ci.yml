@@ -382,6 +382,7 @@ build/py3-none-any:
     script: 
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1
         - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py bdist_wheel
+        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist
         - ls dist
         #- MB_PYTHON_TAG=py3-none-any
         #- # VERSION=$(python -c "import setup; print(setup.VERSION)")
