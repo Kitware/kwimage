@@ -225,7 +225,6 @@ gpgsign/wheels:
                 $GPG_SIGN_CMD --output $WHEEL_PATH.asc $WHEEL_PATH
                 $GPG_EXECUTABLE --verify $WHEEL_PATH.asc $WHEEL_PATH  || echo "hack, the first run of gpg very fails"
                 $GPG_EXECUTABLE --verify $WHEEL_PATH.asc $WHEEL_PATH 
-                twine check $WHEEL_PATH.asc $WHEEL_PATH
             done
         - ls wheelhouse
         - ls dist
