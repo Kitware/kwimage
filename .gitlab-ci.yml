@@ -107,7 +107,6 @@ stages:
         paths:
             - .cache/containers
 
-
 .common_template: &common_template
     tags:
         # Tags define which runners will accept which jobs
