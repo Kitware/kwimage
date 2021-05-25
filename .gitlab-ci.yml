@@ -108,9 +108,11 @@ stages:
         paths:
             - wheelhouse/
 
-    cache:
-        paths:
-            - .cache/containers
+    # Contents of .cache/containers/vfs-storage are far too large to cache
+    # Not sure if it is possible to cache the download of the images
+    #cache:
+    #    paths:
+    #        - .cache/containers
 
 .common_template: &common_template
     tags:
