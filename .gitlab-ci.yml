@@ -18,6 +18,57 @@ stages:
   - deploy
 
 
+.__gpg_heredoc__: &__gpg_heredoc__
+        - | 
+            # THIS IS NOT EXECUTE ON THE CI, THIS IS FOR DEVELOPER REFERENCE
+            # ON HOW THE ENCRYPTED GPG KEYS ARE SETUP.
+            
+            # Load or generate secrets
+            load_secrets
+            echo $CI_KITWARE_SECRET
+            echo $TWINE_USERNAME
+
+            # ADD RELEVANT VARIABLES TO GITLAB SECRET VARIABLES
+            # https://gitlab.kitware.com/computer-vision/kwarray/-/settings/ci_cd
+            # Note that it is important to make sure that these variables are
+            # only decrpyted on protected branches by selecting the protected
+            # and masked option. Also make sure you have master and release
+            # branches protected.
+            # https://gitlab.kitware.com/computer-vision/kwarray/-/settings/repository#js-protected-branches-settings
+
+            # HOW TO ENCRYPT YOUR SECRET GPG KEY
+            IDENTIFIER="travis-ci-Erotemic"
+            GPG_KEYID=$(gpg --list-keys --keyid-format LONG "$IDENTIFIER" | head -n 2 | tail -n 1 | awk '{print $1}' | tail -c 9)
+            echo "GPG_KEYID = $GPG_KEYID"
+
+            # Export plaintext gpg public keys, private keys, and trust info
+            mkdir -p dev
+            gpg --armor --export-secret-keys $GPG_KEYID > dev/ci_secret_gpg_key.pgp
+            gpg --armor --export $GPG_KEYID > dev/ci_public_gpg_key.pgp
+            gpg --export-ownertrust > dev/gpg_owner_trust
+
+            # Encrypt gpg keys and trust with CI secret
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/ci_public_gpg_key.pgp > dev/ci_public_gpg_key.pgp.enc
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/ci_secret_gpg_key.pgp > dev/ci_secret_gpg_key.pgp.enc
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/gpg_owner_trust > dev/gpg_owner_trust.enc
+            echo $GPG_KEYID > dev/public_gpg_key
+
+            # Test decrpyt
+            cat dev/public_gpg_key
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc 
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc 
+            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc 
+
+            unload_secrets
+
+            # Look at what we did, clean up, and add it to git
+            ls dev/*.enc
+            rm dev/gpg_owner_trust dev/*.pgp
+            git status
+            git add dev/*.enc
+            git add dev/public_gpg_key
+
+
 # Test new type of jobs
 .cibuildwheel_template: &cibuildwheel_template
     stage: 
@@ -40,6 +91,8 @@ stages:
         - export CIBW_SKIP="pp* cp27-* cp35-*"
         - cibuildwheel --platform linux --print-build-identifiers
         - cibuildwheel --output-dir wheelhouse --platform linux
+        - ls wheelhouse
+        - ls dist
 
     artifacts:
         paths:
@@ -103,10 +156,10 @@ stages:
         - pip install opencv-python-headless
 
     script: 
-        - echo "skipping tests for now"
         # FIXME: we should start from a docker iamge that already has LibGL setup
         - apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
         - ls wheelhouse
+        - ls dist
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux*_x86_64.whl
@@ -116,6 +169,7 @@ stages:
         # - xdoctest kwimage --style=google all --mask 
         # Hack to test the installed wheel. TODO: make run_tests work better in this case.
         - mkdir -p foo && cd foo && pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+        - ls wheelhouse
           
     # Coverage is a regex that will parse the coverage from the test stdout
     coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
@@ -143,73 +197,21 @@ stages:
 
     script: 
         - echo "skipping tests for now"
-        # FIXME: we should start from a docker iamge that already has LibGL setup
-        #- apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
-        #- ls wheelhouse
-        #- MB_PYTHON_TAG=py3-none-any
-        #- VERSION=$(python -c "import setup; print(setup.VERSION)")
-        #- BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-        #- pip install $BDIST_WHEEL_PATH
-        #  #- xdoctest -m kwimage --style=google all
-        #- pip install pygments
-        ## Hack to test the installed wheel. TODO: make run_tests work better in this case.
-        #- export KWIMAGE_DISABLE_C_EXTENSIONS=1
-        #- pip install -r requirements/tests.txt
-        #- mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+        - apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
+        - ls wheelhouse
+        - MB_PYTHON_TAG=py3-none-any
+        - VERSION=$(python -c "import setup; print(setup.VERSION)")
+        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        - pip install $BDIST_WHEEL_PATH
+          #- xdoctest -m kwimage --style=google all
+        - pip install pygments
+        # Hack to test the installed wheel. TODO: make run_tests work better in this case.
+        - export KWIMAGE_DISABLE_C_EXTENSIONS=1
+        - pip install -r requirements/tests.txt
+        - mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
           
     # Coverage is a regex that will parse the coverage from the test stdout
     coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
-
-
-.__gpg_heredoc__: &__gpg_heredoc__
-        - | 
-            # THIS IS NOT EXECUTE ON THE CI, THIS IS FOR DEVELOPER REFERENCE
-            # ON HOW THE ENCRYPTED GPG KEYS ARE SETUP.
-            
-            # Load or generate secrets
-            load_secrets
-            echo $CI_KITWARE_SECRET
-            echo $TWINE_USERNAME
-
-            # ADD RELEVANT VARIABLES TO GITLAB SECRET VARIABLES
-            # https://gitlab.kitware.com/computer-vision/kwarray/-/settings/ci_cd
-            # Note that it is important to make sure that these variables are
-            # only decrpyted on protected branches by selecting the protected
-            # and masked option. Also make sure you have master and release
-            # branches protected.
-            # https://gitlab.kitware.com/computer-vision/kwarray/-/settings/repository#js-protected-branches-settings
-
-            # HOW TO ENCRYPT YOUR SECRET GPG KEY
-            IDENTIFIER="travis-ci-Erotemic"
-            GPG_KEYID=$(gpg --list-keys --keyid-format LONG "$IDENTIFIER" | head -n 2 | tail -n 1 | awk '{print $1}' | tail -c 9)
-            echo "GPG_KEYID = $GPG_KEYID"
-
-            # Export plaintext gpg public keys, private keys, and trust info
-            mkdir -p dev
-            gpg --armor --export-secret-keys $GPG_KEYID > dev/ci_secret_gpg_key.pgp
-            gpg --armor --export $GPG_KEYID > dev/ci_public_gpg_key.pgp
-            gpg --export-ownertrust > dev/gpg_owner_trust
-
-            # Encrypt gpg keys and trust with CI secret
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/ci_public_gpg_key.pgp > dev/ci_public_gpg_key.pgp.enc
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/ci_secret_gpg_key.pgp > dev/ci_secret_gpg_key.pgp.enc
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -e -a -in dev/gpg_owner_trust > dev/gpg_owner_trust.enc
-            echo $GPG_KEYID > dev/public_gpg_key
-
-            # Test decrpyt
-            cat dev/public_gpg_key
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc 
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc 
-            GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc 
-
-            unload_secrets
-
-            # Look at what we did, clean up, and add it to git
-            ls dev/*.enc
-            rm dev/gpg_owner_trust dev/*.pgp
-            git status
-            git add dev/*.enc
-            git add dev/public_gpg_key
 
 
 .gpgsign_template: &gpgsign_template
@@ -224,6 +226,7 @@ stages:
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux*_x86_64.whl
+        - echo "BDIST_WHEEL_PATH = ${BDIST_WHEEL_PATH}"
         # Decrypt and import GPG Keys / trust
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=D297D757
@@ -237,12 +240,15 @@ stages:
         - GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
         #- # $GPG_EXECUTABLE --list-keys
         - echo "Signing wheels"
-        - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        # -$GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - $GPG_SIGN_CMD $BDIST_WHEEL_PATH
         - ls wheelhouse
         - echo "Verifying wheels"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
         - echo "Verified wheels"
+        - ls wheelhouse
+        - ls dist
 
     artifacts:
         paths:
@@ -267,9 +273,10 @@ stages:
     script: 
         - pip install six pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U 
         - ls wheelhouse
+        - ls dist
         - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux2010_x86_64.whl
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux*_x86_64.whl
         - echo "Checking wheels MB_PYTHON_TAG $MB_PYTHON_TAG VERSION $VERSION BDIST_WHEEL_PATH $BDIST_WHEEL_PATH"
         - ls -al ${BDIST_WHEEL_PATH}*
         - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH

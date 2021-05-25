@@ -253,12 +253,12 @@ class Affine(Projective):
             self = data
         elif isinstance(data, dict):
             keys = set(data.keys())
-            known_params = {'scale', 'shear', 'offset', 'theta'}
+            known_params = {'scale', 'shear', 'offset', 'theta', 'type'}
             params = ub.dict_isect(data, known_params)
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
             elif len(known_params & keys):
-                # data.pop('type', None)
+                params.pop('type', None)
                 self = cls.affine(**params)
             else:
                 raise KeyError(', '.join(list(data.keys())))
