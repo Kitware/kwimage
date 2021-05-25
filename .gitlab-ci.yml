@@ -105,8 +105,7 @@ stages:
 
     cache:
         paths:
-            - .cache/pip
-              .cache/containers
+            - .cache/containers
 
 
 .common_template: &common_template
