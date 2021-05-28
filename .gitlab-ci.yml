@@ -113,6 +113,7 @@ stages:
     #cache:
     #    paths:
     #        - .cache/containers
+    #    TODO: can we use skopeo to cache the images?
 
 .common_template: &common_template
     tags:

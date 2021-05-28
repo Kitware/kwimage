@@ -6,6 +6,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.7 - Unreleased
 
+### Added
+
+* `Boxes.to_slices`
+* `Affine.concise`
+
+
+### Fixed
+
+* counterclockwise polygon check
+
 
 ## Version 0.7.6 - Released 2021-05-25
 

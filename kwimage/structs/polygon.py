@@ -1277,13 +1277,18 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 def _is_clockwise(verts):
     """
     References:
-        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order#:~:text=If%20the%20determinant%20is%20negative,q%20and%20r%20are%20collinear.
+        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
 
     Ignore:
         verts = poly.data['exterior'].data[::-1]
     """
-    cross_product = np.cross(verts[:-1], verts[1:])
-    is_clockwise = cross_product.sum() > 0
+    x1 = verts[:-1][:, 0]
+    y1 = verts[:-1][:, 1]
+    x2 = verts[1:][:, 0]
+    y2 = verts[1:][:, 1]
+    is_clockwise = ((x2 - x1) * (y2 + y1)).sum() > 0
+    # cross_product = np.cross(verts[:-1], verts[1:])
+    # is_clockwise = cross_product.sum() > 0
     return is_clockwise
 
 
