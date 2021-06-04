@@ -370,9 +370,12 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             grow_default=grow_interpolation)
         new_img = _patched_resize(img, new_scale, new_dsize, interpolation=interpolation)
         if return_info:
+            # import kwimage
+            # transform = kwimage.Affine.affine(scale=scale)
             info = {
                 'offset': 0,
                 'scale': new_scale,
+                # 'matrix': transform.matrix,
                 'dsize': new_dsize,
             }
             return new_img, info
