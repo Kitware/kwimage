@@ -679,6 +679,13 @@ class _BoxConversionMixins(object):
             box.clip(0, 0, width, height, inplace=True)
         return box
 
+    def to_slices(self):
+        slices_list = []
+        for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
+            sl = (slice(tl_y, br_y), slice(tl_x, br_x))
+            slices_list.append(sl)
+        return slices_list
+
     def to_coco(self, style='orig'):
         """
         Example:

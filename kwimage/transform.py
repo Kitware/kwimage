@@ -231,6 +231,51 @@ class Affine(Projective):
         else:
             return {'type': 'affine', 'matrix': self.matrix.tolist()}
 
+    def concise(self):
+        """
+        Return a concise coercable dictionary representation of this matrix
+
+        Returns:
+            Dict[str, object]
+
+        Example:
+            >>> self = Affine.random(rng=0, scale=1)
+            >>> params = self.concise()
+            >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
+            >>> print('params = {}'.format(ub.repr2(params, nl=1, precision=2)))
+            params = {
+                'offset': (0.08, 0.38),
+                'theta': 0.08,
+                'type': 'affine',
+            }
+
+        Example:
+            >>> self = Affine.random(rng=0, scale=2, offset=0)
+            >>> params = self.concise()
+            >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
+            >>> print('params = {}'.format(ub.repr2(params, nl=1, precision=2)))
+            params = {
+                'scale': 2.00,
+                'theta': 0.04,
+                'type': 'affine',
+            }
+        """
+        params = self.decompose()
+        params['type'] = 'affine'
+        if np.allclose(params['offset'], (0, 0)):
+            params.pop('offset')
+        elif ub.allsame(params['offset']):
+            params['offset'] = params['offset'][0]
+        if np.allclose(params['scale'], (1, 1)):
+            params.pop('scale')
+        elif ub.allsame(params['scale']):
+            params['scale'] = params['scale'][0]
+        if np.allclose(params['shear'], 0):
+            params.pop('shear')
+        if np.allclose(params['theta'], 0):
+            params.pop('theta')
+        return params
+
     @classmethod
     def coerce(cls, data=None, **kwargs):
         """
@@ -332,19 +377,63 @@ class Affine(Projective):
         TODO: improve kwarg parameterization
         """
         from kwarray import distributions
+        import numbers
         TN = distributions.TruncNormal
         rng = kwarray.ensure_rng(rng)
+
+        def _coerce_distri(arg):
+            if isinstance(arg, numbers.Number):
+                dist = distributions.Constant(arg, rng=rng)
+            else:
+                raise NotImplementedError
+            return dist
+
+        if 'scale' in kw:
+            if ub.iterable(kw['scale']):
+                raise NotImplementedError
+            else:
+                xscale_dist = _coerce_distri(kw['scale'])
+                yscale_dist = xscale_dist
+        else:
+            scale_kw = dict(mean=1, std=1, low=1, high=2)
+            xscale_dist = TN(**scale_kw, rng=rng)
+            yscale_dist = TN(**scale_kw, rng=rng)
+
+        if 'offset' in kw:
+            if ub.iterable(kw['offset']):
+                raise NotImplementedError
+            else:
+                xoffset_dist = _coerce_distri(kw['offset'])
+                yoffset_dist = xoffset_dist
+        else:
+            offset_kw = dict(mean=0, std=1, low=-1, high=1)
+            xoffset_dist = TN(**offset_kw, rng=rng)
+            yoffset_dist = TN(**offset_kw, rng=rng)
+
+        if 'about' in kw:
+            if ub.iterable(kw['about']):
+                raise NotImplementedError
+            else:
+                xabout_dist = _coerce_distri(kw['about'])
+                yabout_dist = xabout_dist
+        else:
+            xabout_dist = distributions.Constant(0, rng=rng)
+            yabout_dist = distributions.Constant(0, rng=rng)
+
+        if 'theta' in kw:
+            theta_dist = _coerce_distri(kw['theta'])
+        else:
+            theta_kw = dict(mean=0, std=1, low=-np.pi / 8, high=np.pi / 8)
+            theta_dist = TN(**theta_kw, rng=rng)
+
+        if 'shear' in kw:
+            shear_dist = _coerce_distri(kw['shear'])
+        else:
+            shear_dist = distributions.Constant(0, rng=rng)
 
         # scale_kw = dict(mean=1, std=1, low=0, high=2)
         # offset_kw = dict(mean=0, std=1, low=-1, high=1)
         # theta_kw = dict(mean=0, std=1, low=-6.28, high=6.28)
-        scale_kw = dict(mean=1, std=1, low=1, high=2)
-        offset_kw = dict(mean=0, std=1, low=-1, high=1)
-        theta_kw = dict(mean=0, std=1, low=-np.pi / 8, high=np.pi / 8)
-
-        scale_dist = TN(**scale_kw, rng=rng)
-        offset_dist = TN(**offset_kw, rng=rng)
-        theta_dist = TN(**theta_kw, rng=rng)
 
         # TODO: distributions.Distribution.coerce()
         # offset_dist = distributions.Constant(0)
@@ -352,11 +441,11 @@ class Affine(Projective):
 
         # todo better parametarization
         params = dict(
-            scale=scale_dist.sample(2),
-            offset=offset_dist.sample(2),
+            scale=(xscale_dist.sample(), yscale_dist.sample()),
+            offset=(xoffset_dist.sample(), yoffset_dist.sample()),
             theta=theta_dist.sample(),
-            shear=0,
-            about=0,
+            shear=shear_dist.sample(),
+            about=(xabout_dist.sample(), yabout_dist.sample()),
         )
         return params
 
