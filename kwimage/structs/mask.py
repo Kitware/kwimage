@@ -14,7 +14,7 @@ Goals:
     The goal of this file is to create a datastructure that lets the developer
     seemlessly convert between:
         (1) raw binary uint8 masks
-        (2) memory-efficient comprsssed run-length-encodings of binary
+        (2) memory-efficient compressed run-length-encodings of binary
         segmentation masks.
         (3) convex polygons
         (4) convex hull polygons
