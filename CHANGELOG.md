@@ -20,6 +20,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * counterclockwise polygon check
 
 
+### Changed
+
+* improvements to `kwimage.Affine`.
+
+
 ## Version 0.7.6 - Released 2021-05-25
 
 ### Fixed
