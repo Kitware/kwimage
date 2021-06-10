@@ -161,6 +161,13 @@ class _MaskConversionMixin(object):
             format (str):
                 the string code for the format you want to transform into.
 
+            copy (bool, default=True):
+                if True, we always return copy of the data.
+                if False, we try not to return a copy unless necessary.
+
+        Returns:
+            Mask: The Mask object with a new backend format
+
         Example:
             >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
@@ -190,6 +197,16 @@ class _MaskConversionMixin(object):
     @_register_convertor(MaskFormat.BYTES_RLE)
     def to_bytes_rle(self, copy=False):
         """
+        Converts the mask format to a bytes-based run-length encoding.
+
+        Args:
+            copy (bool, default=True):
+                if True, we always return copy of the data.
+                if False, we try not to return a copy unless necessary.
+
+        Returns:
+            Mask: The Mask object with a new backend format
+
         Example:
             >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
@@ -239,7 +256,12 @@ class _MaskConversionMixin(object):
     @_register_convertor(MaskFormat.ARRAY_RLE)
     def to_array_rle(self, copy=False):
         """
-        Converts the mask format to a run-length encoding.
+        Converts the mask format to an array-based run-length encoding.
+
+        Args:
+            copy (bool, default=True):
+                if True, we always return copy of the data.
+                if False, we try not to return a copy unless necessary.
 
         Returns:
             Mask: the underlying RLE data will be in F-contiguous order.
@@ -339,6 +361,17 @@ class _MaskConversionMixin(object):
 
     @_register_convertor(MaskFormat.C_MASK)
     def to_c_mask(self, copy=False):
+        """
+        Convert the mask format to a dense mask array in rowwise (C) order
+
+        Args:
+            copy (bool, default=True):
+                if True, we always return copy of the data.
+                if False, we try not to return a copy unless necessary.
+
+        Returns:
+            Mask: The Mask object with a new backend format
+        """
         if self.format == MaskFormat.C_MASK:
             return self.copy() if copy else self
         elif self.format == MaskFormat.F_MASK:
@@ -353,6 +386,9 @@ class _MaskConversionMixin(object):
     def numpy(self):
         """
         Ensure mask is in numpy format (if possible)
+
+        Returns:
+            Mask: The Mask object with a new backend format
         """
         data = self.data
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
@@ -364,6 +400,9 @@ class _MaskConversionMixin(object):
     def tensor(self, device=ub.NoParam):
         """
         Ensure mask is in tensor format (if possible)
+
+        Returns:
+            Mask: The Mask object with a new backend format
         """
         data = self.data
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
@@ -383,13 +422,16 @@ class _MaskConstructorMixin(object):
     @classmethod
     def from_polygons(Mask, polygons, dims):
         """
-        DEPRICATE: use kwimage.Polygon.to_mask?
+        DEPRICATE: use kwimage.Polygon.to_mask? or kwimage.Mask.coerce?
 
         Args:
             polygons (ndarray | List[ndarray]): one or more polygons that
                 will be joined together. The ndarray may either be an
                 Nx2 or a flat c-contiguous array or xy points.
             dims (Tuple): height / width of the source image
+
+        Returns:
+            Mask: the new Mask object
 
         Example:
             >>> # xdoctest: +REQUIRES(--mask)
@@ -481,6 +523,21 @@ class _MaskTransformMixin(object):
     @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
+        Perform a scale operation on the mask.
+
+        Args:
+            factor (float | Tuple[float, float]): the xy scale factor
+
+            input_dims (Tuple[int, int]): unused
+
+            output_dims (Tuple[int, int]): shape of the returned mask
+
+        Returns:
+            Mask: the transformed Mask object
+
+        Notes:
+            * This function has not been optimized and may be inefficient
+
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Mask.random()
@@ -503,6 +560,21 @@ class _MaskTransformMixin(object):
     # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
+        Perform a matrix warp (e.g. affine or projective) on the underlying
+        mask data.
+
+        Args:
+            transform (ndarray): the transform matrix
+
+            input_dims (Tuple[int, int]): unused
+
+            output_dims (Tuple[int, int]): shape of the returned mask
+
+        Returns:
+            Mask: the transformed Mask object
+
+        Notes:
+            * This function has not been optimized and may be inefficient
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -551,6 +623,9 @@ class _MaskTransformMixin(object):
                 If unspecified the parent shape is used.
 
             inplace (bool): for api compatability, currently ignored
+
+        Returns:
+            Mask: the transformed Mask object
 
         Example:
             >>> self = Mask.random(shape=(8, 8), rng=0)
@@ -776,6 +851,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     @classmethod
     def random(Mask, rng=None, shape=(32, 32)):
         """
+        Create a random binary mask object
+
+        Args:
+            rng (int | RandomState | None): the random seed
+
+            shape (Tuple[int, int]): the height / width of the returned mask
+
+        Returns:
+            Mask: the random mask
+
         Example:
             >>> import kwimage
             >>> mask = kwimage.Mask.random()
@@ -799,6 +884,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def demo(cls):
         """
         Demo mask with holes and disjoint shapes
+
+        Returns:
+            Mask: the demo mask
         """
         text = ub.codeblock(
             '''
@@ -836,6 +924,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         Performs a deep copy of the mask data
 
+        Returns:
+            Mask: the copied mask
+
         Example:
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> other = self.copy()
@@ -846,6 +937,12 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def union(self, *others):
         """
         This can be used as a staticmethod or an instancemethod
+
+        Args:
+            *others: multiple input masks to union
+
+        Returns:
+            Mask: the unioned mask
 
         Example:
             >>> # xdoc: +REQUIRES(--mask)
@@ -915,12 +1012,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                     new_rle['size'] = list(map(int, new_rle['size']))  # python2 fix
                 new = cls(new_rle, MaskFormat.BYTES_RLE)
         return new
-        # rle_datas = [item.to_bytes_rle().data for item in items]
-        # return cls(cython_mask.merge(rle_datas, intersect=0), MaskFormat.BYTES_RLE)
 
     def intersection(self, *others):
         """
         This can be used as a staticmethod or an instancemethod
+
+        Args:
+            *others: multiple input masks to intersect
+
+        Returns:
+            Mask: the intersection of the masks
 
         Example:
             >>> n = 3
@@ -1300,6 +1401,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> polys.draw(border=True, linewidth=5, alpha=0.5, radius=0.2)
         """
         import cv2
+        from kwimage.structs.polygon import Polygon, MultiPolygon
         p = 2
         # It should be faster to only exact the patch of non-zero values
         x, y, w, h = self.get_xywh().astype(int).tolist()
@@ -1346,11 +1448,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                     #     raise Exception
                     polys[i]['exterior'] = coords
 
-            from kwimage.structs.polygon import Polygon, MultiPolygon
             poly_list = [Polygon(**data) for data in polys.values()]
             multi_poly = MultiPolygon(poly_list)
         else:
-            from kwimage.structs.polygon import Polygon, MultiPolygon
             multi_poly = MultiPolygon([])
         return multi_poly
 
@@ -1418,7 +1518,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 height / width of the source image
 
         Returns:
-            Mask
+            Mask: the constructed mask object
 
         Example:
             >>> # xdoc: +REQUIRES(--mask)
@@ -1492,6 +1592,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             original coco spec. In all other locations in kwimage a "size" will
             refer to a (width/height) ordered tuple.
 
+        SeeAlso:
+            :func: kwimage.im_runlen.encode_run_length - backend function that
+                does array-style run length encoding.
+
         Example:
             >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
@@ -1542,6 +1646,9 @@ class MaskList(_generic.ObjectList):
     def to_polygon_list(self):
         """
         Converts all mask objects to multi-polygon objects
+
+        Returns:
+            kwimage.PolygonList
         """
         import kwimage
         new = kwimage.PolygonList([
@@ -1553,6 +1660,9 @@ class MaskList(_generic.ObjectList):
     def to_segmentation_list(self):
         """
         Converts all items to segmentation objects
+
+        Returns:
+            kwimage.SegmentationList
         """
         import kwimage
         new = kwimage.SegmentationList([
@@ -1564,6 +1674,9 @@ class MaskList(_generic.ObjectList):
     def to_mask_list(self):
         """
         returns this object
+
+        Returns:
+            kwimage.MaskList
         """
         return self
 
