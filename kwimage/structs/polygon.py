@@ -844,7 +844,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             # quick check leftmost depth of a nested struct
             item = data
             depth = 0
-            while isinstance(item, list):
+            while isinstance(item, (list, tuple)):
                 if len(item) == 0:
                     raise Exception('no child node')
                 item = item[0]
