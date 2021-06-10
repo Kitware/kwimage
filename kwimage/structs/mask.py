@@ -240,6 +240,9 @@ class _MaskConversionMixin(object):
     def to_array_rle(self, copy=False):
         """
         Converts the mask format to a run-length encoding.
+
+        Returns:
+            Mask: the underlying RLE data will be in F-contiguous order.
         """
         if self.format == MaskFormat.ARRAY_RLE:
             return self.copy() if copy else self
@@ -1442,14 +1445,52 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
     def to_coco(self, style='orig'):
         """
-        Convert the Mask into a COCO json representation.
+        Convert the Mask to a COCO json representation based on the current
+        format.
+
+        A COCO mask is formatted as a run-length-encoding (RLE), of which there
+        are two variants: (1) a array RLE, which is slightly more readable and
+        extensible, and (2) a bytes RLE, which is slightly more concise. The
+        returned format will depend on the current format of the Mask object.
+        If it is in "bytes_rle" format, it will be returned in that format,
+        otherwise it will be converted to the "array_rle" format and returned
+        as such.
 
         Args:
-            style (str): Does nothing for this particular method. Always
-            converts based on the current format.
+            style (str): Does nothing for this particular method, exists for
+                API compatibility and if alternate encoding styles are
+                implemented in the future.
 
         Returns:
-            dict: either a bytes-rle or array-rle encoding
+            dict: either a bytes-rle or array-rle encoding, depending
+                on the current mask format. The keys in this dictionary
+                are as follows:
+
+                counts (List[int] | str): the array or bytes rle encoding
+
+                size (Tuple[int]): the height and width of the encoded mask
+                    *see note*.
+
+                shape (Tuple[int]): only present in array-rle mode. This
+                    is also the height/width of the underlying encoded array.
+                    This exists for semantic consistency with other kwimage
+                    conventions, and is not part of the original coco spec.
+
+                order (str): only present in array-rle mode.
+                    Either C or F, indicating if counts is aranged in row-major
+                    or column-major order. For COCO-compatibility this is
+                    always returned in F (column-major) order.
+
+                binary (bool): only present in array-rle mode.
+                    For COCO-compatibility this is always returned as False,
+                    indicating the mask only contains binary 0 or 1 values.
+
+        Note:
+            The output dictionary will contain a key named "size", this is the
+            only location in kwimage where "size" refers to a tuple in
+            (height/width) order, in order to be backwards compatible with the
+            original coco spec. In all other locations in kwimage a "size" will
+            refer to a (width/height) ordered tuple.
 
         Example:
             >>> # xdoc: +REQUIRES(--mask)
@@ -1459,6 +1500,17 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> coco_data2 = self.toformat('bytes_rle').to_coco()
             >>> print('coco_data1 = {}'.format(ub.repr2(coco_data1, nl=1)))
             >>> print('coco_data2 = {}'.format(ub.repr2(coco_data2, nl=1)))
+            coco_data1 = {
+                'binary': True,
+                'counts': [47, 5, 3, 1, 14, ... 1, 4, 19, 141],
+                'order': 'F',
+                'shape': (23, 32),
+                'size': (23, 32),
+            }
+            coco_data2 = {
+                'counts': '_153L;4EL...ON3060L0N060L0Nb0Y4',
+                'size': [23, 32],
+            }
         """
         use_bytes = (self.format == MaskFormat.BYTES_RLE)
         if use_bytes:
