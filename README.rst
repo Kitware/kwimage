@@ -42,9 +42,12 @@ The top-level API is:
                                 overlay_alpha_layers,)
     from .im_color import (Color,)
     from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                          make_channels_comparable, num_channels,)
-    from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,)
-    from .im_demodata import (grab_test_image, grab_test_image_fpath,)
+                          make_channels_comparable, normalize, num_channels,
+                          padded_slice,)
+    from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,
+                         warp_affine,)
+    from .im_demodata import (checkerboard, grab_test_image,
+                              grab_test_image_fpath,)
     from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
                           draw_line_segments_on_image, draw_text_on_image,
                           draw_vector_field, make_heatmask, make_orimask,
@@ -56,12 +59,12 @@ The top-level API is:
     from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                           MultiPolygon, Points, PointsList, Polygon, PolygonList,
                           Segmentation, SegmentationList, smooth_prob,)
-    from .util_warp import (add_homog, remove_homog,
-                            subpixel_accum, subpixel_align, subpixel_getvalue,
-                            subpixel_maximum, subpixel_minimum, subpixel_set,
-                            subpixel_setvalue, subpixel_slice, subpixel_translate,
+    from .transform import (Affine, Linear, Matrix, Projective, Transform,)
+    from .util_warp import (add_homog, remove_homog, subpixel_accum,
+                            subpixel_align, subpixel_getvalue, subpixel_maximum,
+                            subpixel_minimum, subpixel_set, subpixel_setvalue,
+                            subpixel_slice, subpixel_translate, warp_image,
                             warp_points, warp_tensor,)
-
 
 
 NOTE: THE KWIMAGE STRUCTS WILL EVENTUALLY MOVE TO THE KWANNOT REPO
