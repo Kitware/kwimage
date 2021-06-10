@@ -100,8 +100,8 @@ peaks in the heatmap, and running non-maximum suppression.
 
 This module contains data structures for three image annotation primitives:
 
-    * Boxes  # technically this could be made out of Coords and renamed to VectorCoords
-    * Mask   # likewise this could be renamed to RasterCoords
+    * Boxes  # technically this could be made out of Coords, probably not for efficiency and decoupling
+    * Mask   # likewise this could be renamed to Raster 
     * Coords # 
 
 These primative structures are used to define these metadata-containing composites:
