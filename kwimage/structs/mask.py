@@ -238,6 +238,9 @@ class _MaskConversionMixin(object):
 
     @_register_convertor(MaskFormat.ARRAY_RLE)
     def to_array_rle(self, copy=False):
+        """
+        Converts the mask format to a run-length encoding.
+        """
         if self.format == MaskFormat.ARRAY_RLE:
             return self.copy() if copy else self
         elif self.format == MaskFormat.BYTES_RLE:
