@@ -961,6 +961,7 @@ class _BoxTransformMixins(object):
             >>> new = self.warp(func)
             >>> assert np.all(new.area == 0)
         """
+        import kwimage
 
         if inplace:
             new = self
@@ -1000,6 +1001,8 @@ class _BoxTransformMixins(object):
                 matrix = transform.params
             elif isinstance(transform, _generic.ARRAY_TYPES):
                 matrix = transform
+            elif isinstance(transform, kwimage.Affine):
+                matrix = transform.matrix
             else:
                 try:
                     import imgaug
@@ -1049,7 +1052,6 @@ class _BoxTransformMixins(object):
 
             # apply the operation to warp the corner points
             if matrix is not None:
-                import kwimage
                 corners_new = kwimage.warp_points(matrix, corners)
             elif func is not None:
                 corners_new = func(corners)

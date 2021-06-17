@@ -735,6 +735,8 @@ class _HeatmapWarpMixin(object):
 
         if isinstance(mat, skimage.transform.AffineTransform):
             mat = mat.params
+        elif isinstance(mat, kwimage.Affine):
+            mat = mat.matrix
 
         newdata = {}
         newmeta = self.meta.copy()

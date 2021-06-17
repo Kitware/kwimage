@@ -600,6 +600,8 @@ class _MaskTransformMixin(object):
         if transform is None:
             new = self if inplace else Mask(self.data.copy(), self.format)
             return new
+        elif isinstance(transform, kwimage.Affine):
+            transform = transform.matrix
 
         c_mask = self.to_c_mask(copy=False).data
         t_mask = torch.Tensor(c_mask)
