@@ -4,7 +4,15 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.7 - Unreleased
+## Version 0.7.8 - Unreleased
+
+
+### Changed
+
+* `kwimage.structs.*.warp` can now accept a `kwimage.Affine` object.
+
+
+## Version 0.7.7 - Released 2021-06-07
 
 ### Added
 
@@ -15,6 +23,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 
 * counterclockwise polygon check
+
+
+### Changed
+
+* improvements to `kwimage.Affine`.
 
 
 ## Version 0.7.6 - Released 2021-05-25

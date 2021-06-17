@@ -17,14 +17,26 @@ def encode_run_length(img, binary=False, order='C'):
 
     Args:
         img (ndarray): 2D image
-        binary (bool, default=True): set to True for compatibility with COCO
+
+        binary (bool, default=False):
+            If true, assume that the input image only contains 0's and 1's.
+            Set to True for compatibility with COCO (which does not support
+            multi-value RLE encodings).
+
         order ({'C', 'F'}, default='C'): row-major (C) or column-major (F)
 
     Returns:
         Dict[str, object]: encoding: dictionary items are:
+
             counts (ndarray): the run length encoding
-            shape (Tuple): the original image shape
-            binary (bool): if the counts encoding is binary or multiple values are ok
+
+            shape (Tuple): the original image shape.
+                This should be in standard shape row-major (e.g.  h/w) order
+
+            binary (bool):
+                if True, the counts are assumed to encode only 0's and 1's,
+                otherwise the counts encoding specifies any numeric values.
+
             order ({'C', 'F'}, default='C'): encoding order
 
     SeeAlso:
@@ -88,10 +100,14 @@ def decode_run_length(counts, shape, binary=False, dtype=np.uint8, order='C'):
 
     Args:
         counts (ndarray): the run-length encoding
+
         shape (Tuple[int, int]), the height / width of the mask
-        binary (bool): if the RLU is binary or non-binary.
+
+        binary (bool): if the RLE is binary or non-binary.
             Set to True for compatibility with COCO.
+
         dtype (dtype, default=np.uint8): data type for decoded image
+
         order ({'C', 'F'}, default='C'): row-major (C) or column-major (F)
 
     Returns:

@@ -503,6 +503,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             return new
         elif isinstance(transform, _generic.ARRAY_TYPES):
             matrix = transform
+        elif isinstance(transform, kwimage.Affine):
+            matrix = transform.matrix
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params
         else:

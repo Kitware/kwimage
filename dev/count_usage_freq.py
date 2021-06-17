@@ -24,7 +24,7 @@ def count_usage(cmdline=True, **kw):
     import glob
     from os.path import join
     names = [
-        'netharn', 'ndsampler', 'kwimage', 'kwplot',
+        'netharn', 'ndsampler', 'kwimage', 'kwplot', 'kwcoco',
     ] + config['extra_modnames']
 
     all_fpaths = []
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     CommandLine:
         python ~/code/kwimage/dev/count_usage_freq.py --help
         python ~/code/kwimage/dev/count_usage_freq.py --modname=kwarray --extra_modnames=bioharn,
-        python ~/code/kwimage/dev/count_usage_freq.py --modname=kwimage --extra_modnames=bioharn,
+        python ~/code/kwimage/dev/count_usage_freq.py --modname=kwimage --extra_modnames=bioharn,watch
 
     """
     count_usage()
