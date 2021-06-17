@@ -4,6 +4,7 @@ Objects for representing and manipulating image transforms.
 import ubelt as ub
 import numpy as np
 import kwarray
+import skimage.transform
 
 
 class Transform(ub.NiceRepr):
@@ -136,6 +137,12 @@ class Matrix(Transform):
             raise TypeError('{} @ {}'.format(type(self), type(other)))
 
     def inv(self):
+        """
+        Returns the inverse of this matrix
+
+        Returns:
+            Matrix
+        """
         if self.matrix is None:
             return self.__class__(None)
         else:
@@ -143,19 +150,31 @@ class Matrix(Transform):
 
     @property
     def T(self):
+        """
+        Transpose the underlying matrix
+        """
         if self.matrix is None:
             return self
         else:
             return self.__class__(self.matrix.T)
 
     def det(self):
+        """
+        Compute the determinant of the underlying matrix
+
+        Returns:
+            float
+        """
         if self.matrix is None:
-            return 1
+            return 1.
         else:
             return np.linalg.det(self.matrix)
 
     @classmethod
     def eye(cls, shape=None, rng=None):
+        """
+        Construct an identity
+        """
         self = cls(None)
         if isinstance(shape, int):
             shape = (shape, shape)
@@ -236,7 +255,11 @@ class Affine(Projective):
         Return a concise coercable dictionary representation of this matrix
 
         Returns:
-            Dict[str, object]
+            Dict[str, object]: a small serializable dict that can be passed
+                to :func:`Affine.coerce` to reconstruct this object.
+
+        Returns:
+            Dict: dictionary with consise parameters
 
         Example:
             >>> self = Affine.random(rng=0, scale=1)
@@ -279,12 +302,24 @@ class Affine(Projective):
     @classmethod
     def coerce(cls, data=None, **kwargs):
         """
+        Attempt to coerce the data into an affine object
+
+        Args:
+            data : some data we attempt to coerce to an Affine matrix
+            **kwargs : some data we attempt to coerce to an Affine matrix,
+                mutually exclusive with `data`.
+
+        Returns:
+            Affine
+
         Example:
-            >>> Affine.coerce({'type': 'affine', 'matrix': [[1, 0, 0], [0, 1, 0]]})
-            >>> Affine.coerce({'scale': 2})
-            >>> Affine.coerce({'offset': 3})
-            >>> Affine.coerce(np.eye(3))
-            >>> Affine.coerce(None)
+            >>> import kwimage
+            >>> kwimage.Affine.coerce({'type': 'affine', 'matrix': [[1, 0, 0], [0, 1, 0]]})
+            >>> kwimage.Affine.coerce({'scale': 2})
+            >>> kwimage.Affine.coerce({'offset': 3})
+            >>> kwimage.Affine.coerce(np.eye(3))
+            >>> kwimage.Affine.coerce(None)
+            >>> kwimage.Affine.coerce(skimage.transform.AffineTransform(scale=30))
         """
         if data is None and not kwargs:
             return cls(matrix=None)
@@ -294,6 +329,8 @@ class Affine(Projective):
             self = cls(matrix=data)
         elif isinstance(data, cls):
             self = data
+        elif isinstance(data, skimage.transform.AffineTransform):
+            self = cls(matrix=data.params)
         elif data.__class__.__name__ == cls.__name__:
             self = data
         elif isinstance(data, dict):
@@ -315,6 +352,9 @@ class Affine(Projective):
         """
         Decompose the affine matrix into its individual scale, translation,
         rotation, and skew parameters.
+
+        Returns:
+            Dict: decomposed offset, scale, theta, and shear params
 
         References:
             https://math.stackexchange.com/questions/612006/decompose-affine
@@ -355,18 +395,57 @@ class Affine(Projective):
 
     @classmethod
     def scale(cls, scale):
+        """
+        Create a scale Affine object
+
+        Args:
+            scale (float | Tuple[float, float]): x, y scale factor
+
+        Returns:
+            Affine
+        """
         return cls.affine(scale=scale)
 
     @classmethod
     def translate(cls, offset):
+        """
+        Create a translation Affine object
+
+        Args:
+            offset (float | Tuple[float, float]): x, y translation factor
+
+        Returns:
+            Affine
+        """
         return cls.affine(offset=offset)
 
     @classmethod
     def rotate(cls, theta):
+        """
+        Create a rotation Affine object
+
+        Args:
+            theta (float): counter-clockwise rotation angle in radians
+
+        Returns:
+            Affine
+        """
         return cls.affine(theta=theta)
 
     @classmethod
     def random(cls, rng=None, **kw):
+        """
+        Create a random Affine object
+
+        Args:
+            rng : random number generator
+            **kw: passed to :func:`Affine.random_params`.
+                can contain coercable random distributions for scale, offset,
+                about, theta, and shear.
+
+        Returns:
+            Affine
+        """
         params = cls.random_params(rng=rng, **kw)
         self = cls.affine(**params)
         return self
@@ -374,7 +453,16 @@ class Affine(Projective):
     @classmethod
     def random_params(cls, rng=None, **kw):
         """
-        TODO: improve kwarg parameterization
+        Args:
+            rng : random number generator
+            **kw: can contain coercable random distributions for
+                scale, offset, about, theta, and shear.
+
+        Returns:
+            Dict: affine parameters suitable to be passed to Affine.affine
+
+        TODO:
+            - [ ] improve kwargs parameterization
         """
         from kwarray import distributions
         import numbers
@@ -461,6 +549,9 @@ class Affine(Projective):
             theta (float): counter-clockwise rotation angle in radians
             shear (float): counter-clockwise shear angle in radians
             about (float | Tuple[float, float]): x, y location of the origin
+
+        Returns:
+            Affine: the constructed Affine object
 
         Example:
             >>> rng = kwarray.ensure_rng(None)
