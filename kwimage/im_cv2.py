@@ -117,40 +117,42 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         img (ndarray): image to resize
 
         scale (float or Tuple[float, float]):
-            desired floating point scale factor. If a tuple, the dimension
+            Desired floating point scale factor. If a tuple, the dimension
             ordering is x,y. Mutually exclusive with dsize, max_dim, and
             min_dim.
 
-        dsize (Tuple[None | int, None | int]): the desired with and height
-            of the new image. If a dimension is None, then it is automatically
-            computed to preserve aspect ratio. Mutually exclusive with size,
-            max_dim, and min_dim.
+        dsize (Tuple[int] | None):
+            The desired with and height of the new image. If a dimension is
+            None, then it is automatically computed to preserve aspect ratio.
+            Mutually exclusive with size, max_dim, and min_dim.
 
-        max_dim (int): new size of the maximum dimension, the other
-            dimension is scaled to maintain aspect ratio. Mutually exclusive
-            with size, dsize, and min_dim.
+        max_dim (int):
+            New size of the maximum dimension, the other dimension is scaled to
+            maintain aspect ratio. Mutually exclusive with size, dsize, and
+            min_dim.
 
-        min_dim (int): new size of the minimum dimension, the other
-            dimension is scaled to maintain aspect ratio.Mutually exclusive
-            with size, dsize, and max_dim.
+        min_dim (int):
+            New size of the minimum dimension, the other dimension is scaled to
+            maintain aspect ratio.Mutually exclusive with size, dsize, and
+            max_dim.
 
-        interpolation (str | int): interpolation key or code (e.g. linear
-            lanczos). By default "area" is used if the image is shrinking and
-            "lanczos" is used if the image is growing. Note, if this is
-            explicitly set, then it will be used regardless of if the image is
-            growing or shrinking. Set ``grow_interpolation`` to change
-            the default for an enlarging interpolation.
+        interpolation (str | int):
+            The interpolation key or code (e.g. linear lanczos). By default
+            "area" is used if the image is shrinking and "lanczos" is used if
+            the image is growing. Note, if this is explicitly set, then it will
+            be used regardless of if the image is growing or shrinking. Set
+            ``grow_interpolation`` to change the default for an enlarging
+            interpolation.
 
-        grow_interpolation (str | int): The interpolation key or code to use
-            when the image is being enlarged. Does nothing if "interpolation"
-            is explicitly given. Defaults to "lanczos".
+        grow_interpolation (str | int, default="lanczos"):
+            The interpolation key or code to use when the image is being
+            enlarged. Does nothing if "interpolation" is explicitly given. If
+            "interpolation" is not specified "area" is used when shrinking.
 
-        letterbox (bool, default=False): if used in conjunction with
-            dsize, then the image is scaled and translated to fit in the
-            center of the new image while maintaining aspect ratio. Black
-            padding is added if necessary.
-
-            - [ ] TODO: add padding options
+        letterbox (bool, default=False):
+            If used in conjunction with dsize, then the image is scaled and
+            translated to fit in the center of the new image while maintaining
+            aspect ratio. Zero padding is added if necessary.
 
         return_info (bool, default=False):
             if True returns information about the final transformation in a
@@ -162,7 +164,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
     Returns:
         ndarray | Tuple[ndarray, Dict] :
-            the new image and optionally an info dictionary
+            the new image and optionally an info dictionary if
+            `return_info=True`
 
     Example:
         >>> import kwimage
@@ -222,7 +225,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> img = np.random.rand(100, 200)
         >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
 
-    Exammple:
+    Example:
         >>> # Check aliasing
         >>> import kwimage
         >>> img = kwimage.grab_test_image('checkerboard')
@@ -251,9 +254,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
-    FIXME:
-        - [ ] When interpolation is area and the number of channels > 4
+    TODO:
+        - [X] When interpolation is area and the number of channels > 4
               cv2.resize will error but it is fine for linear interpolation
+
+        - [ ] TODO: add padding options when letterbox=True
     """
     old_w, old_h = img.shape[0:2][::-1]
 
@@ -575,7 +580,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             if True determines if the transform is downsampling and applies
             antialiasing via gaussian a blur.
 
-        interpolation (str):
+        interpolation (str, default="linear"):
             interpolation code or cv2 integer. Interpolation codes are linear,
             nearest, cubic, lancsoz, and area.
 
