@@ -472,6 +472,9 @@ class Affine(Projective):
         def _coerce_distri(arg):
             if isinstance(arg, numbers.Number):
                 dist = distributions.Constant(arg, rng=rng)
+            elif isinstance(arg, tuple) and len(arg) == 2:
+                lo, hi = arg
+                dist = distributions.Uniform(lo, hi, rng=rng)
             else:
                 raise NotImplementedError
             return dist

@@ -46,7 +46,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> images = [img1, img2]
         >>> imgB, transforms = stack_images(images, axis=0, resize='larger',
         >>>                                 overlap=-10, return_info=True)
-        >>> print(imgB.shape)
+        >>> print('imgB.shape = {}'.format(imgB.shape))
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> import kwimage
@@ -371,7 +371,6 @@ def _efficient_rectangle_packing():
         packer.add_bin(bin_width, avail_height)
 
         packer.pack()
-        print(len(packer))
 
         packer[0]
 
