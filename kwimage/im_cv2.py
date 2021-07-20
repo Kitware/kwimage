@@ -115,7 +115,7 @@ def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
 
     Returns:
         int: flag specifying borderMode type that can be passed to
-           functions like cv2.resize, cv2.warpAffine, etc...
+           functions like cv2.warpAffine, etc...
 
     Example:
         >>> flag = _coerce_border('constant')
@@ -449,7 +449,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
                        implicit=False, dst=None):
     """
     Converts colorspace of img.
-    Convinience function around cv2.cvtColor
+    Convenience function around cv2.cvtColor
 
     Args:
         img (ndarray): image data with float32 or uint8 precision
@@ -561,7 +561,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
     Args:
         shape (Tuple[int, int]): patch height and width
-        sigma (float | Tuple[float, float]): gaussian standard deviation
+        sigma (float | Tuple[float, float]): Gaussian standard deviation
 
     References:
         http://docs.opencv.org/modules/imgproc/doc/filtering.html#getgaussiankernel
@@ -768,7 +768,7 @@ def _prepare_downscale(image, sx, sy):
     # The "fudge" factor limits the number of downsampled pyramid
     # operations. A bigger fudge factor means means that the final
     # gaussian kernel for the antialiasing operation will be bigger.
-    # It essentials say that at most "fudge" downsampling ops will
+    # It essentially says that at most "fudge" downsampling ops will
     # be handled by the final blur rather than the pyramid downsample.
     # It seems to help with border effects at only a small runtime cost
     # I don't entirely understand why the border artifact is introduced

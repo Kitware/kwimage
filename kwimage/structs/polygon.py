@@ -924,7 +924,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> self = kwimage.Polygon.random()
             >>> print(self.to_wkt())
         """
-        return self.to_shapely().to_wkt()
+        shp = self.to_shapely()
+        if hasattr(shp, 'wkt'):
+            return shp.wkt  # new version (~1.8a1)
+        else:
+            return shp.to_wkt()
 
     @classmethod
     def from_coco(cls, data, dims=None):
