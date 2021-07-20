@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.9 - Unreleased
 
+### Added
+
+* added `border_mode` and `border_value` to `warp_affine`.
+
 
 ## Version 0.7.8 - Released 2021-06-17
 

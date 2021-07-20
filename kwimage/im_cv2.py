@@ -22,6 +22,16 @@ _CV2_INTERPOLATION_TYPES = {
 }
 
 
+_CV2_BORDER_MODES = {
+    'constant':    cv2.BORDER_CONSTANT,
+    'replicate':   cv2.BORDER_REPLICATE,
+    'reflect':     cv2.BORDER_REFLECT,
+    'wrap':        cv2.BORDER_WRAP,
+    'reflect101':  cv2.BORDER_REFLECT101,
+    'transparent': cv2.BORDER_TRANSPARENT,
+}
+
+
 def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                           grow_default=cv2.INTER_LANCZOS4,
                           shrink_default=cv2.INTER_AREA, scale=None):
@@ -94,6 +104,53 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
             'Invalid interpolation value={!r}. '
             'Type must be int or string but got {!r}'.format(
                 interpolation, type(interpolation)))
+
+
+def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
+    """
+    Converts border_mode into flags suitable cv2 functions
+
+    Args:
+        border_mode (int or str): string or cv2-style interpolation type
+
+    Returns:
+        int: flag specifying borderMode type that can be passed to
+           functions like cv2.resize, cv2.warpAffine, etc...
+
+    Example:
+        >>> flag = _coerce_border('constant')
+        >>> assert flag == cv2.BORDER_CONSTANT
+        >>> flag = _coerce_border(cv2.BORDER_CONSTANT)
+        >>> assert flag == cv2.BORDER_CONSTANT
+        >>> flag = _coerce_border(None, default='reflect')
+        >>> assert flag == cv2.BORDER_REFLECT
+        >>> # xdoctest: +REQUIRES(module:pytest)
+        >>> import pytest
+        >>> with pytest.raises(TypeError):
+        >>>     _coerce_border(3.4)
+        >>> import pytest
+        >>> with pytest.raises(KeyError):
+        >>>     _coerce_border('foobar')
+    """
+    if border_mode is None:
+        border_mode = default
+
+    # Handle coercion from string to cv2 integer flag
+    if isinstance(border_mode, six.text_type):
+        try:
+            return _CV2_BORDER_MODES[border_mode]
+        except KeyError:
+            raise KeyError(
+                'Invalid border_mode value={!r}. '
+                'Valid strings for border_mode are {}'.format(
+                    border_mode, list(_CV2_BORDER_MODES.keys())))
+    elif isinstance(border_mode, numbers.Integral):
+        return int(border_mode)
+    else:
+        raise TypeError(
+            'Invalid border_mode value={!r}. '
+            'Type must be int or string but got {!r}'.format(
+                border_mode, type(border_mode)))
 
 
 def imscale(img, scale, interpolation=None, return_scale=False):
@@ -562,14 +619,17 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
 
 def warp_affine(image, transform, dsize=None, antialias=False,
-                interpolation='linear'):
+                interpolation='linear', border_mode=None, border_value=0):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
     Args:
-        image (ndarray): the input image
+        image (ndarray): the input image as a numpy array.
+            Note: this is passed directly to cv2, so it is best to ensure that
+            it is contiguous and using a dtype that cv2 can handle.
 
-        transform (ndarray | Affine): a coercable affine matrix
+        transform (ndarray | Affine): a coercable affine matrix.
+            See :class:`kwimage.Affine` for details on what can be coerced.
 
         dsize (Tuple[int, int] | None | str):
             width and height of the resulting image. If "auto", it is computed
@@ -583,6 +643,14 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         interpolation (str, default="linear"):
             interpolation code or cv2 integer. Interpolation codes are linear,
             nearest, cubic, lancsoz, and area.
+
+        border_mode (str):
+            Border code or cv2 integer. Border codes are constant replicate,
+            reflect, wrap, reflect101, and transparent.
+
+        border_value (int | float):
+            Used as the fill value if border_mode is constant. Otherwise this
+            is ignored.
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -619,17 +687,13 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
     """
-    from kwimage import im_cv2
     from kwimage.transform import Affine
     import kwimage
     transform = Affine.coerce(transform)
-    flags = im_cv2._coerce_interpolation(interpolation)
+    flags = _coerce_interpolation(interpolation)
 
-    # TODO: expose these params
-    # borderMode = cv2.BORDER_DEFAULT
-    # borderMode = cv2.BORDER_CONSTANT
-    borderMode = None
-    borderValue = None
+    borderMode = _coerce_border(border_mode)
+    borderValue = border_value
 
     """
     Variations that could change in the future:
