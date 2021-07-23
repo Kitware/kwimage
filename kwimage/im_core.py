@@ -272,7 +272,7 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     return kwarray.normalize(arr, mode=mode, alpha=alpha, beta=beta, out=out)
 
 
-def normalize_intensity(imdata, return_info=False, nodata=None,
+def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
                         dtype=np.float32):
     """
     Normalize data intensities using heuristics to help put sensor data with
@@ -340,6 +340,19 @@ def normalize_intensity(imdata, return_info=False, nodata=None,
         >>> kwplot.imshow(normed, pnum=(1, 2, 2), fnum=1)
     """
     import kwarray
+
+    if axis is not None:
+        # Hack, normalize each channel individually. This could
+        # be implementd more effciently.
+        assert not return_info
+        reorg = imdata.swapaxes(0, axis)
+        parts = []
+        for item in reorg:
+            part = normalize_intensity(item, nodata=nodata, axis=None)
+            parts.append(part[None, :])
+        recomb = np.concatenate(parts, axis=0)
+        final = recomb.swapaxes(0, axis)
+        return final
 
     info = {}
 
