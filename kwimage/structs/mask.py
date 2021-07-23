@@ -590,12 +590,44 @@ class _MaskTransformMixin(object):
             >>> self.draw()
             >>> kwplot.figure(fnum=1, pnum=(1, 2, 2))
             >>> new.draw()
+
+        Example:
+            >>> # Verify that the warp transform does roughtly the same thing
+            >>> # to a mask and an equivalent polygon
+            >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import kwimage
+            >>> input_dims = (100, 100)
+            >>> output_dims = (200, 200)
+            >>> rng = 92703548026074914707206344922748
+            >>> transform = kwimage.Affine.random(shear=(0, 1.), rng=rng)
+            >>> mask1 = kwimage.Mask.random(rng=rng, shape=input_dims)
+            >>> poly1 = mask1.to_multi_polygon()
+            >>> mask2 = mask1.warp(transform.matrix, output_dims=output_dims)
+            >>> poly2 = poly1.warp(transform.matrix)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> canvas1_m = np.zeros((*input_dims, 3))
+            >>> canvas1_p = np.zeros((*input_dims, 3))
+            >>> canvas2_m = np.zeros((*output_dims, 3))
+            >>> canvas2_p = np.zeros((*output_dims, 3))
+            >>> canvas1_m = mask1.draw_on(canvas1_m)
+            >>> canvas1_p = poly1.draw_on(canvas1_p, color='red')
+            >>> canvas2_m = mask2.draw_on(canvas2_m)
+            >>> canvas2_p = poly2.draw_on(canvas2_p, color='red')
+            >>> kwplot.imshow(canvas1_m, fnum=1, pnum=(2, 2, 1))
+            >>> kwplot.imshow(canvas1_p, fnum=1, pnum=(2, 2, 2))
+            >>> kwplot.imshow(canvas2_m, fnum=1, pnum=(2, 2, 3))
+            >>> kwplot.imshow(canvas2_p, fnum=1, pnum=(2, 2, 4))
         """
         # HACK: use brute force just to get this implemented.
         # very inefficient
         import kwimage
         if torch is None:
             raise Exception('need torch to warp raster masks')
+
+        if isinstance(transform, kwimage.Affine):
+            transform = transform.matrix
 
         if transform is None:
             new = self if inplace else Mask(self.data.copy(), self.format)

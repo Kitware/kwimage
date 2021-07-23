@@ -41,15 +41,15 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.7.8'
+__version__ = '0.7.9'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
                             overlay_alpha_layers,)
 from .im_color import (Color,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                      make_channels_comparable, normalize, num_channels,
-                      padded_slice,)
+                      make_channels_comparable, normalize, normalize_intensity,
+                      num_channels, padded_slice,)
 from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,
                      warp_affine,)
 from .im_demodata import (checkerboard, grab_test_image,
@@ -86,10 +86,11 @@ __all__ = ['Affine', 'Boxes', 'Color', 'Coords', 'Detections', 'Heatmap',
            'imread', 'imresize', 'imscale', 'imwrite', 'load_image_shape',
            'make_channels_comparable', 'make_heatmask', 'make_orimask',
            'make_vector_field', 'non_max_supression', 'normalize',
-           'num_channels', 'overlay_alpha_images', 'overlay_alpha_layers',
-           'padded_slice', 'radial_fourier_mask', 'remove_homog',
-           'rle_translate', 'smooth_prob', 'stack_images', 'stack_images_grid',
-           'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
-           'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
-           'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_affine', 'warp_image', 'warp_points', 'warp_tensor']
+           'normalize_intensity', 'num_channels', 'overlay_alpha_images',
+           'overlay_alpha_layers', 'padded_slice', 'radial_fourier_mask',
+           'remove_homog', 'rle_translate', 'smooth_prob', 'stack_images',
+           'stack_images_grid', 'subpixel_accum', 'subpixel_align',
+           'subpixel_getvalue', 'subpixel_maximum', 'subpixel_minimum',
+           'subpixel_set', 'subpixel_setvalue', 'subpixel_slice',
+           'subpixel_translate', 'warp_affine', 'warp_image', 'warp_points',
+           'warp_tensor']

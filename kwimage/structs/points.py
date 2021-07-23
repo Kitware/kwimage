@@ -106,11 +106,14 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(3)).xy == self.xy)
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
+        import kwimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         if transform is None:
             return new
 
-        if not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
+        if not isinstance(transform, (np.ndarray,
+                                      skimage.transform._geometric.GeometricTransform,
+                                      kwimage.Affine)):
             try:
                 import imgaug
             except ImportError:

@@ -2271,10 +2271,15 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         ltrb_box = new.to_ltrb(copy=False)
         ltrb = ltrb_box.data
         new_ltrb = _impl.empty_like(ltrb, dtype=dtype)
-        new_ltrb[..., 0] = _astype(_floor(ltrb[..., 0]), dtype=dtype)
-        new_ltrb[..., 1] = _astype(_floor(ltrb[..., 1]), dtype=dtype)
-        new_ltrb[..., 2] = _astype(_ceil(ltrb[..., 2]), dtype=dtype)
-        new_ltrb[..., 3] = _astype(_ceil(ltrb[..., 3]), dtype=dtype)
+
+        new_ltrb[..., 0:2] = _astype(_floor(ltrb[..., 0:2]), dtype=dtype)
+        new_ltrb[..., 2:4] = _astype(_ceil(ltrb[..., 2:4]), dtype=dtype)
+
+        # new_ltrb[..., 0] = _astype(_floor(ltrb[..., 0]), dtype=dtype)
+        # new_ltrb[..., 1] = _astype(_floor(ltrb[..., 1]), dtype=dtype)
+        # new_ltrb[..., 2] = _astype(_ceil(ltrb[..., 2]), dtype=dtype)
+        # new_ltrb[..., 3] = _astype(_ceil(ltrb[..., 3]), dtype=dtype)
+
         ltrb_box.data = new_ltrb
         new.data = ltrb_box.toformat(new.format, copy=False).data
         return new

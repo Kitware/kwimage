@@ -22,6 +22,16 @@ _CV2_INTERPOLATION_TYPES = {
 }
 
 
+_CV2_BORDER_MODES = {
+    'constant':    cv2.BORDER_CONSTANT,
+    'replicate':   cv2.BORDER_REPLICATE,
+    'reflect':     cv2.BORDER_REFLECT,
+    'wrap':        cv2.BORDER_WRAP,
+    'reflect101':  cv2.BORDER_REFLECT101,
+    'transparent': cv2.BORDER_TRANSPARENT,
+}
+
+
 def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                           grow_default=cv2.INTER_LANCZOS4,
                           shrink_default=cv2.INTER_AREA, scale=None):
@@ -96,6 +106,53 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation, type(interpolation)))
 
 
+def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
+    """
+    Converts border_mode into flags suitable cv2 functions
+
+    Args:
+        border_mode (int or str): string or cv2-style interpolation type
+
+    Returns:
+        int: flag specifying borderMode type that can be passed to
+           functions like cv2.warpAffine, etc...
+
+    Example:
+        >>> flag = _coerce_border('constant')
+        >>> assert flag == cv2.BORDER_CONSTANT
+        >>> flag = _coerce_border(cv2.BORDER_CONSTANT)
+        >>> assert flag == cv2.BORDER_CONSTANT
+        >>> flag = _coerce_border(None, default='reflect')
+        >>> assert flag == cv2.BORDER_REFLECT
+        >>> # xdoctest: +REQUIRES(module:pytest)
+        >>> import pytest
+        >>> with pytest.raises(TypeError):
+        >>>     _coerce_border(3.4)
+        >>> import pytest
+        >>> with pytest.raises(KeyError):
+        >>>     _coerce_border('foobar')
+    """
+    if border_mode is None:
+        border_mode = default
+
+    # Handle coercion from string to cv2 integer flag
+    if isinstance(border_mode, six.text_type):
+        try:
+            return _CV2_BORDER_MODES[border_mode]
+        except KeyError:
+            raise KeyError(
+                'Invalid border_mode value={!r}. '
+                'Valid strings for border_mode are {}'.format(
+                    border_mode, list(_CV2_BORDER_MODES.keys())))
+    elif isinstance(border_mode, numbers.Integral):
+        return int(border_mode)
+    else:
+        raise TypeError(
+            'Invalid border_mode value={!r}. '
+            'Type must be int or string but got {!r}'.format(
+                border_mode, type(border_mode)))
+
+
 def imscale(img, scale, interpolation=None, return_scale=False):
     """
     DEPRECATED and removed: use imresize instead
@@ -117,40 +174,42 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         img (ndarray): image to resize
 
         scale (float or Tuple[float, float]):
-            desired floating point scale factor. If a tuple, the dimension
+            Desired floating point scale factor. If a tuple, the dimension
             ordering is x,y. Mutually exclusive with dsize, max_dim, and
             min_dim.
 
-        dsize (Tuple[None | int, None | int]): the desired with and height
-            of the new image. If a dimension is None, then it is automatically
-            computed to preserve aspect ratio. Mutually exclusive with size,
-            max_dim, and min_dim.
+        dsize (Tuple[int] | None):
+            The desired with and height of the new image. If a dimension is
+            None, then it is automatically computed to preserve aspect ratio.
+            Mutually exclusive with size, max_dim, and min_dim.
 
-        max_dim (int): new size of the maximum dimension, the other
-            dimension is scaled to maintain aspect ratio. Mutually exclusive
-            with size, dsize, and min_dim.
+        max_dim (int):
+            New size of the maximum dimension, the other dimension is scaled to
+            maintain aspect ratio. Mutually exclusive with size, dsize, and
+            min_dim.
 
-        min_dim (int): new size of the minimum dimension, the other
-            dimension is scaled to maintain aspect ratio.Mutually exclusive
-            with size, dsize, and max_dim.
+        min_dim (int):
+            New size of the minimum dimension, the other dimension is scaled to
+            maintain aspect ratio.Mutually exclusive with size, dsize, and
+            max_dim.
 
-        interpolation (str | int): interpolation key or code (e.g. linear
-            lanczos). By default "area" is used if the image is shrinking and
-            "lanczos" is used if the image is growing. Note, if this is
-            explicitly set, then it will be used regardless of if the image is
-            growing or shrinking. Set ``grow_interpolation`` to change
-            the default for an enlarging interpolation.
+        interpolation (str | int):
+            The interpolation key or code (e.g. linear lanczos). By default
+            "area" is used if the image is shrinking and "lanczos" is used if
+            the image is growing. Note, if this is explicitly set, then it will
+            be used regardless of if the image is growing or shrinking. Set
+            ``grow_interpolation`` to change the default for an enlarging
+            interpolation.
 
-        grow_interpolation (str | int): The interpolation key or code to use
-            when the image is being enlarged. Does nothing if "interpolation"
-            is explicitly given. Defaults to "lanczos".
+        grow_interpolation (str | int, default="lanczos"):
+            The interpolation key or code to use when the image is being
+            enlarged. Does nothing if "interpolation" is explicitly given. If
+            "interpolation" is not specified "area" is used when shrinking.
 
-        letterbox (bool, default=False): if used in conjunction with
-            dsize, then the image is scaled and translated to fit in the
-            center of the new image while maintaining aspect ratio. Black
-            padding is added if necessary.
-
-            - [ ] TODO: add padding options
+        letterbox (bool, default=False):
+            If used in conjunction with dsize, then the image is scaled and
+            translated to fit in the center of the new image while maintaining
+            aspect ratio. Zero padding is added if necessary.
 
         return_info (bool, default=False):
             if True returns information about the final transformation in a
@@ -162,7 +221,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
     Returns:
         ndarray | Tuple[ndarray, Dict] :
-            the new image and optionally an info dictionary
+            the new image and optionally an info dictionary if
+            `return_info=True`
 
     Example:
         >>> import kwimage
@@ -222,7 +282,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> img = np.random.rand(100, 200)
         >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
 
-    Exammple:
+    Example:
         >>> # Check aliasing
         >>> import kwimage
         >>> img = kwimage.grab_test_image('checkerboard')
@@ -251,9 +311,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
-    FIXME:
-        - [ ] When interpolation is area and the number of channels > 4
+    TODO:
+        - [X] When interpolation is area and the number of channels > 4
               cv2.resize will error but it is fine for linear interpolation
+
+        - [ ] TODO: add padding options when letterbox=True
     """
     old_w, old_h = img.shape[0:2][::-1]
 
@@ -387,7 +449,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
                        implicit=False, dst=None):
     """
     Converts colorspace of img.
-    Convinience function around cv2.cvtColor
+    Convenience function around cv2.cvtColor
 
     Args:
         img (ndarray): image data with float32 or uint8 precision
@@ -499,7 +561,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
     Args:
         shape (Tuple[int, int]): patch height and width
-        sigma (float | Tuple[float, float]): gaussian standard deviation
+        sigma (float | Tuple[float, float]): Gaussian standard deviation
 
     References:
         http://docs.opencv.org/modules/imgproc/doc/filtering.html#getgaussiankernel
@@ -557,14 +619,17 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
 
 def warp_affine(image, transform, dsize=None, antialias=False,
-                interpolation='linear'):
+                interpolation='linear', border_mode=None, border_value=0):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
     Args:
-        image (ndarray): the input image
+        image (ndarray): the input image as a numpy array.
+            Note: this is passed directly to cv2, so it is best to ensure that
+            it is contiguous and using a dtype that cv2 can handle.
 
-        transform (ndarray | Affine): a coercable affine matrix
+        transform (ndarray | Affine): a coercable affine matrix.
+            See :class:`kwimage.Affine` for details on what can be coerced.
 
         dsize (Tuple[int, int] | None | str):
             width and height of the resulting image. If "auto", it is computed
@@ -575,9 +640,17 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             if True determines if the transform is downsampling and applies
             antialiasing via gaussian a blur.
 
-        interpolation (str):
+        interpolation (str, default="linear"):
             interpolation code or cv2 integer. Interpolation codes are linear,
             nearest, cubic, lancsoz, and area.
+
+        border_mode (str):
+            Border code or cv2 integer. Border codes are constant replicate,
+            reflect, wrap, reflect101, and transparent.
+
+        border_value (int | float):
+            Used as the fill value if border_mode is constant. Otherwise this
+            is ignored.
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -614,17 +687,13 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
     """
-    from kwimage import im_cv2
     from kwimage.transform import Affine
     import kwimage
     transform = Affine.coerce(transform)
-    flags = im_cv2._coerce_interpolation(interpolation)
+    flags = _coerce_interpolation(interpolation)
 
-    # TODO: expose these params
-    # borderMode = cv2.BORDER_DEFAULT
-    # borderMode = cv2.BORDER_CONSTANT
-    borderMode = None
-    borderValue = None
+    borderMode = _coerce_border(border_mode)
+    borderValue = border_value
 
     """
     Variations that could change in the future:
@@ -699,7 +768,7 @@ def _prepare_downscale(image, sx, sy):
     # The "fudge" factor limits the number of downsampled pyramid
     # operations. A bigger fudge factor means means that the final
     # gaussian kernel for the antialiasing operation will be bigger.
-    # It essentials say that at most "fudge" downsampling ops will
+    # It essentially says that at most "fudge" downsampling ops will
     # be handled by the final blur rather than the pyramid downsample.
     # It seems to help with border effects at only a small runtime cost
     # I don't entirely understand why the border artifact is introduced

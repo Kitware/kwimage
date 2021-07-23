@@ -266,183 +266,175 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     values.
 
     Notes:
-        This function has been MOVED to kwarray
+        DEPRECATED: this function has been MOVED to ``kwarray.normalize``
+    """
+    import kwarray
+    return kwarray.normalize(arr, mode=mode, alpha=alpha, beta=beta, out=out)
+
+
+def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
+                        dtype=np.float32):
+    """
+    Normalize data intensities using heuristics to help put sensor data with
+    extremely high or low contrast into a visible range.
+
+    This function is designed with an emphasis on getting something that is
+    reasonable for visualization.
 
     Args:
-        arr (ndarray): array to normalize, usually an image
+        imdata (ndarray): raw intensity data
 
-        out (ndarray | None): output array. Note, that we will create an
-            internal floating point copy for integer computations.
+        return_info (bool, default=False):
+            if True, return information about the chosen normalization
+            heuristic.
 
-        mode (str): either linear or sigmoid.
+        nodata:
+            A value representing nodata to leave unchanged during
+            normalization, for example 0
 
-        alpha (float): Only used if mode=sigmoid.  Division factor
-            (pre-sigmoid). If unspecified computed as:
-            ``max(abs(old_min - beta), abs(old_max - beta)) / 6.212606``.
-            Note this parameter is sensitive to if the input is a float or
-            uint8 image.
+        dtype : can be float32 or float64
 
-        beta (float): subtractive factor (pre-sigmoid). This should be the
-            intensity of the most interesting bits of the image, i.e. bring
-            them to the center (0) of the distribution.
-            Defaults to ``(max - min) / 2``.  Note this parameter is sensitive
-            to if the input is a float or uint8 image.
-
-    References:
-        https://en.wikipedia.org/wiki/Normalization_(image_processing)
-
-    Example:
-        >>> raw_f = np.random.rand(8, 8)
-        >>> norm_f = normalize(raw_f)
-
-        >>> raw_f = np.random.rand(8, 8) * 100
-        >>> norm_f = normalize(raw_f)
-        >>> assert np.isclose(norm_f.min(), 0)
-        >>> assert np.isclose(norm_f.max(), 1)
-
-        >>> raw_u = (np.random.rand(8, 8) * 255).astype(np.uint8)
-        >>> norm_u = normalize(raw_u)
+    Returns:
+        ndarray: a floating point array with values between 0 and 1.
 
     Example:
         >>> from kwimage.im_core import *  # NOQA
+        >>> import ubelt as ub
         >>> import kwimage
-        >>> arr = kwimage.grab_test_image('lowcontrast')
-        >>> arr = kwimage.ensure_float01(arr)
-        >>> norms = {}
-        >>> norms['arr'] = arr.copy()
-        >>> norms['linear'] = normalize(arr, mode='linear')
-        >>> norms['sigmoid'] = normalize(arr, mode='sigmoid')
+        >>> import kwarray
+        >>> s = 512
+        >>> bit_depth = 11
+        >>> dtype = np.uint16
+        >>> max_val = int(2 ** bit_depth)
+        >>> min_val = int(0)
+        >>> rng = kwarray.ensure_rng(0)
+        >>> background = np.random.randint(min_val, max_val, size=(s, s), dtype=dtype)
+        >>> poly1 = kwimage.Polygon.random(rng=rng).scale(s / 2)
+        >>> poly2 = kwimage.Polygon.random(rng=rng).scale(s / 2).translate(s / 2)
+        >>> forground = np.zeros_like(background, dtype=np.uint8)
+        >>> forground = poly1.fill(forground, value=255)
+        >>> forground = poly2.fill(forground, value=122)
+        >>> forground = (kwimage.ensure_float01(forground) * max_val).astype(dtype)
+        >>> imdata = background + forground
+        >>> normed, info = normalize_intensity(imdata, return_info=True)
+        >>> print('info = {}'.format(ub.repr2(info, nl=1)))
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.figure(fnum=1, doclf=True)
-        >>> pnum_ = kwplot.PlotNums(nSubplots=len(norms))
-        >>> for key, img in norms.items():
-        >>>     kwplot.imshow(img, pnum=pnum_(), title=key)
+        >>> kwplot.imshow(imdata, pnum=(1, 2, 1), fnum=1)
+        >>> kwplot.imshow(normed, pnum=(1, 2, 2), fnum=1)
 
-    Benchmark:
-        # Our method is faster than standard in-line implementations.
-
-        import timerit
-        ti = timerit.Timerit(100, bestof=10, verbose=2, unit='ms')
-        arr = kwimage.grab_test_image('lowcontrast', dsize=(512, 512))
-
-        print('--- uint8 ---')
-        arr = ensure_float01(arr)
-        out = arr.copy()
-        for timer in ti.reset('naive1-float'):
-            with timer:
-                (arr - arr.min()) / (arr.max() - arr.min())
-
-        import timerit
-        for timer in ti.reset('simple-float'):
-            with timer:
-                max_ = arr.max()
-                min_ = arr.min()
-                result = (arr - min_) / (max_ - min_)
-
-        for timer in ti.reset('normalize-float'):
-            with timer:
-                normalize(arr)
-
-        for timer in ti.reset('normalize-float-inplace'):
-            with timer:
-                normalize(arr, out=out)
-
-        print('--- float ---')
-        arr = ensure_uint255(arr)
-        out = arr.copy()
-        for timer in ti.reset('naive1-uint8'):
-            with timer:
-                (arr - arr.min()) / (arr.max() - arr.min())
-
-        import timerit
-        for timer in ti.reset('simple-uint8'):
-            with timer:
-                max_ = arr.max()
-                min_ = arr.min()
-                result = (arr - min_) / (max_ - min_)
-
-        for timer in ti.reset('normalize-uint8'):
-            with timer:
-                normalize(arr)
-
-        for timer in ti.reset('normalize-uint8-inplace'):
-            with timer:
-                normalize(arr, out=out)
-
-    Ignore:
-        globals().update(xdev.get_func_kwargs(normalize))
+    Example:
+        >>> from kwimage.im_core import *  # NOQA
+        >>> import ubelt as ub
+        >>> import kwimage
+        >>> # Test on an image that is already normalized to test how it
+        >>> # degrades
+        >>> imdata = kwimage.grab_test_image()
+        >>> normed, info = normalize_intensity(imdata, return_info=True)
+        >>> print('info = {}'.format(ub.repr2(info, nl=1)))
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(imdata, pnum=(1, 2, 1), fnum=1)
+        >>> kwplot.imshow(normed, pnum=(1, 2, 2), fnum=1)
     """
-    if out is None:
-        out = arr.copy()
+    import kwarray
 
-    # TODO:
-    # - [ ] Parametarize new_min / new_max values
-    #     - [ ] infer from datatype
-    #     - [ ] explicitly given
-    new_min = 0.0
-    if arr.dtype.kind in ('i', 'u'):
-        # Need a floating point workspace
-        float_out = out.astype(np.float32)
-        new_max = float(np.iinfo(arr.dtype).max)
-    elif arr.dtype.kind == 'f':
-        float_out = out
-        new_max = 1.0
+    if axis is not None:
+        # Hack, normalize each channel individually. This could
+        # be implementd more effciently.
+        assert not return_info
+        reorg = imdata.swapaxes(0, axis)
+        parts = []
+        for item in reorg:
+            part = normalize_intensity(item, nodata=nodata, axis=None)
+            parts.append(part[None, :])
+        recomb = np.concatenate(parts, axis=0)
+        final = recomb.swapaxes(0, axis)
+        return final
+
+    info = {}
+
+    if nodata is not None:
+        imdata_valid = imdata[imdata != nodata]
     else:
-        raise NotImplementedError
+        imdata_valid = imdata
 
-    # TODO:
-    # - [ ] Parametarize old_min / old_max strategies
-    #     - [ ] explicitly given min and max
-    #     - [ ] raw-naive min and max inference
-    #     - [ ] outlier-aware min and max inference
-    old_min = float_out.min()
-    old_max = float_out.max()
+    # should center the desired distribution to visualize on zero
+    # beta = np.median(imdata)
 
-    old_span = old_max - old_min
-    new_span = new_max - new_min
+    quantiles = {
+        'low': 0.01,
+        'mid': 0.5,
+        'high': 0.9,
+    }
 
-    if mode == 'linear':
-        # linear case
-        # out = (arr - old_min) * (new_span / old_span) + new_min
-        factor = 1.0 if old_span == 0 else (new_span / old_span)
-        if old_min != 0:
-            float_out -= old_min
-    elif mode == 'sigmoid':
-        # nonlinear case
-        # out = new_span * sigmoid((arr - beta) / alpha) + new_min
-        from scipy.special import expit as sigmoid
-        if beta is None:
-            # should center the desired distribution to visualize on zero
-            beta = old_max - old_min
+    quant_low = quantiles['low']
+    quant_mid = quantiles['mid']
+    quant_high = quantiles['high']
+    qvals = [0, quant_low, quant_mid, quant_high, 1]
+    quantile_vals = np.quantile(imdata_valid, qvals)
 
-        if alpha is None:
-            # division factor
-            # from scipy.special import logit
-            # alpha = max(abs(old_min - beta), abs(old_max - beta)) / logit(0.998)
-            # This chooses alpha such the original min/max value will be pushed
-            # towards -1 / +1.
-            alpha = max(abs(old_min - beta), abs(old_max - beta)) / 6.212606
-        energy = float_out
-        energy -= beta
-        energy /= alpha
-        # Ideally the data of interest is roughly in the range (-6, +6)
-        float_out = sigmoid(energy, out=float_out)
-        factor = new_span
+    (quant_low_abs, quant_low_val, quant_mid_val, quant_high_val,
+     quant_high_abs) = quantile_vals
+
+    # TODO: we could implement a hueristic where we do a numerical inspection
+    # of the intensity distribution. We could apply a normalization that is
+    # known to work for data with that sort of histogram distribution.
+    # This might involve fitting several parametarized distributions to the
+    # data and choosing the one with the best fit. (check how many modes there
+    # are).
+
+    # inner_range = quant_high_val - quant_low_val
+    # upper_inner_range = quant_high_val - quant_mid_val
+    # upper_lower_range = quant_mid_val - quant_low_val
+    # http://mathcenter.oxford.emory.edu/site/math117/shapeCenterAndSpread/
+
+    # Compute amount of weight in each quantile
+    quant_center_amount = (quant_high_val - quant_low_val)
+    quant_low_amount = (quant_mid_val - quant_low_val)
+    quant_high_amount = (quant_high_val - quant_mid_val)
+
+    high_weight = quant_high_amount / quant_center_amount
+    low_weight = quant_low_amount / quant_center_amount
+
+    quant_high_residual = (1.0 - quant_high)
+    quant_low_residual = (quant_low - 0.0)
+    # todo: verify, having slight head fog, not 100% sure
+    low_pad_val = quant_low_residual * (low_weight * quant_center_amount)
+    high_pad_val = quant_high_residual * (high_weight * quant_center_amount)
+
+    min_val = max(quant_low_abs, quant_low_val - low_pad_val)
+    max_val = max(quant_high_abs, quant_high_val - high_pad_val)
+
+    beta = quant_mid_val
+    # This chooses alpha such the original min/max value will be pushed
+    # towards -1 / +1.
+    alpha = max(abs(min_val - beta), abs(max_val - beta)) / 6.212606
+
+    info.update({
+        'min_val': min_val,
+        'max_val': max_val,
+        'beta': beta,
+        'alpha': alpha,
+        'mode': 'sigmoid'
+    })
+
+    # Note: we are using kwarray normalize, the one in kwimage is the same,
+    # but deprecated.
+    imdata_normalized = kwarray.normalize(
+        imdata.astype(dtype), mode='sigmoid', beta=beta, alpha=alpha)
+
+    if nodata is not None:
+        result = np.where(imdata != nodata, imdata_normalized, imdata)
     else:
-        raise KeyError(mode)
+        result = imdata_normalized
 
-    # Stretch / shift to the desired output range
-    if factor != 1:
-        float_out *= factor
-
-    if new_min != 0:
-        float_out += new_min
-
-    if float_out is not out:
-        out[:] = float_out.astype(out.dtype)
-    return out
+    if return_info:
+        return result, info
+    else:
+        return result
 
 
 def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
