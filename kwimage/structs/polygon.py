@@ -183,11 +183,13 @@ class _PolyWarpMixin:
             try:
                 import imgaug
             except ImportError:
-                import warnings
-                warnings.warn('imgaug is not installed')
-                raise TypeError(type(transform))
-            if isinstance(transform, imgaug.augmenters.Augmenter):
-                return new._warp_imgaug(transform, input_dims, inplace=True)
+                pass
+                # import warnings
+                # warnings.warn('imgaug is not installed')
+                # raise TypeError(type(transform))
+            else:
+                if isinstance(transform, imgaug.augmenters.Augmenter):
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
             # else:
             #     raise TypeError(type(transform))
         new.data['exterior'] = new.data['exterior'].warp(transform, input_dims,

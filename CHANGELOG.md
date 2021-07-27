@@ -14,6 +14,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * added `border_mode` and `border_value` to `warp_affine`.
 
 
+### Fixed
+
+* issue computing canvas size in `draw_text_on_image` when an image is not given.
+
+* failing to have imgaug no longer crashes arbitrary functions in annotation warp methods.
+
+
 ## Version 0.7.8 - Released 2021-06-17
 
 

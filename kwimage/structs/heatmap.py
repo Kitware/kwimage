@@ -103,6 +103,7 @@ class _HeatmapDrawMixin(object):
     def _colorize_class_idx(self):
         """
         """
+        # Ignore cases where index is negative?
         cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int)
 
         import networkx as nx

@@ -117,12 +117,14 @@ class _PointsWarpMixin:
             try:
                 import imgaug
             except ImportError:
-                warnings.warn('imgaug is not installed')
-                raise TypeError(type(transform))
-            if isinstance(transform, imgaug.augmenters.Augmenter):
-                return new._warp_imgaug(transform, input_dims, inplace=True)
+                pass
+                # warnings.warn('imgaug is not installed')
+                # raise TypeError(type(transform))
             else:
-                raise TypeError(type(transform))
+                if isinstance(transform, imgaug.augmenters.Augmenter):
+                    return new._warp_imgaug(transform, input_dims, inplace=True)
+            # else:
+            #     raise TypeError(type(transform))
         new.data['xy'] = new.data['xy'].warp(transform, input_dims,
                                              output_dims, inplace)
         if 'tf_data_to_img' in new.meta:
