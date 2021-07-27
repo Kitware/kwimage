@@ -13,6 +13,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * added `border_mode` and `border_value` to `warp_affine`.
 
+* The `img` arg in `draw_text_on_image` can now be specified as a dictionary
+  for control over canvas generation.
+
 
 ### Fixed
 

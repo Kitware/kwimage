@@ -9,16 +9,12 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
-    Note:
-        This function also exists in kwplot
-
-        The image is modified inplace. If the image is non-contiguous then this
-        returns a UMat instead of a ndarray, so be carefull with that.
-
     Args:
-        img (ndarray | None):
-            image to draw on (inplace), if None, a zero canvas will be
-            constructed.
+        img (ndarray | None | dict):
+            Generally a numpy image to draw on (inplace).
+            Otherwise a canvas will be constructed such that the text will fit.
+            The user may specify a dictionary with keys width and height
+            to have more control over the constructed canvas.
         text (str): text to draw
         org (Tuple[int, int]):
             The x, y location of the text string "anchor" in the image as
@@ -44,8 +40,16 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
                     "color": border color, defaults to "black".
                     "thickness": border thickness, defaults to 1.
 
+    Returns:
+        ndarray: the image that was drawn on
+
+    Note:
+        The image is modified inplace. If the image is non-contiguous then this
+        returns a UMat instead of a ndarray, so be carefull with that.
+
     References:
         https://stackoverflow.com/questions/27647424/
+        https://stackoverflow.com/questions/51285616/opencvs-gettextsize-and-puttext-return-wrong-size-and-chop-letters-with-low
 
     Example:
         >>> import kwimage
@@ -94,6 +98,17 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         >>> kwplot.autompl()
         >>> kwplot.imshow(img)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Test dictionary image
+        >>> import kwimage
+        >>> img = kwimage.draw_text_on_image({'width': 300}, 'good\nPropogate', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
+        >>> print('img.shape = {!r}'.format(img.shape))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img)
+        >>> kwplot.show_if_requested()
     """
     import kwimage
 
@@ -101,7 +116,7 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         kwargs['color'] = 'red'
 
     # Get the color that is compatible with the input image encoding
-    if img is None:
+    if img is None or isinstance(img, dict):
         kwargs['color'] = kwimage.Color(kwargs['color']).as255()
     else:
         kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
@@ -147,7 +162,16 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
     ypad = thickness + vertical_spacing
 
     lines = text.split('\n')
-    line_sizes = np.array([cv2.getTextSize(line, **getsize_kw)[0] for line in lines])
+
+    line_sizes = []
+    final_baseline = 0
+    for line in lines:
+        # TODO: better handling of baseline
+        # https://en.wikipedia.org/wiki/Baseline_(typography)
+        (line_width, line_height), baseline = cv2.getTextSize(line, **getsize_kw)
+        line_sizes.append((line_width, line_height))
+        final_baseline = baseline
+    line_sizes = np.array(line_sizes)
 
     line_org = []
     y = y0
@@ -199,11 +223,18 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
             raise KeyError(halign)
 
     if img is None:
-        # if image is unspecified allocate just enough space for text
-        abs_left_x = line_org[:, 0].min()
-        alloc_w = total_w + border_thickness + abs_left_x
-        alloc_h = total_h + border_thickness + abs_top_y
+        img = {'width': None, 'height': None}
 
+    if isinstance(img, dict):
+        # if image is unspecified allocate just enough space for text
+        # allow users to specify partial parameters
+        alloc_w = img.get('width', None)
+        alloc_h = img.get('height', None)
+        if alloc_w is None:
+            abs_left_x = line_org[:, 0].min()
+            alloc_w = total_w + border_thickness + abs_left_x
+        if alloc_h is None:
+            alloc_h = total_h + border_thickness + abs_top_y + final_baseline
         img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
 
     if border_thickness > 0:
