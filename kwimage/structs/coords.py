@@ -513,8 +513,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             try:
                 import imgaug
             except ImportError:
-                import warnings
-                warnings.warn('imgaug is not installed')
+                pass
+                # import warnings
+                # warnings.warn('imgaug is not installed')
             else:
                 if isinstance(transform, imgaug.augmenters.Augmenter):
                     return new._warp_imgaug(transform, input_dims, inplace=True)
@@ -523,8 +524,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             try:
                 from osgeo import osr
             except ImportError:
-                import warnings
-                warnings.warn('osgeo is not installed')
+                pass
+                # import warnings
+                # warnings.warn('osgeo is not installed')
             else:
                 if isinstance(transform, osr.CoordinateTransformation):
                     # NOTE: We are expecting lon/lat here for wgs84

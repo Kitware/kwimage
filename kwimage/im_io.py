@@ -712,39 +712,39 @@ def load_image_shape(fpath):
 
 def __inspect_optional_overhead():
     r"""
-        Benchmark:
-            >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
-            >>> def dis_instructions(func):
-            >>>     import dis
-            >>>     import io
-            >>>     buf = io.StringIO()
-            >>>     dis.disassemble(func.__code__, file=buf)
-            >>>     _, text = buf.seek(0), buf.read()
-            >>>     return text
-            >>> func = _have_turbojpg
-            >>> func = _have_gdal
-            >>> memo = ub.memoize(func)
-            >>> print(func_dis := dis_instructions(func))
-            >>> print(memo_dis := dis_instructions(memo))
-            >>> n = max(func_dis.count('\n'), memo_dis.count('\n'))
-            >>> sep = ' | \n' * n
-            >>> prefix = '| \n' * n
-            >>> print('\n\n')
-            >>> print(ub.hzcat([prefix, x, sep, y]))
+    Benchmark:
+        >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
+        >>> def dis_instructions(func):
+        >>>     import dis
+        >>>     import io
+        >>>     buf = io.StringIO()
+        >>>     dis.disassemble(func.__code__, file=buf)
+        >>>     _, text = buf.seek(0), buf.read()
+        >>>     return text
+        >>> func = _have_turbojpg
+        >>> func = _have_gdal
+        >>> memo = ub.memoize(func)
+        >>> print(func_dis := dis_instructions(func))
+        >>> print(memo_dis := dis_instructions(memo))
+        >>> n = max(func_dis.count('\n'), memo_dis.count('\n'))
+        >>> sep = ' | \n' * n
+        >>> prefix = '| \n' * n
+        >>> print('\n\n')
+        >>> print(ub.hzcat([prefix, x, sep, y]))
 
-        Benchmark:
-            >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
-            >>> funcs = []
-            >>> funcs += [_have_turbojpg]
-            >>> funcs += [_have_gdal]
-            >>> for func in funcs:
-            >>>     memo = ub.memoize(func)
-            >>>     print('func = {!r}'.format(func))
-            >>>     print('memo = {!r}'.format(memo))
-            >>>     import timerit
-            >>>     ti = timerit.Timerit(100, bestof=10, verbose=1, unit='us')
-            >>>     ti.reset('call func').call(func).report()
-            >>>     ti.reset('call memo').call(memo).report()
+    Benchmark:
+        >>> from kwimage.im_io import _have_gdal, _have_turbojpg  # NOQA
+        >>> funcs = []
+        >>> funcs += [_have_turbojpg]
+        >>> funcs += [_have_gdal]
+        >>> for func in funcs:
+        >>>     memo = ub.memoize(func)
+        >>>     print('func = {!r}'.format(func))
+        >>>     print('memo = {!r}'.format(memo))
+        >>>     import timerit
+        >>>     ti = timerit.Timerit(100, bestof=10, verbose=1, unit='us')
+        >>>     ti.reset('call func').call(func).report()
+        >>>     ti.reset('call memo').call(memo).report()
     """
     raise NotImplementedError
 

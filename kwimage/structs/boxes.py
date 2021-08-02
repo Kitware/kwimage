@@ -1007,8 +1007,9 @@ class _BoxTransformMixins(object):
                 try:
                     import imgaug
                 except ImportError:
-                    import warnings
-                    warnings.warn('imgaug is not installed')
+                    pass
+                    # import warnings
+                    # warnings.warn('imgaug is not installed')
                 else:
                     if isinstance(transform, imgaug.augmenters.Augmenter):
                         aug = new._warp_imgaug(transform, input_dims=input_dims, inplace=True)

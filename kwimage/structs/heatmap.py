@@ -103,6 +103,7 @@ class _HeatmapDrawMixin(object):
     def _colorize_class_idx(self):
         """
         """
+        # Ignore cases where index is negative?
         cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int)
 
         import networkx as nx
@@ -515,10 +516,8 @@ class _HeatmapDrawMixin(object):
                     kpts = list(range(len(keypoints.shape[1])))
             if not ub.iterable(kpts):
                 kpts = [kpts]
-            print('kpts = {!r}'.format(kpts))
             E = int(bool(vecs))
             vec_colors = kwimage.Color.distinct(len(kpts) + E)
-            print('vec_colors = {!r}'.format(vec_colors))
 
         if vecs:
             if self.data.get('offset', None) is not None:
@@ -533,7 +532,6 @@ class _HeatmapDrawMixin(object):
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
-                # print('vecalign = {!r}'.format(vecalign))
                 layers.append(vecalign)
 
         if kpts is not None:
@@ -553,7 +551,6 @@ class _HeatmapDrawMixin(object):
                     chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                     vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                     vecalign = vecalign.transpose(1, 2, 0)
-                    print('vecalign = {!r}'.format(vecalign))
                     layers.append(vecalign)
 
         layers.append(colormask)

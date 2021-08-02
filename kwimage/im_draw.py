@@ -9,18 +9,17 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
-    Note:
-        This function also exists in kwplot
-
-        The image is modified inplace. If the image is non-contiguous then this
-        returns a UMat instead of a ndarray, so be carefull with that.
-
     Args:
-        img (ndarray): image to draw on (inplace)
+        img (ndarray | None | dict):
+            Generally a numpy image to draw on (inplace).
+            Otherwise a canvas will be constructed such that the text will fit.
+            The user may specify a dictionary with keys width and height
+            to have more control over the constructed canvas.
         text (str): text to draw
-        org (tuple): x, y location of the text string in the image.
-            if bottomLeftOrigin=True this is the bottom-left corner of the text
-            otherwise it is the top-left corner (default).
+        org (Tuple[int, int]):
+            The x, y location of the text string "anchor" in the image as
+            specified by halign and valign.  For instance, If valign='bottom',
+            halign='left', this is the bottom left corner.
         return_info (bool, default=False):
             if True, also returns information about the positions the text
             was drawn on.
@@ -29,11 +28,28 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
             thickness (int): defaults to 2
             fontFace (int): defaults to cv2.FONT_HERSHEY_SIMPLEX
             fontScale (float): defaults to 1.0
-            valign (str, default='bottom'): either top, center, or bottom
-            halign (str, default='left'): either left, center, or right
+            valign (str, default='bottom'):
+                either top, center, or bottom.
+                NOTE: this default may change to "top" in the future.
+            halign (str, default='left'):
+                either left, center, or right
+            border (dict | int):
+                If specified as an integer, draws a black border with that
+                given thickness.  If specified as a dictionary, draws a border
+                with color specified parameters.
+                    "color": border color, defaults to "black".
+                    "thickness": border thickness, defaults to 1.
+
+    Returns:
+        ndarray: the image that was drawn on
+
+    Note:
+        The image is modified inplace. If the image is non-contiguous then this
+        returns a UMat instead of a ndarray, so be carefull with that.
 
     References:
         https://stackoverflow.com/questions/27647424/
+        https://stackoverflow.com/questions/51285616/opencvs-gettextsize-and-puttext-return-wrong-size-and-chop-letters-with-low
 
     Example:
         >>> import kwimage
@@ -44,7 +60,7 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img2, fontScale=10)
+        >>> kwplot.imshow(img2)
         >>> kwplot.show_if_requested()
 
     Example:
@@ -61,7 +77,7 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img2, fontScale=10)
+        >>> kwplot.imshow(img2)
         >>> kwplot.show_if_requested()
 
     Example:
@@ -70,6 +86,29 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         >>> img = kwimage.grab_test_image(space='rgb')
         >>> img = kwimage.ensure_float01(img)
         >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
+
+    Example:
+        >>> # Test dictionary border
+        >>> import kwimage
+        >>> img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(100, 100), valign='top', halign='center', border={'color': 'green', 'thickness': 9})
+        >>> #img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(0, 0), valign='top')
+        >>> #img = kwimage.draw_text_on_image(None, 'hello', org=(0, 60), valign='top', halign='center', border=0)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img)
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Test dictionary image
+        >>> import kwimage
+        >>> img = kwimage.draw_text_on_image({'width': 300}, 'good\nPropogate', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
+        >>> print('img.shape = {!r}'.format(img.shape))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img)
+        >>> kwplot.show_if_requested()
     """
     import kwimage
 
@@ -77,7 +116,7 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         kwargs['color'] = 'red'
 
     # Get the color that is compatible with the input image encoding
-    if img is None:
+    if img is None or isinstance(img, dict):
         kwargs['color'] = kwimage.Color(kwargs['color']).as255()
     else:
         kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
@@ -98,17 +137,15 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         raise ValueError('Do not use bottomLeftOrigin, use valign instead')
 
     border = kwargs.pop('border', None)
-    if border:
-        # recursive call
+    if border is not None:
+        if isinstance(border, int):
+            border = {'color': 'black', 'thickness': border}
         subkw = kwargs.copy()
-        subkw['color'] = 'black'
+        subkw['color'] = border.get('color', 'black')
         subkw.pop('return_info', None)
-        basis = list(range(-border, border + 1))
-        for i, j in it.product(basis, basis):
-            if i == 0 and j == 0:
-                continue
-            org = np.array(org)
-            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
+        border_thickness = border.get('thickness', 1)
+    else:
+        border_thickness = 0
 
     valign = kwargs.pop('valign', None)
     halign = kwargs.pop('halign', None)
@@ -120,12 +157,21 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
     }
     x0, y0 = list(map(int, org))
     thickness = kwargs.get('thickness', 2)
-    ypad = thickness + 4
+
+    vertical_spacing = 4  # space between vertical lines
+    ypad = thickness + vertical_spacing
 
     lines = text.split('\n')
-    # line_sizes2 = np.array([cv2.getTextSize(line, **getsize_kw) for line in lines])
-    # print('line_sizes2 = {!r}'.format(line_sizes2))
-    line_sizes = np.array([cv2.getTextSize(line, **getsize_kw)[0] for line in lines])
+
+    line_sizes = []
+    final_baseline = 0
+    for line in lines:
+        # TODO: better handling of baseline
+        # https://en.wikipedia.org/wiki/Baseline_(typography)
+        (line_width, line_height), baseline = cv2.getTextSize(line, **getsize_kw)
+        line_sizes.append((line_width, line_height))
+        final_baseline = baseline
+    line_sizes = np.array(line_sizes)
 
     line_org = []
     y = y0
@@ -136,12 +182,12 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
     line_org = np.array(line_org)
 
     # the absolute top and bottom position of text
-    all_top_y = line_org[0, 1]
-    all_bottom_y = (line_org[-1, 1] + line_sizes[-1, 1])
+    abs_top_y = line_org[0, 1]
+    abs_bot_y = (line_org[-1, 1] + line_sizes[-1, 1]) + thickness
 
     first_h = line_sizes[0, 1]
 
-    total_h = (all_bottom_y - all_top_y)
+    total_h = (abs_bot_y - abs_top_y)
     total_w = line_sizes.T[0].max()
 
     if valign is not None:
@@ -177,14 +223,32 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
             raise KeyError(halign)
 
     if img is None:
+        img = {'width': None, 'height': None}
+
+    if isinstance(img, dict):
         # if image is unspecified allocate just enough space for text
-        total_w = (line_org.T[0] + line_sizes.T[0]).max()
-        # TODO: does not account for origin offset
-        img = np.zeros((total_h + thickness, total_w, 3), dtype=np.uint8)
+        # allow users to specify partial parameters
+        alloc_w = img.get('width', None)
+        alloc_h = img.get('height', None)
+        if alloc_w is None:
+            abs_left_x = line_org[:, 0].min()
+            alloc_w = total_w + border_thickness + abs_left_x
+        if alloc_h is None:
+            alloc_h = total_h + border_thickness + abs_top_y + final_baseline
+        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
+
+    if border_thickness > 0:
+        # recursive call
+        basis = list(range(-border_thickness, border_thickness + 1))
+        for i, j in it.product(basis, basis):
+            if i == 0 and j == 0:
+                continue
+            org = np.array(org)
+            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
 
     for i, line in enumerate(lines):
-        (x, y) = line_org[i]
-        img = cv2.putText(img, line, (x, y), **kwargs)
+        xy = tuple(line_org[i])
+        img = cv2.putText(img, line, xy, **kwargs)
 
     if return_info:
         info = {
