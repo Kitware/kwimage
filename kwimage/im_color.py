@@ -278,7 +278,7 @@ class Color(ub.NiceRepr):
             >>> import kwimage
             >>> named_colors = kwimage.Color.named_colors()
             >>> color_lut = {name: kwimage.Color(name).as01() for name in named_colors}
-            >>> # xdoctest: +REQUIRES(kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> canvas = kwplot.make_legend_img(color_lut)

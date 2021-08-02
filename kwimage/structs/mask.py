@@ -687,7 +687,7 @@ class _MaskDrawMixin(object):
     matplotlib (the ``draw`` method) or opencv (the ``draw_on`` method).
     """
 
-    def draw_on(self, image, color='blue', alpha=0.5,
+    def draw_on(self, image=None, color='blue', alpha=0.5,
                 show_border=False, border_thick=1,
                 border_color='white', copy=False):
         """
@@ -756,6 +756,9 @@ class _MaskDrawMixin(object):
             >>> kwplot.show_if_requested()
         """
         import kwimage
+
+        if image is None:
+            image = np.zeros(self.shape[0:2] + (3,), dtype=np.float32)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
