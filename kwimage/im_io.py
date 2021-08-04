@@ -1034,6 +1034,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     data_set = None
 
     # OK, so setting things to None turns out to be important. Gah!
+    # NOTE: if data_set2 is None here, that may be because the directory
+    # we are trying to write to does not exist.
     data_set2.FlushCache()
 
     # Dereference everything
