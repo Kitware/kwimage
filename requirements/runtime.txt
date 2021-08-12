@@ -7,7 +7,10 @@ Pillow >= 8.0.0
 # can we also accept opencv-python-headless to satisfy this? 
 # opencv-python >= 3.4.1.15
 
-scikit-image >= 0.17.2
+scikit-image >= 1.18.2           ;                              python_version >= '3.9.0'
+scikit-image >= 0.17.2           ; python_version < '3.9.0' and python_version >= '3.6.0'
+scikit-image >= 0.14.0, < 0.15.0 ; python_version < '3.6.0'
+
 six >= 1.11.0
 ubelt >= 0.9.5
 kwarray >= 0.5.19

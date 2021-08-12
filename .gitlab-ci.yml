@@ -433,13 +433,13 @@ test_minimal_loose/cp37-cp37m-manylinux2010:
     image:
         *image_python37
 
-test_minimal_strict/cp37-cp37-manylinux2010:
+test_minimal_strict/cp37-cp37m-manylinux2010:
     <<: 
         - *test_minimal_strict_template
     image:
         *image_python37
 
-test_full_strict/cp37-cp37-manylinux2010:
+test_full_strict/cp37-cp37m-manylinux2010:
     <<: 
         - *test_full_strict_template
     image:
@@ -467,13 +467,13 @@ test_minimal_loose/cp36-cp36m-manylinux2010:
     image:
         *image_python36
 
-test_minimal_strict/cp36-cp36-manylinux2010:
+test_minimal_strict/cp36-cp36m-manylinux2010:
     <<: 
         - *test_minimal_strict_template
     image:
         *image_python36
 
-test_full_strict/cp36-cp36-manylinux2010:
+test_full_strict/cp36-cp36m-manylinux2010:
     <<: 
         - *test_full_strict_template
     image:
