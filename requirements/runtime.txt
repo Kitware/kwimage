@@ -1,5 +1,5 @@
-scipy >= 1.2.1
-numpy >= 1.9.0
+scipy >= 1.5.4
+numpy >= 1.19.2   # tensorflow minimum
 shapely
 Pillow >= 5.2.0
 
@@ -9,6 +9,7 @@ Pillow >= 5.2.0
 
 scikit-image >= 0.14
 six >= 1.11.0
-ubelt >= 0.7.1
-kwarray >= 0.4.0
-future;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.
+ubelt >= 0.9.3
+kwarray >= 0.5.16
+
+# future;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.
