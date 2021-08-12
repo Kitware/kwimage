@@ -1,15 +1,15 @@
 scipy >= 1.5.4
 numpy >= 1.19.2   # tensorflow minimum
-shapely
-Pillow >= 5.2.0
+shapely >= 1.7.1
+Pillow >= 8.0.0
 
 # TODO:
 # can we also accept opencv-python-headless to satisfy this? 
 # opencv-python >= 3.4.1.15
 
-scikit-image >= 0.14
+scikit-image >= 0.17.2
 six >= 1.11.0
 ubelt >= 0.9.5
 kwarray >= 0.5.19
 
-# future;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.
+# future >= 0.18.2;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.
