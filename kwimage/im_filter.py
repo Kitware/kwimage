@@ -13,6 +13,7 @@ def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
         https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_transforms/py_fourier_transform/py_fourier_transform.html
 
     Example:
+        >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image()
         >>> img_hwc = kwimage.ensure_float01(img_hwc)
