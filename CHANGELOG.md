@@ -9,6 +9,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.10 - Released 2021-08-02
 
+### Added
+* Enhanced capabilities of `draw_text_on_image`
+* `Mask.draw_on` will now draw on an empty image if none is provided
+
+### Fixed
+* C-Extension errors should now properly fallback on pure-python 
+* Not having `imgaug` no longer warns
+* Fixed issues with generic warps
 
 ## Version 0.7.9 - Released 2021-07-23
 
