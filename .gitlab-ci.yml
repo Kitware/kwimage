@@ -331,8 +331,6 @@ deploy/wheels:
         refs:
             - release
 
-### JOBS ###
-# Define the actual jobs
 
 # Aliases for the images that run the tests
 .image_python39: &image_python39
@@ -344,20 +342,24 @@ deploy/wheels:
 .image_python36: &image_python36
     gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
 
+
+### JOBS ###
+# Define the actual jobs
+
 # ---------------
 # Python 3.9 Jobs
 
-build/cp39-cp39-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp39-*"
+#build/cp39-cp39-manylinux2010:
+#    <<: 
+#        - *cibuildwheel_template
+#    variables:
+#        CIBW_BUILD: "cp39-*"
 
-test_full_loose/cp39-cp39-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python39
+#test_full_loose/cp39-cp39-manylinux2010:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python39
 
 test_minimal_loose/cp39-cp39-manylinux2010:
     <<: 
@@ -365,69 +367,69 @@ test_minimal_loose/cp39-cp39-manylinux2010:
     image:
         *image_python39
 
-# ---------------
-# Python 3.8 Jobs
+## ---------------
+## Python 3.8 Jobs
 
-build/cp38-cp38-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp38-*"
+#build/cp38-cp38-manylinux2010:
+#    <<: 
+#        - *cibuildwheel_template
+#    variables:
+#        CIBW_BUILD: "cp38-*"
 
-test_full_loose/cp38-cp38-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python38
+#test_full_loose/cp38-cp38-manylinux2010:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python38
 
-test_minimal_loose/cp38-cp38-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python38
+#test_minimal_loose/cp38-cp38-manylinux2010:
+#    <<: 
+#        - *test_minimal_loose_template
+#    image:
+#        *image_python38
 
-# ---------------
-# Python 3.7 Jobs
+## ---------------
+## Python 3.7 Jobs
 
-build/cp37-cp37m-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp37-*"
+#build/cp37-cp37m-manylinux2010:
+#    <<: 
+#        - *cibuildwheel_template
+#    variables:
+#        CIBW_BUILD: "cp37-*"
 
-test_full_loose/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python37
+#test_full_loose/cp37-cp37m-manylinux2010:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python37
 
-test_minimal_loose/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python37
+#test_minimal_loose/cp37-cp37m-manylinux2010:
+#    <<: 
+#        - *test_minimal_loose_template
+#    image:
+#        *image_python37
 
 
-# ---------------
-# Python 3.6 Jobs
+## ---------------
+## Python 3.6 Jobs
 
-build/cp36-cp36m-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp36-*"
+#build/cp36-cp36m-manylinux2010:
+#    <<: 
+#        - *cibuildwheel_template
+#    variables:
+#        CIBW_BUILD: "cp36-*"
 
-test_full_loose/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python36
+#test_full_loose/cp36-cp36m-manylinux2010:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python36
 
-test_minimal_loose/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python36
+#test_minimal_loose/cp36-cp36m-manylinux2010:
+#    <<: 
+#        - *test_minimal_loose_template
+#    image:
+#        *image_python36
 
 
 # ---------------
