@@ -1,6 +1,8 @@
-pyqt5 >= 5.11.2;python_version>'2.7'  
-
 matplotlib >= 3.1.0
+
+pyqt5 >= 5.15.4            ;                              python_version >= '3.9.0'   # Python 3.9+
+pyqt5 >= 5.14.0, <= 5.15.3 ; python_version < '3.9.0' and python_version >= '3.5.0'   # Python 3.5-3.9
+pyqt5 >= 5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
 
 torch >= 1.9.0            ;                              python_version >= '3.9.0'   # Python 3.9+
 torch >= 1.6.0            ; python_version < '3.9.0' and python_version >= '3.6.0'   # Python 3.6-3.8
