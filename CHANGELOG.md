@@ -4,8 +4,27 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.10 - Unreleased
+## Version 0.7.11 - Unreleased
 
+
+### Changed
+* Improved `cv2.imread` auto-space default based on the available backend.
+  Should no longer need to specify it unless working with cv2.
+
+### Fixed
+* C-Extension errors for boxes now fallback on pure-python 
+
+
+## Version 0.7.10 - Released 2021-08-02
+
+### Added
+* Enhanced capabilities of `draw_text_on_image`
+* `Mask.draw_on` will now draw on an empty image if none is provided
+
+### Fixed
+* C-Extension errors for masks now fallback on pure-python 
+* Not having `imgaug` no longer warns
+* Fixed issues with generic warps
 
 ## Version 0.7.9 - Released 2021-07-23
 

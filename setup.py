@@ -153,7 +153,7 @@ def parse_requirements(fname='requirements.txt', with_version=False):
 
 def clean():
     """
-    __file__ = ub.truepath('~/code/kwimage/setup.py')
+    __file__ = ub.expandpath('~/code/kwimage/setup.py')
     """
     import ubelt as ub
     import os

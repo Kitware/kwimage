@@ -51,16 +51,21 @@ def imread(fpath, space='auto', backend='auto'):
     Args:
         fpath (str): path to the file to be read
 
-        space (str, default='auto'): the desired colorspace of the image. Can
-            by any colorspace accepted by `convert_colorspace`, or it can be
-            'auto', in which case the colorspace of the image is unmodified
-            (except in the case where a color image is read by opencv, in which
-            case we convert BGR to RGB by default). If None, then no
-            modification is made to whatever backend is used to read the image.
+        space (str, default='auto'):
+            The desired colorspace of the image. Can by any colorspace accepted
+            by `convert_colorspace`, or it can be 'auto', in which case the
+            colorspace of the image is unmodified (except in the case where a
+            color image is read by opencv, in which case we convert BGR to RGB
+            by default). If None, then no modification is made to whatever
+            backend is used to read the image.
+
+            New in version 0.7.10: when the backend does not resolve to "cv2"
+            the "auto" space resolves to None, thus the image is read as-is.
 
         backend (str, default='auto'): which backend reader to use. By default
             the file extension is used to determine this, but it can be
-            manually overridden. Valid backends are gdal, skimage, and cv2.
+            manually overridden. Valid backends are 'gdal', 'skimage', and
+            'cv2'.
 
     Returns:
         ndarray: the image data in the specified color space.
@@ -189,6 +194,7 @@ def imread(fpath, space='auto', backend='auto'):
 
 
         >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['mean'], nl=2), ':')))
+
     """
     if backend == 'auto':
         # TODO: memoize the extensions?
@@ -209,6 +215,11 @@ def imread(fpath, space='auto', backend='auto'):
                 backend = 'cv2'
         else:
             backend = 'cv2'
+
+    if space == 'auto' and backend != 'cv2':
+        # cv2 is the only backend that does weird things, we can
+        # default to auto and save the user the headache of specifying this
+        space = None
 
     try:
         if backend == 'gdal':
@@ -412,8 +423,7 @@ def _imread_gdal(fpath):
             for i, band in enumerate(bands):
                 image[:, :, i] = band.ReadAsArray()
 
-        # note this isn't a safe assumption, but it is an OK default
-        # hueristic
+        # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
             src_space = 'gray'
         elif num_channels == 3:
@@ -441,15 +451,19 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
         image (ndarray): image data
 
-        space (str): the colorspace of the image to save. Can by any colorspace
-            accepted by `convert_colorspace`, or it can be 'auto', in which
-            case we assume the input image is either RGB, RGBA or grayscale.
-            If None, then absolutely no color modification is made and
-            whatever backend is used writes the image as-is.
+        space (str | None, default='auto'):
+            the colorspace of the image to save. Can by any colorspace accepted
+            by `convert_colorspace`, or it can be 'auto', in which case we
+            assume the input image is either RGB, RGBA or grayscale.  If None,
+            then absolutely no color modification is made and whatever backend
+            is used writes the image as-is.
 
-        backend (str, default='auto'): which backend writer to use. By default
-            the file extension is used to determine this. Valid backends are
-            gdal, skimage, and cv2.
+            New in version 0.7.10: when the backend does not resolve to "cv2",
+            the "auto" space resolves to None, thus the image is saved as-is.
+
+        backend (str, default='auto'):
+            which backend writer to use. By default the file extension is used
+            to determine this. Valid backends are 'gdal', 'skimage', and 'cv2'.
 
         **kwargs : args passed to the backend writer
 
@@ -569,7 +583,51 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> file_sizes_human = ub.map_vals(lambda x: xdev.byte_str(x, 'MB'), file_sizes)
         >>> print('ti.rankings = {}'.format(ub.repr2(ti.rankings, nl=2)))
         >>> print('file_sizes = {}'.format(ub.repr2(file_sizes_human, nl=1)))
+
+    Example:
+        >>> # Test saving a multi-band file
+        >>> import kwimage
+        >>> import tempfile
+        >>> # In this case the backend will not resolve to cv2, so
+        >>> # we should not need to specify space.
+        >>> data = np.random.rand(32, 32, 13).astype(np.float32)
+        >>> temp = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = temp.name
+        >>> kwimage.imwrite(fpath, data)
+        >>> recon = kwimage.imread(fpath)
+        >>> assert np.all(recon == data)
+
+        >>> kwimage.imwrite(fpath, data, backend='skimage')
+        >>> recon = kwimage.imread(fpath)
+        >>> assert np.all(recon == data)
+
+        >>> import pytest
+        >>> # In this case the backend will resolve to cv2, and thus we expect
+        >>> # a failure
+        >>> temp = tempfile.NamedTemporaryFile(suffix='.png')
+        >>> fpath = temp.name
+        >>> with pytest.raises(NotImplementedError):
+        >>>     kwimage.imwrite(fpath, data)
     """
+
+    if backend == 'auto':
+        if fpath.endswith(('.tif', '.tiff')):
+            if _have_gdal():
+                backend = 'gdal'
+            else:
+                backend = 'skimage'
+        elif fpath.endswith(GDAL_EXTENSIONS):
+            if _have_gdal():
+                backend = 'gdal'
+        else:
+            backend = 'cv2'
+
+    if space == 'auto':
+        if backend != 'cv2':
+            # For non-cv2 backends, we can read / writ the image as is
+            # without worrying about channel ordering conversions
+            space = None
+
     if space is not None:
         n_channels = im_core.num_channels(image)
 
@@ -586,18 +644,6 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         src_space = auto_src_space
     else:
         src_space = space
-
-    if backend == 'auto':
-        if fpath.endswith(('.tif', '.tiff')):
-            if _have_gdal():
-                backend = 'gdal'
-            else:
-                backend = 'skimage'
-        elif fpath.endswith(GDAL_EXTENSIONS):
-            if _have_gdal():
-                backend = 'gdal'
-        else:
-            backend = 'cv2'
 
     if space is not None:
         if backend == 'cv2':
@@ -944,6 +990,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     data_set = None
 
     # OK, so setting things to None turns out to be important. Gah!
+    # NOTE: if data_set2 is None here, that may be because the directory
+    # we are trying to write to does not exist.
     data_set2.FlushCache()
 
     # Dereference everything
