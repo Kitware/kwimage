@@ -160,6 +160,49 @@ def bench_imread():
     results[ti.label] = image.sum()
 
 
+# TODO: integrate in this test
+# tiffile is a potential alternative, but it seems slow
+# def _imwrite_tiffile():
+#     """
+#     Example:
+#         >>> from kwimage.im_io import *  # NOQA
+#         >>> import tempfile
+#         >>> data = np.random.rand(800, 800, 3).astype(np.float32)
+#         >>> tempfile = tempfile.NamedTemporaryFile(suffix='.tif')
+#         >>> fpath = tempfile.name
+
+#         >>> import tifffile
+#         >>> tifffile.imsave(fpath, data, tile=(256, 256), metadata={'axes': 'YXC'})
+#         >>> recon = tifffile.imread(fpath)
+#         >>> assert np.all(recon == data)
+
+#         >>> import kwimage
+#         >>> kwimage.imwrite(fpath, data, space=None, backend='gdal')
+#         >>> recon2 = kwimage.imread(fpath)
+#         >>> assert np.all(recon2 == data)
+#         >>> _ = ub.cmd('gdalinfo ' + fpath, verbose=1)
+
+
+#         >>> # Benchmark
+#         >>> import timerit
+#         >>> ti = timerit.Timerit(10, bestof=3, verbose=2)
+#         >>> # Run benchmark variants
+#         >>> for timer in ti.reset('tiffile.imsave'):
+#         >>>     with timer:
+#         >>>         tifffile.imsave(fpath, data, tile=(256, 256), metadata={'axes': 'YXC'})
+#         >>> for timer in ti.reset('tiffile.imread'):
+#         >>>     with timer:
+#         >>>         recon = tifffile.imread(fpath)
+#         >>> for timer in ti.reset('kwimage.imwrite'):
+#         >>>     with timer:
+#         >>>         kwimage.imwrite(fpath, data, space=None, backend='gdal')
+#         >>> for timer in ti.reset('kwimage.imread'):
+#         >>>     with timer:
+#         >>>         recon = kwimage.imread(fpath)
+#         >>> print('ti.rankings = {}'.format(ub.repr2(ti.rankings['mean'], nl=2, align=':')))
+#     """
+
+
 if __name__ == '__main__':
     """
     CommandLine:

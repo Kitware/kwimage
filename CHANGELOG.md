@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.7.11 - Unreleased
 
 
+### Changed
+* Improved `cv2.imread` auto-space default based on the available backend.
+  Should no longer need to specify it unless working with cv2.
+
 ### Fixed
 * C-Extension errors for boxes now fallback on pure-python 
 
