@@ -83,6 +83,10 @@ if not DISABLE_C_EXTENSIONS:
         from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
     except ImportError:
         _bbox_ious_c = None
+    except Exception as ex:
+        _bbox_ious_c = None
+        warnings.warn(
+            'Optional cython_boxes backend is not available: {!r}'.format(ex))
 else:
     _bbox_ious_c = None
 

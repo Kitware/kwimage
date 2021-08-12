@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.7.11 - Unreleased
 
 
+### Fixed
+* C-Extension errors for boxes now fallback on pure-python 
+
+
 ## Version 0.7.10 - Released 2021-08-02
 
 ### Added
@@ -14,7 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `Mask.draw_on` will now draw on an empty image if none is provided
 
 ### Fixed
-* C-Extension errors should now properly fallback on pure-python 
+* C-Extension errors for masks now fallback on pure-python 
 * Not having `imgaug` no longer warns
 * Fixed issues with generic warps
 
