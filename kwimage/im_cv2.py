@@ -160,6 +160,153 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     raise Exception('imscale is deprecated, use imresize instead')
 
 
+def imcrop(img, dsize, about=None, origin=None, value=None):
+    """
+    Crop an image about a specified point, padding if necessary.
+
+    This is like PIL.Image.Image.crop with more convenient arguments,
+    or cv2.getRectSubPix without the baked-in bilinear interpolation.
+
+    Args:
+        img (ndarray): image to crop
+
+        dsize (Tuple[None | int, None | int]): the desired width and height
+            of the new image. If a dimension is None, then it is automatically
+            computed to preserve aspect ratio. This can be larger than the original dims;
+            if so, the cropped image is padded with value.
+
+        about (Tuple[string | int, string | int]): the location to crop about.
+            Mutually exclusive with origin. Defaults to top left.
+            If ints (w,h) are provided, that will be the center of the cropped image.
+            There are also string codes available:
+            'lt': make the top left point of the image the top left point of the cropped image.
+                This is equivalent to img[:dsize[1], :dsize[0]], plus padding.
+            'rb': make the bottom right point of the image the bottom right point of the cropped image.
+                This is equivalent to img[-dsize[1]:, -dsize[0]:], plus padding.
+            'cc': make the center of the image the center of the cropped image.
+            Any combination of these codes can be used, ex. 'lb', 'ct', ('r', 200), ...
+
+        origin (Tuple[int, int] | None): the origin of the crop in (x,y) order (same order as dsize/about).
+            Mutually exclusive with about. Defaults to top left.
+
+        value: any border value accepted by cv2.copyMakeBorder, ex. [255, 0, 0] (blue). Default is 0.
+            'linear' is a special code to use cv2.getRectSubPix instead, which allows floating-point center
+            coordinates and pads with the equivalent of cv2.BORDER_REPLICATE instead of a constant fill value.
+
+    Example:
+        >>> import kwimage
+        >>> import numpy as np
+        >>>
+        >>> # regular crop
+        >>> img = np.ones((16, 10, 3), dtype=np.uint8)
+        >>> new_img = kwimage.imcrop(img, dsize=(5,6))
+        >>> assert new_img.shape == (6, 5, 3)
+        >>>
+        >>> # padding for coords outside the image bounds
+        >>> new_img = kwimage.imcrop(img, dsize=(5,6),
+        >>>             origin=(-1,0), value=[1, 0, 0])
+        >>> assert np.all(new_img[:, 0] == [1, 0, 0])
+        >>>
+        >>> # codes for corner- and edge-centered cropping
+        >>> new_img = kwimage.imcrop(img, dsize=(5,6),
+        >>>             about='cb')
+        >>>
+        >>> # special code for bilinear interpolation
+        >>> # with floating-point coordinates
+        >>> new_img = kwimage.imcrop(img, dsize=(5,6),
+        >>>             about=(5.5, 8.5), value='linear')
+        >>>
+        >>> # use with bounding boxes
+        >>> bbox = kwimage.Boxes.random(scale=5).to_xywh().quantize()
+        >>> origin, dsize = np.split(bbox.data[0], 2)
+        >>> new_img = kwimage.imcrop(img, dsize=dsize,
+        >>>             origin=origin)
+
+    """
+    assert len(dsize) == 2
+    new_w, new_h = dsize
+    assert isinstance(new_w, (int, np.integer))
+    assert isinstance(new_h, (int, np.integer))
+
+    if new_w is None:
+        assert new_h is not None
+        new_w = int(np.round(new_h * old_w / old_h))
+    elif new_h is None:
+        assert new_w is not None
+        new_h = int(np.round(new_w * old_h / old_w))
+
+    old_h, old_w = img.shape[0:2]
+
+    if origin is not None:
+
+        if about is not None:
+            raise AssertionError('provide at most one of "about" or "origin"')
+
+        assert len(origin) == 2
+        new_x, new_y = origin
+        assert isinstance(new_x, (int, np.integer))
+        assert isinstance(new_y, (int, np.integer))
+        cen_w = new_x + new_w // 2
+        cen_h = new_y + new_h // 2
+
+    elif about is not None:
+
+        if origin is not None:
+            raise AssertionError('provide at most one of "about" or "origin"')
+
+        assert len(about) == 2
+
+        if about[0] == 'l':
+            cen_w = new_w // 2
+        elif about[0] == 'r':
+            cen_w = old_w - (new_w - new_w // 2)
+        elif about[0] == 'c':
+            cen_w = old_w // 2
+        elif isinstance(about[0], (int, np.integer)):
+            cen_w = about[0]
+        elif isinstance(about[0], (float, np.floating)) and value == 'linear':
+            cen_w = about[0]
+        else:
+            raise ValueError('Invalid about code. Must be [l | c | r | int][t | c | b | int]')
+
+        if about[1] == 't':
+            cen_h = new_h // 2
+        elif about[1] == 'b':
+            cen_h = old_h - (new_h - new_h // 2)
+        elif about[1] == 'c':
+            cen_h = old_h // 2
+        elif isinstance(about[1], (int, np.integer)):
+            cen_h = about[1]
+        elif isinstance(about[0], (float, np.floating)) and value == 'linear':
+            cen_h = about[1]
+        else:
+            raise ValueError('Invalid about code. Must be [l | c | r | int][t | c | b | int]')
+
+    else:
+        # take top left as the origin
+        cen_w = new_w // 2
+        cen_h = new_h // 2
+
+
+    if value == 'linear':
+        return cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
+    else:
+        # build a patch that may go outside the image bounds
+        ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
+        xmin, xmax = cen_h - new_h // 2, cen_h + (new_h - new_h // 2)
+
+        # subtract out portions that leave the image bounds
+        lft, ymin = - min(0, ymin), max(0, ymin)
+        rgt, ymax = max(0, ymax - old_w), min(old_w, ymax)
+        top, xmin = - min(0, xmin), max(0, xmin)
+        bot, xmax = max(0, xmax - old_h), min(old_h, xmax)
+
+        # slice the image using the corrected bounds and append the rest as a border
+        return cv2.copyMakeBorder(img[xmin:xmax, ymin:ymax], top, bot, lft, rgt,
+                                  borderType=cv2.BORDER_CONSTANT, value=value)
+
+
+
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
              interpolation=None, grow_interpolation=None, letterbox=False,
              return_info=False, antialias=False):
@@ -619,7 +766,8 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
 
 def warp_affine(image, transform, dsize=None, antialias=False,
-                interpolation='linear', border_mode=None, border_value=0):
+                interpolation='linear', border_mode=None, border_value=0,
+                try_large_warp=True):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -634,7 +782,10 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         dsize (Tuple[int, int] | None | str):
             width and height of the resulting image. If "auto", it is computed
             such that the positive coordinates of the warped image will fit in
-            the new canvas. If None, then the image size will not change.
+            the new canvas. if "max", the transform is augmented with an extra
+            translation such that both the positive and negative coordinates
+            of the warped image will fit in the new canvas. If None, then the
+            image size will not change.
 
         antialias (bool, default=False):
             if True determines if the transform is downsampling and applies
@@ -651,6 +802,12 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         border_value (int | float):
             Used as the fill value if border_mode is constant. Otherwise this
             is ignored.
+
+        try_large_warp (bool): cv2.warpAffine must have image dimensions <
+            SHRT_MAX (=32767 in current version). If True, work around this by
+            doing the warp piecewise for very large images. If False, error out.
+            Note that this may not be identical to a regular non-piecewise warp,
+            due to interpolation/double-counting issues along the seams.
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -703,6 +860,17 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> empty_image = np.random.rand(0, 1, 3)
         >>> result = kwimage.warp_affine(empty_image, transform, dsize=(10, 0))
         >>> assert result.shape == (0, 10, 3)
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> from kwimage.transform import Affine
+        >>> image = kwimage.grab_test_image('astro')
+        >>> transform = Affine.translate((-100, -50)) @ Affine.scale(2)
+        >>> warped_auto = warp_affine(image, transform, dsize='auto')
+        >>> warped_max = warp_affine(image, transform, dsize='max')
+        >>> assert warped_auto.shape[0] < image.shape[0] * 2
+        >>> assert warped_max.shape[0] == image.shape[0] * 2
     """
     from kwimage.transform import Affine
     import kwimage
@@ -720,16 +888,50 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         * The fudge factor bothers me, but seems necessary
     """
+    # calculate dimensions needed for auto/max/try_large_warp
+    h, w = image.shape[0:2]
+    box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
+    warped_box = box.warp(transform)
+    auto_dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
+    max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
+    new_origin = warped_box.to_ltrb().data[0, 0:2]
 
     if dsize is None:
         dsize = tuple(image.shape[0:2][::-1])
     elif dsize == 'auto':
-        h, w = image.shape[0:2]
-        boxes = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
-        poly = boxes.to_polygons()[0]
-        warped_poly = poly.warp(transform.matrix)
-        warped_box = warped_poly.to_boxes().to_ltrb().quantize()
-        dsize = tuple(map(int, warped_box.data[0, 2:4]))
+        dsize = auto_dsize
+    elif dsize == 'max':
+        dsize = max_dsize
+        transform = Affine.translate(-new_origin) @ transform
+        new_origin = np.array([0, 0])
+
+    def _try_warp(image, transform):
+
+        try:
+
+            M = np.asarray(transform)
+            return cv2.warpAffine(image,
+                                  M[0:2],
+                                  dsize=dsize,
+                                  flags=flags,
+                                  borderMode=borderMode,
+                                  borderValue=borderValue)
+        except cv2.error as e:
+            if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
+
+                if not try_large_warp:
+                    print(
+                        'Image too large for warp_affine. Bypass this error by setting '
+                        'kwimage.warp_affine(try_large_warp=True)')
+                    raise e
+
+                else:
+                    return _large_warp(image, transform, dsize, max_dsize,
+                                       new_origin, flags, borderMode,
+                                       borderValue)
+
+            else:
+                raise e
 
     if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
         # Handle case where the input image has no size or the destination
@@ -738,11 +940,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         result = np.full(
             shape=output_shape, fill_value=borderValue, dtype=image.dtype)
     elif not antialias:
-        M = np.asarray(transform)
-        result = cv2.warpAffine(image, M[0:2],
-                                dsize=dsize, flags=flags,
-                                borderMode=borderMode,
-                                borderValue=borderValue)
+        result = _try_warp(image, transform)
     else:
         # Decompose the affine matrix into its 6 core parameters
         params = transform.decompose()
@@ -750,10 +948,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         if sx >= 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            M = np.asarray(transform)
-            result = cv2.warpAffine(image, M[0:2], dsize=dsize, flags=flags,
-                                    borderMode=borderMode,
-                                    borderValue=borderValue)
+            result = _try_warp(image, transform)
         else:
             # At least one dimension is downsampled
 
@@ -767,10 +962,150 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             # Compute the transform from the downsampled image to the destination
             rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
 
-            result = cv2.warpAffine(downscaled, rest_warp.matrix[0:2],
-                                    dsize=dsize, flags=flags,
-                                    borderMode=borderMode,
-                                    borderValue=borderValue)
+            result = _try_warp(downscaled, rest_warp)
+
+    return result
+
+
+def _large_warp(image,
+                transform,
+                dsize,
+                max_dsize,
+                new_origin,
+                flags,
+                borderMode,
+                borderValue,
+                pieces_per_dim=None):
+    """
+    Split an image into pieces smaller than cv2's limit, perform cv2.warpAffine on each piece,
+    and stitch them back together with minimal artifacts.
+
+    Example:
+        >>> import kwimage
+        >>> img = np.random.randint(255, size=(32767, 32767), dtype=np.uint8)
+        >>> aff = kwimage.Affine.random()
+        >>> import cv2
+        >>>
+        >>> # without this function
+        >>> try:
+        >>>     res = kwimage.warp_affine(img, aff, try_large_warp=False)
+        >>> except cv2.error as e:
+        >>>     pass
+        >>>
+        >>> # with this function
+        >>> res = kwimage.warp_affine(img, aff, try_large_warp=True)
+        >>> assert res.shape == img.shape
+        >>> assert res.dtype == img.dtype
+
+    Example:
+        >>> # xdoctest: +SKIP
+        >>> import kwimage
+        >>> import cv2
+        >>> img = kwimage.grab_test_image('astro')
+        >>> aff = kwimage.Affine.coerce(
+        >>>         {'offset': (0.2509279609038846, -0.5828877912748172),
+        >>>         'scale': (1.7740542832875767, 1.0314621286400032),
+        >>>         'theta': 0.26123114521079555,
+        >>>         'type': 'affine'}
+        >>>     )
+        >>>
+        >>> res = _large_warp(img, aff, (512, 512), (923, 852), (0, 0),
+        >>>                   flags=cv2.INTER_LINEAR, borderMode=None,
+        >>>                   borderValue=None, pieces_per_dim=2)
+
+    """
+    from kwimage import Affine, Boxes, imcrop
+    import cv2
+    import ctypes
+    import itertools
+
+    # this is as close as we can get to actually discovering SHRT_MAX
+    # since it's not introspectable through cv2.
+    # ctypes and cv2 could be pointing to a different limits.h, but otherwise this is correct
+    # https://stackoverflow.com/a/44123354
+    SHRT_MAX = ctypes.c_ushort(-1).value // 2  # 32767 aka 0x7fff
+
+    # make these pieces as large as possible for efficiency
+    if pieces_per_dim is None:
+        pieces_per_dim = 1 + max(image.shape[0:2]) // (SHRT_MAX - 1)
+
+    def _split_2d(arr):
+        # provide indexes to view arr in 2d blocks
+        # like 2 uses of np.array_split() but provides the indexes, not the data
+        h, w = arr.shape[0:2]
+        xs, ys = zip(
+            *np.linspace([0, 0], [w, h], num=pieces_per_dim + 1, dtype=int))
+        ixs = [
+            xx + yy for xx, yy in itertools.product(zip(xs[:-1], xs[1:]),
+                                                    zip(ys[:-1], ys[1:]))
+        ]
+        return Boxes(ixs, 'xxyy')  # could use to_slices() for portability
+
+    img_pieces = _split_2d(image)
+
+    # do the warp with dsize='max' to make sure we don't lose any pieces
+    # then crop it down later if needed
+    transform = Affine.translate(-new_origin) @ transform
+
+    # create an empty canvas to fill with the warped pieces
+    # this is a masked version of kwarray.Stitcher
+    # it mitigates but does not remove piece edge artifacts
+    result = np.zeros((*max_dsize[::-1], *image.shape[2:]), dtype=np.float32)
+    weight = np.zeros((*max_dsize[::-1], *image.shape[2:]), dtype=np.uint8)
+
+    # compute each piece with dsize=max and apply it to the canvas
+    # Note that this will unavoidably produce artifacts along the "seams"
+    # because interpolation is not performed across them.
+    for img_piece in _split_2d(image):
+
+        # restore extra dim from looping before converting to slice
+        img_piece = Boxes([img_piece.data], img_piece.format)
+        img_piece_ix = img_piece.to_slices()[0]
+
+        piece_wh = img_piece.to_xywh().data[0, 2:4]
+        warped_origin = img_piece.warp(transform).to_xywh().data[0, 0:2]
+
+        centered_bb = Boxes(np.array([[0, 0, *piece_wh]]), 'xywh').warp(transform)
+        centered_origin = centered_bb.data[0, 0:2]
+
+        piece_centered_matrix = (
+            Affine.translate(-centered_origin) @ transform).matrix
+        warped_bbox = img_piece.warp(
+            piece_centered_matrix).to_ltrb().quantize()
+
+        warped_dsize = tuple(map(int, warped_bbox.to_xywh().data[0, 2:4]))
+        # do the quantizing manually here to avoid changing dsize
+        # TODO add check for going OOB of result's shape and replace floor w/ round
+        # this produces shifts of up to 1 px
+        result_bbox = Boxes(
+            np.array([[*np.floor(warped_origin), *warped_dsize]]).astype(int),
+            'xywh')
+        result_ix = result_bbox.to_slices()[0]
+
+        warped_piece = cv2.warpAffine(image[img_piece_ix],
+                                      piece_centered_matrix[0:2],
+                                      dsize=warped_dsize,
+                                      flags=flags,
+                                      borderMode=borderMode,
+                                      borderValue=borderValue)
+
+        weight_piece = cv2.warpAffine(np.ones_like(image[img_piece_ix]),
+                                      piece_centered_matrix[0:2],
+                                      dsize=warped_dsize,
+                                      flags=flags,
+                                      borderMode=borderMode,
+                                      borderValue=borderValue)
+
+        result[result_ix] += warped_piece
+        weight[result_ix] += weight_piece
+
+    result = (result / np.where(weight != 0, weight, 1)).astype(image.dtype)
+
+    # crop and pad the canvas to the desired size
+    result = imcrop(result,
+                    dsize,
+                    origin=np.round(-new_origin).astype(int),
+                    value=borderValue)
 
     return result
 
