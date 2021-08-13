@@ -37,10 +37,20 @@ GDAL_EXTENSIONS = (
     '.jp2', '.vrt',
 )
 
+# TODO: ITK Image formats
+# https://insightsoftwareconsortium.github.io/itk-js/docs/image_formats.html
+ITK_EXTENSIONS = (
+    '.mha',
+)
+
+# ITK Demo data:
+# https://data.kitware.com/#collection/57b5c9e58d777f126827f5a1
+
 IMAGE_EXTENSIONS = (
     _WELL_KNOWN_EXTENSIONS +
     ('.tif', '.tiff',) +
-    GDAL_EXTENSIONS
+    GDAL_EXTENSIONS +
+    ITK_EXTENSIONS
 )
 
 
@@ -133,6 +143,30 @@ def imread(fpath, space='auto', backend='auto'):
         >>> kwplot.imshow(png_im / 2 ** 16, pnum=(1, 2, 1), fnum=1)
         >>> kwplot.imshow(tif_im / 2 ** 16, pnum=(1, 2, 2), fnum=1)
 
+    Example:
+        >>> # xdoctest: +REQUIRES(module:itk, --network)
+        >>> import kwimage
+        >>> import ubelt as ub
+        >>> # Grab an image that ITK can read
+        >>> fpath = ub.grabdata(
+        >>>     url='https://data.kitware.com/api/v1/file/606754e32fa25629b9476f9e/download',
+        >>>     fname='brainweb1e5a10f17Rot20Tx20.mha',
+        >>>     hash_prefix='08f0812591691ae24a29788ba8cd1942e91', hasher='sha512')
+        >>> # Read the image (this is actually a DxHxW stack of images)
+        >>> img1_stack = kwimage.imread(fpath)
+        >>> # Check that write + read preserves data
+        >>> import tempfile
+        >>> tmp_file = tempfile.NamedTemporaryFile(suffix='.mha')
+        >>> kwimage.imwrite(tmp_file.name, img1_stack)
+        >>> recon = kwimage.imread(tmp_file.name)
+        >>> assert not np.may_share_memory(recon, img1_stack)
+        >>> assert np.all(recon == img1_stack)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]))
+        >>> kwplot.show_if_requested()
+
     Benchmark:
         >>> from kwimage.im_io import *  # NOQA
         >>> import timerit
@@ -198,10 +232,18 @@ def imread(fpath, space='auto', backend='auto'):
     """
     if backend == 'auto':
         # TODO: memoize the extensions?
+
+        # TODO: each backend should maintain a list of supported (possibly
+        # overlapping) formats, and that should be used to build a mapping from
+        # formats to candidate backends. We should then filter down to a
+        # backend that actually exists.
+
         # Determine the backend reader using the file extension
         _fpath_lower = fpath.lower()
         # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
-        if _fpath_lower.endswith(GDAL_EXTENSIONS):
+        if _fpath_lower.endswith(ITK_EXTENSIONS):
+            backend = 'itk'
+        elif _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
         elif _fpath_lower.endswith(('.tif', '.tiff')):
             if _have_gdal():
@@ -233,7 +275,8 @@ def imread(fpath, space='auto', backend='auto'):
         elif backend == 'itk':
             src_space, auto_dst_space = None, None
             import itk
-            image = itk.imread(fpath)
+            itk_obj = itk.imread(fpath)
+            image = np.asarray(itk_obj)
         else:
             raise KeyError('Unknown imread backend={!r}'.format(backend))
 
@@ -616,14 +659,17 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     """
 
     if backend == 'auto':
-        if fpath.endswith(('.tif', '.tiff')):
+        _fpath_lower = fpath.lower()
+        if _fpath_lower.endswith(('.tif', '.tiff')):
             if _have_gdal():
                 backend = 'gdal'
             else:
                 backend = 'skimage'
-        elif fpath.endswith(GDAL_EXTENSIONS):
+        elif _fpath_lower.endswith(GDAL_EXTENSIONS):
             if _have_gdal():
                 backend = 'gdal'
+        elif _fpath_lower.endswith(ITK_EXTENSIONS):
+            backend = 'itk'
         else:
             backend = 'cv2'
 
@@ -692,7 +738,8 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
     elif backend == 'itk':
         import itk
-        itk.imwrite(image, fpath, **kwargs)
+        itk_obj = itk.image_view_from_array(image)
+        itk.imwrite(itk_obj, fpath, **kwargs)
     elif backend == 'turbojpeg':
         raise NotImplementedError
     else:
