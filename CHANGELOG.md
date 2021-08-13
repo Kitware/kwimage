@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.12 - Unreleased
 
+### Added
+* Wrapped `itk.imread` with `kwimage.imread`.
+
 
 ## Version 0.7.11 - Released 2021-08-11
 

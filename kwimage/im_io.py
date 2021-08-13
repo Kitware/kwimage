@@ -64,8 +64,8 @@ def imread(fpath, space='auto', backend='auto'):
 
         backend (str, default='auto'): which backend reader to use. By default
             the file extension is used to determine this, but it can be
-            manually overridden. Valid backends are 'gdal', 'skimage', and
-            'cv2'.
+            manually overridden. Valid backends are 'gdal', 'skimage', 'itk',
+            and 'cv2'.
 
     Returns:
         ndarray: the image data in the specified color space.
@@ -230,6 +230,10 @@ def imread(fpath, space='auto', backend='auto'):
             image, src_space, auto_dst_space = _imread_turbojpeg(fpath)
         elif backend == 'skimage':
             image, src_space, auto_dst_space = _imread_skimage(fpath)
+        elif backend == 'itk':
+            src_space, auto_dst_space = None, None
+            import itk
+            image = itk.imread(fpath)
         else:
             raise KeyError('Unknown imread backend={!r}'.format(backend))
 
@@ -463,7 +467,8 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
         backend (str, default='auto'):
             which backend writer to use. By default the file extension is used
-            to determine this. Valid backends are 'gdal', 'skimage', and 'cv2'.
+            to determine this. Valid backends are 'gdal', 'skimage', 'itk', and
+            'cv2'.
 
         **kwargs : args passed to the backend writer
 
@@ -685,6 +690,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         skimage.io.imsave(fpath, image, **kwargs)
     elif backend == 'gdal':
         _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+    elif backend == 'itk':
+        import itk
+        itk.imwrite(image, fpath, **kwargs)
     elif backend == 'turbojpeg':
         raise NotImplementedError
     else:
