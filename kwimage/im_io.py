@@ -41,6 +41,12 @@ GDAL_EXTENSIONS = (
 # https://insightsoftwareconsortium.github.io/itk-js/docs/image_formats.html
 ITK_EXTENSIONS = (
     '.mha',
+    '.nrrd',  # http://teem.sourceforge.net/nrrd/format.html
+    '.mgh',  # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat
+    '.mgz',
+    '.nii',  # https://nifti.nimh.nih.gov/nifti-1
+    '.img',
+    '.mrb',  # multiple-resolution-bitmap https://whatext.com/mrb
 )
 
 # ITK Demo data:
