@@ -227,9 +227,10 @@ def checkerboard(num_squares=8, dsize=(512, 512)):
     import numpy as np
     num_squares = 8
     num_pairs = num_squares // 2
-    img_size = 512
-    b = img_size // num_squares
+    # img_size = 512
+    w = dsize[0] // num_squares
+    h = dsize[1] // num_squares
     base = np.array([[1, 0] * num_pairs, [0, 1] * num_pairs] * num_pairs)
-    expansion = np.ones((b, b))
+    expansion = np.ones((h, w))
     img = np.kron(base, expansion)
     return img
