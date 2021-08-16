@@ -197,36 +197,52 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
         >>> import kwimage
         >>> import numpy as np
         >>>
+        >>> img = kwimage.grab_test_image('astro', dsize=(10, 16))
+        >>>
         >>> # regular crop
-        >>> img = np.ones((16, 10, 3), dtype=np.uint8)
-        >>> new_img = kwimage.imcrop(img, dsize=(5,6))
-        >>> assert new_img.shape == (6, 5, 3)
+        >>> new_img1 = kwimage.imcrop(img, dsize=(5,6))
+        >>> assert new_img1.shape == (6, 5, 3)
         >>>
         >>> # padding for coords outside the image bounds
-        >>> new_img = kwimage.imcrop(img, dsize=(5,6),
+        >>> new_img2 = kwimage.imcrop(img, dsize=(5,6),
         >>>             origin=(-1,0), value=[1, 0, 0])
-        >>> assert np.all(new_img[:, 0] == [1, 0, 0])
+        >>> assert np.all(new_img2[:, 0] == [1, 0, 0])
         >>>
         >>> # codes for corner- and edge-centered cropping
-        >>> new_img = kwimage.imcrop(img, dsize=(5,6),
+        >>> new_img3 = kwimage.imcrop(img, dsize=(5,6),
         >>>             about='cb')
         >>>
         >>> # special code for bilinear interpolation
         >>> # with floating-point coordinates
-        >>> new_img = kwimage.imcrop(img, dsize=(5,6),
+        >>> new_img4 = kwimage.imcrop(img, dsize=(5,6),
         >>>             about=(5.5, 8.5), value='linear')
         >>>
         >>> # use with bounding boxes
         >>> bbox = kwimage.Boxes.random(scale=5).to_xywh().quantize()
         >>> origin, dsize = np.split(bbox.data[0], 2)
-        >>> new_img = kwimage.imcrop(img, dsize=dsize,
+        >>> new_img5 = kwimage.imcrop(img, dsize=dsize,
         >>>             origin=origin)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nSubplots=6)
+        >>> kwplot.imshow(img, pnum=pnum_())
+        >>> kwplot.imshow(new_img1, pnum=pnum_())
+        >>> kwplot.imshow(new_img2, pnum=pnum_())
+        >>> kwplot.imshow(new_img3, pnum=pnum_())
+        >>> kwplot.imshow(new_img4, pnum=pnum_())
+        >>> kwplot.imshow(new_img5, pnum=pnum_())
+        >>> kwplot.show_if_requested()
 
     """
+    import numbers
+
+    old_h, old_w = img.shape[0:2]
+
     assert len(dsize) == 2
     new_w, new_h = dsize
-    assert isinstance(new_w, (int, np.integer))
-    assert isinstance(new_h, (int, np.integer))
+    assert isinstance(new_w, numbers.Integral)
+    assert isinstance(new_h, numbers.Integral)
 
     if new_w is None:
         assert new_h is not None
@@ -244,8 +260,8 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
 
         assert len(origin) == 2
         new_x, new_y = origin
-        assert isinstance(new_x, (int, np.integer))
-        assert isinstance(new_y, (int, np.integer))
+        assert isinstance(new_x, numbers.Integral)
+        assert isinstance(new_y, numbers.Integral)
         cen_w = new_x + new_w // 2
         cen_h = new_y + new_h // 2
 
@@ -262,9 +278,9 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
             cen_w = old_w - (new_w - new_w // 2)
         elif about[0] == 'c':
             cen_w = old_w // 2
-        elif isinstance(about[0], (int, np.integer)):
+        elif isinstance(about[0], numbers.Integral):
             cen_w = about[0]
-        elif isinstance(about[0], (float, np.floating)) and value == 'linear':
+        elif isinstance(about[0], numbers.Real) and value == 'linear':
             cen_w = about[0]
         else:
             raise ValueError('Invalid about code. Must be [l | c | r | int][t | c | b | int]')
@@ -275,9 +291,9 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
             cen_h = old_h - (new_h - new_h // 2)
         elif about[1] == 'c':
             cen_h = old_h // 2
-        elif isinstance(about[1], (int, np.integer)):
+        elif isinstance(about[1], numbers.Integral):
             cen_h = about[1]
-        elif isinstance(about[0], (float, np.floating)) and value == 'linear':
+        elif isinstance(about[1], numbers.Real) and value == 'linear':
             cen_h = about[1]
         else:
             raise ValueError('Invalid about code. Must be [l | c | r | int][t | c | b | int]')
@@ -767,7 +783,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
 def warp_affine(image, transform, dsize=None, antialias=False,
                 interpolation='linear', border_mode=None, border_value=0,
-                try_large_warp=True):
+                large_warp_dsize=None):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -803,9 +819,17 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Used as the fill value if border_mode is constant. Otherwise this
             is ignored.
 
+<<<<<<< HEAD
         try_large_warp (bool): cv2.warpAffine must have image dimensions <
             SHRT_MAX (=32767 in current version). If True, work around this by
             doing the warp piecewise for very large images. If False, error out.
+=======
+        large_warp_dsize (int | None | str): cv2.warpAffine must have image dimensions <
+            SHRT_MAX (=32767 in version 4.5.3, for example). If this parameter is not None,
+            work around this by doing the warp piecewise for images with dimensions >=
+            large_warp_dsize. Set this to 'auto' to try to discover cv2's dsize limit in the
+            current environment.
+>>>>>>> f1ae504 (apply suggested changes)
             Note that this may not be identical to a regular non-piecewise warp,
             due to interpolation/double-counting issues along the seams.
 
@@ -905,33 +929,43 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         transform = Affine.translate(-new_origin) @ transform
         new_origin = np.array([0, 0])
 
+    if large_warp_dsize == 'auto':
+
+        # this is as close as we can get to actually discovering SHRT_MAX
+        # since it's not introspectable through cv2.
+        # ctypes and cv2 could be pointing to a different limits.h, but otherwise this is correct
+        # https://stackoverflow.com/a/44123354
+        import ctypes
+        SHRT_MAX = ctypes.c_ushort(-1).value // 2  # 32767 aka 0x7fff
+        large_warp_dsize = SHRT_MAX
+
     def _try_warp(image, transform):
 
-        try:
+        max_dsize = max(image.shape[0:2])
+        if large_warp_dsize is None or max_dsize < large_warp_dsize:
 
-            M = np.asarray(transform)
-            return cv2.warpAffine(image,
-                                  M[0:2],
-                                  dsize=dsize,
-                                  flags=flags,
-                                  borderMode=borderMode,
-                                  borderValue=borderValue)
-        except cv2.error as e:
-            if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
-
-                if not try_large_warp:
+            try:
+                M = np.asarray(transform)
+                return cv2.warpAffine(image,
+                                      M[0:2],
+                                      dsize=dsize,
+                                      flags=flags,
+                                      borderMode=borderMode,
+                                      borderValue=borderValue)
+            except cv2.error as e:
+                if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
                     print(
                         'Image too large for warp_affine. Bypass this error by setting '
                         'kwimage.warp_affine(try_large_warp=True)')
                     raise e
 
-                else:
-                    return _large_warp(image, transform, dsize, max_dsize,
-                                       new_origin, flags, borderMode,
-                                       borderValue)
+        else:
+            # make these pieces as large as possible for efficiency
+            pieces_per_dim = 1 + max_dsize // (large_warp_dsize - 1)
 
-            else:
-                raise e
+            return _large_warp(image, transform, dsize, max_dsize,
+                               new_origin, flags, borderMode,
+                               borderValue, pieces_per_dim)
 
     if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
         # Handle case where the input image has no size or the destination
@@ -975,7 +1009,7 @@ def _large_warp(image,
                 flags,
                 borderMode,
                 borderValue,
-                pieces_per_dim=None):
+                pieces_per_dim):
     """
     Split an image into pieces smaller than cv2's limit, perform cv2.warpAffine on each piece,
     and stitch them back together with minimal artifacts.
@@ -988,12 +1022,12 @@ def _large_warp(image,
         >>>
         >>> # without this function
         >>> try:
-        >>>     res = kwimage.warp_affine(img, aff, try_large_warp=False)
+        >>>     res = kwimage.warp_affine(img, aff, large_warp_dsize=None)
         >>> except cv2.error as e:
         >>>     pass
         >>>
         >>> # with this function
-        >>> res = kwimage.warp_affine(img, aff, try_large_warp=True)
+        >>> res = kwimage.warp_affine(img, aff, large_warp_dsize='auto')
         >>> assert res.shape == img.shape
         >>> assert res.dtype == img.dtype
 
@@ -1014,20 +1048,10 @@ def _large_warp(image,
         >>>                   borderValue=None, pieces_per_dim=2)
 
     """
-    from kwimage import Affine, Boxes, imcrop
+    from kwimage import Affine, Boxes
     import cv2
-    import ctypes
     import itertools
 
-    # this is as close as we can get to actually discovering SHRT_MAX
-    # since it's not introspectable through cv2.
-    # ctypes and cv2 could be pointing to a different limits.h, but otherwise this is correct
-    # https://stackoverflow.com/a/44123354
-    SHRT_MAX = ctypes.c_ushort(-1).value // 2  # 32767 aka 0x7fff
-
-    # make these pieces as large as possible for efficiency
-    if pieces_per_dim is None:
-        pieces_per_dim = 1 + max(image.shape[0:2]) // (SHRT_MAX - 1)
 
     def _split_2d(arr):
         # provide indexes to view arr in 2d blocks
@@ -1040,8 +1064,6 @@ def _large_warp(image,
                                                     zip(ys[:-1], ys[1:]))
         ]
         return Boxes(ixs, 'xxyy')  # could use to_slices() for portability
-
-    img_pieces = _split_2d(image)
 
     # do the warp with dsize='max' to make sure we don't lose any pieces
     # then crop it down later if needed
