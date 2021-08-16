@@ -783,7 +783,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
 def warp_affine(image, transform, dsize=None, antialias=False,
                 interpolation='linear', border_mode=None, border_value=0,
-                large_warp_dsize=None):
+                large_warp_dim=None):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -819,19 +819,11 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Used as the fill value if border_mode is constant. Otherwise this
             is ignored.
 
-<<<<<<< HEAD
-        try_large_warp (bool): cv2.warpAffine must have image dimensions <
-            SHRT_MAX (=32767 in current version). If True, work around this by
-            doing the warp piecewise for very large images. If False, error out.
-=======
-        large_warp_dsize (int | None | str): cv2.warpAffine must have image dimensions <
+        large_warp_dim (int | None | str): cv2.warpAffine must have image dimensions <
             SHRT_MAX (=32767 in version 4.5.3, for example). If this parameter is not None,
             work around this by doing the warp piecewise for images with dimensions >=
-            large_warp_dsize. Set this to 'auto' to try to discover cv2's dsize limit in the
+            large_warp_dim. Set this to 'auto' to try to discover cv2's dsize limit in the
             current environment.
->>>>>>> f1ae504 (apply suggested changes)
-            Note that this may not be identical to a regular non-piecewise warp,
-            due to interpolation/double-counting issues along the seams.
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -912,13 +904,15 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         * The fudge factor bothers me, but seems necessary
     """
-    # calculate dimensions needed for auto/max/try_large_warp
     h, w = image.shape[0:2]
-    box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
-    warped_box = box.warp(transform)
-    auto_dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
-    max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
-    new_origin = warped_box.to_ltrb().data[0, 0:2]
+
+    if isinstance(dsize, str) or large_warp_dim is not None:
+        # calculate dimensions needed for auto/max/try_large_warp
+        box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
+        warped_box = box.warp(transform)
+        auto_dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
+        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
+        new_origin = warped_box.to_ltrb().data[0, 0:2]
 
     if dsize is None:
         dsize = tuple(image.shape[0:2][::-1])
@@ -929,7 +923,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         transform = Affine.translate(-new_origin) @ transform
         new_origin = np.array([0, 0])
 
-    if large_warp_dsize == 'auto':
+    if large_warp_dim == 'auto':
 
         # this is as close as we can get to actually discovering SHRT_MAX
         # since it's not introspectable through cv2.
@@ -937,13 +931,12 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         # https://stackoverflow.com/a/44123354
         import ctypes
         SHRT_MAX = ctypes.c_ushort(-1).value // 2  # 32767 aka 0x7fff
-        large_warp_dsize = SHRT_MAX
+        large_warp_dim = SHRT_MAX
 
     def _try_warp(image, transform):
 
-        max_dsize = max(image.shape[0:2])
-        if large_warp_dsize is None or max_dsize < large_warp_dsize:
-
+        max_dim = max(image.shape[0:2])
+        if large_warp_dim is None or max_dim < large_warp_dim:
             try:
                 M = np.asarray(transform)
                 return cv2.warpAffine(image,
@@ -956,12 +949,12 @@ def warp_affine(image, transform, dsize=None, antialias=False,
                 if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
                     print(
                         'Image too large for warp_affine. Bypass this error by setting '
-                        'kwimage.warp_affine(try_large_warp=True)')
+                        'kwimage.warp_affine(large_warp_dim="auto")')
                     raise e
 
         else:
             # make these pieces as large as possible for efficiency
-            pieces_per_dim = 1 + max_dsize // (large_warp_dsize - 1)
+            pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
 
             return _large_warp(image, transform, dsize, max_dsize,
                                new_origin, flags, borderMode,
@@ -1022,12 +1015,12 @@ def _large_warp(image,
         >>>
         >>> # without this function
         >>> try:
-        >>>     res = kwimage.warp_affine(img, aff, large_warp_dsize=None)
+        >>>     res = kwimage.warp_affine(img, aff, large_warp_dim=None)
         >>> except cv2.error as e:
         >>>     pass
         >>>
         >>> # with this function
-        >>> res = kwimage.warp_affine(img, aff, large_warp_dsize='auto')
+        >>> res = kwimage.warp_affine(img, aff, large_warp_dim='auto')
         >>> assert res.shape == img.shape
         >>> assert res.dtype == img.dtype
 
