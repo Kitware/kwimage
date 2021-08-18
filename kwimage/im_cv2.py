@@ -686,6 +686,23 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped1, pnum=pnum_(), title='antialias=True')
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Test the case where the input data is empty or the target canvas
+        >>> # is empty, this should be handled like boundary effects
+        >>> import kwimage
+        >>> image = np.random.rand(1, 1, 3)
+        >>> transform = kwimage.Affine.random()
+        >>> result = kwimage.warp_affine(image, transform, dsize=(0, 0))
+        >>> assert result.shape == (0, 0, 3)
+        >>> #
+        >>> empty_image = np.random.rand(0, 1, 3)
+        >>> result = kwimage.warp_affine(empty_image, transform, dsize=(10, 10))
+        >>> assert result.shape == (10, 10, 3)
+        >>> #
+        >>> empty_image = np.random.rand(0, 1, 3)
+        >>> result = kwimage.warp_affine(empty_image, transform, dsize=(10, 0))
+        >>> assert result.shape == (0, 10, 3)
     """
     from kwimage.transform import Affine
     import kwimage
@@ -714,7 +731,13 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         warped_box = warped_poly.to_boxes().to_ltrb().quantize()
         dsize = tuple(map(int, warped_box.data[0, 2:4]))
 
-    if not antialias:
+    if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
+        # Handle case where the input image has no size or the destination
+        # canvas has no size. In either case we just return empty data
+        output_shape = (dsize[1], dsize[0]) + image.shape[2:]
+        result = np.full(
+            shape=output_shape, fill_value=borderValue, dtype=image.dtype)
+    elif not antialias:
         M = np.asarray(transform)
         result = cv2.warpAffine(image, M[0:2],
                                 dsize=dsize, flags=flags,
