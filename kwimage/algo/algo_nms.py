@@ -225,24 +225,33 @@ class _NMS_Impls():
                         'optional torchvision C nms is not available: {}'.format(
                             str(ex)))
 
-        try:
-            if not DISABLE_C_EXTENSIONS:
-                from kwimage.algo._nms_backend import cpu_nms
-                _funcs['cython_cpu'] = cpu_nms.cpu_nms
-        except Exception as ex:
-            warnings.warn(
-                'optional cpu_nms is not available: {}'.format(str(ex)))
-        try:
-            if not DISABLE_C_EXTENSIONS:
-                if torch is not None and torch.cuda.is_available():
-                    from kwimage.algo._nms_backend import gpu_nms
-                    _funcs['cython_gpu'] = gpu_nms.gpu_nms
-                    # NOTE: GPU is not the fastests on all systems.
-                    # See the benchmarks for more info.
-                    # ~/code/kwimage/dev/bench_nms.py
-        except Exception as ex:
-            warnings.warn
-            ('optional gpu_nms is not available: {}'.format(str(ex)))
+        from distutils.version import LooseVersion
+        recent_numpy = LooseVersion(np.__version__) >= LooseVersion('1.20.0')
+        if recent_numpy:
+            # Only use cython extensions if numpy is > 1.20.
+            # Otherwise there seems to be a
+            # "Fatal Python error: Illegal instruction" that can occur
+            # I dont know why this is yet
+            # See https://gitlab.kitware.com/computer-vision/kwimage/-/jobs/6061311
+            # for an example of when this last occurred
+            try:
+                if not DISABLE_C_EXTENSIONS:
+                    from kwimage.algo._nms_backend import cpu_nms
+                    _funcs['cython_cpu'] = cpu_nms.cpu_nms
+            except Exception as ex:
+                warnings.warn(
+                    'optional cpu_nms is not available: {}'.format(str(ex)))
+            try:
+                if not DISABLE_C_EXTENSIONS:
+                    if torch is not None and torch.cuda.is_available():
+                        from kwimage.algo._nms_backend import gpu_nms
+                        _funcs['cython_gpu'] = gpu_nms.gpu_nms
+                        # NOTE: GPU is not the fastests on all systems.
+                        # See the benchmarks for more info.
+                        # ~/code/kwimage/dev/bench_nms.py
+            except Exception as ex:
+                warnings.warn
+                ('optional gpu_nms is not available: {}'.format(str(ex)))
         self._funcs = _funcs
         self._valid = frozenset(_impls._funcs.keys())
 
