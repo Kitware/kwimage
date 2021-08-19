@@ -983,6 +983,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         return self.bounding_box()
 
+    @property
+    def centroid(self):
+        shp_centroid = self.to_shapely().centroid
+        xy = (shp_centroid.x, shp_centroid.y)
+        return xy
+
     def bounding_box(self):
         """
         Returns an axis-aligned bounding box for the segmentation
@@ -1167,6 +1173,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             setlim (bool): if True ensures the limits of the axes contains the
                 polygon
+
+            color (str | Tuple): coercable color
+
+            alpha (float): fill transparency
+
+            setlim (bool): if True, modify the x and y limits of the matplotlib
+                axes such that the polygon is can be seen.
+
+            border (bool, default=False):
+                if True, draws an edge border on the polygon.
+
+            linewidth (bool):
+                width of the border
+
+        TODO:
+            - [ ] Rework arguments in favor of matplotlib standards
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
