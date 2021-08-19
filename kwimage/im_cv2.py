@@ -177,7 +177,7 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
             original dims; if so, the cropped image is padded with
             border_value.
 
-        about (Tuple[string | int, string | int]): the location to crop about.
+        about (Tuple[str | int, str | int]): the location to crop about.
             Mutually exclusive with origin. Defaults to top left.
             If ints (w,h) are provided, that will be the center of the cropped
             image.
@@ -995,6 +995,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         max_dsize = None
         new_origin = None
 
+    transform_ = transform
+
     if dsize is None:
         # If unspecified, leave the canvas size unchanged
         dsize = (w, h)
@@ -1004,13 +1006,13 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
         elif dsize in {'content', 'max'}:
             dsize = max_dsize
-            transform = Affine.translate(-new_origin) @ transform
+            transform_ = Affine.translate(-new_origin) @ transform
             new_origin = np.array([0, 0])
         else:
             raise KeyError('Unknown dsize={}'.format(dsize))
 
     info = {
-        'transform': transform,
+        'transform': transform_,
         'dsize': dsize,
         'antialias_info': None,
     }
@@ -1022,16 +1024,16 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         result = np.full(
             shape=output_shape, fill_value=borderValue, dtype=image.dtype)
     elif not antialias:
-        result = _try_warp(image, transform, large_warp_dim, dsize, max_dsize,
+        result = _try_warp(image, transform_, large_warp_dim, dsize, max_dsize,
                            new_origin, flags, borderMode, borderValue)
     else:
         # Decompose the affine matrix into its 6 core parameters
-        params = transform.decompose()
+        params = transform_.decompose()
         sx, sy = params['scale']
 
         if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            result = _try_warp(image, transform, large_warp_dim, dsize,
+            result = _try_warp(image, transform_, large_warp_dim, dsize,
                                max_dsize, new_origin, flags, borderMode,
                                borderValue)
         else:
@@ -1070,7 +1072,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         return result
 
 
-def _try_warp(image, transform, large_warp_dim, dsize, max_dsize, new_origin,
+def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
               flags, borderMode, borderValue):
     """
     Helper for warp_affine
@@ -1086,7 +1088,7 @@ def _try_warp(image, transform, large_warp_dim, dsize, max_dsize, new_origin,
     max_dim = max(image.shape[0:2])
     if large_warp_dim is None or max_dim < large_warp_dim:
         try:
-            M = np.asarray(transform)
+            M = np.asarray(transform_)
             return cv2.warpAffine(image, M[0:2], dsize=dsize, flags=flags,
                                   borderMode=borderMode,
                                   borderValue=borderValue)
@@ -1100,13 +1102,13 @@ def _try_warp(image, transform, large_warp_dim, dsize, max_dsize, new_origin,
     else:
         # make these pieces as large as possible for efficiency
         pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
-        return _large_warp(image, transform, dsize, max_dsize,
+        return _large_warp(image, transform_, dsize, max_dsize,
                            new_origin, flags, borderMode,
                            borderValue, pieces_per_dim)
 
 
 def _large_warp(image,
-                transform,
+                transform_,
                 dsize,
                 max_dsize,
                 new_origin,
@@ -1168,8 +1170,8 @@ def _large_warp(image,
     import itertools as it
 
     def _split_2d(arr):
-        # provide indexes to view arr in 2d blocks
-        # like 2 uses of np.array_split() but provides the indexes, not the data
+        # provide indexes to view arr in 2d blocks like 2 uses of
+        # np.array_split() but provides the indexes, not the data
         h, w = arr.shape[0:2]
         xs, ys = zip(
             *np.linspace([0, 0], [w, h], num=pieces_per_dim + 1, dtype=int))
@@ -1181,7 +1183,7 @@ def _large_warp(image,
 
     # do the warp with dsize='max' to make sure we don't lose any pieces
     # then crop it down later if needed
-    transform = Affine.translate(-new_origin) @ transform
+    max_transform = Affine.translate(-new_origin) @ transform_
 
     # create an empty canvas to fill with the warped pieces
     # this is a masked version of kwarray.Stitcher
@@ -1199,20 +1201,21 @@ def _large_warp(image,
         img_piece_ix = img_piece.to_slices()[0]
 
         piece_wh = img_piece.to_xywh().data[0, 2:4]
-        warped_origin = img_piece.warp(transform).to_xywh().data[0, 0:2]
+        warped_origin = img_piece.warp(max_transform).to_xywh().data[0, 0:2]
 
-        centered_bb = Boxes(np.array([[0, 0, *piece_wh]]), 'xywh').warp(transform)
+        centered_bb = Boxes(
+            np.array([[0, 0, *piece_wh]]), 'xywh').warp(max_transform)
         centered_origin = centered_bb.data[0, 0:2]
 
         piece_centered_matrix = (
-            Affine.translate(-centered_origin) @ transform).matrix
+            Affine.translate(-centered_origin) @ max_transform).matrix
         warped_bbox = img_piece.warp(
             piece_centered_matrix).to_ltrb().quantize()
 
         warped_dsize = tuple(map(int, warped_bbox.to_xywh().data[0, 2:4]))
         # do the quantizing manually here to avoid changing dsize
-        # TODO add check for going OOB of result's shape and replace floor w/ round
-        # this produces shifts of up to 1 px
+        # TODO add check for going OOB of result's shape and replace floor w/
+        # round this produces shifts of up to 1 px
         result_bbox = Boxes(
             np.array([[*np.floor(warped_origin), *warped_dsize]]).astype(int),
             'xywh')
