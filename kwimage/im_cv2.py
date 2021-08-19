@@ -160,7 +160,8 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     raise Exception('imscale is deprecated, use imresize instead')
 
 
-def imcrop(img, dsize, about=None, origin=None, value=None):
+def imcrop(img, dsize, about=None, origin=None, border_value=None,
+           interpolation='nearest'):
     """
     Crop an image about a specified point, padding if necessary.
 
@@ -172,53 +173,70 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
 
         dsize (Tuple[None | int, None | int]): the desired width and height
             of the new image. If a dimension is None, then it is automatically
-            computed to preserve aspect ratio. This can be larger than the original dims;
-            if so, the cropped image is padded with value.
+            computed to preserve aspect ratio. This can be larger than the
+            original dims; if so, the cropped image is padded with
+            border_value.
 
         about (Tuple[string | int, string | int]): the location to crop about.
             Mutually exclusive with origin. Defaults to top left.
-            If ints (w,h) are provided, that will be the center of the cropped image.
+            If ints (w,h) are provided, that will be the center of the cropped
+            image.
             There are also string codes available:
-            'lt': make the top left point of the image the top left point of the cropped image.
-                This is equivalent to img[:dsize[1], :dsize[0]], plus padding.
-            'rb': make the bottom right point of the image the bottom right point of the cropped image.
-                This is equivalent to img[-dsize[1]:, -dsize[0]:], plus padding.
+            'lt': make the top left point of the image the top left point of
+                the cropped image.  This is equivalent to img[:dsize[1],
+                :dsize[0]], plus padding.
+            'rb': make the bottom right point of the image the bottom right
+                point of the cropped image.  This is equivalent to
+                img[-dsize[1]:, -dsize[0]:], plus padding.
             'cc': make the center of the image the center of the cropped image.
-            Any combination of these codes can be used, ex. 'lb', 'ct', ('r', 200), ...
+            Any combination of these codes can be used, ex. 'lb', 'ct', ('r',
+            200), ...
 
-        origin (Tuple[int, int] | None): the origin of the crop in (x,y) order (same order as dsize/about).
+        origin (Tuple[int, int] | None):
+            the origin of the crop in (x,y) order (same order as dsize/about).
             Mutually exclusive with about. Defaults to top left.
 
-        value: any border value accepted by cv2.copyMakeBorder, ex. [255, 0, 0] (blue). Default is 0.
-            'linear' is a special code to use cv2.getRectSubPix instead, which allows floating-point center
-            coordinates and pads with the equivalent of cv2.BORDER_REPLICATE instead of a constant fill value.
+        border_value (Numeric | Tuple | str, default=0):
+            any border border_value accepted by cv2.copyMakeBorder,
+            ex. [255, 0, 0] (blue). Default is 0.
+
+        interpolation (str, default='nearest'):
+            Can be 'nearest', in which case integral cropping is used.
+            Can also be 'linear', in which case cv2.getRectSubPix is used.
+
+    Returns:
+        ndarray: the cropped image
+
+    SeeAlso:
+        :func:`kwarray.padded_slice` - a similar function for working with
+            "negative slices".
 
     Example:
         >>> import kwimage
         >>> import numpy as np
-        >>>
-        >>> img = kwimage.grab_test_image('astro', dsize=(10, 16))
-        >>>
+        >>> #
+        >>> img = kwimage.grab_test_image('astro', dsize=(32, 32))
+        >>> #
         >>> # regular crop
         >>> new_img1 = kwimage.imcrop(img, dsize=(5,6))
         >>> assert new_img1.shape == (6, 5, 3)
-        >>>
+        >>> #
         >>> # padding for coords outside the image bounds
         >>> new_img2 = kwimage.imcrop(img, dsize=(5,6),
-        >>>             origin=(-1,0), value=[1, 0, 0])
+        >>>             origin=(-1,0), border_value=[1, 0, 0])
         >>> assert np.all(new_img2[:, 0] == [1, 0, 0])
-        >>>
+        >>> #
         >>> # codes for corner- and edge-centered cropping
         >>> new_img3 = kwimage.imcrop(img, dsize=(5,6),
         >>>             about='cb')
-        >>>
+        >>> #
         >>> # special code for bilinear interpolation
         >>> # with floating-point coordinates
         >>> new_img4 = kwimage.imcrop(img, dsize=(5,6),
-        >>>             about=(5.5, 8.5), value='linear')
-        >>>
+        >>>             about=(5.5, 8.5), interpolation='linear')
+        >>> #
         >>> # use with bounding boxes
-        >>> bbox = kwimage.Boxes.random(scale=5).to_xywh().quantize()
+        >>> bbox = kwimage.Boxes.random(scale=5, rng=132).to_xywh().quantize()
         >>> origin, dsize = np.split(bbox.data[0], 2)
         >>> new_img5 = kwimage.imcrop(img, dsize=dsize,
         >>>             origin=origin)
@@ -233,7 +251,6 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
         >>> kwplot.imshow(new_img4, pnum=pnum_())
         >>> kwplot.imshow(new_img5, pnum=pnum_())
         >>> kwplot.show_if_requested()
-
     """
     import numbers
 
@@ -280,10 +297,12 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
             cen_w = old_w // 2
         elif isinstance(about[0], numbers.Integral):
             cen_w = about[0]
-        elif isinstance(about[0], numbers.Real) and value == 'linear':
+        elif isinstance(about[0], numbers.Real):
+            if interpolation != 'linear':
+                raise ValueError('interpolation must be linear when about is real valued')
             cen_w = about[0]
         else:
-            raise ValueError('Invalid about code. Must be [l | c | r | int][t | c | b | int]')
+            raise ValueError('Invalid about code {}. Must be [l | c | r | int][t | c | b | int]'.format(about))
 
         if about[1] == 't':
             cen_h = new_h // 2
@@ -293,19 +312,21 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
             cen_h = old_h // 2
         elif isinstance(about[1], numbers.Integral):
             cen_h = about[1]
-        elif isinstance(about[1], numbers.Real) and value == 'linear':
+        elif isinstance(about[1], numbers.Real):
+            if interpolation != 'linear':
+                raise ValueError('interpolation must be linear when about is real valued')
             cen_h = about[1]
         else:
-            raise ValueError('Invalid about code. Must be [l | c | r | int][t | c | b | int]')
+            raise ValueError('Invalid about code {}. Must be [l | c | r | int][t | c | b | int]'.format(about))
 
     else:
         # take top left as the origin
         cen_w = new_w // 2
         cen_h = new_h // 2
 
-    if value == 'linear':
+    if interpolation == 'linear':
         return cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
-    else:
+    elif interpolation == 'nearest':
         # build a patch that may go outside the image bounds
         ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
         xmin, xmax = cen_h - new_h // 2, cen_h + (new_h - new_h // 2)
@@ -318,7 +339,10 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
 
         # slice the image using the corrected bounds and append the rest as a border
         return cv2.copyMakeBorder(img[xmin:xmax, ymin:ymax], top, bot, lft, rgt,
-                                  borderType=cv2.BORDER_CONSTANT, value=value)
+                                  borderType=cv2.BORDER_CONSTANT,
+                                  value=border_value)
+    else:
+        raise KeyError(interpolation)
 
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
