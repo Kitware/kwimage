@@ -899,21 +899,18 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> import kwimage
         >>> from kwimage.transform import Affine
         >>> image = kwimage.grab_test_image('astro', dsize=(512, 512))
-        >>> transform = Affine.coerce(offset=(-100, -50), scale=2, theta=0.3)
+        >>> transform = Affine.coerce(offset=(-100, -50), scale=2, theta=0.1)
         >>> # When warping other images or geometry along with this image
         >>> # it is important to account for the modified transform when
         >>> # setting dsize='content'. If dsize='positive', the transform
         >>> # will remain unchanged wrt other aligned images / geometries.
-        >>> poly = kwimage.Boxes([[350, 5, 130, 290]], 'xywh').to_polygons()
+        >>> poly = kwimage.Boxes([[350, 5, 130, 290]], 'xywh').to_polygons()[0]
         >>> # Apply the warping to the images
         >>> warped_pos, info_pos = warp_affine(image, transform, dsize='positive', return_info=True)
         >>> warped_con, info_con = warp_affine(image, transform, dsize='content', return_info=True)
-        >>> #assert warped_pos.shape[0] < image.shape[0] * 2
-        >>> #assert warped_max.shape[0] == image.shape[0] * 2
-        >>> #assert info_pos['dsize'] == (924, 974)
-        >>> #assert info_con['dsize'] == (1024, 1024)
-        >>> #assert 'offset' in info_pos['transform'].concise()
-        >>> #assert 'offset' not in info_con['transform'].concise()
+        >>> assert info_pos['dsize'] == (919, 1072)
+        >>> assert info_con['dsize'] == (1122, 1122)
+        >>> assert info_pos['transform'] == transform
         >>> # Demo the correct and incorrect way to apply transforms
         >>> poly_pos = poly.warp(transform)
         >>> poly_con = poly.warp(info_con['transform'])
@@ -922,14 +919,20 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.autompl()
         >>> # show original
         >>> kwplot.imshow(image, pnum=(1, 3, 1), title='original')
-        >>> poly.draw(color='green', alpha=0.5)
+        >>> poly.draw(color='green', alpha=0.5, border=True)
         >>> # show positive warped
         >>> kwplot.imshow(warped_pos, pnum=(1, 3, 2), title='dsize=positive')
-        >>> poly_pos.draw(color='purple', alpha=0.5)
+        >>> poly_pos.draw(color='purple', alpha=0.5, border=True)
         >>> # show content warped
-        >>> kwplot.imshow(warped_con, pnum=(1, 3, 3), title='dsize=content')
-        >>> polys_con.draw(color='blue', alpha=0.5)   # correct
-        >>> poly_pos.draw(color='orangered', alpha=0.5)  # incorrect
+        >>> ax = kwplot.imshow(warped_con, pnum=(1, 3, 3), title='dsize=content')[1]
+        >>> poly_con.draw(color='dodgerblue', alpha=0.5, border=True)   # correct
+        >>> poly_pos.draw(color='orangered', alpha=0.5, border=True)  # incorrect
+        >>> cc = poly_con.to_shapely().centroid
+        >>> cp = poly_pos.to_shapely().centroid
+        >>> ax.text(cc.x, cc.y + 250, 'correctly transformed', color='dodgerblue',
+        >>>         backgroundcolor=(0, 0, 0, 0.7), horizontalalignment='center')
+        >>> ax.text(cp.x, cp.y - 250, 'incorrectly transformed', color='orangered',
+        >>>         backgroundcolor=(0, 0, 0, 0.7), horizontalalignment='center')
         >>> kwplot.show_if_requested()
 
     """
