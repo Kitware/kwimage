@@ -50,8 +50,8 @@ from .im_color import (Color,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
                       make_channels_comparable, normalize, normalize_intensity,
                       num_channels, padded_slice,)
-from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,
-                     warp_affine,)
+from .im_cv2 import (convert_colorspace, gaussian_patch, imcrop, imresize,
+                     imscale, warp_affine,)
 from .im_demodata import (checkerboard, grab_test_image,
                           grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
@@ -83,7 +83,7 @@ __all__ = ['Affine', 'Boxes', 'Color', 'Coords', 'Detections', 'Heatmap',
            'draw_vector_field', 'encode_run_length', 'ensure_alpha_channel',
            'ensure_float01', 'ensure_uint255', 'fourier_mask',
            'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
-           'imread', 'imresize', 'imscale', 'imwrite', 'load_image_shape',
+           'imread', 'imcrop', 'imresize', 'imscale', 'imwrite', 'load_image_shape',
            'make_channels_comparable', 'make_heatmask', 'make_orimask',
            'make_vector_field', 'non_max_supression', 'normalize',
            'normalize_intensity', 'num_channels', 'overlay_alpha_images',

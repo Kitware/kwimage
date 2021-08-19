@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import cv2
-from . import im_cv2
 
 
 _TEST_IMAGES = {
@@ -14,7 +13,9 @@ _TEST_IMAGES = {
     'amazon': {
         'fname': 'amazon.jpg',
         'sha1': '50a475dd4b294eb9413971a20648b3329cd7ef4d',
-        'url': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Fires_and_Deforestation_on_the_Amazon_Frontier%2C_Rondonia%2C_Brazil_-_August_12%2C_2007.jpg',
+        # seems to hang (2021-08-12), reuploaded to data.kitware.com
+        # 'url': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Fires_and_Deforestation_on_the_Amazon_Frontier%2C_Rondonia%2C_Brazil_-_August_12%2C_2007.jpg',
+        'url': 'https://data.kitware.com/api/v1/file/611e9f4b2fa25629b9dc0ca2/download'
     },
     'astro': {
         'fname': 'astro.png',
@@ -142,6 +143,7 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>> grab_test_image('astro', dsize=(255, 255)).shape
         (255, 255, 3)
     """
+    from kwimage import im_cv2
     if key == 'checkerboard':
         image = checkerboard()
     else:

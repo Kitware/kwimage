@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * Wrapped `itk.imread` with `kwimage.imread`.
+* Added `kwimage.imcrop`
+* Add `large_warp_dim` to `kwimage.warp_affine`
 
 ### Fixed
 * `kwimage.warp_affine` now returns a sensible result when the source or
