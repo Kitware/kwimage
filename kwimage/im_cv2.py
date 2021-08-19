@@ -1092,6 +1092,7 @@ def _large_warp(image,
     and stitch them back together with minimal artifacts.
 
     Example:
+        >>> # xdoctest: +REQUIRES(--large_memory)
         >>> import kwimage
         >>> img = np.random.randint(255, size=(32767, 32767), dtype=np.uint8)
         >>> aff = kwimage.Affine.random()
@@ -1110,6 +1111,7 @@ def _large_warp(image,
 
     Example:
         >>> # xdoctest: +SKIP
+        >>> # Note: this breaks
         >>> import kwimage
         >>> import cv2
         >>> img = kwimage.grab_test_image('astro')
@@ -1120,7 +1122,8 @@ def _large_warp(image,
         >>>         'type': 'affine'}
         >>>     )
         >>> #
-        >>> res = _large_warp(img, aff, (512, 512), (923, 852), (0, 0),
+        >>> new_origin = np.array((0, 0))
+        >>> res = _large_warp(img, aff, (512, 512), (923, 852), new_origin,
         >>>                   flags=cv2.INTER_LINEAR, borderMode=None,
         >>>                   borderValue=None, pieces_per_dim=2)
 
