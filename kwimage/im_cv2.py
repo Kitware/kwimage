@@ -991,6 +991,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         warped_box = box.warp(transform)
         max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
         new_origin = warped_box.to_ltrb().data[0, 0:2]
+    else:
+        max_dsize = None
+        new_origin = None
 
     if dsize is None:
         # If unspecified, leave the canvas size unchanged
@@ -1238,7 +1241,7 @@ def _large_warp(image,
     result = imcrop(result,
                     dsize,
                     origin=np.round(-new_origin).astype(int),
-                    value=borderValue)
+                    border_value=borderValue)
 
     return result
 
