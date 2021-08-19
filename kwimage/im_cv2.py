@@ -935,6 +935,21 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>>         backgroundcolor=(0, 0, 0, 0.7), horizontalalignment='center')
         >>> kwplot.show_if_requested()
 
+    Example:
+        >>> # Demo piecewise transform
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> from kwimage.transform import Affine
+        >>> image = kwimage.grab_test_image('astro', dsize=(512, 512))
+        >>> transform = Affine.coerce(offset=(-100, -50), scale=2, theta=0.1)
+        >>> warped_piecewise, info = warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=32)
+        >>> warped_normal, info = warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=None)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(image, pnum=(1, 3, 1), title='original')
+        >>> kwplot.imshow(warped_normal, pnum=(1, 3, 2), title='normal warp')
+        >>> kwplot.imshow(warped_piecewise, pnum=(1, 3, 3), title='piecewise warp')
     """
     from kwimage.transform import Affine
     import kwimage
