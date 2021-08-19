@@ -1110,27 +1110,35 @@ def _large_warp(image,
         >>> assert res.dtype == img.dtype
 
     Example:
-        >>> # xdoctest: +SKIP
-        >>> # Note: this breaks
         >>> import kwimage
         >>> import cv2
-        >>> img = kwimage.grab_test_image('astro')
-        >>> aff = kwimage.Affine.coerce(
-        >>>         {'offset': (0.2509279609038846, -0.5828877912748172),
-        >>>         'scale': (1.7740542832875767, 1.0314621286400032),
-        >>>         'theta': 0.26123114521079555,
-        >>>         'type': 'affine'}
-        >>>     )
-        >>> #
+        >>> image = kwimage.grab_test_image('astro')
+        >>> # Use wrapper function
+        >>> transform = kwimage.Affine.coerce(
+        >>>     {'offset': (136.3946757082253, 0.0),
+        >>>      'scale': (1.7740542832875767, 1.0314621286400032),
+        >>>      'theta': 0.2612311452107956,
+        >>>      'type': 'affine'})
+        >>> res, info = kwimage.warp_affine(
+        >>>     image, transform, dsize='content', return_info=True,
+        >>>     large_warp_dim=128)
+        >>> # Explicit args for this function
+        >>> transform = info['transform']
         >>> new_origin = np.array((0, 0))
-        >>> res = _large_warp(img, aff, (512, 512), (923, 852), new_origin,
+        >>> max_dsize = (1015, 745)
+        >>> dsize = max_dsize
+        >>> res2 = _large_warp(image, transform, dsize, max_dsize, new_origin,
         >>>                   flags=cv2.INTER_LINEAR, borderMode=None,
         >>>                   borderValue=None, pieces_per_dim=2)
-
+        >>> # xdoctest: +REQUIRES(module:pytest)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(res, pnum=(1, 2, 1))
+        >>> kwplot.imshow(res2, pnum=(1, 2, 2))
     """
     from kwimage import Affine, Boxes
     import cv2
-    import itertools
+    import itertools as it
 
     def _split_2d(arr):
         # provide indexes to view arr in 2d blocks
@@ -1139,8 +1147,8 @@ def _large_warp(image,
         xs, ys = zip(
             *np.linspace([0, 0], [w, h], num=pieces_per_dim + 1, dtype=int))
         ixs = [
-            xx + yy for xx, yy in itertools.product(zip(xs[:-1], xs[1:]),
-                                                    zip(ys[:-1], ys[1:]))
+            xx + yy for xx, yy in it.product(zip(xs[:-1], xs[1:]),
+                                             zip(ys[:-1], ys[1:]))
         ]
         return Boxes(ixs, 'xxyy')  # could use to_slices() for portability
 
