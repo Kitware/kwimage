@@ -7,56 +7,56 @@ import cv2
 _TEST_IMAGES = {
     'airport': {
         'fname': 'airport.jpg',
-        'sha1': '52f15b9cccf2cc95a82ccacd96f1f15dc76a8544',
+        'sha256': 'bff5f9212d5c77dd47f2b80e5dc1b4409fa7813b08fc39b504294497b3483ffc',
+        # seems to hang (2021-08-12), reuploaded to data.kitware.com
+        # 'url': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Fires_and_Deforestation_on_the_Amazon_Frontier%2C_Rondonia%2C_Brazil_-_August_12%2C_2007.jpg',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
     },
     'amazon': {
         'fname': 'amazon.jpg',
-        'sha1': '50a475dd4b294eb9413971a20648b3329cd7ef4d',
-        # seems to hang (2021-08-12), reuploaded to data.kitware.com
-        # 'url': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Fires_and_Deforestation_on_the_Amazon_Frontier%2C_Rondonia%2C_Brazil_-_August_12%2C_2007.jpg',
-        'url': 'https://data.kitware.com/api/v1/file/611e9f4b2fa25629b9dc0ca2/download'
+        'sha256': 'ef352b60f2577692ab3e9da19d09a49fa9da9937f892afc48094988a17c32dc3',
+        'url': 'https://data.kitware.com/api/v1/file/611e9f4b2fa25629b9dc0ca2/download',
     },
     'astro': {
         'fname': 'astro.png',
-        'sha1': '160b6e5989d2788c0296eac45b33e90fe612da23',
+        'sha256': '9f2b4671e868fd51451f03809a694006425eee64ad472f7065da04079be60c53',
         'url': 'https://i.imgur.com/KXhKM72.png',
     },
     'carl': {
         'fname': 'carl.jpg',
-        'sha1': 'f498fa6f6b24b4fa79322612144fedd5fad85bc3',
-        'url': 'https://i.imgur.com/flTHWFD.png',  # imgur thinks this is a PNG for some reason
+        'sha256': '595056e142951bbdc19d79009cb443e29e8a0148597629dbd16fbd7207063f20',
+        'url': 'https://i.imgur.com/flTHWFD.png',   # imgur thinks this is a PNG for some reason
+    },
+    'lowcontrast': {
+        'fname': 'lowcontrast.jpg',
+        'sha256': '532572a245d2b401583488ccf9f033e5960dc9f3f56b8ca6b933a8986ec9e95e',
+        'url': 'https://i.imgur.com/dyC68Bi.jpg',
     },
     'paraview': {
         'fname': 'paraview.png',
-        'sha1': 'd3c6240ccb4748e9bd5de07f0aa3f86724edeee7',
+        'sha256': '859423aefce1037b2b6959b74d7b137a4104acd6db95a9247abb26c2d0aa93b8',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/4/46/ParaView_splash1.png',
     },
     'parrot': {
         'fname': 'parrot.png',
-        'sha1': '6f97b8f9095031aa26152aaa16cbd4e7e7ea16d9',
+        'sha256': 'fadd4cdddc46e43185999421dcb1ae9d3ba6d13b5b6d0acc05268fc7246f3e59',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png',
     },
     'stars': {
         'fname': 'stars.png',
-        'sha1': 'bbf162d14537948e12169ccc26ca1b4e74f6a67e',
+        'sha256': '36391b4d36b4b5e2597c53f9465951910542fbec82f5a0213715759d1de9714f',
         'url': 'https://i.imgur.com/kCi7C1r.png',
     },
     'tsukuba_l': {
         'fname': 'tsukuba_l.png',
-        'sha1': '9208dce1d8c6521e24a9105f90e361a0b355db69',
+        'sha256': 'e29144841f4e2200e88eb6ad928cfa3ee0c55ccac0a28532c9293c4a5e0b284d',
         'url': 'https://i.imgur.com/DhIKgGx.png',
     },
     'tsukuba_r': {
         'fname': 'tsukuba_r.png',
-        'sha1': '10f9d2d832610253a3702d40f191e72e1af8b28b',
+        'sha256': 'fb4e8b1561c177a9aba23693bd576d0e06f5778b8d44e1c1cc5c5dd35d5fd1d4',
         'url': 'https://i.imgur.com/38RST9H.png',
     },
-    'lowcontrast': {
-        'fname': 'lowcontrast.jpg',
-        'sha1': 'ade84f4aa22f07f58cd530882d4ecd92e0609b81',
-        'url': 'https://i.imgur.com/dyC68Bi.jpg',
-    }
 }
 
 
@@ -86,7 +86,7 @@ def _update_hashes():
         # Wait until ubelt 9.1 is released to change hasher due to
         # issue in ub.grabdata
         # hasher_priority = ['sha512', 'sha1']
-        hasher_priority = ['sha1']
+        hasher_priority = ['sha256']
 
         REQUIRE_EXISTING_HASH = ub.argflag('--require-hashes')
         if REQUIRE_EXISTING_HASH:
@@ -124,6 +124,7 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
             paraview - ParaView logo
             stars - picture of stars in the sky
             airport - SkySat image of Beijing Capital International Airport on 18 February 2018
+            See ``kwimage.grab_test_image.keys`` for a full list.
 
         space (str, default='rgb'):
             which colorspace to return in
@@ -138,9 +139,13 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         xdoctest -m kwimage.im_demodata grab_test_image
 
     Example:
-        >>> for key in grab_test_image.keys():
-        ...     grab_test_image(key)
-        >>> grab_test_image('astro', dsize=(255, 255)).shape
+        >>> # xdoctest: +REQUIRES(--network)
+        >>> import kwimage
+        >>> for key in kwimage.grab_test_image.keys():
+        >>>     print('attempt to grab key = {!r}'.format(key))
+        >>>     kwimage.grab_test_image(key)
+        >>>     print('grabbed key = {!r}'.format(key))
+        >>> kwimage.grab_test_image('astro', dsize=(255, 255)).shape
         (255, 255, 3)
     """
     from kwimage import im_cv2
@@ -177,8 +182,12 @@ def grab_test_image_fpath(key='astro'):
         python -c "import kwimage; print(kwimage.grab_test_image_fpath('airport'))"
 
     Example:
-        >>> for key in grab_test_image.keys():
-        ...     grab_test_image_fpath(key)
+        >>> # xdoctest: +REQUIRES(--network)
+        >>> import kwimage
+        >>> for key in kwimage.grab_test_image.keys():
+        ...     print('attempt to grab key = {!r}'.format(key))
+        ...     kwimage.grab_test_image_fpath(key)
+        ...     print('grabbed grab key = {!r}'.format(key))
     """
     try:
         item = _TEST_IMAGES[key]
@@ -193,7 +202,7 @@ def grab_test_image_fpath(key='astro'):
     grabkw = {
         'appname': 'kwimage/demodata',
     }
-    hasher_priority = ['sha1']
+    hasher_priority = ['sha256']
     for hasher in hasher_priority:
         if hasher in item:
             grabkw.update({

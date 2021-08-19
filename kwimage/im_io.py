@@ -101,7 +101,9 @@ def imread(fpath, space='auto', backend='auto'):
         >>> import tempfile
         >>> from os.path import splitext  # NOQA
         >>> # Test a non-standard image, which encodes a depth map
-        >>> fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
+        >>> fpath = ub.grabdata(
+        >>>     'http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif',
+        >>>     hasher='sha256', hash_prefix='64522acba6f0fb7060cd4c202ed32c5163c34e63d386afdada4190cce51ff4d4')
         >>> img1 = imread(fpath)
         >>> # Check that write + read preserves data
         >>> tmp = tempfile.NamedTemporaryFile(suffix=splitext(fpath)[1])
@@ -117,7 +119,9 @@ def imread(fpath, space='auto', backend='auto'):
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> img1 = imread(ub.grabdata('http://i.imgur.com/iXNf4Me.png', fname='ada.png'))
+        >>> img1 = imread(ub.grabdata(
+        >>>     'http://i.imgur.com/iXNf4Me.png', fname='ada.png', hasher='sha256',
+        >>>     hash_prefix='898cf2588c40baf64d6e09b6a93b4c8dcc0db26140639a365b57619e17dd1c77'))
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
         >>> imwrite(tmp_tif.name, img1)
@@ -134,7 +138,10 @@ def imread(fpath, space='auto', backend='auto'):
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> tif_fpath = ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif')
+        >>> tif_fpath = ub.grabdata(
+        >>>     'https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff',
+        >>>     fname='pepper.tif', hasher='sha256',
+        >>>     hash_prefix='31ff3a1f416cb7281acfbcbb4b56ee8bb94e9f91489602ff2806e5a49abc03c0')
         >>> img1 = imread(tif_fpath)
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')

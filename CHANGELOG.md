@@ -14,6 +14,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * `kwimage.warp_affine` now returns a sensible result when the source or
   destination image has no size.
+* `kwimage.grab_test_image` now checks sha256 instead of sha1.
+* Fixed tests that downloaded data, but did not check hashes
 
 
 ## Version 0.7.11 - Released 2021-08-11
