@@ -4,8 +4,13 @@ def test_demodata_headers():
     """
     from PIL import Image
     from os.path import splitext
-
     import kwimage
+    import ubelt as ub
+
+    if not ub.argflag('--network'):
+        import pytest
+        pytest.skip('requires network')
+
     for key in kwimage.grab_test_image.keys():
         fpath = kwimage.grab_test_image_fpath(key)
         img = Image.open(fpath)

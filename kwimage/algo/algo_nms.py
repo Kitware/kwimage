@@ -209,7 +209,10 @@ class _NMS_Impls():
         from kwimage.algo._nms_backend import torch_nms
         _funcs['numpy'] = py_nms.py_nms
 
-        if torch is not None:
+        from distutils.version import LooseVersion
+        recent_numpy = LooseVersion(np.__version__) >= LooseVersion('1.20.0')
+
+        if torch is not None and recent_numpy:
             _funcs['torch'] = torch_nms.torch_nms
 
             if not DISABLE_TORCHVISION_NMS:
@@ -225,8 +228,6 @@ class _NMS_Impls():
                         'optional torchvision C nms is not available: {}'.format(
                             str(ex)))
 
-        from distutils.version import LooseVersion
-        recent_numpy = LooseVersion(np.__version__) >= LooseVersion('1.20.0')
         if recent_numpy:
             # Only use cython extensions if numpy is > 1.20.
             # Otherwise there seems to be a
