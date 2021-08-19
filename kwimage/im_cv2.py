@@ -1238,7 +1238,7 @@ def _large_warp(image,
     result = imcrop(result,
                     dsize,
                     origin=np.round(-new_origin).astype(int),
-                    value=borderValue)
+                    border_value=borderValue)
 
     return result
 
