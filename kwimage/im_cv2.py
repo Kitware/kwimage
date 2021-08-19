@@ -1154,7 +1154,7 @@ def _large_warp(image,
         >>> res2 = _large_warp(image, transform, dsize, max_dsize, new_origin,
         >>>                   flags=cv2.INTER_LINEAR, borderMode=None,
         >>>                   borderValue=None, pieces_per_dim=2)
-        >>> # xdoctest: +REQUIRES(module:pytest)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(res, pnum=(1, 2, 1))
@@ -1238,7 +1238,7 @@ def _large_warp(image,
     result = imcrop(result,
                     dsize,
                     origin=np.round(-new_origin).astype(int),
-                    border_value=borderValue)
+                    value=borderValue)
 
     return result
 
