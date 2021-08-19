@@ -781,7 +781,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
 def warp_affine(image, transform, dsize=None, antialias=False,
                 interpolation='linear', border_mode=None, border_value=0,
-                large_warp_dim=None):
+                large_warp_dim=None, return_info=False):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -793,13 +793,22 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         transform (ndarray | Affine): a coercable affine matrix.
             See :class:`kwimage.Affine` for details on what can be coerced.
 
-        dsize (Tuple[int, int] | None | str):
-            width and height of the resulting image. If "auto", it is computed
-            such that the positive coordinates of the warped image will fit in
-            the new canvas. if "max", the transform is augmented with an extra
-            translation such that both the positive and negative coordinates
-            of the warped image will fit in the new canvas. If None, then the
-            image size will not change.
+        dsize (Tuple[int, int] | None | str, default=None):
+            A integer width and height tuple of the resulting "canvas" image.
+            If None, then the input image size is used.
+
+            If specified as a string, dsize is computed based on the given
+            heuristic.
+
+            If 'positive' (or 'auto'), dsize is computed such that the positive
+            coordinates of the warped image will fit in the new canvas. In this
+            case, any pixel that maps to a negative coordinate will be clipped.
+            This has the property that the input transformation is not
+            modified.
+
+            If 'content' (or 'max'), the transform is modified with an extra
+            translation such that both the positive and negative coordinates of
+            the warped image will fit in the new canvas.
 
         antialias (bool, default=False):
             if True determines if the transform is downsampling and applies
@@ -817,11 +826,20 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Used as the fill value if border_mode is constant. Otherwise this
             is ignored.
 
-        large_warp_dim (int | None | str): cv2.warpAffine must have image dimensions <
-            SHRT_MAX (=32767 in version 4.5.3, for example). If this parameter is not None,
-            work around this by doing the warp piecewise for images with dimensions >=
-            large_warp_dim. Set this to 'auto' to try to discover cv2's dsize limit in the
-            current environment.
+        large_warp_dim (int | None | str, default=None):
+            If specified, perform the warp piecewise in chunks of the specified
+            size. If "auto", it is set to the maximum "short" value in numpy.
+            This works around a limitation of cv2.warpAffine, which must have
+            image dimensions < SHRT_MAX (=32767 in version 4.5.3)
+
+        return_info (bool, default=Fasle):
+            if True, returns information about the operation. In the case
+            where dsize="content", this includes the modified transformation.
+
+    Returns:
+        ndarray | Tuple[ndarray, Dict]:
+            the warped image, or if return info is True, the warped image and
+            the info dictionary.
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -831,8 +849,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> #image = kwimage.grab_test_image('checkerboard')
         >>> transform = Affine.random() @ Affine.scale(0.05)
         >>> transform = Affine.scale(0.02)
-        >>> warped1 = warp_affine(image, transform, dsize='auto', antialias=1, interpolation='nearest')
-        >>> warped2 = warp_affine(image, transform, dsize='auto', antialias=0)
+        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='nearest')
+        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -848,8 +866,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> image = kwimage.grab_test_image('astro')
         >>> image = kwimage.grab_test_image('checkerboard')
         >>> transform = Affine.random() @ Affine.scale((.1, 1.2))
-        >>> warped1 = warp_affine(image, transform, dsize='auto', antialias=1)
-        >>> warped2 = warp_affine(image, transform, dsize='auto', antialias=0)
+        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1)
+        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -876,87 +894,81 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> assert result.shape == (0, 10, 3)
 
     Example:
+        >>> # Demo difference between positive and content dsize
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> import kwimage
         >>> from kwimage.transform import Affine
-        >>> image = kwimage.grab_test_image('astro')
-        >>> transform = Affine.translate((-100, -50)) @ Affine.scale(2)
-        >>> warped_auto = warp_affine(image, transform, dsize='auto')
-        >>> warped_max = warp_affine(image, transform, dsize='max')
-        >>> assert warped_auto.shape[0] < image.shape[0] * 2
-        >>> assert warped_max.shape[0] == image.shape[0] * 2
+        >>> image = kwimage.grab_test_image('astro', dsize=(512, 512))
+        >>> transform = Affine.coerce(offset=(-100, -50), scale=2, theta=0.3)
+        >>> # When warping other images or geometry along with this image
+        >>> # it is important to account for the modified transform when
+        >>> # setting dsize='content'. If dsize='positive', the transform
+        >>> # will remain unchanged wrt other aligned images / geometries.
+        >>> poly = kwimage.Boxes([[350, 5, 130, 290]], 'xywh').to_polygons()
+        >>> # Apply the warping to the images
+        >>> warped_pos, info_pos = warp_affine(image, transform, dsize='positive', return_info=True)
+        >>> warped_con, info_con = warp_affine(image, transform, dsize='content', return_info=True)
+        >>> #assert warped_pos.shape[0] < image.shape[0] * 2
+        >>> #assert warped_max.shape[0] == image.shape[0] * 2
+        >>> #assert info_pos['dsize'] == (924, 974)
+        >>> #assert info_con['dsize'] == (1024, 1024)
+        >>> #assert 'offset' in info_pos['transform'].concise()
+        >>> #assert 'offset' not in info_con['transform'].concise()
+        >>> # Demo the correct and incorrect way to apply transforms
+        >>> poly_pos = poly.warp(transform)
+        >>> poly_con = poly.warp(info_con['transform'])
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> # show original
+        >>> kwplot.imshow(image, pnum=(1, 3, 1), title='original')
+        >>> poly.draw(color='green', alpha=0.5)
+        >>> # show positive warped
+        >>> kwplot.imshow(warped_pos, pnum=(1, 3, 2), title='dsize=positive')
+        >>> poly_pos.draw(color='purple', alpha=0.5)
+        >>> # show content warped
+        >>> kwplot.imshow(warped_con, pnum=(1, 3, 3), title='dsize=content')
+        >>> polys_con.draw(color='blue', alpha=0.5)   # correct
+        >>> poly_pos.draw(color='orangered', alpha=0.5)  # incorrect
+        >>> kwplot.show_if_requested()
+
     """
     from kwimage.transform import Affine
     import kwimage
+
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
-
     borderMode = _coerce_border(border_mode)
     borderValue = border_value
 
-    """
-    Variations that could change in the future:
-
-        * In _gauss_params I'm not sure if we want to compute integer or
-            fractional "number of downsamples".
-
-        * The fudge factor bothers me, but seems necessary
-    """
     h, w = image.shape[0:2]
 
     if isinstance(dsize, str) or large_warp_dim is not None:
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = box.warp(transform)
-        auto_dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
         max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
         new_origin = warped_box.to_ltrb().data[0, 0:2]
 
     if dsize is None:
-        dsize = tuple(image.shape[0:2][::-1])
-    elif dsize == 'auto':
-        dsize = auto_dsize
-    elif dsize == 'max':
-        dsize = max_dsize
-        transform = Affine.translate(-new_origin) @ transform
-        new_origin = np.array([0, 0])
-
-    if large_warp_dim == 'auto':
-
-        # this is as close as we can get to actually discovering SHRT_MAX
-        # since it's not introspectable through cv2.
-        # ctypes and cv2 could be pointing to a different limits.h, but otherwise this is correct
-        # https://stackoverflow.com/a/44123354
-        import ctypes
-        SHRT_MAX = ctypes.c_ushort(-1).value // 2  # 32767 aka 0x7fff
-        large_warp_dim = SHRT_MAX
-
-    def _try_warp(image, transform):
-
-        max_dim = max(image.shape[0:2])
-        if large_warp_dim is None or max_dim < large_warp_dim:
-            try:
-                M = np.asarray(transform)
-                return cv2.warpAffine(image,
-                                      M[0:2],
-                                      dsize=dsize,
-                                      flags=flags,
-                                      borderMode=borderMode,
-                                      borderValue=borderValue)
-            except cv2.error as e:
-                if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
-                    print(
-                        'Image too large for warp_affine. Bypass this error by setting '
-                        'kwimage.warp_affine(large_warp_dim="auto")')
-                    raise e
-
+        # If unspecified, leave the canvas size unchanged
+        dsize = (w, h)
+    elif isinstance(dsize, str):
+        # Handle special "auto-compute" dsize keys
+        if dsize in {'positive', 'auto'}:
+            dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
+        elif dsize in {'content', 'max'}:
+            dsize = max_dsize
+            transform = Affine.translate(-new_origin) @ transform
+            new_origin = np.array([0, 0])
         else:
-            # make these pieces as large as possible for efficiency
-            pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
+            raise KeyError('Unknown dsize={}'.format(dsize))
 
-            return _large_warp(image, transform, dsize, max_dsize,
-                               new_origin, flags, borderMode,
-                               borderValue, pieces_per_dim)
+    info = {
+        'transform': transform,
+        'dsize': dsize,
+        'antialias_info': None,
+    }
 
     if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
         # Handle case where the input image has no size or the destination
@@ -965,17 +977,28 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         result = np.full(
             shape=output_shape, fill_value=borderValue, dtype=image.dtype)
     elif not antialias:
-        result = _try_warp(image, transform)
+        result = _try_warp(image, transform, large_warp_dim, dsize, max_dsize,
+                           new_origin, flags, borderMode, borderValue)
     else:
         # Decompose the affine matrix into its 6 core parameters
         params = transform.decompose()
         sx, sy = params['scale']
 
-        if sx >= 1 and sy > 1:
+        if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            result = _try_warp(image, transform)
+            result = _try_warp(image, transform, large_warp_dim, dsize,
+                               max_dsize, new_origin, flags, borderMode,
+                               borderValue)
         else:
             # At least one dimension is downsampled
+            """
+            Variations that could change in the future:
+
+                * In _gauss_params I'm not sure if we want to compute integer or
+                    fractional "number of downsamples".
+
+                * The fudge factor bothers me, but seems necessary
+            """
 
             # Compute the transform with all scaling removed
             noscale_warp = Affine.affine(**ub.dict_diff(params, {'scale'}))
@@ -987,9 +1010,54 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             # Compute the transform from the downsampled image to the destination
             rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
 
-            result = _try_warp(downscaled, rest_warp)
+            info['antialias_info'] = {
+                'noscale_warp': noscale_warp,
+                'rest_warp': rest_warp,
+            }
 
-    return result
+            result = _try_warp(downscaled, rest_warp, large_warp_dim, dsize,
+                               max_dsize, new_origin, flags, borderMode,
+                               borderValue)
+
+    if return_info:
+        return result, info
+    else:
+        return result
+
+
+def _try_warp(image, transform, large_warp_dim, dsize, max_dsize, new_origin,
+              flags, borderMode, borderValue):
+    """
+    Helper for warp_affine
+    """
+    if large_warp_dim == 'auto':
+        # this is as close as we can get to actually discovering SHRT_MAX since
+        # it's not introspectable through cv2.  numpy and cv2 could be pointing
+        # to a different limits.h, but otherwise this is correct
+        # https://stackoverflow.com/a/44123354
+        SHRT_MAX = np.iinfo(np.short).max
+        large_warp_dim = SHRT_MAX
+
+    max_dim = max(image.shape[0:2])
+    if large_warp_dim is None or max_dim < large_warp_dim:
+        try:
+            M = np.asarray(transform)
+            return cv2.warpAffine(image, M[0:2], dsize=dsize, flags=flags,
+                                  borderMode=borderMode,
+                                  borderValue=borderValue)
+        except cv2.error as e:
+            if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
+                print(
+                    'Image too large for warp_affine. Bypass this error by setting '
+                    'kwimage.warp_affine(large_warp_dim="auto")')
+                raise e
+
+    else:
+        # make these pieces as large as possible for efficiency
+        pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
+        return _large_warp(image, transform, dsize, max_dsize,
+                           new_origin, flags, borderMode,
+                           borderValue, pieces_per_dim)
 
 
 def _large_warp(image,
@@ -1010,13 +1078,13 @@ def _large_warp(image,
         >>> img = np.random.randint(255, size=(32767, 32767), dtype=np.uint8)
         >>> aff = kwimage.Affine.random()
         >>> import cv2
-        >>>
+        >>> #
         >>> # without this function
         >>> try:
         >>>     res = kwimage.warp_affine(img, aff, large_warp_dim=None)
         >>> except cv2.error as e:
         >>>     pass
-        >>>
+        >>> #
         >>> # with this function
         >>> res = kwimage.warp_affine(img, aff, large_warp_dim='auto')
         >>> assert res.shape == img.shape
@@ -1033,7 +1101,7 @@ def _large_warp(image,
         >>>         'theta': 0.26123114521079555,
         >>>         'type': 'affine'}
         >>>     )
-        >>>
+        >>> #
         >>> res = _large_warp(img, aff, (512, 512), (923, 852), (0, 0),
         >>>                   flags=cv2.INTER_LINEAR, borderMode=None,
         >>>                   borderValue=None, pieces_per_dim=2)
