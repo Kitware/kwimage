@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Wrapped `itk.imread` with `kwimage.imread`.
 
+### Fixed
+* `kwimage.warp_affine` now returns a sensible result when the source or
+  destination image has no size.
+
 
 ## Version 0.7.11 - Released 2021-08-11
 

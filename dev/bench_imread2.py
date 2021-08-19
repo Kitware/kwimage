@@ -38,8 +38,9 @@ def imread2_bench():
     data_profiles = list(basis_product(data_basis))
 
     method_profiles = [
-        {'backend': 'skimage'},
-        {'backend': 'gdal'},
+        # {'backend': 'skimage'},
+        # {'backend': 'gdal'},
+        {'backend': 'cv2', 'space': None},
     ]
 
     import numpy as np
@@ -56,14 +57,17 @@ def imread2_bench():
     for data_profile in data_profiles:
         data_profile_key = ub.repr2(data_profile, nobr=1, itemsep='', keysep='=', nl=0, sv=1, sk=1, kvsep='=', sort=0)
         width, height = data_profile['dsize']
-        shape = (height, width, data_profile['channels'])
+        channels = data_profile['channels']
+        shape = (height, width, channels)
 
         data = (np.random.rand(*shape) * 255).astype(data_profile['dtype'])
         fpath = join(dpath, data_profile_key + '.tiff')
-
         kwimage.imwrite(fpath, data, backend='gdal')
 
         for method_profile in method_profiles:
+
+            if method_profile['backend'] == 'cv2' and channels > 4:
+                continue
 
             method_profile_key = ub.repr2(method_profile, nobr=1, itemsep='', keysep='=', nl=0, sv=1, sk=1, kvsep='=', sort=0)
             for timer in read_ti.reset(f'{data_profile_key} {method_profile_key}'):
