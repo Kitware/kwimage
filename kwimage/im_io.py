@@ -37,10 +37,26 @@ GDAL_EXTENSIONS = (
     '.jp2', '.vrt',
 )
 
+# TODO: ITK Image formats
+# https://insightsoftwareconsortium.github.io/itk-js/docs/image_formats.html
+ITK_EXTENSIONS = (
+    '.mha',
+    '.nrrd',  # http://teem.sourceforge.net/nrrd/format.html
+    '.mgh',  # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat
+    '.mgz',
+    '.nii',  # https://nifti.nimh.nih.gov/nifti-1
+    '.img',
+    '.mrb',  # multiple-resolution-bitmap https://whatext.com/mrb
+)
+
+# ITK Demo data:
+# https://data.kitware.com/#collection/57b5c9e58d777f126827f5a1
+
 IMAGE_EXTENSIONS = (
     _WELL_KNOWN_EXTENSIONS +
     ('.tif', '.tiff',) +
-    GDAL_EXTENSIONS
+    GDAL_EXTENSIONS +
+    ITK_EXTENSIONS
 )
 
 
@@ -64,8 +80,8 @@ def imread(fpath, space='auto', backend='auto'):
 
         backend (str, default='auto'): which backend reader to use. By default
             the file extension is used to determine this, but it can be
-            manually overridden. Valid backends are 'gdal', 'skimage', and
-            'cv2'.
+            manually overridden. Valid backends are 'gdal', 'skimage', 'itk',
+            and 'cv2'.
 
     Returns:
         ndarray: the image data in the specified color space.
@@ -85,7 +101,9 @@ def imread(fpath, space='auto', backend='auto'):
         >>> import tempfile
         >>> from os.path import splitext  # NOQA
         >>> # Test a non-standard image, which encodes a depth map
-        >>> fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
+        >>> fpath = ub.grabdata(
+        >>>     'http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif',
+        >>>     hasher='sha256', hash_prefix='64522acba6f0fb7060cd4c202ed32c5163c34e63d386afdada4190cce51ff4d4')
         >>> img1 = imread(fpath)
         >>> # Check that write + read preserves data
         >>> tmp = tempfile.NamedTemporaryFile(suffix=splitext(fpath)[1])
@@ -101,7 +119,9 @@ def imread(fpath, space='auto', backend='auto'):
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> img1 = imread(ub.grabdata('http://i.imgur.com/iXNf4Me.png', fname='ada.png'))
+        >>> img1 = imread(ub.grabdata(
+        >>>     'http://i.imgur.com/iXNf4Me.png', fname='ada.png', hasher='sha256',
+        >>>     hash_prefix='898cf2588c40baf64d6e09b6a93b4c8dcc0db26140639a365b57619e17dd1c77'))
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
         >>> imwrite(tmp_tif.name, img1)
@@ -118,7 +138,10 @@ def imread(fpath, space='auto', backend='auto'):
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> tif_fpath = ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif')
+        >>> tif_fpath = ub.grabdata(
+        >>>     'https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff',
+        >>>     fname='pepper.tif', hasher='sha256',
+        >>>     hash_prefix='31ff3a1f416cb7281acfbcbb4b56ee8bb94e9f91489602ff2806e5a49abc03c0')
         >>> img1 = imread(tif_fpath)
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
@@ -132,6 +155,30 @@ def imread(fpath, space='auto', backend='auto'):
         >>> kwplot.autompl()
         >>> kwplot.imshow(png_im / 2 ** 16, pnum=(1, 2, 1), fnum=1)
         >>> kwplot.imshow(tif_im / 2 ** 16, pnum=(1, 2, 2), fnum=1)
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:itk, --network)
+        >>> import kwimage
+        >>> import ubelt as ub
+        >>> # Grab an image that ITK can read
+        >>> fpath = ub.grabdata(
+        >>>     url='https://data.kitware.com/api/v1/file/606754e32fa25629b9476f9e/download',
+        >>>     fname='brainweb1e5a10f17Rot20Tx20.mha',
+        >>>     hash_prefix='08f0812591691ae24a29788ba8cd1942e91', hasher='sha512')
+        >>> # Read the image (this is actually a DxHxW stack of images)
+        >>> img1_stack = kwimage.imread(fpath)
+        >>> # Check that write + read preserves data
+        >>> import tempfile
+        >>> tmp_file = tempfile.NamedTemporaryFile(suffix='.mha')
+        >>> kwimage.imwrite(tmp_file.name, img1_stack)
+        >>> recon = kwimage.imread(tmp_file.name)
+        >>> assert not np.may_share_memory(recon, img1_stack)
+        >>> assert np.all(recon == img1_stack)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]))
+        >>> kwplot.show_if_requested()
 
     Benchmark:
         >>> from kwimage.im_io import *  # NOQA
@@ -198,10 +245,18 @@ def imread(fpath, space='auto', backend='auto'):
     """
     if backend == 'auto':
         # TODO: memoize the extensions?
+
+        # TODO: each backend should maintain a list of supported (possibly
+        # overlapping) formats, and that should be used to build a mapping from
+        # formats to candidate backends. We should then filter down to a
+        # backend that actually exists.
+
         # Determine the backend reader using the file extension
         _fpath_lower = fpath.lower()
         # Note: rset dataset (https://trac.osgeo.org/gdal/ticket/3457) support is hacked
-        if _fpath_lower.endswith(GDAL_EXTENSIONS):
+        if _fpath_lower.endswith(ITK_EXTENSIONS):
+            backend = 'itk'
+        elif _fpath_lower.endswith(GDAL_EXTENSIONS):
             backend = 'gdal'
         elif _fpath_lower.endswith(('.tif', '.tiff')):
             if _have_gdal():
@@ -230,6 +285,11 @@ def imread(fpath, space='auto', backend='auto'):
             image, src_space, auto_dst_space = _imread_turbojpeg(fpath)
         elif backend == 'skimage':
             image, src_space, auto_dst_space = _imread_skimage(fpath)
+        elif backend == 'itk':
+            src_space, auto_dst_space = None, None
+            import itk
+            itk_obj = itk.imread(fpath)
+            image = np.asarray(itk_obj)
         else:
             raise KeyError('Unknown imread backend={!r}'.format(backend))
 
@@ -463,7 +523,8 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
         backend (str, default='auto'):
             which backend writer to use. By default the file extension is used
-            to determine this. Valid backends are 'gdal', 'skimage', and 'cv2'.
+            to determine this. Valid backends are 'gdal', 'skimage', 'itk', and
+            'cv2'.
 
         **kwargs : args passed to the backend writer
 
@@ -611,14 +672,17 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     """
 
     if backend == 'auto':
-        if fpath.endswith(('.tif', '.tiff')):
+        _fpath_lower = fpath.lower()
+        if _fpath_lower.endswith(('.tif', '.tiff')):
             if _have_gdal():
                 backend = 'gdal'
             else:
                 backend = 'skimage'
-        elif fpath.endswith(GDAL_EXTENSIONS):
+        elif _fpath_lower.endswith(GDAL_EXTENSIONS):
             if _have_gdal():
                 backend = 'gdal'
+        elif _fpath_lower.endswith(ITK_EXTENSIONS):
+            backend = 'itk'
         else:
             backend = 'cv2'
 
@@ -685,6 +749,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         skimage.io.imsave(fpath, image, **kwargs)
     elif backend == 'gdal':
         _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+    elif backend == 'itk':
+        import itk
+        itk_obj = itk.image_view_from_array(image)
+        itk.imwrite(itk_obj, fpath, **kwargs)
     elif backend == 'turbojpeg':
         raise NotImplementedError
     else:

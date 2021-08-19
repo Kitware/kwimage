@@ -4,7 +4,21 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.11 - Unreleased
+## Version 0.7.12 - Unreleased
+
+### Added
+* Wrapped `itk.imread` with `kwimage.imread`.
+* Added `kwimage.imcrop`
+* Add `large_warp_dim` to `kwimage.warp_affine`
+
+### Fixed
+* `kwimage.warp_affine` now returns a sensible result when the source or
+  destination image has no size.
+* `kwimage.grab_test_image` now checks sha256 instead of sha1.
+* Fixed tests that downloaded data, but did not check hashes
+
+
+## Version 0.7.11 - Released 2021-08-11
 
 
 ### Changed
