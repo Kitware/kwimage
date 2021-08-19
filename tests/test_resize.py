@@ -78,14 +78,42 @@ def test_imresize_multi_channel():
     """
 
     resize_kw_basis = {
-        'dsize': [(10, 10), (60, 60)],
-        'interpolation': ['area', 'linear', 'cubic', 'nearest']
+        'dsize': [
+            # (10, 10),
+            (60, 60)
+        ],
+        'interpolation': [
+            'auto',
+            # 'area',
+            # 'linear',
+            # 'cubic',
+            'nearest'
+        ],
+        'antialias': [
+            True,
+            # False,
+        ]
     }
 
     image_basis = {
-        'dims': [(32, 32), (37, 41), (53, 31)],
-        'channels': [None, 1, 3, 4, 20, 1024],
-        'dtype': ['uint8', 'float32', 'float64'],
+        'dims': [
+            (32, 32),
+            # (37, 41),
+            (53, 31)
+        ],
+        'channels': [
+            None,
+            1,
+            3,
+            4,
+            20,
+            1024,
+        ],
+        'dtype': [
+            'uint8',
+            'float32',
+            'float64'
+        ],
     }
 
     resize_kw_list = list(basis_product(resize_kw_basis))
@@ -113,8 +141,8 @@ def test_imresize_multi_channel():
     print('n_fail = {}'.format(len(failures)))
     print('failures = {}'.format(ub.repr2(failures, nl=1)))
 
-    print('ti.rankings = {}'.format(
-        ub.repr2(ti.rankings, nl=2, align=':', precision=6)))
+    # print('ti.rankings = {}'.format(
+    #     ub.repr2(ti.rankings, nl=2, align=':', precision=6)))
 
     # np.split(img, img.shape[-1], -1)
     # if 0:

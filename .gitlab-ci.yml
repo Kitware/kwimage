@@ -182,7 +182,7 @@ stages:
 
 ._run_tests_in_sandboxed_dir: &_run_tests_in_sandboxed_dir |-
     # Hack to test the installed wheel. TODO: make run_tests work better in this case.
-    mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=2 -s --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
+    mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
 
 
     
