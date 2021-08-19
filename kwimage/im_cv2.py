@@ -303,7 +303,6 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
         cen_w = new_w // 2
         cen_h = new_h // 2
 
-
     if value == 'linear':
         return cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
     else:
@@ -320,7 +319,6 @@ def imcrop(img, dsize, about=None, origin=None, value=None):
         # slice the image using the corrected bounds and append the rest as a border
         return cv2.copyMakeBorder(img[xmin:xmax, ymin:ymax], top, bot, lft, rgt,
                                   borderType=cv2.BORDER_CONSTANT, value=value)
-
 
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
@@ -1044,7 +1042,6 @@ def _large_warp(image,
     from kwimage import Affine, Boxes
     import cv2
     import itertools
-
 
     def _split_2d(arr):
         # provide indexes to view arr in 2d blocks
