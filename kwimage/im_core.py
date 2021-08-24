@@ -396,8 +396,12 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     quant_low_amount = (quant_mid_val - quant_low_val)
     quant_high_amount = (quant_high_val - quant_mid_val)
 
-    high_weight = quant_high_amount / quant_center_amount
-    low_weight = quant_low_amount / quant_center_amount
+    if np.isclose(quant_center_amount, 0):
+        high_weight = 0.5
+        low_weight = 0.5
+    else:
+        high_weight = quant_high_amount / quant_center_amount
+        low_weight = quant_low_amount / quant_center_amount
 
     quant_high_residual = (1.0 - quant_high)
     quant_low_residual = (quant_low - 0.0)
