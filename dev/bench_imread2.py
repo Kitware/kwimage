@@ -18,7 +18,7 @@ def imread2_bench():
             3,
             13,
             64,
-            # 128,
+            128,
         ],
         'dtype': [
             'uint8',
@@ -105,7 +105,11 @@ def imread2_bench():
     sns = kwplot.autosns()
     plt = kwplot.autoplt()
 
-    df['io_profile_key'] = 'imread(' + df['imread_profile_key'] + '),' + 'imwrite(' + df['imwrite_profile_key'] + ')'
+    df['io_profile_key'] = (
+        'imwrite(' + df['imwrite_profile_key'] + ')' +
+        '->' +
+        'imread(' + df['imread_profile_key'] + ')'
+    )
     ax = sns.lineplot(data=df, x='bits', y='min', hue='io_profile_key')
     ax.set_xscale('log')
     ax.set_yscale('log')
