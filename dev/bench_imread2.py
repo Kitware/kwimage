@@ -11,14 +11,14 @@ def imread2_bench():
             (32, 32),
             (128, 128),
             (512, 512),
-            (800, 800),
+            # (800, 800),
             # (1200, 1200)
         ],
         'channels': [
             3,
             13,
             64,
-            128,
+            # 128,
         ],
         'dtype': [
             'uint8',
@@ -70,7 +70,11 @@ def imread2_bench():
                     continue
 
                 imread_profile_key = ub.repr2(imread_profile, compact=1, sort=0)
-                for timer in read_ti.reset(f'{data_profile_key}-{imwrite_profile_key}-{imread_profile_key}'):
+
+                io_profile_key = 'imwrite({})->imread({})'.format(
+                    imwrite_profile_key, imread_profile_key)
+
+                for timer in read_ti.reset(f'{data_profile_key} {io_profile_key}'):
                     with timer:
                         kwimage.imread(fpath, **imread_profile)
 
@@ -79,11 +83,11 @@ def imread2_bench():
                     'std': read_ti.std(),
                     'min': read_ti.min(),
                 }
-                row = ub.dict_union(data_profile, imread_profile,
-                                    imwrite_profile, time_result)
+                row = ub.dict_union(data_profile, time_result)
                 row['imwrite_profile_key'] = imwrite_profile_key
                 row['imread_profile_key'] = imread_profile_key
                 row['data_profile_key'] = data_profile_key
+                row['io_profile_key'] = io_profile_key
                 measures.append(row)
 
     import pandas as pd
