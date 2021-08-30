@@ -26,7 +26,7 @@ def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
         >>> keys = ['astro', 'carl', 'stars']
         >>> layers = [kwimage.grab_test_image(k, dsize=(100, 100)) for k in keys]
         >>> layers = [kwimage.ensure_alpha_channel(g, alpha=.5) for g in layers]
-        >>> stacked = overlay_alpha_layers(layers)
+        >>> stacked = kwimage.overlay_alpha_layers(layers)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -76,7 +76,7 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         >>> img1 = kwimage.grab_test_image('astro', dsize=(100, 100))
         >>> img2 = kwimage.grab_test_image('carl', dsize=(100, 100))
         >>> img1 = kwimage.ensure_alpha_channel(img1, alpha=.5)
-        >>> img3 = overlay_alpha_images(img1, img2)
+        >>> img3 = kwimage.overlay_alpha_images(img1, img2)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()

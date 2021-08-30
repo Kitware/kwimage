@@ -524,6 +524,7 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
 
     Example:
         >>> # xdoc: +REQUIRES(module:matplotlib)
+        >>> from kwimage.im_draw import *  # NOQA
         >>> probs = np.tile(np.linspace(0, 1, 10), (10, 1))
         >>> heatmask = make_heatmask(probs, with_alpha=0.8, dsize=(100, 100))
         >>> # xdoc: +REQUIRES(--show)
@@ -570,6 +571,7 @@ def make_orimask(radians, mag=None, alpha=1.0):
 
     Example:
         >>> # xdoc: +REQUIRES(module:matplotlib)
+        >>> from kwimage.im_draw import *  # NOQA
         >>> x, y = np.meshgrid(np.arange(64), np.arange(64))
         >>> dx, dy = x - 32, y - 32
         >>> radians = np.arctan2(dx, dy)
@@ -739,6 +741,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
             rgb/a image is created and returned.
 
     Example:
+        >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
         >>> width, height = 512, 512
         >>> image = kwimage.grab_test_image(dsize=(width, height))
