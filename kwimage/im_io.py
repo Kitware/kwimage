@@ -1194,7 +1194,7 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
 
     if compress is None:
         # which backend is best in this case?
-        compress = 'RAW'
+        compress = 'DEFLATE'
     return compress
 
 
