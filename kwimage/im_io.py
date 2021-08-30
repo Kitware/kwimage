@@ -776,7 +776,7 @@ def load_image_shape(fpath):
 
     Benchmark:
         >>> # For large files, PIL is much faster
-        >>> import gdal
+        >>> from osgeo import import gdal
         >>> from PIL import Image
         >>> #
         >>> import kwimage
@@ -810,7 +810,7 @@ def load_image_shape(fpath):
         if not _have_gdal():
             raise
         try:
-            import gdal
+            from osgeo import gdal
             gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
             if gdal_dset is None:
                 raise Exception
@@ -880,7 +880,7 @@ def _have_turbojpg():
 
 def _have_gdal():
     try:
-        import gdal  # NOQA
+        from osgeo import gdal  # NOQA
     except Exception:
         return False
     else:
