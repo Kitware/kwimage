@@ -5,6 +5,7 @@ around concrete readers/writers provided by other libraries. This allows us to
 support a wider array of formats than any of individual backends.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
+import os
 import numpy as np
 import warnings  # NOQA
 import cv2
@@ -243,6 +244,7 @@ def imread(fpath, space='auto', backend='auto'):
         >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['mean'], nl=2), ':')))
 
     """
+    fpath = os.fspath(fpath)
     if backend == 'auto':
         # TODO: memoize the extensions?
 
@@ -424,7 +426,16 @@ def _imread_cv2(fpath):
 
 
 def _imread_gdal(fpath):
-    """ gdal imread backend """
+    """
+    gdal imread backend
+
+    References:
+        [GDAL_Config_Options] https://gdal.org/user/configoptions.html
+
+    Ignore:
+        >>> import kwimage
+        >>> fpath = kwimage.grab_test_image_fpath('amazon')
+    """
     try:
         from osgeo import gdal
     except ImportError:
@@ -433,6 +444,12 @@ def _imread_gdal(fpath):
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
+
+        # TODO:
+        # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
+        # https://gdal.org/drivers/raster/gtiff.html#subdatasets
+        if len(gdal_dset.GetSubDatasets()):
+            raise NotImplementedError('subdatasets are not handled correctly')
 
         num_channels = gdal_dset.RasterCount
 
@@ -913,7 +930,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
             overview pyramid. Valid choices are: 'NEAREST', 'AVERAGE',
             'BILINEAR', 'CUBIC', 'CUBICSPLINE', 'LANCZOS'.
 
-        options (List[str]): other gdal options
+        options (List[str]): other gdal options. See [GDAL_GTiff_Options]_ for
+            details.
 
     Returns:
         str: the file path where the data was written
@@ -926,6 +944,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/sshuair/cogeotiff
         https://github.com/cogeotiff/rio-cogeo
         https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        .. [GDAL_GTiff_Options] https://gdal.org/drivers/raster/gtiff.html
 
     Notes:
         Need to fix `CXXABI_1.3.11 not found` with conda gdal sometimes
@@ -985,6 +1004,25 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> fpath = tmp_tif.name
         >>> kwimage.imwrite(fpath, data)
         >>> loaded = kwimage.imread(fpath)
+        >>> assert np.all(loaded.ravel() == data.ravel())
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.imshow(loaded / dinfo.max)
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test GDAL options
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
+        >>> import kwimage
+        >>> import tempfile
+        >>> data = kwimage.grab_test_image()
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> kwimage.imwrite(fpath, data, options=['NUM_THREADS=ALL_CPUS'])
+        >>> loaded = kwimage.imread(fpath)
+
         >>> assert np.all(loaded.ravel() == data.ravel())
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
