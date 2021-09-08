@@ -1107,7 +1107,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         import kwimage
         # return shape of contours to openCV contours
-
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         # print('--- A')
@@ -1564,6 +1563,12 @@ class MultiPolygon(_generic.ObjectList):
 
     def swap_axes(self, inplace=False):
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
+
+    def draw_on(self, *args, **kwargs):
+        for item in self.data:
+            if item is not None:
+                image = item.draw_on(*args, **kwargs)
+        return image
 
     # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
     #     """

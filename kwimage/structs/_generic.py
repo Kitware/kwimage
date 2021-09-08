@@ -1,5 +1,6 @@
 import ubelt as ub
 import kwarray
+import numbers
 import numpy as np
 # import abc
 
@@ -161,9 +162,23 @@ class ObjectList(Spatial):
         return patches
 
     def draw_on(self, image, **kwargs):
-        for item in self.data:
+
+        # Handle per-instance arguments
+        # If color is given an it corresponds to each subitem
+        # then pass the appropriate arg to each subitem
+        perinstance = [{} for _ in range(len(self.data))]
+        if 'color' in kwargs:
+            color = kwargs.pop('color', None)
+            if (ub.iterable(color) and len(color) == len(self.data) and
+                 len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
+                for d, c in zip(perinstance, color):
+                    d['color'] = c
+            else:
+                kwargs['color'] = color
+
+        for item, instkw in zip(self.data, perinstance):
             if item is not None:
-                image = item.draw_on(image=image, **kwargs)
+                image = item.draw_on(image=image, **kwargs, **instkw)
         return image
 
     def tensor(self, device=ub.NoParam):

@@ -114,7 +114,10 @@ class _DetDrawMixin:
             image (ndarray[uint8]): must be in uint8 format
 
             color (str | ColorLike | List[ColorLike]):
-                one color for all boxes or a list of colors for each box
+                one color for all boxes or a list of colors for each box.
+                Or the string "classes", in which case it will use a
+                different color for each class (specified in the classes object
+                if possible)
 
             alpha (float): Transparency of overlay. can be a scalar or a list
                 for each box
@@ -250,9 +253,12 @@ class _DetDrawMixin:
                 else:
                     cidx_to_color = [None] * len(classes)
 
-                for cidx, color in enumerate(cidx_to_color):
-                    if color is None:
+                for cidx, c in enumerate(cidx_to_color):
+                    if c is None:
                         cidx_to_color[cidx] = next(backup_colors)
+                    else:
+                        cidx_to_color[cidx] = c
+                        # kwimage.Color(c).as01()
 
                 color = [cidx_to_color[cidx] for cidx in class_idxs]
         return color
