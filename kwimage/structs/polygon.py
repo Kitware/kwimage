@@ -210,7 +210,8 @@ class _PolyWarpMixin:
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
             about (Tuple | None):
                 if unspecified scales about the origin (0, 0), otherwise the
-                rotation is about this point.
+                scaling is about this point. Can be "center" and will use
+                centroid of polygon
             output_dims (Tuple): unused in non-raster spatial structures
             inplace (bool, default=False): if True, modifies data inplace
 
