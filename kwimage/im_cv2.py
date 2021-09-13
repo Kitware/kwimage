@@ -787,20 +787,61 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> kwplot.show_if_requested()
     """
     if sigma is None:
-        sigma1 = 0.3 * ((shape[0] - 1) * 0.5 - 1) + 0.8
-        sigma2 = 0.3 * ((shape[1] - 1) * 0.5 - 1) + 0.8
+        sigma_x = 0.3 * ((shape[0] - 1) * 0.5 - 1) + 0.8
+        sigma_y = 0.3 * ((shape[1] - 1) * 0.5 - 1) + 0.8
     elif isinstance(sigma, (float, int)):
-        sigma1 = sigma2 = sigma
+        sigma_x = sigma_y = sigma
     else:
-        sigma1, sigma2 = sigma
+        sigma_x, sigma_y = sigma
     # see hesaff/src/helpers.cpp : computeCircularGaussMask
-    kernel_d0 = cv2.getGaussianKernel(shape[0], sigma1)
-    if shape[0] == shape[1] and sigma2 == sigma1:
+    kernel_d0 = cv2.getGaussianKernel(shape[0], sigma_x)
+    if shape[0] == shape[1] and sigma_y == sigma_x:
         kernel_d1 = kernel_d0
     else:
-        kernel_d1 = cv2.getGaussianKernel(shape[1], sigma2)
+        kernel_d1 = cv2.getGaussianKernel(shape[1], sigma_y)
     gausspatch = kernel_d0.dot(kernel_d1.T)
     return gausspatch
+
+
+def gaussian_blur(image, kernel=None, sigma=None):
+    """
+    Apply a gausian blur to an image.
+
+    This is a simple wrapper around :func:`cv2.GaussianBlur` which chooses sane
+    defaults if not all parameters are specified.
+
+    Example:
+        >>> image = kwimage.grab_test_image('astro')
+        >>> blurred = gaussian_blur(image)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(image, pnum=(1, 3, 1))
+        >>> kwplot.imshow(blurred, pnum=(1, 3, 2))
+        >>> kwplot.imshow(np.abs(image - blurred), pnum=(1, 3, 3))
+        >>> kwplot.show_if_requested()
+    """
+    if kernel is None:
+        kernel = 3
+    if isinstance(kernel, int):
+        k_x = k_y = kernel
+    else:
+        k_x, k_y = kernel
+
+    if sigma is None:
+        sigma_x = 0.3 * ((k_x - 1) * 0.5 - 1) + 0.8
+        sigma_y = 0.3 * ((k_y - 1) * 0.5 - 1) + 0.8
+    elif isinstance(sigma, (float, int)):
+        sigma_x = sigma_y = sigma
+    else:
+        sigma_x, sigma_y = sigma
+
+    blurBorderType = cv2.BORDER_DEFAULT
+    blurred = cv2.GaussianBlur(
+        image, (k_x, k_y), sigma_x, sigma_y,
+        borderType=blurBorderType
+    )
+    return blurred
 
 
 def warp_affine(image, transform, dsize=None, antialias=False,
