@@ -82,6 +82,31 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         >>> kwplot.autompl()
         >>> kwplot.imshow(img3)
         >>> kwplot.show_if_requested()
+
+    Ignore:
+        import numpy as np
+        import kwimage
+        poly = kwimage.Polygon.random().scale((10, 10))
+
+        img2 = np.zeros((10, 10, 4))
+
+        img1 = np.zeros((10, 10))
+        indicator = poly.fill(img1)
+
+        to_overlay = np.zeros((10, 10) + (4,), dtype=np.float32)
+        to_overlay = kwimage.Mask(indicator, format='c_mask').draw_on(to_overlay, color='lime')
+        to_overlay = kwimage.ensure_alpha_channel(to_overlay)
+        to_overlay[..., 3] = (indicator > 0).astype(np.float32) * 0.5
+
+        raster = kwimage.overlay_alpha_images(to_overlay, img2)
+
+        # xdoctest: +REQUIRES(--show)
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(raster)
+        kwplot.show_if_requested()
+
+
     """
     rgb1, alpha1 = _prep_rgb_alpha(img1, dtype=dtype)
     rgb2, alpha2 = _prep_rgb_alpha(img2, dtype=dtype)

@@ -542,16 +542,31 @@ class Affine(Projective):
 
     @classmethod
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
-               about=None):
+               about=None, **kwargs):
         """
         Create an affine matrix from high-level parameters
 
         Args:
-            scale (float | Tuple[float, float]): x, y scale factor
-            offset (float | Tuple[float, float]): x, y translation factor
-            theta (float): counter-clockwise rotation angle in radians
-            shear (float): counter-clockwise shear angle in radians
-            about (float | Tuple[float, float]): x, y location of the origin
+            scale (float | Tuple[float, float]):
+                x, y scale factor
+
+            offset (float | Tuple[float, float]):
+                x, y translation factor
+
+            theta (float):
+                counter-clockwise rotation angle in radians
+
+            shear (float):
+                counter-clockwise shear angle in radians
+
+            about (float | Tuple[float, float]):
+                x, y location of the origin
+
+        TODO:
+            - [ ] Add aliases -
+                origin : alias for about
+                rotation : alias for theta
+                translation : alias for offset
 
         Returns:
             Affine: the constructed Affine object
