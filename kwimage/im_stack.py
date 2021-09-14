@@ -12,7 +12,7 @@ from . import im_cv2
 
 
 def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
-                 return_info=False, bg_value=None):
+                 return_info=False, bg_value=None, pad=None):
     """
     Make a new image with the input images side-by-side
 
@@ -27,6 +27,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
             only used if resize or overlap > 0
         overlap (int): number of pixels to overlap. Using a negative
             number results in a border.
+        pad (int): if specified overrides `overlap` as a the number of pixels
+            to pad between images.
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
 
@@ -66,6 +68,9 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
     imgiter = iter(images)
     img1 = next(imgiter)
 
+    if pad is not None:
+        overlap = -pad
+
     if return_info:
         transforms_ = [skimage.transform.AffineTransform(
             scale=[1.0, 1.0], translation=[0.0, 0.0]
@@ -96,7 +101,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         return img1
 
 
-def stack_images_grid(images, chunksize=None, axis=0, overlap=0,
+def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
                       return_info=False, bg_value=None):
     """
     Stacks images in a grid. Optionally return transforms of original image
@@ -112,6 +117,8 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0,
             If 1, chunksize is rows per column.
         overlap (int): number of pixels to overlap. Using a negative
             number results in a border.
+        pad (int): if specified overrides `overlap` as a the number of pixels
+            to pad between images.
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
 
@@ -127,6 +134,8 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0,
     import ubelt as ub
     if chunksize is None:
         chunksize = int(len(images) ** .5)
+    if pad is not None:
+        overlap = -pad
     stack1_list = []
     tfs1_list = []
     assert axis in [0, 1]

@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * Add function `gaussian_blur`
+* Added `pad` as an argument to `stack_images` to override a negative `overlap`
 
 ### Fixed
 * Polygons now better respect the color parameter in detections draw on

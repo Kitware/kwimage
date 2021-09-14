@@ -665,6 +665,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Example:
         >>> # Test saving a multi-band file
         >>> import kwimage
+        >>> import pytest
         >>> import tempfile
         >>> # In this case the backend will not resolve to cv2, so
         >>> # we should not need to specify space.
@@ -674,12 +675,13 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> kwimage.imwrite(fpath, data)
         >>> recon = kwimage.imread(fpath)
         >>> assert np.all(recon == data)
-
         >>> kwimage.imwrite(fpath, data, backend='skimage')
-        >>> recon = kwimage.imread(fpath)
+        >>> recon = kwimage.imread(fpath, backend='skimage')
         >>> assert np.all(recon == data)
-
-        >>> import pytest
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # gdal should error when trying to read an image written by skimage
+        >>> with pytest.raises(NotImplementedError):
+        >>>     kwimage.imread(fpath, backend='gdal')
         >>> # In this case the backend will resolve to cv2, and thus we expect
         >>> # a failure
         >>> temp = tempfile.NamedTemporaryFile(suffix='.png')
@@ -1191,10 +1193,10 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> assert _gdal_auto_compress(src_fpath='foo.jpg') == 'JPEG'
         >>> assert _gdal_auto_compress(src_fpath='foo.png') == 'LZW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'RAW'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'DEFLATE'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'DEFLATE'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'DEFLATE'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'DEFLATE'
     """
     compress = None
     num_channels = None

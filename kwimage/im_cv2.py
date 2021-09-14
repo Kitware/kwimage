@@ -22,6 +22,7 @@ _CV2_INTERPOLATION_TYPES = {
 }
 
 
+# https://docs.opencv.org/3.4/d2/de8/group__core__array.html#ga209f2f4869e304c82d07739337eae7c5
 _CV2_BORDER_MODES = {
     'constant':    cv2.BORDER_CONSTANT,
     'replicate':   cv2.BORDER_REPLICATE,
@@ -29,6 +30,7 @@ _CV2_BORDER_MODES = {
     'wrap':        cv2.BORDER_WRAP,
     'reflect101':  cv2.BORDER_REFLECT101,
     'transparent': cv2.BORDER_TRANSPARENT,
+    # 'isolated':    cv2.BORDER_ISOLATED,
 }
 
 
@@ -803,43 +805,80 @@ def gaussian_patch(shape=(7, 7), sigma=None):
     return gausspatch
 
 
-def gaussian_blur(image, kernel=None, sigma=None):
+def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
     """
     Apply a gausian blur to an image.
 
-    This is a simple wrapper around :func:`cv2.GaussianBlur` which chooses sane
-    defaults if not all parameters are specified.
+    This is a simple wrapper around :func:`cv2.GaussianBlur` with concise
+    parametarization and sane defaults.
+
+    Args:
+        image (ndarray):
+            the input image
+
+        kernel (int | Tuple[int, int]):
+            The kernel size in x and y directions.
+
+        sigma (float | Tuple[float, float]):
+            The gaussian spread in x and y directions.
+
+        border_mode (str | int | None):
+            Border text code or cv2 integer. Border codes are 'constant'
+            (default), 'replicate', 'reflect', 'reflect101', and 'transparent'.
+
+        dst (ndarray | None): optional inplace-output array.
+
+    Returns:
+        ndarray: the blurred image
 
     Example:
-        >>> image = kwimage.grab_test_image('astro')
-        >>> blurred = gaussian_blur(image)
+        >>> import kwimage
+        >>> image = kwimage.ensure_float01(kwimage.grab_test_image('astro'))
+        >>> blurred1 = kwimage.gaussian_blur(image)
+        >>> blurred2 = kwimage.gaussian_blur(image, kernel=9)
+        >>> blurred3 = kwimage.gaussian_blur(image, sigma=2)
+        >>> blurred4 = kwimage.gaussian_blur(image, sigma=(2, 5), kernel=5)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(image, pnum=(1, 3, 1))
-        >>> kwplot.imshow(blurred, pnum=(1, 3, 2))
-        >>> kwplot.imshow(np.abs(image - blurred), pnum=(1, 3, 3))
+        >>> pnum_ = kwplot.PlotNums(nRows=4, nCols=1)
+        >>> blurs = [blurred1, blurred2, blurred3, blurred4]
+        >>> for blurred in blurs:
+        >>>     diff = np.abs(image - blurred)
+        >>>     stack = kwimage.stack_images([image, blurred, diff], pad=10, axis=1)
+        >>>     kwplot.imshow(stack, pnum=pnum_())
         >>> kwplot.show_if_requested()
     """
-    if kernel is None:
+    if kernel is None and sigma is None:
         kernel = 3
-    if isinstance(kernel, int):
-        k_x = k_y = kernel
-    else:
-        k_x, k_y = kernel
+
+    if kernel is not None:
+        if isinstance(kernel, int):
+            k_x = k_y = kernel
+        else:
+            k_x, k_y = kernel
+
+    if sigma is not None:
+        if isinstance(sigma, (float, int)):
+            sigma_x = sigma_y = sigma
+        else:
+            sigma_x, sigma_y = sigma
 
     if sigma is None:
-        sigma_x = 0.3 * ((k_x - 1) * 0.5 - 1) + 0.8
-        sigma_y = 0.3 * ((k_y - 1) * 0.5 - 1) + 0.8
-    elif isinstance(sigma, (float, int)):
-        sigma_x = sigma_y = sigma
-    else:
-        sigma_x, sigma_y = sigma
+        # https://dsp.stackexchange.com/questions/10057/gaussian-blur-standard-deviation-radius-and-kernel-size
+        # sigma_x = 0.3 * ((k_x - 1) * 0.5 - 1) + 0.8
+        # sigma_y = 0.3 * ((k_y - 1) * 0.5 - 1) + 0.8
+        # When 0 computed via cv2 from kernel
+        sigma_x = sigma_y = 0
 
-    blurBorderType = cv2.BORDER_DEFAULT
+    if kernel is None:
+        # When 0 computed via cv2 from sigma
+        k_x, k_y = 0, 0
+
+    borderType = _coerce_border(border_mode)
     blurred = cv2.GaussianBlur(
-        image, (k_x, k_y), sigma_x, sigma_y,
-        borderType=blurBorderType
+        image, (k_x, k_y), sigmaX=sigma_x, sigmaY=sigma_y,
+        borderType=borderType, dst=dst
     )
     return blurred
 
@@ -884,8 +923,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             nearest, cubic, lancsoz, and area.
 
         border_mode (str):
-            Border code or cv2 integer. Border codes are constant replicate,
-            reflect, wrap, reflect101, and transparent.
+            Border code or cv2 integer. Border codes are constant (default)
+            replicate, reflect, wrap, reflect101, and transparent.
 
         border_value (int | float):
             Used as the fill value if border_mode is constant. Otherwise this
