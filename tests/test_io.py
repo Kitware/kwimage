@@ -8,6 +8,9 @@ def test_interlaced():
     import kwimage
     from os.path import join
 
+    import pytest
+    pytest.skip('This is an exploration of an issue, not a test that we should run')
+
     # https://stackoverflow.com/questions/19742548/how-to-de-interlace-png-files
     convert_ext = ub.find_exe('convert')
 
@@ -67,6 +70,9 @@ def test_interlaced():
 
 
 def test_cross_backend_reads():
+    import pytest
+    pytest.skip('This is a demonstration of an issue, not a test that we should run yet')
+
     import kwimage
     import ubelt as ub
     from kwimage import im_io
