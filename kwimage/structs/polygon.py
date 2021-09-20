@@ -740,6 +740,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     @classmethod
     def coerce(Polygon, data):
         """
+        Routes the input to the proper constructor
+
         Try to autodetermine format of input polygon and coerce it into a
         kwimage.Polygon.
 
@@ -753,11 +755,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Example:
             >>> import kwimage
             >>> self = kwimage.Polygon.random()
-            >>> self.coerce(self)
-            >>> self.coerce(self.exterior)
-            >>> self.coerce(self.exterior.data)
-            >>> self.coerce(self.data)
-            >>> self.coerce(self.to_geojson())
+            >>> kwimage.Polygon.coerce(self)
+            >>> kwimage.Polygon.coerce(self.exterior)
+            >>> kwimage.Polygon.coerce(self.exterior.data)
+            >>> kwimage.Polygon.coerce(self.data)
+            >>> kwimage.Polygon.coerce(self.to_geojson())
+            >>> kwimage.Polygon.coerce('POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))')
         """
         import kwimage
         if isinstance(data, Polygon):
