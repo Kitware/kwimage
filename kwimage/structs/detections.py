@@ -414,7 +414,12 @@ class _DetAlgoMixin:
         import kwimage
         classes = self.meta['classes']
 
-        bg_idx = classes.index('background')
+        try:
+            bg_idx = classes.index('background')
+        except Exception:
+            # TODO: might not be right to except this
+            bg_idx = 0
+
         fcn_target = _dets_to_fcmaps(
             self, bg_size=bg_size, input_dims=input_dims, bg_idx=bg_idx,
             soft=False, exclude=exclude)
