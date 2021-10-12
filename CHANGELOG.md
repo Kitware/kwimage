@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Changed default GDAL compression in `kwimage.imwrite` from RAW to DEFLATE 
+* Improved speed of several `kwimage.Affine` routines.
 
 
 ## Version 0.7.12 - Released 2021-08-19
