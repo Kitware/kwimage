@@ -9,9 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Add function `gaussian_blur`
 * Added `pad` as an argument to `stack_images` to override a negative `overlap`
+* Added gaussian sigma kernel heuristic
 
 ### Fixed
 * Polygons now better respect the color parameter in detections draw on
+* kwimage.imread can now take pathlib.Path objects
+* Fixed issue with warp of empty keypoints
 
 ### Changed
 * Changed default GDAL compression in `kwimage.imwrite` from RAW to DEFLATE 

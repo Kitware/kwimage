@@ -805,6 +805,97 @@ def gaussian_patch(shape=(7, 7), sigma=None):
     return gausspatch
 
 
+def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
+    """
+    Attempt to determine sigma and kernel size from heuristics
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> _auto_kernel_sigma(None, None)
+        >>> _auto_kernel_sigma(3, None)
+        >>> _auto_kernel_sigma(None, 0.8)
+        >>> _auto_kernel_sigma(7, None)
+        >>> _auto_kernel_sigma(None, 1.4)
+
+    Ignore:
+        >>> # xdoctest: +REQUIRES(--demo)
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> rows = []
+        >>> for k in np.arange(3, 101, 2):
+        >>>     s = _auto_kernel_sigma(k, None)[1][0]
+        >>>     rows.append({'k': k, 's': s, 'type': 'auto_sigma'})
+        >>> #
+        >>> sigmas = np.array([r['s'] for r in rows])
+        >>> other = np.linspace(0, sigmas.max() + 1, 100)
+        >>> sigmas = np.unique(np.hstack([sigmas, other]))
+        >>> sigmas.sort()
+        >>> for s in sigmas:
+        >>>     k = _auto_kernel_sigma(None, s, autokernel_mode='cv2')[0][0]
+        >>>     rows.append({'k': k, 's': s, 'type': 'auto_kernel (cv2)'})
+        >>> #
+        >>> for s in sigmas:
+        >>>     k = _auto_kernel_sigma(None, s, autokernel_mode='ours')[0][0]
+        >>>     rows.append({'k': k, 's': s, 'type': 'auto_kernel (ours)'})
+        >>> import pandas as pd
+        >>> df = pd.DataFrame(rows)
+        >>> p = df.pivot(['s'], ['type'], ['k'])
+        >>> print(p[~p.droplevel(0, axis=1).auto_sigma.isnull()])
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> sns = kwplot.autosns()
+        >>> sns.lineplot(data=df, x='s', y='k', hue='type')
+    """
+    import numbers
+    if kernel is None and sigma is None:
+        kernel = 3
+
+    if kernel is not None:
+        if isinstance(kernel, numbers.Integral):
+            k_x = k_y = kernel
+        else:
+            k_x, k_y = kernel
+
+    if sigma is None:
+        # https://github.com/egonSchiele/OpenCV/blob/09bab41/modules/imgproc/src/smooth.cpp#L344
+        sigma_x = 0.3 * ((k_x - 1) * 0.5 - 1) + 0.8
+        sigma_y = 0.3 * ((k_y - 1) * 0.5 - 1) + 0.8
+    else:
+        if isinstance(sigma, numbers.Number):
+            sigma_x = sigma_y = sigma
+        else:
+            sigma_x, sigma_y = sigma
+
+    if kernel is None:
+        USE_CV2_DEF = 0
+        if autokernel_mode == 'zero':
+            # When 0 computed internally via cv2
+            k_x = k_y = 0
+        elif autokernel_mode == 'cv2':
+            # if USE_CV2_DEF:
+            # This is the CV2 definition
+            # https://github.com/egonSchiele/OpenCV/blob/09bab41/modules/imgproc/src/smooth.cpp#L387
+            depth_factor = 3  # or 4 for non-uint8
+            k_x = int(round(sigma_x * depth_factor * 2 + 1)) | 1
+            k_y = int(round(sigma_y * depth_factor * 2 + 1)) | 1
+        elif autokernel_mode == 'ours':
+            # But I think this definition makes more sense because it keeps
+            # sigma and the kernel in agreement more often
+            """
+            # Our hueristic is computed via solving the sigma heuristic for k
+            import sympy as sym
+            s, k = sym.symbols('s, k', rational=True)
+            sa = sym.Rational('3 / 10') * ((k - 1) / 2 - 1) + sym.Rational('8 / 10')
+            sym.solve(sym.Eq(s, sa), k)
+            """
+            k_x = max(3, round(20 * sigma_x / 3 - 7/3)) | 1
+            k_y = max(3, round(20 * sigma_y / 3 - 7/3)) | 1
+        else:
+            raise KeyError(autokernel_mode)
+    sigma = (sigma_x, sigma_y)
+    kernel = (k_x, k_y)
+    return kernel, sigma
+
+
 def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
     """
     Apply a gausian blur to an image.

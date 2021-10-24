@@ -1379,6 +1379,20 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Returns:
             MultiPolygon: vectorized representation
 
+        Note:
+            - The OpenCV (and thus this function) coordinate system places
+            coordinates at the center of pixels, and the polygon is traced
+            tightly around these coordinates. A single pixel is not considered
+            to have any width, so polygon edges will directly trace through the
+            centers of pixels, and in the case where an object is only 1 pixel
+            thick, this will produce a polygon that is not a valid shapely
+            polygon.
+
+        TODO:
+            - [ ] add a flag where polygons consider pixels to have width and
+            the resulting polygon is traced around the pixel edges, not the
+            pixel centers.
+
         Example:
             >>> # xdoc: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
@@ -1429,12 +1443,34 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> data[0, 3:5] = 1
             >>> data[7, 3:5] = 1
             >>> data[3:5, 0:2] = 1
+            >>> # 1 pixel L shape
+            >>> data[3, 5] = 1
+            >>> data[4, 5] = 1
+            >>> data[4, 6] = 1
             >>> self = kwimage.Mask.coerce(data)
             >>> polys = self.to_multi_polygon()
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
-            >>> kwplot.imshow(data)
+            >>> pretty_data = kwplot.make_heatmask(data/1.0, cmap='magma')[..., 0:3]
+            >>> ax.set_title('White lines trace pixel boundaries (have fractional coordinates)')
+            >>> ax.set_xlabel('Gray lines are coordinates and pass through pixel centers')
+            >>> def _pixel_grid_lines(data):
+            >>>     h, w = data.shape[0:2]
+            >>>     ybasis = np.arange(0, h) + 0.5
+            >>>     xbasis = np.arange(0, w) + 0.5
+            >>>     xmin = np.full(h, 0) - 0.5
+            >>>     xmax = np.full(h, w) - 0.5
+            >>>     ymin = np.full(h, 0) - 0.5
+            >>>     ymax = np.full(h, w) - 0.5
+            >>>     ax.hlines(y=ybasis, xmin=xmin, xmax=xmax, color="gainsboro")
+            >>>     ax.vlines(x=xbasis, ymin=ymin, ymax=ymax, color="gainsboro")
+            >>> # The gray ticks show the center of the pixels
+            >>> ax = kwplot.imshow(pretty_data, show_ticks=True)[1]
+            >>> ax.grid(color='dimgray', linewidth=0.5)
+            >>> # Also draw black lines around the edges of the pixels
+            >>> _pixel_grid_lines(data)
+            >>> # Overlay the extracted polygons
             >>> polys.draw(border=True, linewidth=5, alpha=0.5, radius=0.2)
         """
         import cv2
@@ -1454,8 +1490,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             padded_mask = cv2.copyMakeBorder(temp_mask, p, p, p, p,
                                              cv2.BORDER_CONSTANT, value=0)
 
-            # https://docs.opencv.org/3.1.0/d3/dc0/
-            # group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+            # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
             mode = cv2.RETR_CCOMP
             method = cv2.CHAIN_APPROX_SIMPLE
             # method = cv2.CHAIN_APPROX_TC89_KCOS

@@ -358,6 +358,17 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
 
     if nodata is not None:
         imdata_valid = imdata[imdata != nodata]
+        if imdata_valid.size  == 0:
+            result = imdata
+            if return_info:
+                info.update({
+                    'min_val': np.nan,
+                    'max_val': np.nan,
+                    'mode': None,
+                })
+                return result, info
+            else:
+                return result
     else:
         imdata_valid = imdata
 

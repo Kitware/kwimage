@@ -689,6 +689,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> with pytest.raises(NotImplementedError):
         >>>     kwimage.imwrite(fpath, data)
     """
+    fpath = os.fspath(fpath)
 
     if backend == 'auto':
         _fpath_lower = fpath.lower()

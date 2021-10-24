@@ -327,10 +327,19 @@ class Color(ub.NiceRepr):
                 'e': (0.16304347826086973, 0.0, 1.0)
             }
 
+            # Find grays
+            names = kwimage.Color.named_colors()
+            grays = {}
+            for name in names:
+                color = kwimage.Color(name)
+                r, g, b = color.as01()
+                if r == g and g == b:
+                    grays[name] = (r, g, b)
+            print(ub.repr2(ub.sorted_vals(grays), nl=-1))
+
             for k, v in hard_coded_colors.items():
                 self = kwimage.Color(v)
                 distances = []
-                names = kwimage.Color.named_colors()
                 for name in names:
                     other = kwimage.Color(name)
                     dist = self.distance(other)
