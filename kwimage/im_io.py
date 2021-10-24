@@ -1090,7 +1090,6 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         _options.append('COPY_SRC_OVERVIEWS=YES')
 
     _options += options
-    print('_options = {!r}'.format(_options))
 
     _options = list(map(str, _options))  # python2.7 support
 

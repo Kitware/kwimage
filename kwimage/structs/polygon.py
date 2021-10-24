@@ -716,7 +716,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         cv_contours = self._to_cv_countours()
         line_type = cv2.LINE_8
         # Modification happens inplace
-        cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+        if len(image.shape) == 2 or image.shape[2] < 4:
+            cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+        else:
+            # handle bands > 3
+            for bx in enumerate(range(image.shape[2])):
+                tmp = np.ascontiguousarray(image[..., bx])
+                cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
+                image[..., bx] = tmp
+
         return image
 
     def _to_cv_countours(self):
