@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add function `gaussian_blur`
 * Added `pad` as an argument to `stack_images` to override a negative `overlap`
 * Added gaussian sigma kernel heuristic
+* Added interleave as an option to COG write
 
 ### Fixed
 * Polygons now better respect the color parameter in detections draw on

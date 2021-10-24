@@ -909,7 +909,9 @@ def _have_gdal():
 
 def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
-                                     overview_resample='NEAREST', options=[]):
+                                     overview_resample='NEAREST',
+                                     interleave='PIXEL',
+                                     options=[]):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -1023,7 +1025,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> data = kwimage.grab_test_image()
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> fpath = tmp_tif.name
-        >>> kwimage.imwrite(fpath, data, options=['NUM_THREADS=ALL_CPUS'])
+        >>> kwimage.imwrite(fpath, data, compress='LZW', interleave='PIXEL', blocksize=64, options=['NUM_THREADS=ALL_CPUS'])
+        >>> _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>> loaded = kwimage.imread(fpath)
 
         >>> assert np.all(loaded.ravel() == data.ravel())
@@ -1074,10 +1077,20 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         # Using YCBCR speeds up jpeg compression by quite a bit
         _options += ['PHOTOMETRIC=YCBCR']
 
+    # https://gdal.org/drivers/raster/gtiff.html#creation-options
+    if interleave == 'BAND':
+        # For 1-band images I don' tthink this matters?
+        _options += ['INTERLEAVE=BAND']
+    elif interleave == 'PIXEL':
+        _options += ['INTERLEAVE=PIXEL']
+    else:
+        raise KeyError(interleave)
+
     if overviewlist:
         _options.append('COPY_SRC_OVERVIEWS=YES')
 
     _options += options
+    print('_options = {!r}'.format(_options))
 
     _options = list(map(str, _options))  # python2.7 support
 
