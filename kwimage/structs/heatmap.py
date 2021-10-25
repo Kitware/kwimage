@@ -178,6 +178,22 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.autompl()
             >>> kwplot.imshow(colormask1, fnum=1, title='output space')
             >>> kwplot.show_if_requested()
+
+        Ignore:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> import kwarray
+            >>> import kwimage
+            >>> rng = kwarray.ensure_rng(0)
+            >>> class_probs = np.zeros((2, 32, 32))
+            >>> class_probs[0] = kwimage.Polygon.random(rng=rng).scale(16).translate(16).fill(class_probs[0], value=0.5)
+            >>> class_probs[1] = kwimage.Polygon.random(rng=rng).scale(32).fill(class_probs[1], value=0.5)
+            >>> self = kwimage.Heatmap(class_probs=class_probs)
+            >>> canvas = self.colorize()
+            >>> canvas = kwimage.overlay_alpha_images(canvas, np.zeros_like(canvas[:, :, 0:3]))
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(canvas)
         """
         import kwplot
 

@@ -838,7 +838,7 @@ def load_image_shape(fpath):
             height = gdal_dset.RasterYSize
             num_channels = gdal_dset.RasterCount
             gdal_dset = None
-        except (ImportError, Exception):
+        except Exception:
             raise pil_ex
     shape = (height, width, num_channels)
     return shape
@@ -911,7 +911,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
                                      overview_resample='NEAREST',
                                      interleave='PIXEL',
-                                     options=[]):
+                                     options=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -1039,6 +1039,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     if len(data.shape) == 2:
         data = data[:, :, None]
 
+    if options is None:
+        options = []
+
     y_size, x_size, num_bands = data.shape
 
     data_set = None
@@ -1113,6 +1116,10 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     # OK, so setting things to None turns out to be important. Gah!
     # NOTE: if data_set2 is None here, that may be because the directory
     # we are trying to write to does not exist.
+    if data_set2 is None:
+        raise Exception(
+            'Unable to create gtiff driver for fpath={}, options={}'.format(
+                fpath, _options))
     data_set2.FlushCache()
 
     # Dereference everything
@@ -1230,8 +1237,8 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
                 main_band = data_set.GetRasterBand(1)
                 dtype = _gdal_to_numpy_dtype(main_band.DataType)
 
-            if num_channels is None:
-                data_set.RasterCount == 3
+            # if num_channels is None:
+            #     data_set.RasterCount == 3
 
         elif data is not None:
             if dtype is None:
