@@ -927,7 +927,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         blocksize (int, default=256): size of tiled blocks
 
-        overviews (None | int | list, default=None):
+        overviews (None | str | int | list, default=None):
+            If specified as a string, can be 'auto'.
             if specified as a list, then uses exactly those overviews. If
             specified as an integer a list is created using powers of two.
 
@@ -950,6 +951,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/cogeotiff/rio-cogeo
         https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
         .. [GDAL_GTiff_Options] https://gdal.org/drivers/raster/gtiff.html
+        https://gdal.org/drivers/raster/cog.html
 
     Notes:
         Need to fix `CXXABI_1.3.11 not found` with conda gdal sometimes
@@ -1034,6 +1036,42 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> import kwplot
         >>> kwplot.imshow(loaded / dinfo.max)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # xdoctest: +REQUIRES(--slow)
+        >>> # Test GDAL options
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
+        >>> import kwimage
+        >>> import tempfile
+        >>> orig_data = kwimage.grab_test_image()
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> imwrite_param_basis = {
+        >>>     'interleave': ['BAND', 'PIXEL'],
+        >>>     'compress': ['NONE', 'DEFLATE'],
+        >>>     'blocksize': [64, 128, None],
+        >>>     'overviews': [None, 'auto'],
+        >>> }
+        >>> data_param_basis = {
+        >>>     'dsize': [(256, 256), (532, 202)],
+        >>>     'dtype': ['float32', 'uint8'],
+        >>> }
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> data_param_grid = list(ub.named_product(data_param_basis))
+        >>> imwrite_param_grid = list(ub.named_product(imwrite_param_basis))
+        >>> for data_kwargs in data_param_grid:
+        >>>     data = kwimage.imresize(orig_data, dsize=data_kwargs['dsize'])
+        >>>     data = data.astype(data_kwargs['dtype'])
+        >>>     for imwrite_kwargs in imwrite_param_grid:
+        >>>         print('data_kwargs = {}'.format(ub.repr2(data_kwargs, nl=1)))
+        >>>         print('imwrite_kwargs = {}'.format(ub.repr2(imwrite_kwargs, nl=1)))
+        >>>         kwimage.imwrite(fpath, data, **imwrite_kwargs)
+        >>>         _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
+        >>>         loaded = kwimage.imread(fpath)
+        >>>         assert np.all(loaded == data)
     """
     from osgeo import gdal
     if len(data.shape) == 2:
@@ -1054,13 +1092,25 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
     if compress == 'JPEG' and num_bands >= 5:
         raise ValueError('Cannot use JPEG with more than 4 channels (got {})'.format(num_bands))
-
     eType = _numpy_to_gdal_dtype(data.dtype)
     if compress == 'JPEG':
         if eType not in [gdal.GDT_Byte, gdal.GDT_UInt16]:
             raise ValueError('JPEG compression must use 8 or 16 bit integers')
 
     # NEAREST/AVERAGE/BILINEAR/CUBIC/CUBICSPLINE/LANCZOS
+    if isinstance(overviews, str):
+        if overviews == 'auto':
+            smallest_overview_dim = 512
+            # Compute as many overviews as needed to get both dimensions < smallest_overview_dim
+            # unless that would cause one dimension to disolve
+            max_x_overviews = int(np.log2(y_size))
+            max_y_overviews = int(np.log2(x_size))
+            max_overviews = min(max_x_overviews, max_y_overviews)
+            y_overviews = y_size // smallest_overview_dim
+            x_overviews = x_size // smallest_overview_dim
+            request_overviews = max(y_overviews, x_overviews)
+            overviews = min(max_overviews, request_overviews)
+
     if overviews is None:
         overviewlist = []
     elif isinstance(overviews, int):
@@ -1069,20 +1119,28 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         overviewlist = overviews
 
     _options = [
-        'TILED=YES',
+        # We are still using the GTiff Driver instead of COG to have control
+        # over interleave
         'BIGTIFF=YES',
-        'BLOCKXSIZE={}'.format(blocksize),
-        'BLOCKYSIZE={}'.format(blocksize),
     ]
-    if compress != 'RAW':
-        _options += ['COMPRESS={}'.format(compress)]
+    if blocksize is not None:
+        _options = [
+            'TILED=YES',
+            'BLOCKXSIZE={}'.format(blocksize),
+            'BLOCKYSIZE={}'.format(blocksize),
+        ]
+
+    if compress == 'RAW':
+        compress = 'NONE'
+
+    _options += ['COMPRESS={}'.format(compress)]
     if compress == 'JPEG' and num_bands == 3:
         # Using YCBCR speeds up jpeg compression by quite a bit
         _options += ['PHOTOMETRIC=YCBCR']
 
     # https://gdal.org/drivers/raster/gtiff.html#creation-options
     if interleave == 'BAND':
-        # For 1-band images I don' tthink this matters?
+        # For 1-band images I don' think this matters?
         _options += ['INTERLEAVE=BAND']
     elif interleave == 'PIXEL':
         _options += ['INTERLEAVE=PIXEL']

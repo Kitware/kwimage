@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Added `pad` as an argument to `stack_images` to override a negative `overlap`
 * Added gaussian sigma kernel heuristic
 * Added interleave as an option to COG write
+* Add `fill` to `PolygonList`
 
 ### Fixed
 * Polygons now better respect the color parameter in detections draw on
@@ -19,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Changed default GDAL compression in `kwimage.imwrite` from RAW to DEFLATE 
+* Better overview support in `kwimage.imwrite`
 * Improved speed of several `kwimage.Affine` routines.
 
 
