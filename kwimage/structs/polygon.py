@@ -1682,3 +1682,19 @@ class PolygonList(_generic.ObjectList):
             return geojson
         else:
             return items
+
+    def fill(self, image, value=1):
+        """
+        Inplace fill in an image based on these polygons
+
+        Args:
+            image (ndarray): image to draw on (inplace)
+            value (int | Tuple[int], default=1): value fill in with
+
+        Returns:
+            ndarray: the image that has been modified in place
+        """
+        for p in self.data:
+            if p is not None:
+                p.fill(image, value=value)
+        return image
