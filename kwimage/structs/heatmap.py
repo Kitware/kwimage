@@ -1278,7 +1278,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     @classmethod
     def random(cls, dims=(10, 10), classes=3, diameter=True, offset=True,
                keypoints=False, img_dims=None, dets=None, nblips=10, noise=0.0,
-               rng=None):
+               rng=None, ensure_background=True):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -1370,8 +1370,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             dets = kwimage.Detections.random(num=nblips, scale=img_dims,
                                              keypoints=keypoints,
                                              classes=classes, rng=rng)
-            if 'background' not in dets.classes:
-                dets.classes.append('background')
+            if ensure_background:
+                if 'background' not in dets.classes:
+                    dets.classes.append('background')
 
             classes = dets.classes
         else:
