@@ -104,7 +104,7 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
+    def draw_on(self, image=None, color='blue', alpha=None, labels=True, radius=5,
                 kpts=True, sseg=True, boxes=True, ssegkw=None,
                 label_loc='top_left', thickness=2):
         """
@@ -191,6 +191,15 @@ class _DetDrawMixin:
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Detections.draw_on))
         """
+        if image is None:
+            # If image is not given, use the boxes to allocate enough
+            # room to draw
+            bounds = self.boxes.scale(1.5).bounding_box().quantize()
+            w = bounds.width.item()
+            h = bounds.height.item()
+            w = h = max(w, h)
+            image = np.zeros((h, w, 3), dtype=np.float32)
+
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
         color = self._make_colors(color)
