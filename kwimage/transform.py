@@ -358,6 +358,30 @@ class Affine(Projective):
             raise TypeError(type(data))
         return self
 
+    def eccentricity(self):
+        """
+        Eccentricity of the ellipse formed by this affine matrix
+
+        References:
+            https://en.wikipedia.org/wiki/Conic_section
+            https://github.com/rasterio/affine/blob/78c20a0cfbb5ec/affine/__init__.py#L368
+        """
+        # Ignore the translation part
+        M = self.matrix[0:2, 0:2]
+
+        MMt = M @ M.T
+        trace = np.trace(MMt)
+        det = np.linalg.det(MMt)
+
+        root_delta = np.sqrt((trace * trace) / 4 - det)
+
+        # scaling defined via affine.Affine.
+        ell1 = np.sqrt(trace / 2 + root_delta)
+        ell2 = np.sqrt(trace / 2 - root_delta)
+
+        ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
+        return ecc
+
     def decompose(self):
         """
         Decompose the affine matrix into its individual scale, translation,
@@ -382,6 +406,23 @@ class Affine(Projective):
             >>> self = Affine.scale(0.001) @ Affine.random()
             >>> params = self.decompose()
             >>> self.det()
+
+        Ignore:
+            import affine
+            self = Affine.random()
+            a, b, c, d, e, f = self.matrix.ravel()[0:6]
+            aff = affine.Affine(a, b, c, d, e, f)
+            assert np.isclose(self.det(), aff.determinant)
+
+            params = self.decompose()
+            assert np.isclose(params['theta'], np.deg2rad(aff.rotation_angle))
+
+            print(params['scale'])
+            print(aff._scaling)
+            print(self.eccentricity())
+            print(aff.eccentricity)
+
+            pass
         """
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
         sx = np.sqrt(a11 ** 2 + a21 ** 2)
