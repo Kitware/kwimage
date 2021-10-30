@@ -310,6 +310,52 @@ class Color(ub.NiceRepr):
     def random(Color, pool='named'):
         return Color('random')
 
+    def distance(self, other, space='lab'):
+        """
+        Distance between self an another color
+
+        Example:
+            import kwimage
+            self = kwimage.Color((0.16304347826086973, 0.0, 1.0))
+            other = kwimage.Color('purple')
+
+            hard_coded_colors = {
+                'a': (1.0, 0.0, 0.16),
+                'b': (1.0, 0.918918918918919, 0.0),
+                'c': (0.0, 1.0, 0.0),
+                'd': (0.0, 0.9239130434782604, 1.0),
+                'e': (0.16304347826086973, 0.0, 1.0)
+            }
+
+            # Find grays
+            names = kwimage.Color.named_colors()
+            grays = {}
+            for name in names:
+                color = kwimage.Color(name)
+                r, g, b = color.as01()
+                if r == g and g == b:
+                    grays[name] = (r, g, b)
+            print(ub.repr2(ub.sorted_vals(grays), nl=-1))
+
+            for k, v in hard_coded_colors.items():
+                self = kwimage.Color(v)
+                distances = []
+                for name in names:
+                    other = kwimage.Color(name)
+                    dist = self.distance(other)
+                    distances.append(dist)
+
+                idxs = ub.argsort(distances)[0:5]
+                dists = list(ub.take(distances, idxs))
+                names = list(ub.take(names, idxs))
+                print('k = {!r}'.format(k))
+                print('names = {!r}'.format(names))
+                print('dists = {!r}'.format(dists))
+        """
+        vec1 = np.array(self.as01(space))
+        vec2 = np.array(other.as01(space))
+        return np.linalg.norm(vec1 - vec2)
+
 
 BASE_COLORS = {
     'b': (0, 0, 1),

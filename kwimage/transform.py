@@ -7,6 +7,13 @@ import kwarray
 import skimage.transform
 
 
+try:
+    import xdev
+    profile = xdev.profile
+except Exception:
+    profile = ub.identity
+
+
 class Transform(ub.NiceRepr):
     pass
 
@@ -136,6 +143,7 @@ class Matrix(Transform):
         else:
             raise TypeError('{} @ {}'.format(type(self), type(other)))
 
+    @profile
     def inv(self):
         """
         Returns the inverse of this matrix
@@ -300,6 +308,7 @@ class Affine(Projective):
         return params
 
     @classmethod
+    @profile
     def coerce(cls, data=None, **kwargs):
         """
         Attempt to coerce the data into an affine object
@@ -335,18 +344,43 @@ class Affine(Projective):
             self = data
         elif isinstance(data, dict):
             keys = set(data.keys())
-            known_params = {'scale', 'shear', 'offset', 'theta', 'type'}
-            params = ub.dict_isect(data, known_params)
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
-            elif len(known_params & keys):
-                params.pop('type', None)
-                self = cls.affine(**params)
             else:
-                raise KeyError(', '.join(list(data.keys())))
+                known_params = {'scale', 'shear', 'offset', 'theta', 'type'}
+                params = {key: data[key] for key in known_params if key in data}
+                if len(known_params & keys):
+                    params.pop('type', None)
+                    self = cls.affine(**params)
+                else:
+                    raise KeyError(', '.join(list(data.keys())))
         else:
             raise TypeError(type(data))
         return self
+
+    def eccentricity(self):
+        """
+        Eccentricity of the ellipse formed by this affine matrix
+
+        References:
+            https://en.wikipedia.org/wiki/Conic_section
+            https://github.com/rasterio/affine/blob/78c20a0cfbb5ec/affine/__init__.py#L368
+        """
+        # Ignore the translation part
+        M = self.matrix[0:2, 0:2]
+
+        MMt = M @ M.T
+        trace = np.trace(MMt)
+        det = np.linalg.det(MMt)
+
+        root_delta = np.sqrt((trace * trace) / 4 - det)
+
+        # scaling defined via affine.Affine.
+        ell1 = np.sqrt(trace / 2 + root_delta)
+        ell2 = np.sqrt(trace / 2 - root_delta)
+
+        ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
+        return ecc
 
     def decompose(self):
         """
@@ -372,6 +406,23 @@ class Affine(Projective):
             >>> self = Affine.scale(0.001) @ Affine.random()
             >>> params = self.decompose()
             >>> self.det()
+
+        Ignore:
+            import affine
+            self = Affine.random()
+            a, b, c, d, e, f = self.matrix.ravel()[0:6]
+            aff = affine.Affine(a, b, c, d, e, f)
+            assert np.isclose(self.det(), aff.determinant)
+
+            params = self.decompose()
+            assert np.isclose(params['theta'], np.deg2rad(aff.rotation_angle))
+
+            print(params['scale'])
+            print(aff._scaling)
+            print(self.eccentricity())
+            print(aff.eccentricity)
+
+            pass
         """
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
         sx = np.sqrt(a11 ** 2 + a21 ** 2)
@@ -404,7 +455,15 @@ class Affine(Projective):
         Returns:
             Affine
         """
-        return cls.affine(scale=scale)
+        scale_ = 1 if scale is None else scale
+        sx, sy = _ensure_iterable2(scale_)
+        # Sympy simplified expression
+        mat = np.array([sx , 0.0, 0.0,
+                        0.0,  sy, 0.0,
+                        0.0, 0.0, 1.0])
+        mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
+        self = cls(mat)
+        return self
 
     @classmethod
     def translate(cls, offset):
@@ -416,8 +475,33 @@ class Affine(Projective):
 
         Returns:
             Affine
+
+        Benchmark:
+            >>> # xdoctest: +REQUIRES(--benchmark)
+            >>> # It is ~3x faster to use the more specific method
+            >>> import timerit
+            >>> import kwimage
+            >>> #
+            >>> offset = np.random.rand(2)
+            >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
+            >>> for timer in ti.reset('time'):
+            >>>     with timer:
+            >>>         kwimage.Affine.translate(offset)
+            >>> #
+            >>> for timer in ti.reset('time'):
+            >>>     with timer:
+            >>>         kwimage.Affine.affine(offset=offset)
+
         """
-        return cls.affine(offset=offset)
+        offset_ = 0 if offset is None else offset
+        tx, ty = _ensure_iterable2(offset_)
+        # Sympy simplified expression
+        mat = np.array([1.0, 0.0, tx,
+                        0.0, 1.0, ty,
+                        0.0, 0.0, 1.0])
+        mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
+        self = cls(mat)
+        return self
 
     @classmethod
     def rotate(cls, theta):
@@ -541,22 +625,39 @@ class Affine(Projective):
         return params
 
     @classmethod
+    @profile
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
-               about=None):
+               about=None, **kwargs):
         """
         Create an affine matrix from high-level parameters
 
         Args:
-            scale (float | Tuple[float, float]): x, y scale factor
-            offset (float | Tuple[float, float]): x, y translation factor
-            theta (float): counter-clockwise rotation angle in radians
-            shear (float): counter-clockwise shear angle in radians
-            about (float | Tuple[float, float]): x, y location of the origin
+            scale (float | Tuple[float, float]):
+                x, y scale factor
+
+            offset (float | Tuple[float, float]):
+                x, y translation factor
+
+            theta (float):
+                counter-clockwise rotation angle in radians
+
+            shear (float):
+                counter-clockwise shear angle in radians
+
+            about (float | Tuple[float, float]):
+                x, y location of the origin
+
+        TODO:
+            - [ ] Add aliases -
+                origin : alias for about
+                rotation : alias for theta
+                translation : alias for offset
 
         Returns:
             Affine: the constructed Affine object
 
         Example:
+            >>> from kwimage.transform import *  # NOQA
             >>> rng = kwarray.ensure_rng(None)
             >>> scale = rng.randn(2) * 10
             >>> offset = rng.randn(2) * 10
@@ -627,15 +728,17 @@ class Affine(Projective):
         shear_ = 0 if shear is None else shear
         theta_ = 0 if theta is None else theta
         about_ = 0 if about is None else about
-        sx, sy = _ensure_iterablen(scale_, 2)
-        tx, ty = _ensure_iterablen(offset_, 2)
-        x0, y0 = _ensure_iterablen(about_, 2)
+        sx, sy = _ensure_iterable2(scale_)
+        tx, ty = _ensure_iterable2(offset_)
+        x0, y0 = _ensure_iterable2(about_)
 
         # Make auxially varables to reduce the number of sin/cos calls
+        shear_p_theta = shear_ + theta_
         cos_theta = np.cos(theta_)
         sin_theta = np.sin(theta_)
-        cos_shear_p_theta = np.cos(shear_ + theta_)
-        sin_shear_p_theta = np.sin(shear_ + theta_)
+        cos_shear_p_theta = np.cos(shear_p_theta)
+        sin_shear_p_theta = np.sin(shear_p_theta)
+
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta
         sy_sin_shear_p_theta = sy * sin_shear_p_theta
@@ -643,16 +746,35 @@ class Affine(Projective):
         tx_ = tx + x0 - (x0 * sx_cos_theta) + (y0 * sy_sin_shear_p_theta)
         ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * sy_cos_shear_p_theta)
         # Sympy simplified expression
-        mat = np.array([[sx_cos_theta, -sy_sin_shear_p_theta, tx_],
-                        [sx_sin_theta,  sy_cos_shear_p_theta, ty_],
-                        [           0,                     0,  1]])
+        mat = np.array([sx_cos_theta, -sy_sin_shear_p_theta, tx_,
+                        sx_sin_theta,  sy_cos_shear_p_theta, ty_,
+                                   0,                     0,  1])
+        mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
 
 
-def _ensure_iterablen(scalar, n):
+# @profile
+# def _ensure_iterablen(scalar, n):
+#     try:
+#         iter(scalar)
+#     except TypeError:
+#         return [scalar] * n
+#     return scalar
+
+
+@profile
+def _ensure_iterable2(scalar):
     try:
-        iter(scalar)
+        a, b = scalar
     except TypeError:
-        return [scalar] * n
-    return scalar
+        a = b = scalar
+    return a, b
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python -m kwimage.transform all --profile
+    """
+    import xdoctest
+    xdoctest.doctest_module(__file__)

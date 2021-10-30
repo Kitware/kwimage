@@ -5,6 +5,7 @@ around concrete readers/writers provided by other libraries. This allows us to
 support a wider array of formats than any of individual backends.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
+import os
 import numpy as np
 import warnings  # NOQA
 import cv2
@@ -243,6 +244,7 @@ def imread(fpath, space='auto', backend='auto'):
         >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['mean'], nl=2), ':')))
 
     """
+    fpath = os.fspath(fpath)
     if backend == 'auto':
         # TODO: memoize the extensions?
 
@@ -424,7 +426,16 @@ def _imread_cv2(fpath):
 
 
 def _imread_gdal(fpath):
-    """ gdal imread backend """
+    """
+    gdal imread backend
+
+    References:
+        [GDAL_Config_Options] https://gdal.org/user/configoptions.html
+
+    Ignore:
+        >>> import kwimage
+        >>> fpath = kwimage.grab_test_image_fpath('amazon')
+    """
     try:
         from osgeo import gdal
     except ImportError:
@@ -433,6 +444,12 @@ def _imread_gdal(fpath):
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
+
+        # TODO:
+        # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
+        # https://gdal.org/drivers/raster/gtiff.html#subdatasets
+        if len(gdal_dset.GetSubDatasets()):
+            raise NotImplementedError('subdatasets are not handled correctly')
 
         num_channels = gdal_dset.RasterCount
 
@@ -648,6 +665,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Example:
         >>> # Test saving a multi-band file
         >>> import kwimage
+        >>> import pytest
         >>> import tempfile
         >>> # In this case the backend will not resolve to cv2, so
         >>> # we should not need to specify space.
@@ -657,12 +675,13 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> kwimage.imwrite(fpath, data)
         >>> recon = kwimage.imread(fpath)
         >>> assert np.all(recon == data)
-
         >>> kwimage.imwrite(fpath, data, backend='skimage')
-        >>> recon = kwimage.imread(fpath)
+        >>> recon = kwimage.imread(fpath, backend='skimage')
         >>> assert np.all(recon == data)
-
-        >>> import pytest
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # gdal should error when trying to read an image written by skimage
+        >>> with pytest.raises(NotImplementedError):
+        >>>     kwimage.imread(fpath, backend='gdal')
         >>> # In this case the backend will resolve to cv2, and thus we expect
         >>> # a failure
         >>> temp = tempfile.NamedTemporaryFile(suffix='.png')
@@ -670,6 +689,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> with pytest.raises(NotImplementedError):
         >>>     kwimage.imwrite(fpath, data)
     """
+    fpath = os.fspath(fpath)
 
     if backend == 'auto':
         _fpath_lower = fpath.lower()
@@ -776,7 +796,7 @@ def load_image_shape(fpath):
 
     Benchmark:
         >>> # For large files, PIL is much faster
-        >>> import gdal
+        >>> from osgeo import import gdal
         >>> from PIL import Image
         >>> #
         >>> import kwimage
@@ -810,7 +830,7 @@ def load_image_shape(fpath):
         if not _have_gdal():
             raise
         try:
-            import gdal
+            from osgeo import gdal
             gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
             if gdal_dset is None:
                 raise Exception
@@ -818,7 +838,7 @@ def load_image_shape(fpath):
             height = gdal_dset.RasterYSize
             num_channels = gdal_dset.RasterCount
             gdal_dset = None
-        except (ImportError, Exception):
+        except Exception:
             raise pil_ex
     shape = (height, width, num_channels)
     return shape
@@ -880,7 +900,7 @@ def _have_turbojpg():
 
 def _have_gdal():
     try:
-        import gdal  # NOQA
+        from osgeo import gdal  # NOQA
     except Exception:
         return False
     else:
@@ -889,7 +909,9 @@ def _have_gdal():
 
 def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
-                                     overview_resample='NEAREST', options=[]):
+                                     overview_resample='NEAREST',
+                                     interleave='PIXEL',
+                                     options=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -905,7 +927,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         blocksize (int, default=256): size of tiled blocks
 
-        overviews (None | int | list, default=None):
+        overviews (None | str | int | list, default=None):
+            If specified as a string, can be 'auto'.
             if specified as a list, then uses exactly those overviews. If
             specified as an integer a list is created using powers of two.
 
@@ -913,7 +936,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
             overview pyramid. Valid choices are: 'NEAREST', 'AVERAGE',
             'BILINEAR', 'CUBIC', 'CUBICSPLINE', 'LANCZOS'.
 
-        options (List[str]): other gdal options
+        options (List[str]): other gdal options. See [GDAL_GTiff_Options]_ for
+            details.
 
     Returns:
         str: the file path where the data was written
@@ -926,6 +950,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         https://github.com/sshuair/cogeotiff
         https://github.com/cogeotiff/rio-cogeo
         https://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        .. [GDAL_GTiff_Options] https://gdal.org/drivers/raster/gtiff.html
+        https://gdal.org/drivers/raster/cog.html
 
     Notes:
         Need to fix `CXXABI_1.3.11 not found` with conda gdal sometimes
@@ -990,10 +1016,69 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> import kwplot
         >>> kwplot.imshow(loaded / dinfo.max)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test GDAL options
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
+        >>> import kwimage
+        >>> import tempfile
+        >>> data = kwimage.grab_test_image()
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> kwimage.imwrite(fpath, data, compress='LZW', interleave='PIXEL', blocksize=64, options=['NUM_THREADS=ALL_CPUS'])
+        >>> _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
+        >>> loaded = kwimage.imread(fpath)
+
+        >>> assert np.all(loaded.ravel() == data.ravel())
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.imshow(loaded / dinfo.max)
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # xdoctest: +REQUIRES(--slow)
+        >>> # Test GDAL options
+        >>> from kwimage.im_io import *  # NOQA
+        >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
+        >>> import kwimage
+        >>> import tempfile
+        >>> orig_data = kwimage.grab_test_image()
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> imwrite_param_basis = {
+        >>>     'interleave': ['BAND', 'PIXEL'],
+        >>>     'compress': ['NONE', 'DEFLATE'],
+        >>>     'blocksize': [64, 128, None],
+        >>>     'overviews': [None, 'auto'],
+        >>> }
+        >>> data_param_basis = {
+        >>>     'dsize': [(256, 256), (532, 202)],
+        >>>     'dtype': ['float32', 'uint8'],
+        >>> }
+        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
+        >>> fpath = tmp_tif.name
+        >>> data_param_grid = list(ub.named_product(data_param_basis))
+        >>> imwrite_param_grid = list(ub.named_product(imwrite_param_basis))
+        >>> for data_kwargs in data_param_grid:
+        >>>     data = kwimage.imresize(orig_data, dsize=data_kwargs['dsize'])
+        >>>     data = data.astype(data_kwargs['dtype'])
+        >>>     for imwrite_kwargs in imwrite_param_grid:
+        >>>         print('data_kwargs = {}'.format(ub.repr2(data_kwargs, nl=1)))
+        >>>         print('imwrite_kwargs = {}'.format(ub.repr2(imwrite_kwargs, nl=1)))
+        >>>         kwimage.imwrite(fpath, data, **imwrite_kwargs)
+        >>>         _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
+        >>>         loaded = kwimage.imread(fpath)
+        >>>         assert np.all(loaded == data)
     """
     from osgeo import gdal
     if len(data.shape) == 2:
         data = data[:, :, None]
+
+    if options is None:
+        options = []
 
     y_size, x_size, num_bands = data.shape
 
@@ -1007,13 +1092,25 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
     if compress == 'JPEG' and num_bands >= 5:
         raise ValueError('Cannot use JPEG with more than 4 channels (got {})'.format(num_bands))
-
     eType = _numpy_to_gdal_dtype(data.dtype)
     if compress == 'JPEG':
         if eType not in [gdal.GDT_Byte, gdal.GDT_UInt16]:
             raise ValueError('JPEG compression must use 8 or 16 bit integers')
 
     # NEAREST/AVERAGE/BILINEAR/CUBIC/CUBICSPLINE/LANCZOS
+    if isinstance(overviews, str):
+        if overviews == 'auto':
+            smallest_overview_dim = 512
+            # Compute as many overviews as needed to get both dimensions < smallest_overview_dim
+            # unless that would cause one dimension to disolve
+            max_x_overviews = int(np.log2(y_size))
+            max_y_overviews = int(np.log2(x_size))
+            max_overviews = min(max_x_overviews, max_y_overviews)
+            y_overviews = y_size // smallest_overview_dim
+            x_overviews = x_size // smallest_overview_dim
+            request_overviews = max(y_overviews, x_overviews)
+            overviews = min(max_overviews, request_overviews)
+
     if overviews is None:
         overviewlist = []
     elif isinstance(overviews, int):
@@ -1022,16 +1119,33 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         overviewlist = overviews
 
     _options = [
-        'TILED=YES',
+        # We are still using the GTiff Driver instead of COG to have control
+        # over interleave
         'BIGTIFF=YES',
-        'BLOCKXSIZE={}'.format(blocksize),
-        'BLOCKYSIZE={}'.format(blocksize),
     ]
-    if compress != 'RAW':
-        _options += ['COMPRESS={}'.format(compress)]
+    if blocksize is not None:
+        _options = [
+            'TILED=YES',
+            'BLOCKXSIZE={}'.format(blocksize),
+            'BLOCKYSIZE={}'.format(blocksize),
+        ]
+
+    if compress == 'RAW':
+        compress = 'NONE'
+
+    _options += ['COMPRESS={}'.format(compress)]
     if compress == 'JPEG' and num_bands == 3:
         # Using YCBCR speeds up jpeg compression by quite a bit
         _options += ['PHOTOMETRIC=YCBCR']
+
+    # https://gdal.org/drivers/raster/gtiff.html#creation-options
+    if interleave == 'BAND':
+        # For 1-band images I don' think this matters?
+        _options += ['INTERLEAVE=BAND']
+    elif interleave == 'PIXEL':
+        _options += ['INTERLEAVE=PIXEL']
+    else:
+        raise KeyError(interleave)
 
     if overviewlist:
         _options.append('COPY_SRC_OVERVIEWS=YES')
@@ -1060,6 +1174,10 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     # OK, so setting things to None turns out to be important. Gah!
     # NOTE: if data_set2 is None here, that may be because the directory
     # we are trying to write to does not exist.
+    if data_set2 is None:
+        raise Exception(
+            'Unable to create gtiff driver for fpath={}, options={}'.format(
+                fpath, _options))
     data_set2.FlushCache()
 
     # Dereference everything
@@ -1153,10 +1271,10 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> assert _gdal_auto_compress(src_fpath='foo.jpg') == 'JPEG'
         >>> assert _gdal_auto_compress(src_fpath='foo.png') == 'LZW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'RAW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'RAW'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'DEFLATE'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'DEFLATE'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'DEFLATE'
+        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'DEFLATE'
     """
     compress = None
     num_channels = None
@@ -1177,8 +1295,8 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
                 main_band = data_set.GetRasterBand(1)
                 dtype = _gdal_to_numpy_dtype(main_band.DataType)
 
-            if num_channels is None:
-                data_set.RasterCount == 3
+            # if num_channels is None:
+            #     data_set.RasterCount == 3
 
         elif data is not None:
             if dtype is None:
@@ -1194,7 +1312,7 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
 
     if compress is None:
         # which backend is best in this case?
-        compress = 'RAW'
+        compress = 'DEFLATE'
     return compress
 
 

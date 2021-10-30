@@ -104,7 +104,7 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=True, radius=5,
+    def draw_on(self, image=None, color='blue', alpha=None, labels=True, radius=5,
                 kpts=True, sseg=True, boxes=True, ssegkw=None,
                 label_loc='top_left', thickness=2):
         """
@@ -114,7 +114,10 @@ class _DetDrawMixin:
             image (ndarray[uint8]): must be in uint8 format
 
             color (str | ColorLike | List[ColorLike]):
-                one color for all boxes or a list of colors for each box
+                one color for all boxes or a list of colors for each box.
+                Or the string "classes", in which case it will use a
+                different color for each class (specified in the classes object
+                if possible)
 
             alpha (float): Transparency of overlay. can be a scalar or a list
                 for each box
@@ -188,6 +191,15 @@ class _DetDrawMixin:
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Detections.draw_on))
         """
+        if image is None:
+            # If image is not given, use the boxes to allocate enough
+            # room to draw
+            bounds = self.boxes.scale(1.5).bounding_box().quantize()
+            w = bounds.width.item()
+            h = bounds.height.item()
+            w = h = max(w, h)
+            image = np.zeros((h, w, 3), dtype=np.float32)
+
         labels = self._make_labels(labels)
         alpha = self._make_alpha(alpha)
         color = self._make_colors(color)
@@ -250,9 +262,12 @@ class _DetDrawMixin:
                 else:
                     cidx_to_color = [None] * len(classes)
 
-                for cidx, color in enumerate(cidx_to_color):
-                    if color is None:
+                for cidx, c in enumerate(cidx_to_color):
+                    if c is None:
                         cidx_to_color[cidx] = next(backup_colors)
+                    else:
+                        cidx_to_color[cidx] = c
+                        # kwimage.Color(c).as01()
 
                 color = [cidx_to_color[cidx] for cidx in class_idxs]
         return color
@@ -408,7 +423,12 @@ class _DetAlgoMixin:
         import kwimage
         classes = self.meta['classes']
 
-        bg_idx = classes.index('background')
+        try:
+            bg_idx = classes.index('background')
+        except Exception:
+            # TODO: might not be right to except this
+            bg_idx = 0
+
         fcn_target = _dets_to_fcmaps(
             self, bg_size=bg_size, input_dims=input_dims, bg_idx=bg_idx,
             soft=False, exclude=exclude)

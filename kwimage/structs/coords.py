@@ -545,7 +545,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 return new
 
             raise TypeError(type(transform))
-        new.data = kwimage.warp_points(matrix, new.data)
+        if impl.numel(new.data) > 0:
+            new.data = kwimage.warp_points(matrix, new.data)
         return new
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):

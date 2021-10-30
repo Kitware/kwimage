@@ -4,7 +4,27 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.12 - Unreleased
+## Version 0.7.13 - Unreleased
+
+### Added
+* Add function `gaussian_blur`
+* Added `pad` as an argument to `stack_images` to override a negative `overlap`
+* Added gaussian sigma kernel heuristic
+* Added interleave as an option to COG write
+* Add `fill` to `PolygonList`
+
+### Fixed
+* Polygons now better respect the color parameter in detections draw on
+* kwimage.imread can now take pathlib.Path objects
+* Fixed issue with warp of empty keypoints
+
+### Changed
+* Changed default GDAL compression in `kwimage.imwrite` from RAW to DEFLATE 
+* Better overview support in `kwimage.imwrite`
+* Improved speed of several `kwimage.Affine` routines.
+
+
+## Version 0.7.12 - Released 2021-08-19
 
 ### Added
 * Wrapped `itk.imread` with `kwimage.imread`.

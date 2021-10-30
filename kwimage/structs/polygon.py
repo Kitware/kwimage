@@ -210,7 +210,8 @@ class _PolyWarpMixin:
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
             about (Tuple | None):
                 if unspecified scales about the origin (0, 0), otherwise the
-                rotation is about this point.
+                scaling is about this point. Can be "center" and will use
+                centroid of polygon
             output_dims (Tuple): unused in non-raster spatial structures
             inplace (bool, default=False): if True, modifies data inplace
 
@@ -715,7 +716,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         cv_contours = self._to_cv_countours()
         line_type = cv2.LINE_8
         # Modification happens inplace
-        cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+        if len(image.shape) == 2 or image.shape[2] < 4:
+            cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+        else:
+            # handle bands > 3
+            for bx in enumerate(range(image.shape[2])):
+                tmp = np.ascontiguousarray(image[..., bx])
+                cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
+                image[..., bx] = tmp
+
         return image
 
     def _to_cv_countours(self):
@@ -739,6 +748,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     @classmethod
     def coerce(Polygon, data):
         """
+        Routes the input to the proper constructor
+
         Try to autodetermine format of input polygon and coerce it into a
         kwimage.Polygon.
 
@@ -752,11 +763,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Example:
             >>> import kwimage
             >>> self = kwimage.Polygon.random()
-            >>> self.coerce(self)
-            >>> self.coerce(self.exterior)
-            >>> self.coerce(self.exterior.data)
-            >>> self.coerce(self.data)
-            >>> self.coerce(self.to_geojson())
+            >>> kwimage.Polygon.coerce(self)
+            >>> kwimage.Polygon.coerce(self.exterior)
+            >>> kwimage.Polygon.coerce(self.exterior.data)
+            >>> kwimage.Polygon.coerce(self.data)
+            >>> kwimage.Polygon.coerce(self.to_geojson())
+            >>> kwimage.Polygon.coerce('POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))')
         """
         import kwimage
         if isinstance(data, Polygon):
@@ -1107,7 +1119,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         import kwimage
         # return shape of contours to openCV contours
-
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         # print('--- A')
@@ -1565,6 +1576,12 @@ class MultiPolygon(_generic.ObjectList):
     def swap_axes(self, inplace=False):
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
+    def draw_on(self, *args, **kwargs):
+        for item in self.data:
+            if item is not None:
+                image = item.draw_on(*args, **kwargs)
+        return image
+
     # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
     #     """
     #     Faster version
@@ -1665,3 +1682,19 @@ class PolygonList(_generic.ObjectList):
             return geojson
         else:
             return items
+
+    def fill(self, image, value=1):
+        """
+        Inplace fill in an image based on these polygons
+
+        Args:
+            image (ndarray): image to draw on (inplace)
+            value (int | Tuple[int], default=1): value fill in with
+
+        Returns:
+            ndarray: the image that has been modified in place
+        """
+        for p in self.data:
+            if p is not None:
+                p.fill(image, value=value)
+        return image
