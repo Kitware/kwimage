@@ -1463,7 +1463,7 @@ class _BoxDrawMixins(object):
         if setlim:
             x1, y1, x2, y2 = self.to_ltrb().components
             xmin, xmax = x1.min(), x2.max()
-            ymin, ymax = x1.min(), x2.max()
+            ymin, ymax = y1.min(), y2.max()
             w = (xmax - xmin)
             pad = ((w * setlim) - w) / 2
             ax.set_xlim(xmin - pad, xmax + pad)
