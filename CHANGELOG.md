@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.14 - Unreleased
 
+### Changed
+* Using `math` is much faster than `numpy` for scalars, switching to that in kwimage.Affine
+
 
 ## Version 0.7.13 - Released 2021-10-29
 

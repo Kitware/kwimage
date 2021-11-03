@@ -497,8 +497,15 @@ def _imread_gdal(fpath):
                      gdal_dset.RasterCount)
             # Preallocate and populate image
             image = np.empty(shape, dtype=dtype)
-            for i, band in enumerate(bands):
-                image[:, :, i] = band.ReadAsArray()
+            for idx, band in enumerate(bands):
+                buf = band.ReadAsArray()
+                if buf is None:
+                    raise IOError(ub.paragraph(
+                        '''
+                        GDAL was unable to read band: {}, {}'
+                        from {!r}
+                        '''.format(idx, band, fpath)))
+                image[:, :, idx] = buf
 
         # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
@@ -796,7 +803,7 @@ def load_image_shape(fpath):
 
     Benchmark:
         >>> # For large files, PIL is much faster
-        >>> from osgeo import import gdal
+        >>> from osgeo import gdal
         >>> from PIL import Image
         >>> #
         >>> import kwimage
