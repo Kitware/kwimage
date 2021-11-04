@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 
-def draw_text_on_image(img, text, org, return_info=False, **kwargs):
+def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
@@ -109,6 +109,26 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         >>> kwplot.autompl()
         >>> kwplot.imshow(img)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> import ubelt as ub
+        >>> grid = list(ub.named_product({
+        >>>     'halign': ['left', 'center', 'right', None],
+        >>>     'valign': ['top', 'center', 'bottom', None],
+        >>>     'border': [0, 3]
+        >>> }))
+        >>> canvases = []
+        >>> text = 'small-line\na-much-much-much-bigger-line\nanother-small\n.'
+        >>> for kw in grid:
+        >>>     header = kwimage.draw_text_on_image({}, ub.repr2(kw, compact=1), color='blue')
+        >>>     canvas = kwimage.draw_text_on_image({'color': 'white'}, text, org=None, **kw)
+        >>>     canvases.append(kwimage.stack_images([header, canvas], axis=0, bg_value=(255, 255, 255), pad=5))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> canvas = kwimage.stack_images_grid(canvases, pad=10, bg_value=(255, 255, 255))
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(canvas)
+        >>> kwplot.show_if_requested()
     """
     import kwimage
 
@@ -149,7 +169,98 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
 
     valign = kwargs.pop('valign', None)
     halign = kwargs.pop('halign', None)
+    if halign is None:
+        halign = 'left'
+    if valign is None:
+        valign = 'top'
 
+    if img is None:
+        img = {'width': None, 'height': None}
+
+    if org is None:
+        org = (None, None)
+
+    x0, y0 = org
+
+    if isinstance(img, dict):
+        given_w = img.get('width', None)
+        given_h = img.get('height', None)
+    else:
+        given_h, given_w = img.shape[0:2]
+
+    needs_x0 = x0 is None and halign != 'left'
+    needs_y0 = y0 is None and valign != 'top'
+
+    if needs_x0 or needs_y0:
+        # Speical case: when the alignment is non left-top, AND we don't have
+        # an origin we need to do a bit of extra computation to figure out what
+        # the width / height need to be
+        text_w, text_h = _text_sizes(text, (1, 1), border_thickness, kwargs, None, halign='left')[0:2]
+        if given_w is None:
+            given_w = text_w
+        if given_h is None:
+            given_h = text_h
+
+    if x0 is None:
+        if halign == 'left':
+            x0 = 1
+        elif halign == 'center':
+            x0 = given_w // 2
+        elif halign == 'right':
+            x0 = given_w - 1
+        else:
+            raise KeyError(halign)
+
+    if y0 is None:
+        if valign == 'top':
+            y0 = 1
+        elif valign == 'center':
+            y0 = given_h // 2
+        elif valign == 'bottom':
+            y0 = given_h - 1
+        else:
+            raise KeyError(valign)
+
+    org = (x0, y0)
+    text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org = _text_sizes(text, org, border_thickness, kwargs, valign, halign)
+
+    if isinstance(img, dict):
+        # if image is unspecified allocate just enough space for text
+        # allow users to specify partial parameters
+        bg_color = kwimage.Color(img.get('color', (0, 0, 0))).as255()
+        alloc_w = given_w
+        alloc_h = given_h
+        if alloc_w is None:
+            alloc_w = text_w
+        if alloc_h is None:
+            alloc_h = text_h
+        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
+        img[...] = np.array(bg_color)[None, None, :]
+
+    if border_thickness > 0:
+        # recursive call
+        basis = list(range(-border_thickness, border_thickness + 1))
+        org = np.array(org)
+        for i, j in it.product(basis, basis):
+            if i == 0 and j == 0:
+                continue
+            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
+
+    for i, line in enumerate(lines):
+        xy = tuple(line_org[i])
+        img = cv2.putText(img, line, xy, **kwargs)
+
+    if return_info:
+        info = {
+            'line_org': line_org,
+            'line_sizes': line_sizes,
+        }
+        return img, info
+    else:
+        return img
+
+
+def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
     getsize_kw = {
         k: kwargs[k]
         for k in ['fontFace', 'fontScale', 'thickness']
@@ -207,57 +318,25 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         else:
             raise KeyError(valign)
 
-    if halign is not None:
-        if halign == 'left':
-            # This is the default case, no modification needed
-            pass
-        elif halign == 'center':
-            # When the x-orgin should be the center, subtract half of
-            # the line width to get the leftmost point.
-            line_org[:, 0] = x0 - (line_sizes[:, 0] / 2)
-        elif halign == 'right':
-            # The x-orgin should be the rightmost point, subtract
-            # the width of each line to find the leftmost point.
-            line_org[:, 0] = x0 - line_sizes[:, 0]
-        else:
-            raise KeyError(halign)
-
-    if img is None:
-        img = {'width': None, 'height': None}
-
-    if isinstance(img, dict):
-        # if image is unspecified allocate just enough space for text
-        # allow users to specify partial parameters
-        alloc_w = img.get('width', None)
-        alloc_h = img.get('height', None)
-        if alloc_w is None:
-            abs_left_x = line_org[:, 0].min()
-            alloc_w = total_w + border_thickness + abs_left_x
-        if alloc_h is None:
-            alloc_h = total_h + border_thickness + abs_top_y + final_baseline
-        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
-
-    if border_thickness > 0:
-        # recursive call
-        basis = list(range(-border_thickness, border_thickness + 1))
-        for i, j in it.product(basis, basis):
-            if i == 0 and j == 0:
-                continue
-            org = np.array(org)
-            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
-
-    for i, line in enumerate(lines):
-        xy = tuple(line_org[i])
-        img = cv2.putText(img, line, xy, **kwargs)
-
-    if return_info:
-        info = {
-            'line_org': line_org,
-            'line_sizes': line_sizes,
-        }
-        return img, info
+    if halign == 'left':
+        # This is the default case, no modification needed
+        pass
+    elif halign == 'center':
+        # When the x-orgin should be the center, subtract half of
+        # the line width to get the leftmost point.
+        line_org[:, 0] = x0 - (line_sizes[:, 0] / 2)
+    elif halign == 'right':
+        # The x-orgin should be the rightmost point, subtract
+        # the width of each line to find the leftmost point.
+        line_org[:, 0] = x0 - line_sizes[:, 0]
     else:
-        return img
+        raise KeyError(halign)
+
+    abs_left_x = line_org[:, 0].min()
+    text_w = total_w + border_thickness + abs_left_x
+    text_h = total_h + border_thickness + abs_top_y + final_baseline
+
+    return text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org
 
 
 def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):

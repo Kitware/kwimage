@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Using `math` is much faster than `numpy` for scalars, switching to that in kwimage.Affine
+* Added default behavior to `draw_text_on_image` when origin is unspecified.
+* Polygon and MultiPolygon coerce work better with geojson
 
 
 ## Version 0.7.13 - Released 2021-10-29
