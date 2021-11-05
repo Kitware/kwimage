@@ -620,9 +620,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         interpolation = _coerce_interpolation(
             interpolation, scale=new_scale.min(),
             grow_default=grow_interpolation)
-        import xdev
-        with xdev.embed_on_exception_context:
-            new_img = _patched_resize(img, new_scale, new_dsize, interpolation=interpolation)
+        new_img = _patched_resize(img, new_scale, new_dsize, interpolation=interpolation)
         if return_info:
             # import kwimage
             # transform = kwimage.Affine.affine(scale=scale)
