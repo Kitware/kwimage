@@ -5,6 +5,7 @@ import ubelt as ub
 import numpy as np
 import kwarray
 import skimage.transform
+import math
 
 
 try:
@@ -143,7 +144,6 @@ class Matrix(Transform):
         else:
             raise TypeError('{} @ {}'.format(type(self), type(other)))
 
-    @profile
     def inv(self):
         """
         Returns the inverse of this matrix
@@ -258,6 +258,7 @@ class Affine(Projective):
         else:
             return {'type': 'affine', 'matrix': self.matrix.tolist()}
 
+    @profile
     def concise(self):
         """
         Return a concise coercable dictionary representation of this matrix
@@ -270,7 +271,8 @@ class Affine(Projective):
             Dict: dictionary with consise parameters
 
         Example:
-            >>> self = Affine.random(rng=0, scale=1)
+            >>> import kwimage
+            >>> self = kwimage.Affine.random(rng=0, scale=1)
             >>> params = self.concise()
             >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
             >>> print('params = {}'.format(ub.repr2(params, nl=1, precision=2)))
@@ -281,7 +283,8 @@ class Affine(Projective):
             }
 
         Example:
-            >>> self = Affine.random(rng=0, scale=2, offset=0)
+            >>> import kwimage
+            >>> self = kwimage.Affine.random(rng=0, scale=2, offset=0)
             >>> params = self.concise()
             >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
             >>> print('params = {}'.format(ub.repr2(params, nl=1, precision=2)))
@@ -293,18 +296,36 @@ class Affine(Projective):
         """
         params = self.decompose()
         params['type'] = 'affine'
-        if np.allclose(params['offset'], (0, 0)):
+        # New much faster impl
+        tx, ty = params['offset']
+        sx, sy = params['scale']
+        math.isclose(params['shear'], 0)
+        math.isclose(params['shear'], 0)
+        if math.isclose(tx, 0) and math.isclose(ty, 0):
             params.pop('offset')
-        elif ub.allsame(params['offset']):
-            params['offset'] = params['offset'][0]
-        if np.allclose(params['scale'], (1, 1)):
+        elif tx == ty:
+            params['offset'] = tx
+        if math.isclose(sy, 1) and math.isclose(sy, 1):
             params.pop('scale')
-        elif ub.allsame(params['scale']):
-            params['scale'] = params['scale'][0]
-        if np.allclose(params['shear'], 0):
+        elif sx == sy:
+            params['scale'] = sx
+        if math.isclose(params['shear'], 0):
             params.pop('shear')
-        if np.allclose(params['theta'], 0):
+        if math.isclose(params['theta'], 0):
             params.pop('theta')
+        # else:
+        #     if np.allclose(params['offset'], (0, 0)):
+        #         params.pop('offset')
+        #     elif ub.allsame(params['offset']):
+        #         params['offset'] = params['offset'][0]
+        #     if np.allclose(params['scale'], (1, 1)):
+        #         params.pop('scale')
+        #     elif ub.allsame(params['scale']):
+        #         params['scale'] = params['scale'][0]
+        #     if np.allclose(params['shear'], 0):
+        #         params.pop('shear')
+        #     if np.isclose(params['theta'], 0):
+        #         params.pop('theta')
         return params
 
     @classmethod
@@ -382,6 +403,7 @@ class Affine(Projective):
         ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
         return ecc
 
+    @profile
     def decompose(self):
         """
         Decompose the affine matrix into its individual scale, translation,
@@ -423,12 +445,34 @@ class Affine(Projective):
             print(aff.eccentricity)
 
             pass
+
+        Ignore:
+            import timerit
+            ti = timerit.Timerit(100, bestof=10, verbose=2)
+            for timer in ti.reset('time'):
+                self = Affine.random()
+                with timer:
+                    self.decompose()
+
+            # Wow: using math instead of numpy for scalars is much faster!
+
+            for timer in ti.reset('time'):
+                with timer:
+                    math.sqrt(a11 * a11 + a21 * a21)
+
+            for timer in ti.reset('time'):
+                with timer:
+                    np.arctan2(a21, a11)
+
+            for timer in ti.reset('time'):
+                with timer:
+                    math.atan2(a21, a11)
         """
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
-        sx = np.sqrt(a11 ** 2 + a21 ** 2)
-        theta = np.arctan2(a21, a11)
-        sin_t = np.sin(theta)
-        cos_t = np.cos(theta)
+        sx = math.sqrt(a11 * a11 + a21 * a21)
+        theta = math.atan2(a21, a11)
+        sin_t = math.sin(theta)
+        cos_t = math.cos(theta)
         msy = a12 * cos_t + a22 * sin_t
         if abs(cos_t) < abs(sin_t):
             sy = (msy * cos_t - a12) / sin_t
@@ -442,6 +486,25 @@ class Affine(Projective):
             'shear': m,
             'theta': theta,
         }
+
+        # a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
+        # sx = np.sqrt(a11 ** 2 + a21 ** 2)
+        # theta = np.arctan2(a21, a11)
+        # sin_t = np.sin(theta)
+        # cos_t = np.cos(theta)
+        # msy = a12 * cos_t + a22 * sin_t
+        # if abs(cos_t) < abs(sin_t):
+        #     sy = (msy * cos_t - a12) / sin_t
+        # else:
+        #     sy = (a22 - msy * sin_t) / cos_t
+        # m = msy / sy
+        # tx, ty = a13, a23
+        # params = {
+        #     'offset': (tx, ty),
+        #     'scale': (sx, sy),
+        #     'shear': m,
+        #     'theta': theta,
+        # }
         return params
 
     @classmethod
@@ -722,6 +785,14 @@ class Affine(Projective):
             >>> # combine transformations
             >>> aff = tr2_ @ aff0 @ tr1_
             >>> print('aff = {}'.format(ub.repr2(aff.tolist(), nl=1)))
+
+        Bench:
+            import timerit
+            ti = timerit.Timerit(10000, bestof=10, verbose=2)
+            for timer in ti.reset('time'):
+                with timer:
+                    self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shear=np.random.rand())
+
         """
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
@@ -734,10 +805,11 @@ class Affine(Projective):
 
         # Make auxially varables to reduce the number of sin/cos calls
         shear_p_theta = shear_ + theta_
-        cos_theta = np.cos(theta_)
-        sin_theta = np.sin(theta_)
-        cos_shear_p_theta = np.cos(shear_p_theta)
-        sin_shear_p_theta = np.sin(shear_p_theta)
+
+        cos_theta = math.cos(theta_)
+        sin_theta = math.sin(theta_)
+        cos_shear_p_theta = math.cos(shear_p_theta)
+        sin_shear_p_theta = math.sin(shear_p_theta)
 
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta
@@ -754,7 +826,6 @@ class Affine(Projective):
         return self
 
 
-# @profile
 # def _ensure_iterablen(scalar, n):
 #     try:
 #         iter(scalar)
@@ -763,7 +834,6 @@ class Affine(Projective):
 #     return scalar
 
 
-@profile
 def _ensure_iterable2(scalar):
     try:
         a, b = scalar

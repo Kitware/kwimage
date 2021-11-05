@@ -4,7 +4,24 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.13 - Unreleased
+## Version 0.7.14 - Unreleased
+
+### Added
+* kwimage.morphology
+* kwimage.draw_header_text
+
+
+### Fixed
+* But in imresize when a dim was automatically computed to be zero.
+
+### Changed
+* Using `math` is much faster than `numpy` for scalars, switching to that in kwimage.Affine
+* Added default behavior to `draw_text_on_image` when origin is unspecified.
+* Polygon and MultiPolygon coerce work better with geojson
+* Work on new robust normalizers (see `normalize_intensity`)
+
+
+## Version 0.7.13 - Released 2021-10-29
 
 ### Added
 * Add function `gaussian_blur`

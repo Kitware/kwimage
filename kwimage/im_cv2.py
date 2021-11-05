@@ -10,6 +10,7 @@ import six
 import numpy as np
 import ubelt as ub
 import numbers
+from functools import lru_cache
 from . import im_core
 
 
@@ -612,7 +613,9 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     else:
         # Use np.round over python round, which has incompatible behavior
         old_dsize = (old_w, old_h)
-        new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
+        new_w_ = max(1, int(np.round(new_w)))
+        new_h_ = max(1, int(np.round(new_h)))
+        new_dsize = (new_w_, new_h_)
         new_scale = np.array(new_dsize) / np.array(old_dsize)
         interpolation = _coerce_interpolation(
             interpolation, scale=new_scale.min(),
@@ -1544,3 +1547,132 @@ def _pyrDownK(a, k=1):
     for _ in range(k):
         a = cv2.pyrDown(a, borderType=borderType)
     return a
+
+
+"""
+items = {k.split('_')[1].lower(): 'cv2.' + k for k in dir(cv2) if k.startswith('MORPH_')}
+items = ub.sorted_vals(items, key=lambda x: eval(x, {'cv2': cv2}))
+print('_CV2_MORPH_MODES = {}'.format(ub.repr2(items, nl=1, sv=1, align=':')))
+"""
+_CV2_STRUCT_ELEMENTS = {
+    'rect'    : cv2.MORPH_RECT,
+    'cross'   : cv2.MORPH_CROSS,
+    'ellipse' : cv2.MORPH_ELLIPSE,
+}
+
+
+_CV2_MORPH_MODES = {
+    'erode'   : cv2.MORPH_ERODE,
+    'dilate'  : cv2.MORPH_DILATE,
+    'open'    : cv2.MORPH_OPEN,
+    'close'   : cv2.MORPH_CLOSE,
+    'gradient': cv2.MORPH_GRADIENT,
+    'tophat'  : cv2.MORPH_TOPHAT,
+    'blackhat': cv2.MORPH_BLACKHAT,
+    'hitmiss' : cv2.MORPH_HITMISS,
+}
+
+
+@lru_cache(128)
+def _morph_kernel_core(h, w, element):
+    struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
+    element = cv2.getStructuringElement(struct_shape, (h, w))
+    return element
+    # return np.ones((h, w), np.uint8)
+
+
+def _morph_kernel(size, element='rect'):
+    """
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> from kwimage.im_cv2 import _CV2_MORPH_MODES  # NOQA
+        >>> from kwimage.im_cv2 import _CV2_STRUCT_ELEMENTS  # NOQA
+        >>> kernel = 20
+        >>> results = {}
+        >>> for element in _CV2_STRUCT_ELEMENTS.keys():
+        ...     results[element] = _morph_kernel(kernel, element)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
+        >>> for k, result in results.items():
+        >>>     kwplot.imshow(result, pnum=pnum_(), title=k)
+        >>> kwplot.show_if_requested()
+
+    """
+    if isinstance(size, int):
+        h = size
+        w = size
+    else:
+        h, w = size
+        # raise NotImplementedError
+    return _morph_kernel_core(h, w, element)
+
+
+def morphology(data, mode, kernel=5, element='rect', iterations=1):
+    """
+    Executes a morphological operation.
+
+    Args:
+        input (ndarray[dtype=uint8 | float64]): data
+            (note if mode is hitmiss data must be uint8)
+
+        mode (str) : morphology mode, can be one of: erode, rect, cross,
+            dilate, ellipse, open, close, gradient, tophat, blackhat, or
+            hitmiss
+
+        kernel (int | Tuple[int, int]): size of the morphology kernel
+
+        element (str):
+            structural element, can be rect, cross, or ellipse.
+
+        iterations (int):
+            numer of times to repeat the operation
+
+    TODO:
+        borderType
+        borderValue
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> from kwimage.im_cv2 import _CV2_MORPH_MODES  # NOQA
+        >>> from kwimage.im_cv2 import _CV2_STRUCT_ELEMENTS  # NOQA
+        >>> #shape = (32, 32)
+        >>> shape = (64, 64)
+        >>> data = (np.random.rand(*shape) > 0.5).astype(np.uint8)
+        >>> import kwimage
+        >>> data = kwimage.gaussian_patch(shape)
+        >>> data = data / data.max()
+        >>> data = kwimage.ensure_uint255(data)
+        >>> results = {}
+        >>> kernel = 5
+        >>> for mode in _CV2_MORPH_MODES.keys():
+        ...     for element in _CV2_STRUCT_ELEMENTS.keys():
+        ...         results[f'{mode}+{element}'] = morphology(data, mode, kernel=kernel, element=element, iterations=2)
+        >>> results['raw'] = data
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nCols=3, nSubplots=len(results))
+        >>> for k, result in results.items():
+        >>>     kwplot.imshow(result, pnum=pnum_(), title=k)
+        >>> kwplot.show_if_requested()
+
+    References:
+        https://opencv24-python-tutorials.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_morphological_ops/py_morphological_ops.html
+
+    """
+    import cv2
+    if data.dtype.kind == 'b':
+        data = data.astype(np.uint8)
+    kernel = _morph_kernel(kernel, element=element)
+    if isinstance(mode, str):
+        morph_mode = _CV2_MORPH_MODES[mode]
+    elif isinstance(mode, int):
+        morph_mode = mode
+    else:
+        raise TypeError(type(mode))
+
+    new = cv2.morphologyEx(
+        data, op=morph_mode, kernel=kernel, iterations=iterations)
+    return new

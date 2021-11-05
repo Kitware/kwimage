@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 
-def draw_text_on_image(img, text, org, return_info=False, **kwargs):
+def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     r"""
     Draws multiline text on an image using opencv
 
@@ -109,6 +109,27 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         >>> kwplot.autompl()
         >>> kwplot.imshow(img)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> import ubelt as ub
+        >>> import kwimage
+        >>> grid = list(ub.named_product({
+        >>>     'halign': ['left', 'center', 'right', None],
+        >>>     'valign': ['top', 'center', 'bottom', None],
+        >>>     'border': [0, 3]
+        >>> }))
+        >>> canvases = []
+        >>> text = 'small-line\na-much-much-much-bigger-line\nanother-small\n.'
+        >>> for kw in grid:
+        >>>     header = kwimage.draw_text_on_image({}, ub.repr2(kw, compact=1), color='blue')
+        >>>     canvas = kwimage.draw_text_on_image({'color': 'white'}, text, org=None, **kw)
+        >>>     canvases.append(kwimage.stack_images([header, canvas], axis=0, bg_value=(255, 255, 255), pad=5))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> canvas = kwimage.stack_images_grid(canvases, pad=10, bg_value=(255, 255, 255))
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(canvas)
+        >>> kwplot.show_if_requested()
     """
     import kwimage
 
@@ -149,7 +170,98 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
 
     valign = kwargs.pop('valign', None)
     halign = kwargs.pop('halign', None)
+    if halign is None:
+        halign = 'left'
+    if valign is None:
+        valign = 'top'
 
+    if img is None:
+        img = {'width': None, 'height': None}
+
+    if org is None:
+        org = (None, None)
+
+    x0, y0 = org
+
+    if isinstance(img, dict):
+        given_w = img.get('width', None)
+        given_h = img.get('height', None)
+    else:
+        given_h, given_w = img.shape[0:2]
+
+    needs_x0 = x0 is None and halign != 'left'
+    needs_y0 = y0 is None and valign != 'top'
+
+    if needs_x0 or needs_y0:
+        # Speical case: when the alignment is non left-top, AND we don't have
+        # an origin we need to do a bit of extra computation to figure out what
+        # the width / height need to be
+        text_w, text_h = _text_sizes(text, (1, 1), border_thickness, kwargs, None, halign='left')[0:2]
+        if given_w is None:
+            given_w = text_w
+        if given_h is None:
+            given_h = text_h
+
+    if x0 is None:
+        if halign == 'left':
+            x0 = 1
+        elif halign == 'center':
+            x0 = given_w // 2
+        elif halign == 'right':
+            x0 = given_w - 1
+        else:
+            raise KeyError(halign)
+
+    if y0 is None:
+        if valign == 'top':
+            y0 = 1
+        elif valign == 'center':
+            y0 = given_h // 2
+        elif valign == 'bottom':
+            y0 = given_h - 1
+        else:
+            raise KeyError(valign)
+
+    org = (x0, y0)
+    text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org = _text_sizes(text, org, border_thickness, kwargs, valign, halign)
+
+    if isinstance(img, dict):
+        # if image is unspecified allocate just enough space for text
+        # allow users to specify partial parameters
+        bg_color = kwimage.Color(img.get('color', (0, 0, 0))).as255()
+        alloc_w = given_w
+        alloc_h = given_h
+        if alloc_w is None:
+            alloc_w = text_w
+        if alloc_h is None:
+            alloc_h = text_h
+        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
+        img[...] = np.array(bg_color)[None, None, :]
+
+    if border_thickness > 0:
+        # recursive call
+        basis = list(range(-border_thickness, border_thickness + 1))
+        org = np.array(org)
+        for i, j in it.product(basis, basis):
+            if i == 0 and j == 0:
+                continue
+            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
+
+    for i, line in enumerate(lines):
+        xy = tuple(line_org[i])
+        img = cv2.putText(img, line, xy, **kwargs)
+
+    if return_info:
+        info = {
+            'line_org': line_org,
+            'line_sizes': line_sizes,
+        }
+        return img, info
+    else:
+        return img
+
+
+def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
     getsize_kw = {
         k: kwargs[k]
         for k in ['fontFace', 'fontScale', 'thickness']
@@ -207,57 +319,25 @@ def draw_text_on_image(img, text, org, return_info=False, **kwargs):
         else:
             raise KeyError(valign)
 
-    if halign is not None:
-        if halign == 'left':
-            # This is the default case, no modification needed
-            pass
-        elif halign == 'center':
-            # When the x-orgin should be the center, subtract half of
-            # the line width to get the leftmost point.
-            line_org[:, 0] = x0 - (line_sizes[:, 0] / 2)
-        elif halign == 'right':
-            # The x-orgin should be the rightmost point, subtract
-            # the width of each line to find the leftmost point.
-            line_org[:, 0] = x0 - line_sizes[:, 0]
-        else:
-            raise KeyError(halign)
-
-    if img is None:
-        img = {'width': None, 'height': None}
-
-    if isinstance(img, dict):
-        # if image is unspecified allocate just enough space for text
-        # allow users to specify partial parameters
-        alloc_w = img.get('width', None)
-        alloc_h = img.get('height', None)
-        if alloc_w is None:
-            abs_left_x = line_org[:, 0].min()
-            alloc_w = total_w + border_thickness + abs_left_x
-        if alloc_h is None:
-            alloc_h = total_h + border_thickness + abs_top_y + final_baseline
-        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
-
-    if border_thickness > 0:
-        # recursive call
-        basis = list(range(-border_thickness, border_thickness + 1))
-        for i, j in it.product(basis, basis):
-            if i == 0 and j == 0:
-                continue
-            org = np.array(org)
-            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
-
-    for i, line in enumerate(lines):
-        xy = tuple(line_org[i])
-        img = cv2.putText(img, line, xy, **kwargs)
-
-    if return_info:
-        info = {
-            'line_org': line_org,
-            'line_sizes': line_sizes,
-        }
-        return img, info
+    if halign == 'left':
+        # This is the default case, no modification needed
+        pass
+    elif halign == 'center':
+        # When the x-orgin should be the center, subtract half of
+        # the line width to get the leftmost point.
+        line_org[:, 0] = x0 - (line_sizes[:, 0] / 2)
+    elif halign == 'right':
+        # The x-orgin should be the rightmost point, subtract
+        # the width of each line to find the leftmost point.
+        line_org[:, 0] = x0 - line_sizes[:, 0]
     else:
-        return img
+        raise KeyError(halign)
+
+    abs_left_x = line_org[:, 0].min()
+    text_w = total_w + border_thickness + abs_left_x
+    text_h = total_h + border_thickness + abs_top_y + final_baseline
+
+    return text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org
 
 
 def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
@@ -826,3 +906,123 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
         # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
         image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
     return image
+
+
+def draw_header_text(image, text, fit=False, color='red', halign='center',
+                     stack='auto'):
+    """
+    Places a black bar on top of an image and writes text in it
+
+    Args:
+
+        image (ndarray | dict | None):
+            numpy image or dictionary containing a key width
+
+        text (str) :
+            text to draw
+
+        fit (bool | str):
+            If False, will draw as much text within the given width as possible.
+            If True, will draw all text and then resize to fit in the given width
+            If "shrink", will only resize the text if it is too big to fit, in
+            other words this is like fit=True, but it wont enlarge the text.
+
+        color (str | Tuple) :
+            a color coercable to :class:`kwimage.Color`.
+
+        halign (str) :
+            Horizontal alignment. Can be left, center, or right.
+
+        stack (bool | str):
+            if True returns the stacked image, otherwise just returns the
+            header. If 'auto', will only stack if an image is given as an
+            ndarray.
+
+    Returns:
+        ndarray
+
+    Example:
+        >>> from kwimage.im_draw import *  # NOQA
+        >>> import kwimage
+        >>> image = kwimage.grab_test_image()
+        >>> tiny_image = kwimage.imresize(image, dsize=(64, 64))
+        >>> canvases = []
+        >>> canvases += [draw_header_text(image=image, text='unfit long header ' * 5, fit=False)]
+        >>> canvases += [draw_header_text(image=image, text='shrunk long header ' * 5, fit='shrink')]
+        >>> canvases += [draw_header_text(image=image, text='left header', fit=False, halign='left')]
+        >>> canvases += [draw_header_text(image=image, text='center header', fit=False, halign='center')]
+        >>> canvases += [draw_header_text(image=image, text='right header', fit=False, halign='right')]
+        >>> canvases += [draw_header_text(image=image, text='shrunk header', fit='shrink', halign='left')]
+        >>> canvases += [draw_header_text(image=tiny_image, text='shrunk header-center', fit='shrink', halign='center')]
+        >>> canvases += [draw_header_text(image=image, text='fit header', fit=True, halign='left')]
+        >>> canvases += [draw_header_text(image={'width': 200}, text='header only', fit=True, halign='left')]
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nSubplots=len(canvases))
+        >>> for c in canvases:
+        >>>     kwplot.imshow(c, pnum=pnum_())
+        >>> kwplot.show_if_requested()
+    """
+    # import cv2
+    import kwimage
+
+    if stack == 'auto':
+        stack = isinstance(image, np.ndarray)
+
+    if isinstance(image, dict):
+        width = image['width']
+        if stack:
+            raise ValueError('Must pass in the actual image if stack is True')
+    else:
+        width = image.shape[1]
+
+    if stack:
+        # Handle very small image case
+        h, w = image.shape[0:2]
+        min_pixels = 32
+        if w < min_pixels or h < min_pixels:
+            image = kwimage.imresize(image, min_dim=min_pixels)
+        width = image.shape[1]
+
+    if fit:
+        # TODO: allow a shrink-to-fit only option
+        try:
+            # needs new kwimage to work
+            header = kwimage.draw_text_on_image(
+                None, text, org=None,
+                valign='top', halign=halign, color=color)
+        except Exception:
+            header = kwimage.draw_text_on_image(
+                None, text, org=(1, 1),
+                valign='top', halign='left', color=color)
+
+        if fit == 'shrink':
+            if header.shape[1] > width:
+                header = kwimage.imresize(header, dsize=(width, None))
+            elif header.shape[1] < width:
+                header = np.pad(header, [(0, 0), ((width - header.shape[1]) // 2, 0), (0, 0)])
+            else:
+                pass
+        else:
+            header = kwimage.imresize(header, dsize=(width, None))
+    else:
+        # Allows for however much height is needed
+        if halign == 'left':
+            org = (1, 1)
+        elif halign == 'center':
+            org = (width // 2, 1)
+        elif halign == 'right':
+            org = (width - 1, 1)
+        else:
+            raise KeyError(halign)
+
+        header = kwimage.draw_text_on_image(
+            {'width': width}, text, org=org,
+            valign='top', halign=halign, color=color)
+
+    if stack:
+        stacked = kwimage.stack_images([header, image], axis=0, overlap=-1)
+        return stacked
+    else:
+        return header

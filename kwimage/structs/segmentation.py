@@ -218,6 +218,13 @@ def _coerce_coco_segmentation(data, dims=None):
             # TODO: kwimage.Polygon.from_coco
             self = kwimage.Polygon(**data)
             # raise NotImplementedError('explicit polygon coerce')
+        elif 'type' in data:
+            if data['type'] == 'Polygon':
+                self = kwimage.Polygon.from_geojson(data)
+            elif data['type'] == 'MultiPolygon':
+                self = kwimage.Polygon.from_geojson(data)
+            else:
+                raise NotImplementedError(data['type'])
         else:
             raise TypeError(type(data))
     elif isinstance(data, list):
