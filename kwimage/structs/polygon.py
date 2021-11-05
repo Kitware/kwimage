@@ -1,3 +1,11 @@
+"""
+TODO:
+    - [ ]  Make function mask -> polygon list
+    - [ ]  Make function multipolygon -> polygon list
+    - [ ]  Make function PolygonList -> Boxes
+    - [ ]  Make function SegmentationList -> Boxes
+
+"""
 import ubelt as ub
 import cv2
 import numpy as np
@@ -770,6 +778,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> kwimage.Polygon.coerce(self.to_geojson())
             >>> kwimage.Polygon.coerce('POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))')
         """
+        # TODO: fix single list case from old coco style
         import kwimage
         if isinstance(data, Polygon):
             return data
