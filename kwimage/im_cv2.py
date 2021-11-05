@@ -1575,7 +1575,7 @@ _CV2_MORPH_MODES = {
 }
 
 
-@lru_cache
+@lru_cache(128)
 def _morph_kernel_core(h, w, element):
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
     element = cv2.getStructuringElement(struct_shape, (h, w))

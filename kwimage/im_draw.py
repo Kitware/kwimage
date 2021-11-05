@@ -112,6 +112,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
 
     Example:
         >>> import ubelt as ub
+        >>> import kwimage
         >>> grid = list(ub.named_product({
         >>>     'halign': ['left', 'center', 'right', None],
         >>>     'valign': ['top', 'center', 'bottom', None],
