@@ -12,7 +12,7 @@ scikit-image >= 0.17.2           ; python_version < '3.9.0' and python_version >
 scikit-image >= 0.14.0, < 0.15.0 ; python_version < '3.6.0'
 
 six >= 1.11.0
-ubelt >= 0.9.5
+ubelt >= 0.10.1
 kwarray >= 0.5.19
 
 # future >= 0.18.2;python_version<='2.7'  # not sure why this is needed, but tests fail on py27 if it doesnt exist.
