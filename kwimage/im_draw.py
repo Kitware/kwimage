@@ -976,6 +976,14 @@ def draw_header_text(image, text, fit=False, color='red', halign='center',
     else:
         width = image.shape[1]
 
+    if stack:
+        # Handle very small image case
+        h, w = image.shape[0:2]
+        min_pixels = 32
+        if w < min_pixels or h < min_pixels:
+            image = kwimage.imresize(image, min_dim=min_pixels)
+        width = image.shape[1]
+
     if fit:
         # TODO: allow a shrink-to-fit only option
         try:

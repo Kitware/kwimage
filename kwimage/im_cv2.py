@@ -613,12 +613,16 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     else:
         # Use np.round over python round, which has incompatible behavior
         old_dsize = (old_w, old_h)
-        new_dsize = (int(np.round(new_w)), int(np.round(new_h)))
+        new_w_ = max(1, int(np.round(new_w)))
+        new_h_ = max(1, int(np.round(new_h)))
+        new_dsize = (new_w_, new_h_)
         new_scale = np.array(new_dsize) / np.array(old_dsize)
         interpolation = _coerce_interpolation(
             interpolation, scale=new_scale.min(),
             grow_default=grow_interpolation)
-        new_img = _patched_resize(img, new_scale, new_dsize, interpolation=interpolation)
+        import xdev
+        with xdev.embed_on_exception_context:
+            new_img = _patched_resize(img, new_scale, new_dsize, interpolation=interpolation)
         if return_info:
             # import kwimage
             # transform = kwimage.Affine.affine(scale=scale)

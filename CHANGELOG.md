@@ -10,6 +10,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * kwimage.morphology
 * kwimage.draw_header_text
 
+
+### Fixed
+* But in imresize when a dim was automatically computed to be zero.
+
 ### Changed
 * Using `math` is much faster than `numpy` for scalars, switching to that in kwimage.Affine
 * Added default behavior to `draw_text_on_image` when origin is unspecified.
