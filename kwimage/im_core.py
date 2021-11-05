@@ -511,7 +511,7 @@ def find_robust_normalizers(data, params='auto'):
         - [ ] Is this a kwarray function in general?
 
     Example:
-        >>> from watch.utils.util_norm import *  # NOQA
+        >>> from kwimage.im_core import *  # NOQA
         >>> data = np.random.rand(100)
         >>> norm_params1 = find_robust_normalizers(data, params='auto')
         >>> norm_params2 = find_robust_normalizers(data, params={'low': 0, 'high': 1.0})
