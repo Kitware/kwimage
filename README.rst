@@ -42,13 +42,14 @@ The top-level API is:
                                 overlay_alpha_layers,)
     from .im_color import (Color,)
     from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                          make_channels_comparable, normalize, num_channels,
+                          find_robust_normalizers, make_channels_comparable,
+                          normalize, normalize_intensity, num_channels,
                           padded_slice,)
-    from .im_cv2 import (convert_colorspace, gaussian_patch, imresize, imscale,
-                         warp_affine,)
+    from .im_cv2 import (convert_colorspace, gaussian_blur, gaussian_patch, imcrop,
+                         imresize, imscale, morphology, warp_affine,)
     from .im_demodata import (checkerboard, grab_test_image,
                               grab_test_image_fpath,)
-    from .im_draw import (draw_boxes_on_image, draw_clf_on_image,
+    from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
                           draw_line_segments_on_image, draw_text_on_image,
                           draw_vector_field, make_heatmask, make_orimask,
                           make_vector_field,)
@@ -59,7 +60,8 @@ The top-level API is:
     from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                           MultiPolygon, Points, PointsList, Polygon, PolygonList,
                           Segmentation, SegmentationList, smooth_prob,)
-    from .transform import (Affine, Linear, Matrix, Projective, Transform,)
+    from .transform import (Affine, Linear, Matrix, Projective, Transform,
+                            profile,)
     from .util_warp import (add_homog, remove_homog, subpixel_accum,
                             subpixel_align, subpixel_getvalue, subpixel_maximum,
                             subpixel_minimum, subpixel_set, subpixel_setvalue,
@@ -68,6 +70,7 @@ The top-level API is:
 
 
 NOTE: THE KWIMAGE STRUCTS WILL EVENTUALLY MOVE TO THE KWANNOT REPO
+(But this transition might take awhile)
 
 
 The most notable feature of the ``kwimage`` module are the ``kwimage.structs``
