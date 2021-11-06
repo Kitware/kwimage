@@ -101,7 +101,6 @@ stages:
     except:
         refs:
           - release 
-          - main 
           - tags
         #changes:
         #    - README.rst
@@ -265,35 +264,6 @@ gpgsign/wheels:
             # there.
             - master
             - main
-            - release
-
-
-deploy/wheels:
-    <<: 
-        - *common_template
-
-    image:
-        python:3.8
-
-    stage: 
-        deploy
-
-    script: 
-        - pip install six pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U 
-        - ls wheelhouse
-        - ls dist
-        - |
-            WHEEL_PATHS=(wheelhouse/*.whl)
-            WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
-            echo "$WHEEL_PATHS_STR"
-            for WHEEL_PATH in "${WHEEL_PATHS[@]}"
-            do
-                twine check $WHEEL_PATH.asc $WHEEL_PATH
-                twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $WHEEL_PATH.asc $WHEEL_PATH
-            done
-            
-    only:
-        refs:
             - release
 
 
@@ -569,39 +539,86 @@ gpgsign/py3-none-any:
     image:
         python:3.7
 
-deploy/py3-none-any:
+# I think the deploy/wheels step just takes care of this 
+#deploy/py3-none-any:
+#    <<: 
+#        - *common_template
+
+#    image:
+#        python:3.7
+
+#    stage: 
+#        deploy
+
+#    script: 
+#        - ls dist
+#        - MB_PYTHON_TAG=py3-none-any
+#        - VERSION=$(python -c "import setup; print(setup.VERSION)")
+#        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+#        - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
+#        - pip install requests[security] twine 
+#        - echo "Checking wheels"
+#        - ls -al ${BDIST_WHEEL_PATH}*
+#        - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+#        - echo "Uploading wheels"
+#        # todo, can we tag the branch here as well?
+#        # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
+#        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+#        # Have the server git-tag the release and push the tags
+#        - VERSION=$(python -c "import setup; print(setup.VERSION)")
+#        # do sed twice to handle the case of https clone with and without a read token
+#        - URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g')
+#        - echo "URL_HOST = $URL_HOST"
+#        - git config user.email "ci@gitlab.kitware.com"
+#        - git config user.name "Gitlab-CI"
+#        - git tag $VERSION -m "tarball tag $VERSION"
+#        - git push --tags "https://${GIT_PUSH_TOKEN}@${URL_HOST}"
+            
+#    only:
+#        refs:
+#            - release
+
+
+deploy/wheels:
     <<: 
         - *common_template
 
     image:
-        python:3.7
+        python:3.8
 
     stage: 
         deploy
 
     script: 
+        - pip install six pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U 
+        - ls wheelhouse
         - ls dist
-        - MB_PYTHON_TAG=py3-none-any
-        - VERSION=$(python -c "import setup; print(setup.VERSION)")
-        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-        - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
-        - pip install requests[security] twine 
-        - echo "Checking wheels"
-        - ls -al ${BDIST_WHEEL_PATH}*
-        - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - echo "Uploading wheels"
-        # todo, can we tag the branch here as well?
-        # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
-        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
+        - |
+            WHEEL_PATHS=(wheelhouse/*.whl)
+            WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
+            echo "$WHEEL_PATHS_STR"
+            for WHEEL_PATH in "${WHEEL_PATHS[@]}"
+            do
+                twine check $WHEEL_PATH.asc $WHEEL_PATH
+                twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $WHEEL_PATH.asc $WHEEL_PATH
+            done
         # Have the server git-tag the release and push the tags
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         # do sed twice to handle the case of https clone with and without a read token
-        - URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g')
-        - echo "URL_HOST = $URL_HOST"
-        - git config user.email "ci@gitlab.kitware.com"
-        - git config user.name "Gitlab-CI"
-        - git tag $VERSION -m "tarball tag $VERSION"
-        - git push --tags "https://${GIT_PUSH_TOKEN}@${URL_HOST}"
+        - | 
+            URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g' | sed -e 's|git@||g' | sed -e 's|:|/|g')
+            echo "URL_HOST = $URL_HOST"
+            # A git config user name and email is required. Set if needed.
+            if [[ "$(git config user.email)" == "" ]]; then
+                git config user.email "ci@gitlab.org.com"
+                git config user.name "Gitlab-CI"
+            fi
+            if [ $(git tag -l "$VERSION") ]; then
+                echo "Tag already exists"
+            else
+                git tag $VERSION -m "tarball tag $VERSION"
+                git push --tags "https://${GITLAB_ORG_PUSH_TOKEN}@${URL_HOST}"
+            fi
             
     only:
         refs:
