@@ -77,8 +77,8 @@ class Segmentation(_WrapperObject):
     def to_multi_polygon(self):
         return self.data.to_multi_polygon()
 
-    def to_mask(self, dims=None):
-        return self.data.to_mask(dims=dims)
+    def to_mask(self, dims=None, pixels_are='points'):
+        return self.data.to_mask(dims=dims, pixels_are=pixels_are)
 
     @property
     def meta(self):
@@ -118,13 +118,13 @@ class SegmentationList(_generic.ObjectList):
         ])
         return new
 
-    def to_mask_list(self, dims=None):
+    def to_mask_list(self, dims=None, pixels_are='points'):
         """
         Converts all mask objects to multi-polygon objects
         """
         import kwimage
         new = kwimage.MaskList([
-            None if item is None else item.to_mask(dims=dims)
+            None if item is None else item.to_mask(dims=dims, pixels_are=pixels_are)
             for item in self
         ])
         return new

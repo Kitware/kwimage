@@ -1252,6 +1252,18 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 xywh = self_c.get_xywh()
         return xywh
 
+    def bounding_box(self):
+        """
+        Returns an axis-aligned bounding box for this mask
+
+        Returns:
+            kwimage.Boxes
+        """
+        import kwimage
+        xywh = self.get_xywh()
+        boxes = kwimage.Boxes([xywh], 'xywh')
+        return boxes
+
     def get_polygon(self):
         """
         DEPRECATED: USE to_multi_polygon
@@ -1371,10 +1383,23 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return boxes
 
     @profile
-    def to_multi_polygon(self):
+    def to_multi_polygon(self, pixels_are='points'):
         """
         Returns a MultiPolygon object fit around this raster including disjoint
         pieces and holes.
+
+        Args:
+            pixel_are (str):
+                Can either be "points" or "areas".
+
+                If pixels are "points", the we treat each pixel (i, j) as a
+                single infinitely small point at (i, j). As such, some polygons
+                may have zero area.
+
+                If pixels are "areas", then each pixel (i, j) represents a
+                square with coordinates ([i - 0.5, j - 0.5], [i + 0.5, j -
+                0.5], [i + 0.5, j + 0.5], and [i - 0.5, j + 0.5]). Must have
+                rasterio installed to use this method.
 
         Returns:
             MultiPolygon: vectorized representation
@@ -1435,27 +1460,28 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             temp.to_c_mask().data.sum()
 
         Example:
-
             >>> # TODO: how do we correctly handle the 1 or 2 point to a poly
             >>> # case?
+            >>> # xdoctest: +REQUIRES(module:rasterio)
             >>> import kwimage
-            >>> data = np.zeros((8, 8), dtype=np.uint8)
+            >>> dims = (8, 8)
+            >>> data = np.zeros(dims, dtype=np.uint8)
             >>> data[0, 3:5] = 1
             >>> data[7, 3:5] = 1
             >>> data[3:5, 0:2] = 1
+            >>> data[1, 1] = 1
             >>> # 1 pixel L shape
             >>> data[3, 5] = 1
             >>> data[4, 5] = 1
             >>> data[4, 6] = 1
             >>> self = kwimage.Mask.coerce(data)
-            >>> polys = self.to_multi_polygon()
+            >>> multi_poly1 = self.to_multi_polygon(pixels_are='points')
+            >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas')
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> pretty_data = kwplot.make_heatmask(data/1.0, cmap='magma')[..., 0:3]
-            >>> ax.set_title('White lines trace pixel boundaries (have fractional coordinates)')
-            >>> ax.set_xlabel('Gray lines are coordinates and pass through pixel centers')
-            >>> def _pixel_grid_lines(data):
+            >>> def _pixel_grid_lines(data, ax=ax):
             >>>     h, w = data.shape[0:2]
             >>>     ybasis = np.arange(0, h) + 0.5
             >>>     xbasis = np.arange(0, w) + 0.5
@@ -1465,62 +1491,49 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>>     ymax = np.full(h, w) - 0.5
             >>>     ax.hlines(y=ybasis, xmin=xmin, xmax=xmax, color="gainsboro")
             >>>     ax.vlines(x=xbasis, ymin=ymin, ymax=ymax, color="gainsboro")
-            >>> # The gray ticks show the center of the pixels
-            >>> ax = kwplot.imshow(pretty_data, show_ticks=True)[1]
-            >>> ax.grid(color='dimgray', linewidth=0.5)
-            >>> # Also draw black lines around the edges of the pixels
-            >>> _pixel_grid_lines(data)
+            >>> def _setup_grid(pnum):
+            >>>     ax = kwplot.imshow(pretty_data, show_ticks=True, pnum=pnum)[1]
+            >>>     # The gray ticks show the center of the pixels
+            >>>     ax.grid(color='dimgray', linewidth=0.5)
+            >>>     ax.set_xticks(np.arange(data.shape[1]))
+            >>>     ax.set_yticks(np.arange(data.shape[0]))
+            >>>     # Also draw black lines around the edges of the pixels
+            >>>     _pixel_grid_lines(data, ax=ax)
+            >>>     return ax
             >>> # Overlay the extracted polygons
-            >>> polys.draw(border=True, linewidth=5, alpha=0.5, radius=0.2)
+            >>> ax = _setup_grid(pnum=(2, 3, 1))
+            >>> ax.set_title('input binary mask data')
+            >>> ax = _setup_grid(pnum=(2, 3, 2))
+            >>> multi_poly1.draw(linewidth=5, alpha=0.5, radius=0.2, ax=ax, fill=False, vertex=0.2)
+            >>> ax.set_title('opencv "point" polygons')
+            >>> ax = _setup_grid(pnum=(2, 3, 3))
+            >>> multi_poly2.draw(linewidth=5, alpha=0.5, radius=0.2, color='limegreen', ax=ax, fill=False, vertex=0.2)
+            >>> ax.set_title('raterio "area" polygons')
+            >>> ax.figure.suptitle(ub.codeblock(
+            >>>     '''
+            >>>     Gray lines are coordinates and pass through pixel centers (integer coords)
+            >>>     White lines trace pixel boundaries (fractional coords)
+            >>>     '''))
+            >>> raster1 = multi_poly1.to_mask(dims, pixels_are='points')
+            >>> raster2 = multi_poly2.to_mask(dims, pixels_are='areas')
+            >>> kwplot.imshow(raster1.draw_on(), pnum=(2, 3, 5), title='rasterized')
+            >>> kwplot.imshow(raster2.draw_on(), pnum=(2, 3, 6), title='rasterized')
         """
-        import cv2
+        # import cv2
         from kwimage.structs.polygon import Polygon, MultiPolygon
-        p = 2
         # It should be faster to only exact the patch of non-zero values
         x, y, w, h = self.get_xywh().astype(int).tolist()
         if w > 0 or h > 0:
             output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
             xy_offset = (-x, -y)
-
             # FIXME: In the case where
             temp = self.translate(xy_offset, output_dims)
             temp_mask = temp.to_c_mask().data
-            offset = (x - p, y - p)
 
-            padded_mask = cv2.copyMakeBorder(temp_mask, p, p, p, p,
-                                             cv2.BORDER_CONSTANT, value=0)
+            polys = _find_contours(temp_mask, offset=xy_offset,
+                                   pixels_are=pixels_are)
 
-            # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
-            mode = cv2.RETR_CCOMP
-            method = cv2.CHAIN_APPROX_SIMPLE
-            # method = cv2.CHAIN_APPROX_TC89_KCOS
-            # Different versions of cv2 have different return types
-            _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
-            if len(_ret) == 2:
-                _contours, _hierarchy = _ret
-            else:
-                _img, _contours, _hierarchy = _ret
-
-            if _hierarchy is None:
-                raise Exception('Contour extraction from binary mask failed')
-
-            _hierarchy = _hierarchy[0]
-
-            polys = {i: {'exterior': None, 'interiors': []}
-                     for i, row in enumerate(_hierarchy) if row[3] == -1}
-            for i, row in enumerate(_hierarchy):
-                # This only works in RETR_CCOMP mode
-                nxt, prev, child, parent = row[0:4]
-                if parent != -1:
-                    coords = _contours[i][:, 0, :]
-                    polys[parent]['interiors'].append(coords)
-                else:
-                    coords = _contours[i][:, 0, :]
-                    # if len(coords) < 3:
-                    #     raise Exception
-                    polys[i]['exterior'] = coords
-
-            poly_list = [Polygon(**data) for data in polys.values()]
+            poly_list = [Polygon(**data) for data in polys]
             multi_poly = MultiPolygon(poly_list)
         else:
             multi_poly = MultiPolygon([])
@@ -1751,6 +1764,101 @@ class MaskList(_generic.ObjectList):
             kwimage.MaskList
         """
         return self
+
+
+def _find_contours(binary_mask, offset=(0, 0), pixels_are='points'):
+    """
+    Finds the contours in a binary mask
+
+    Args:
+        binary_mask (ndarray): a binary valued numpy array
+
+        offset (Tuple[float, float]):
+            translation to be applied to the countours when they are returned
+
+        pixel_are (str):
+            Can either be "points" or "areas".
+
+            If pixels are "points", the we treat each pixel (i, j) as a
+            single infinitely small point at (i, j). As such, some polygons
+            may have zero area.
+
+            If pixels are "areas", then each pixel (i, j) represents a
+            square with coordinates ([i - 0.5, j - 0.5], [i + 0.5, j -
+            0.5], [i + 0.5, j + 0.5], and [i - 0.5, j + 0.5]). Must have
+            rasterio installed to use this method.
+
+    Returns:
+        List[Dict]: list of polygon exteriors and interiors
+    """
+    if pixels_are == 'points':
+        polys = _opencv_find_contours(binary_mask, offset=offset)
+    elif pixels_are == 'areas':
+        polys = _rasterio_find_contours(binary_mask, offset=offset)
+    else:
+        raise KeyError(pixels_are)
+    return polys
+
+
+def _rasterio_find_contours(binary_mask, offset=(0, 0)):
+    from rasterio import features
+    import numpy as np
+    shapes = list(features.shapes(binary_mask))
+    x, y = offset
+
+    translate = np.array([x - 0.5, y - 0.5]).ravel()[None, :]
+    polys = []
+    for shape, value in shapes:
+        if value > 0:
+            coords = shape['coordinates']
+            exterior = np.array(coords[0]) + translate
+            interiors = [np.array(p) + translate for p in coords[1:]]
+            polys.append({
+                'exterior': exterior,
+                'interiors': interiors,
+            })
+    return polys
+
+
+def _opencv_find_contours(binary_mask, offset=(0, 0)):
+    import cv2
+    x, y = offset
+    p = 2
+    offset = (x - p, y - p)
+    padded_mask = cv2.copyMakeBorder(binary_mask, p, p, p, p,
+                                     cv2.BORDER_CONSTANT, value=0)
+
+    # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+    mode = cv2.RETR_CCOMP
+    method = cv2.CHAIN_APPROX_SIMPLE
+    # method = cv2.CHAIN_APPROX_TC89_KCOS
+    # Different versions of cv2 have different return types
+    _ret = cv2.findContours(padded_mask, mode, method, offset=offset)
+    if len(_ret) == 2:
+        _contours, _hierarchy = _ret
+    else:
+        _img, _contours, _hierarchy = _ret
+
+    if _hierarchy is None:
+        raise Exception('Contour extraction from binary mask failed')
+
+    _hierarchy = _hierarchy[0]
+
+    polys = {i: {'exterior': None, 'interiors': []}
+             for i, row in enumerate(_hierarchy) if row[3] == -1}
+    for i, row in enumerate(_hierarchy):
+        # This only works in RETR_CCOMP mode
+        nxt, prev, child, parent = row[0:4]
+        if parent != -1:
+            coords = _contours[i][:, 0, :]
+            polys[parent]['interiors'].append(coords)
+        else:
+            coords = _contours[i][:, 0, :]
+            # if len(coords) < 3:
+            #     raise Exception
+            polys[i]['exterior'] = coords
+    polys = list(polys.values())
+    return polys
 
 
 if __name__ == '__main__':
