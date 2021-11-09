@@ -1414,9 +1414,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             polygon.
 
         TODO:
-            - [ ] add a flag where polygons consider pixels to have width and
+            - [x] add a flag where polygons consider pixels to have width and
             the resulting polygon is traced around the pixel edges, not the
             pixel centers.
+
+            - [ ] Polygons and Masks should keep track of what "pixels_are"
 
         Example:
             >>> # xdoc: +REQUIRES(--mask)
@@ -1460,20 +1462,30 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             temp.to_c_mask().data.sum()
 
         Example:
-            >>> # TODO: how do we correctly handle the 1 or 2 point to a poly
-            >>> # case?
             >>> # xdoctest: +REQUIRES(module:rasterio)
             >>> import kwimage
-            >>> dims = (8, 8)
+            >>> dims = (10, 10)
             >>> data = np.zeros(dims, dtype=np.uint8)
             >>> data[0, 3:5] = 1
-            >>> data[7, 3:5] = 1
+            >>> data[9, 1:3] = 1
             >>> data[3:5, 0:2] = 1
             >>> data[1, 1] = 1
             >>> # 1 pixel L shape
             >>> data[3, 5] = 1
             >>> data[4, 5] = 1
             >>> data[4, 6] = 1
+            >>> data[1, 5] = 1
+            >>> data[2, 6] = 1
+            >>> data[3, 7] = 1
+            >>> data[6, 1] = 1
+            >>> data[7, 1] = 1
+            >>> data[7, 2] = 1
+            >>> data[6:10, 5] = 1
+            >>> data[6:10, 8] = 1
+            >>> data[9, 5:9] = 1
+            >>> data[6, 5:9] = 1
+            >>> #data = kwimage.imresize(data, scale=2.0, interpolation='nearest')
+            >>> dims = data.shape[0:2]
             >>> self = kwimage.Mask.coerce(data)
             >>> multi_poly1 = self.to_multi_polygon(pixels_are='points')
             >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas')
@@ -1481,7 +1493,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> import kwplot
             >>> kwplot.autompl()
             >>> pretty_data = kwplot.make_heatmask(data/1.0, cmap='magma')[..., 0:3]
-            >>> def _pixel_grid_lines(data, ax=ax):
+            >>> def _pixel_grid_lines(data, ax):
             >>>     h, w = data.shape[0:2]
             >>>     ybasis = np.arange(0, h) + 0.5
             >>>     xbasis = np.arange(0, w) + 0.5
@@ -1519,17 +1531,21 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> kwplot.imshow(raster1.draw_on(), pnum=(2, 3, 5), title='rasterized')
             >>> kwplot.imshow(raster2.draw_on(), pnum=(2, 3, 6), title='rasterized')
         """
-        # import cv2
         from kwimage.structs.polygon import Polygon, MultiPolygon
         # It should be faster to only exact the patch of non-zero values
         x, y, w, h = self.get_xywh().astype(int).tolist()
         if w > 0 or h > 0:
-            output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
-            xy_offset = (-x, -y)
-            # FIXME: In the case where
-            temp = self.translate(xy_offset, output_dims)
-            temp_mask = temp.to_c_mask().data
 
+            if pixels_are == 'areas':
+                temp_mask = self.to_c_mask().data
+                xy_offset = (0, 0)
+            else:
+                output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
+                xy_offset = (-x, -y)
+                # FIXME: In the case where
+                temp = self.translate(xy_offset, output_dims)
+                temp_mask = temp.to_c_mask().data
+                # TODO: polygons and masks should keep track what "pixels_are"
             polys = _find_contours(temp_mask, offset=xy_offset,
                                    pixels_are=pixels_are)
 
@@ -1803,13 +1819,13 @@ def _find_contours(binary_mask, offset=(0, 0), pixels_are='points'):
 def _rasterio_find_contours(binary_mask, offset=(0, 0)):
     from rasterio import features
     import numpy as np
-    shapes = list(features.shapes(binary_mask))
+    shapes = list(features.shapes(binary_mask, connectivity=8))
     x, y = offset
-
     translate = np.array([x - 0.5, y - 0.5]).ravel()[None, :]
     polys = []
     for shape, value in shapes:
         if value > 0:
+            print('shape = {!r}'.format(shape))
             coords = shape['coordinates']
             exterior = np.array(coords[0]) + translate
             interiors = [np.array(p) + translate for p in coords[1:]]
