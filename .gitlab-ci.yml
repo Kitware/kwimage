@@ -226,8 +226,9 @@ gpgsign/wheels:
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
         - echo "GPG_KEYID = $GPG_KEYID"
+        # Decrypt and import GPG Keys / trust
+        # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on master and release branch
         - source dev/secrets_configuration.sh
-        # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on main and release branch
         - CI_SECRET=${!VARNAME_CI_SECRET}
         - $GPG_EXECUTABLE --version
         - openssl version
@@ -504,9 +505,11 @@ gpgsign/py3-none-any:
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
         - echo "GPG_KEYID = $GPG_KEYID"
+        # Decrypt and import GPG Keys / trust
+        # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on master and release branch
         - source dev/secrets_configuration.sh
-        # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on main and release branch
         - CI_SECRET=${!VARNAME_CI_SECRET}
+        - PUSH_TOKEN=${!VARNAME_PUSH_TOKEN}
         - $GPG_EXECUTABLE --version
         - openssl version
         - $GPG_EXECUTABLE --list-keys
