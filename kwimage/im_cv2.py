@@ -1148,6 +1148,18 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(image, pnum=(1, 3, 1), title='original')
         >>> kwplot.imshow(warped_normal, pnum=(1, 3, 2), title='normal warp')
         >>> kwplot.imshow(warped_piecewise, pnum=(1, 3, 3), title='piecewise warp')
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> # TODO: Explain why the bottom left is interpolated with 0's
+        >>> # And not 2s, probably has to do with interpretation of pixels
+        >>> # as points and not areas.
+        >>> image = np.full((6, 6), fill_value=3, dtype=np.uint8)
+        >>> transform = kwimage.Affine.eye()
+        >>> transform = kwimage.Affine.coerce(offset=.5) @ transform
+        >>> transform = kwimage.Affine.coerce(scale=2) @ transform
+        >>> warped = kwimage.warp_affine(image, transform, dsize=(12, 12))
     """
     from kwimage.transform import Affine
     import kwimage
@@ -1272,6 +1284,8 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
                     'Image too large for warp_affine. Bypass this error by setting '
                     'kwimage.warp_affine(large_warp_dim="auto")')
                 raise e
+            else:
+                raise
 
     else:
         # make these pieces as large as possible for efficiency

@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.15 - Unreleased
 
+### Fixed:
+* `warp_affine` now properly raises an error when cv2.warpAffine raises an unhandled error
+
 
 ## Version 0.7.14 - Released 2021-11-05
 
