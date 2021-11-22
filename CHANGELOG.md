@@ -6,8 +6,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.15 - Unreleased
 
+### Added:
+
+* `pixels_are` flag to `to_mask` / `to_multi_polygon` methods, which can be
+  points or areas. The latter uses a rasterio contour finding mechanism.
+
 ### Fixed:
 * `warp_affine` now properly raises an error when cv2.warpAffine raises an unhandled error
+* Polygon to/from methods now handle the empty polygon case
+
+### Changed
+* Improved polygon / segmentation coercion methods
 
 
 ## Version 0.7.14 - Released 2021-11-05

@@ -5,6 +5,7 @@ backend.
 # from kwimage.structs import _generic
 import numpy as np
 import six
+import numbers
 from . import _generic
 import ubelt as ub
 
@@ -168,8 +169,11 @@ def _coerce_coco_segmentation(data, dims=None):
         dims (Tuple): required for certain formats like polygons
             height / width of the source image
 
+    TODO:
+        - [ ] Handle WKT
+
     Returns:
-        Mask | Polygon | MultiPolygon - depending on which is appropriate
+        Mask | Polygon | MultiPolygon | Segmentation - depending on which is appropriate
 
     Example:
         >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
@@ -222,11 +226,11 @@ def _coerce_coco_segmentation(data, dims=None):
             if data['type'] == 'Polygon':
                 self = kwimage.Polygon.from_geojson(data)
             elif data['type'] == 'MultiPolygon':
-                self = kwimage.Polygon.from_geojson(data)
+                self = kwimage.MultiPolygon.from_geojson(data)
             else:
                 raise NotImplementedError(data['type'])
         else:
-            raise TypeError(type(data))
+            raise TypeError('Unable to interpret dictionary format {}'.format(data))
     elif isinstance(data, list):
         # THIS IS NOT AN IDEAL FORMAT. IDEALLY WE WILL MODIFY COCO TO USE
         # DICTIONARIES FOR POLYGONS, WHICH ARE UNAMBIGUOUS
@@ -238,7 +242,7 @@ def _coerce_coco_segmentation(data, dims=None):
                 # TODO: kwimage.MultiPolygon.from_coco
                 self = kwimage.MultiPolygon(
                     [kwimage.Polygon(**item) for item in data])
-            elif isinstance(first, int):
+            elif isinstance(first, numbers.Number):
                 # TODO: kwimage.Polygon.from_coco
                 exterior = np.array(data).reshape(-1, 2)
                 self = kwimage.Polygon(exterior=exterior)
@@ -258,7 +262,16 @@ def _coerce_coco_segmentation(data, dims=None):
                 else:
                     self = kwimage.MultiPolygon(poly_list)
             else:
-                raise TypeError(type(data))
+                raise TypeError('Unable to interpret list format {}'.format(data))
+    elif isinstance(data, (kwimage.Polygon, kwimage.MultiPolygon, kwimage.Mask, kwimage.Segmentation)):
+        self = data
     else:
-        raise TypeError(type(data))
+        from shapely.geometry.polygon import Polygon
+        from shapely.geometry.multipolygon import MultiPolygon
+        if isinstance(data, MultiPolygon):
+            self = kwimage.MultiPolygon.from_shapely(data)
+        elif isinstance(data, Polygon):
+            self = kwimage.Polygon.from_shapely(data)
+        else:
+            raise TypeError('Unable to coerce {!r} into a segmentation'.format(type(data)))
     return self

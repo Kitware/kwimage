@@ -398,6 +398,23 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         >>> import kwplot
         >>> kwplot.autompl()
         >>> self.draw(setlim=True)
+
+    Example:
+        >>> # Test empty polygon
+        >>> import kwimage
+        >>> data = {
+        >>>     'exterior': np.array([]),
+        >>>     'interiors': [],}
+        >>> self = kwimage.Polygon(**data)
+        >>> geos = self.to_geojson()
+        >>> kwimage.Polygon.from_geojson(geos)
+        >>> geom = self.to_shapely()
+        >>> kwimage.Polygon.from_shapely(geom)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=True)
+
     """
     __datakeys__ = ['exterior', 'interiors']
     __metakeys__ = ['classes']
@@ -826,7 +843,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Returns:
             kwimage.Polygon
         """
-        exterior = np.array(geom.exterior.coords.xy).T
+        if len(geom.exterior.coords) == 0:
+            exterior = np.empty((0, 2))
+        else:
+            exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
@@ -884,12 +904,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             depth = 0
             while isinstance(item, (list, tuple)):
                 if len(item) == 0:
-                    raise Exception('no child node')
+                    return None  # empty data
+                    # raise Exception('no child node')
                 item = item[0]
                 depth += 1
             return depth
         depth = check_leftmost_depth(coords)
-        if depth == 2:
+        if depth is None:
+            exterior = np.empty((0, 2))
+            interiors = []
+        elif depth == 2:
             raise Exception(ub.codeblock(
                 '''
                 The GEOJSON spec has a depth of 3!
@@ -925,10 +949,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         import shapely
         import shapely.geometry
-        geom = shapely.geometry.Polygon(
-            shell=self.data['exterior'].data,
-            holes=[c.data for c in self.data['interiors']]
-        )
+        shell_data = self.data['exterior'].data
+        if shell_data.size == 0:
+            # Empty polygon
+            geom = shapely.geometry.Polygon()
+        else:
+            geom = shapely.geometry.Polygon(
+                shell=shell_data,
+                holes=[c.data for c in self.data['interiors']]
+            )
         return geom
 
     def to_geojson(self):
@@ -1223,6 +1252,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             linewidth (bool):
                 width of the border
 
+        Returns:
+            matplotlib.patches.PathPatch | None :
+                None for am empty polygon
+
         TODO:
             - [ ] Rework arguments in favor of matplotlib standards
 
@@ -1246,11 +1279,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if ax is None:
             ax = plt.gca()
 
-        color = list(kwimage.Color(color).as01())
-
         data = self.data
 
         exterior = data['exterior'].data.tolist()
+        if len(exterior) == 0:
+            return None  # empty
+
+        color = list(kwimage.Color(color).as01())
+
         exterior.append(exterior[0])
         n = len(exterior)
         verts = []
@@ -1522,7 +1558,27 @@ class MultiPolygon(_generic.ObjectList):
         """
         Attempts to construct a MultiPolygon instance from the input data
 
-        See Mask.coerce
+        See Segmentation.coerce
+
+        Example:
+            >>> import kwimage
+            >>> dims = (32, 32)
+            >>> kw_poly = kwimage.Polygon.random().scale(dims)
+            >>> kw_multi_poly = kwimage.MultiPolygon.random().scale(dims)
+            >>> forms = [kw_poly, kw_multi_poly]
+            >>> forms.append(kw_poly.to_shapely())
+            >>> forms.append(kw_poly.to_mask((32, 32)))
+            >>> forms.append(kw_poly.to_geojson())
+            >>> forms.append(kw_poly.to_coco(style='orig'))
+            >>> forms.append(kw_poly.to_coco(style='new'))
+            >>> forms.append(kw_multi_poly.to_shapely())
+            >>> forms.append(kw_multi_poly.to_mask((32, 32)))
+            >>> forms.append(kw_multi_poly.to_geojson())
+            >>> forms.append(kw_multi_poly.to_coco(style='orig'))
+            >>> forms.append(kw_multi_poly.to_coco(style='new'))
+            >>> for data in forms:
+            >>>     result = kwimage.MultiPolygon.coerce(data, dims=dims)
+            >>>     assert isinstance(result, kwimage.MultiPolygon)
         """
         from kwimage.structs.segmentation import _coerce_coco_segmentation
         self = _coerce_coco_segmentation(data, dims=dims)
@@ -1550,6 +1606,13 @@ class MultiPolygon(_generic.ObjectList):
     def from_shapely(MultiPolygon, geom):
         """
         Convert a shapely polygon or multipolygon to a kwimage.MultiPolygon
+
+        Example:
+            >>> import kwimage
+            >>> sh_poly = kwimage.Polygon.random().to_shapely()
+            >>> sh_multi_poly = kwimage.MultiPolygon.random().to_shapely()
+            >>> kwimage.MultiPolygon.from_shapely(sh_poly)
+            >>> kwimage.MultiPolygon.from_shapely(sh_multi_poly)
         """
         if geom.type == 'Polygon':
             polys = [Polygon.from_shapely(geom)]
