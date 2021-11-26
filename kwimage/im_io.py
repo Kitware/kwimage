@@ -499,7 +499,6 @@ def _imread_gdal(fpath, overview=None):
                              for i in range(1, num_channels + 1)]
             default_band0 = default_bands[0]
 
-            print('overview = {!r}'.format(overview))
             if overview is None:
                 bands = default_bands
             else:
