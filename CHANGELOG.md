@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * `pixels_are` flag to `to_mask` / `to_multi_polygon` methods, which can be
   points or areas. The latter uses a rasterio contour finding mechanism.
+* `imread` gdalbackend can now read from overviews if they exist.
 
 ### Fixed:
 * `warp_affine` now properly raises an error when cv2.warpAffine raises an unhandled error
