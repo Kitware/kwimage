@@ -267,8 +267,10 @@ if __name__ == '__main__':
             'tests': parse_requirements('requirements/tests.txt'),
             'build': parse_requirements('requirements/build.txt'),
             # Really annoying that this is the best we can do
-            'headless': ['opencv-python-headless'],
-            'graphics': ['opencv-python'],
+            # The user *must* choose either headless or graphics
+            # to get a complete working install.
+            'headless': parse_requirements('requirements/headless.txt'),
+            'graphics': parse_requirements('requirements/graphics.txt'),
         },
         license='Apache 2',
         packages=find_packages(include='kwimage.*'),

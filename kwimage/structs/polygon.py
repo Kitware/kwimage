@@ -398,6 +398,23 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         >>> import kwplot
         >>> kwplot.autompl()
         >>> self.draw(setlim=True)
+
+    Example:
+        >>> # Test empty polygon
+        >>> import kwimage
+        >>> data = {
+        >>>     'exterior': np.array([]),
+        >>>     'interiors': [],}
+        >>> self = kwimage.Polygon(**data)
+        >>> geos = self.to_geojson()
+        >>> kwimage.Polygon.from_geojson(geos)
+        >>> geom = self.to_shapely()
+        >>> kwimage.Polygon.from_shapely(geom)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=True)
+
     """
     __datakeys__ = ['exterior', 'interiors']
     __metakeys__ = ['classes']
@@ -650,7 +667,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def _impl(self):
         return self.data['exterior']._impl
 
-    def to_mask(self, dims=None):
+    def to_mask(self, dims=None, pixels_are='points'):
         """
         Convert this polygon to a mask
 
@@ -679,7 +696,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
         value = 1
-        self.fill(c_mask, value)
+        self.fill(c_mask, value, pixels_are=pixels_are)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
@@ -709,29 +726,44 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         return mask
 
-    def fill(self, image, value=1):
+    def fill(self, image, value=1, pixels_are='points'):
         """
         Inplace fill in an image based on this polyon.
 
         Args:
             image (ndarray): image to draw on
             value (int | Tuple[int], default=1): value fill in with
+            pixels_are (str): either points or areas
 
         Returns:
             ndarray: the image that has been modified in place
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> import kwimage
+            >>> mask = kwimage.Mask.random()
+            >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
+            >>> image = np.zeros_like(mask.data)
+            >>> self.fill(image, pixels_are='areas')
         """
-        # line_type = cv2.LINE_AA
-        cv_contours = self._to_cv_countours()
-        line_type = cv2.LINE_8
-        # Modification happens inplace
-        if len(image.shape) == 2 or image.shape[2] < 4:
-            cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
-        else:
-            # handle bands > 3
-            for bx in enumerate(range(image.shape[2])):
-                tmp = np.ascontiguousarray(image[..., bx])
-                cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
-                image[..., bx] = tmp
+        if pixels_are == 'areas':
+            # rasterio hac: todo nicer organization
+            from rasterio import features
+            shapes = [self.translate((0.5, 0.5)).to_geojson()]
+            features.rasterize(shapes, out=image, default_value=1)
+        elif pixels_are == 'points':
+            # line_type = cv2.LINE_AA
+            cv_contours = self._to_cv_countours()
+            line_type = cv2.LINE_8
+            # Modification happens inplace
+            if len(image.shape) == 2 or image.shape[2] < 4:
+                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+            else:
+                # handle bands > 3
+                for bx in enumerate(range(image.shape[2])):
+                    tmp = np.ascontiguousarray(image[..., bx])
+                    cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
+                    image[..., bx] = tmp
 
         return image
 
@@ -811,7 +843,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Returns:
             kwimage.Polygon
         """
-        exterior = np.array(geom.exterior.coords.xy).T
+        if len(geom.exterior.coords) == 0:
+            exterior = np.empty((0, 2))
+        else:
+            exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
@@ -869,12 +904,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             depth = 0
             while isinstance(item, (list, tuple)):
                 if len(item) == 0:
-                    raise Exception('no child node')
+                    return None  # empty data
+                    # raise Exception('no child node')
                 item = item[0]
                 depth += 1
             return depth
         depth = check_leftmost_depth(coords)
-        if depth == 2:
+        if depth is None:
+            exterior = np.empty((0, 2))
+            interiors = []
+        elif depth == 2:
             raise Exception(ub.codeblock(
                 '''
                 The GEOJSON spec has a depth of 3!
@@ -910,10 +949,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         import shapely
         import shapely.geometry
-        geom = shapely.geometry.Polygon(
-            shell=self.data['exterior'].data,
-            holes=[c.data for c in self.data['interiors']]
-        )
+        shell_data = self.data['exterior'].data
+        if shell_data.size == 0:
+            # Empty polygon
+            geom = shapely.geometry.Polygon()
+        else:
+            geom = shapely.geometry.Polygon(
+                shell=shell_data,
+                holes=[c.data for c in self.data['interiors']]
+            )
         return geom
 
     def to_geojson(self):
@@ -1185,7 +1229,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return image
 
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,
-             border=False, linewidth=2):
+             border=None, linewidth=None, edgecolor=None, facecolor=None,
+             fill=True, vertex=False):
         """
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
@@ -1206,6 +1251,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
             linewidth (bool):
                 width of the border
+
+        Returns:
+            matplotlib.patches.PathPatch | None :
+                None for am empty polygon
 
         TODO:
             - [ ] Rework arguments in favor of matplotlib standards
@@ -1230,11 +1279,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if ax is None:
             ax = plt.gca()
 
-        color = list(kwimage.Color(color).as01())
-
         data = self.data
 
         exterior = data['exterior'].data.tolist()
+        if len(exterior) == 0:
+            return None  # empty
+
+        color = list(kwimage.Color(color).as01())
+
         exterior.append(exterior[0])
         n = len(exterior)
         verts = []
@@ -1252,26 +1304,44 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         verts = np.array(verts)
         path = Path(verts, codes)
 
+        if border is None:
+            border = (edgecolor is not None or linewidth is not None)
+        else:
+            if not border:
+                linewidth = 0
+
+        if facecolor is None:
+            facecolor = color
+
         kw = {}
         # TODO:
         # depricate border kwarg in favor of standard matplotlib args
         if border:
+            if linewidth is None:
+                linewidth = 2
             kw['linewidth'] = linewidth
-            try:
-                edgecolor = list(kwimage.Color(border).as01())
-            except Exception:
-                edgecolor = list(color)
-                # hack to darken
-                edgecolor[0] -= .1
-                edgecolor[1] -= .1
-                edgecolor[2] -= .1
-                edgecolor = [min(1, max(0, c)) for c in edgecolor]
-            kw['edgecolor'] = edgecolor
+            if edgecolor is None:
+                try:
+                    edgecolor = list(kwimage.Color(border).as01())
+                except Exception:
+                    edgecolor = list(color)
+                    # hack to darken
+                    edgecolor[0] -= .1
+                    edgecolor[1] -= .1
+                    edgecolor[2] -= .1
+                    edgecolor = [min(1, max(0, c)) for c in edgecolor]
+                kw['edgecolor'] = edgecolor
         else:
             kw['linewidth'] = 0
 
-        patch = mpl.patches.PathPatch(path, alpha=alpha, facecolor=color, **kw)
+        patch = mpl.patches.PathPatch(path, alpha=alpha, facecolor=color,
+                                      fill=fill, **kw)
         ax.add_patch(patch)
+
+        if vertex:
+            data['exterior'].draw(color=color, radius=vertex)
+            for hole in interiors:
+                hole.draw(color=color, radius=vertex)
 
         if setlim:
             x1, y1, x2, y2 = self.to_boxes().to_ltrb().data[0]
@@ -1385,7 +1455,7 @@ class MultiPolygon(_generic.ObjectList):
         self = MultiPolygon(data)
         return self
 
-    def fill(self, image, value=1):
+    def fill(self, image, value=1, pixels_are='points'):
         """
         Inplace fill in an image based on this multi-polyon.
 
@@ -1397,7 +1467,7 @@ class MultiPolygon(_generic.ObjectList):
             ndarray: the image that has been modified in place
         """
         for p in self.data:
-            p.fill(image, value=value)
+            p.fill(image, value=value, pixels_are=pixels_are)
         return image
 
     def to_multi_polygon(self):
@@ -1437,7 +1507,7 @@ class MultiPolygon(_generic.ObjectList):
         boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
 
-    def to_mask(self, dims=None):
+    def to_mask(self, dims=None, pixels_are='points'):
         """
         Returns a mask object indication regions occupied by this multipolygon
 
@@ -1465,7 +1535,7 @@ class MultiPolygon(_generic.ObjectList):
         c_mask = np.zeros(dims, dtype=np.uint8)
         for p in self.data:
             if p is not None:
-                p.fill(c_mask, value=1)
+                p.fill(c_mask, value=1, pixels_are=pixels_are)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
@@ -1488,7 +1558,27 @@ class MultiPolygon(_generic.ObjectList):
         """
         Attempts to construct a MultiPolygon instance from the input data
 
-        See Mask.coerce
+        See Segmentation.coerce
+
+        Example:
+            >>> import kwimage
+            >>> dims = (32, 32)
+            >>> kw_poly = kwimage.Polygon.random().scale(dims)
+            >>> kw_multi_poly = kwimage.MultiPolygon.random().scale(dims)
+            >>> forms = [kw_poly, kw_multi_poly]
+            >>> forms.append(kw_poly.to_shapely())
+            >>> forms.append(kw_poly.to_mask((32, 32)))
+            >>> forms.append(kw_poly.to_geojson())
+            >>> forms.append(kw_poly.to_coco(style='orig'))
+            >>> forms.append(kw_poly.to_coco(style='new'))
+            >>> forms.append(kw_multi_poly.to_shapely())
+            >>> forms.append(kw_multi_poly.to_mask((32, 32)))
+            >>> forms.append(kw_multi_poly.to_geojson())
+            >>> forms.append(kw_multi_poly.to_coco(style='orig'))
+            >>> forms.append(kw_multi_poly.to_coco(style='new'))
+            >>> for data in forms:
+            >>>     result = kwimage.MultiPolygon.coerce(data, dims=dims)
+            >>>     assert isinstance(result, kwimage.MultiPolygon)
         """
         from kwimage.structs.segmentation import _coerce_coco_segmentation
         self = _coerce_coco_segmentation(data, dims=dims)
@@ -1516,6 +1606,13 @@ class MultiPolygon(_generic.ObjectList):
     def from_shapely(MultiPolygon, geom):
         """
         Convert a shapely polygon or multipolygon to a kwimage.MultiPolygon
+
+        Example:
+            >>> import kwimage
+            >>> sh_poly = kwimage.Polygon.random().to_shapely()
+            >>> sh_multi_poly = kwimage.MultiPolygon.random().to_shapely()
+            >>> kwimage.MultiPolygon.from_shapely(sh_poly)
+            >>> kwimage.MultiPolygon.from_shapely(sh_multi_poly)
         """
         if geom.type == 'Polygon':
             polys = [Polygon.from_shapely(geom)]
@@ -1623,13 +1720,13 @@ class PolygonList(_generic.ObjectList):
     same image.
     """
 
-    def to_mask_list(self, dims=None):
+    def to_mask_list(self, dims=None, pixels_are='points'):
         """
         Converts all items to masks
         """
         import kwimage
         new = kwimage.MaskList([
-            None if item is None else item.to_mask(dims=dims)
+            None if item is None else item.to_mask(dims=dims, pixels_are=pixels_are)
             for item in self
         ])
         return new
@@ -1692,7 +1789,7 @@ class PolygonList(_generic.ObjectList):
         else:
             return items
 
-    def fill(self, image, value=1):
+    def fill(self, image, value=1, pixels_are='points'):
         """
         Inplace fill in an image based on these polygons
 
@@ -1705,5 +1802,5 @@ class PolygonList(_generic.ObjectList):
         """
         for p in self.data:
             if p is not None:
-                p.fill(image, value=value)
+                p.fill(image, value=value, pixels_are=pixels_are)
         return image

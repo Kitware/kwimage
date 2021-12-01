@@ -61,7 +61,7 @@ IMAGE_EXTENSIONS = (
 )
 
 
-def imread(fpath, space='auto', backend='auto'):
+def imread(fpath, space='auto', backend='auto', **kw):
     """
     Reads image data in a specified format using some backend implementation.
 
@@ -84,12 +84,18 @@ def imread(fpath, space='auto', backend='auto'):
             manually overridden. Valid backends are 'gdal', 'skimage', 'itk',
             and 'cv2'.
 
+        **kw : backend-specific arguments
+
     Returns:
         ndarray: the image data in the specified color space.
 
     Note:
         if space is something non-standard like HSV or LAB, then the file must
         be a normal 8-bit color image, otherwise an error will occur.
+
+    Note:
+        Some backends will respect EXIF orientation (skimage) and others will
+        not (gdal, cv2).
 
     Raises:
         IOError - If the image cannot be read
@@ -280,7 +286,7 @@ def imread(fpath, space='auto', backend='auto'):
 
     try:
         if backend == 'gdal':
-            image, src_space, auto_dst_space = _imread_gdal(fpath)
+            image, src_space, auto_dst_space = _imread_gdal(fpath, **kw)
         elif backend == 'cv2':
             image, src_space, auto_dst_space = _imread_cv2(fpath)
         elif backend == 'turbojpeg':
@@ -425,12 +431,13 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath):
+def _imread_gdal(fpath, overview=None):
     """
     gdal imread backend
 
     References:
         [GDAL_Config_Options] https://gdal.org/user/configoptions.html
+        https://gis.stackexchange.com/questions/180961/reading-a-specific-overview-layer-from-geotiff-file-using-gdal-python
 
     Ignore:
         >>> import kwimage
@@ -455,6 +462,9 @@ def _imread_gdal(fpath):
 
         if num_channels == 1:
             band = gdal_dset.GetRasterBand(1)
+
+            if overview is not None:
+                raise NotImplementedError
 
             color_table = band.GetColorTable()
             if color_table is None:
@@ -489,12 +499,21 @@ def _imread_gdal(fpath):
                 image = idx_to_color[buf]
 
         else:
-            bands = [gdal_dset.GetRasterBand(i)
-                     for i in range(1, num_channels + 1)]
-            gdal_dtype = bands[0].DataType
+            default_bands = [gdal_dset.GetRasterBand(i)
+                             for i in range(1, num_channels + 1)]
+            default_band0 = default_bands[0]
+
+            if overview is None:
+                bands = default_bands
+            else:
+                if overview < 0:
+                    overview = default_band0.GetOverviewCount() + overview
+                bands = [b.GetOverview(overview) for b in default_bands]
+
+            band0 = bands[0]
+            gdal_dtype = band0.DataType
             dtype = _gdal_to_numpy_dtype(gdal_dtype)
-            shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize,
-                     gdal_dset.RasterCount)
+            shape = (band0.YSize, band0.XSize, num_channels)
             # Preallocate and populate image
             image = np.empty(shape, dtype=dtype)
             for idx, band in enumerate(bands):

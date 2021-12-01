@@ -4,11 +4,28 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.14 - Unreleased
+## Version 0.7.15 - Unreleased
+
+### Added:
+
+* `pixels_are` flag to `to_mask` / `to_multi_polygon` methods, which can be
+  points or areas. The latter uses a rasterio contour finding mechanism.
+* `imread` gdalbackend can now read from overviews if they exist.
+
+### Fixed:
+* `warp_affine` now properly raises an error when cv2.warpAffine raises an unhandled error
+* Polygon to/from methods now handle the empty polygon case
+
+### Changed
+* Improved polygon / segmentation coercion methods
+
+
+## Version 0.7.14 - Released 2021-11-05
 
 ### Added
 * kwimage.morphology
 * kwimage.draw_header_text
+* `Mask.to_multi_polygon` and `Polygon.to_mask` now take a flag `pixels_are` which
 
 
 ### Fixed
