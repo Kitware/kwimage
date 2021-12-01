@@ -93,6 +93,10 @@ def imread(fpath, space='auto', backend='auto', **kw):
         if space is something non-standard like HSV or LAB, then the file must
         be a normal 8-bit color image, otherwise an error will occur.
 
+    Note:
+        Some backends will respect EXIF orientation (skimage) and others will
+        not (gdal, cv2).
+
     Raises:
         IOError - If the image cannot be read
         ImportError - If trying to read a nitf without gdal
