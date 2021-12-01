@@ -28,7 +28,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * kwimage.morphology
 * kwimage.draw_header_text
-* `Mask.to_multi_polygon` and `Polygon.to_mask` now take a flag `pixels_are` which
+* `Mask.to_multi_polygon` and `Polygon.to_mask` now take a flag `pixels_are`
+  which will treat pixels as areas or points.
 
 
 ### Fixed
