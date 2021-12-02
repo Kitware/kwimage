@@ -64,13 +64,39 @@ def encode_run_length(img, binary=False, order='C'):
         >>> img = np.array([[1, 0, 1, 1, 1, 0, 0, 1, 0]])
         >>> encoding = encode_run_length(img, binary=True)
         >>> assert encoding['counts'].tolist() == [0, 1, 1, 3, 2, 1, 1]
+
+    Example:
+        >>> # Test empty case
+        >>> from kwimage.im_runlen import *  # NOQA
+        >>> binary = True
+        >>> img = np.zeros((0, 0), dtype=np.uint8)
+        >>> encoding = encode_run_length(img, binary=True)
+        >>> assert encoding['counts'].tolist() == []
+        >>> recon = decode_run_length(**encoding)
+        >>> assert np.all(recon == img)
+
+    Example:
+        >>> # Test small full cases
+        >>> for d in [0, 1, 2, 3]:
+        >>>     img = np.zeros((d, d), dtype=np.uint8)
+        >>>     encoding = encode_run_length(img, binary=True)
+        >>>     recon = decode_run_length(**encoding)
+        >>>     assert np.all(recon == img)
+        >>>     img = np.ones((d, d), dtype=np.uint8)
+        >>>     encoding = encode_run_length(img, binary=True)
+        >>>     recon = decode_run_length(**encoding)
+        >>>     assert np.all(recon == img)
     """
     flat = img.ravel(order=order)
-    diff_idxs = np.flatnonzero(np.abs(np.diff(flat)) > 0)
-    pos = np.hstack([[0], diff_idxs + 1])
 
-    lengths = np.hstack([np.diff(pos), [len(flat) - pos[-1]]])
-    values = flat[pos]
+    if flat.size == 0:
+        values = np.empty((0,), dtype=int)
+        lengths = np.empty((0,), dtype=int)
+    else:
+        diff_idxs = np.flatnonzero(np.abs(np.diff(flat)) > 0)
+        pos = np.hstack([[0], diff_idxs + 1])
+        lengths = np.hstack([np.diff(pos), [len(flat) - pos[-1]]])
+        values = flat[pos]
 
     if binary:
         # Assume there are only zeros and ones

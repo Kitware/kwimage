@@ -4,7 +4,15 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.15 - Unreleased
+## Version 0.7.16 - Unreleased
+
+### Changed
+* Mask translation is now more efficient for c/f formats.
+
+### Fixed
+* Bug introduced in `Mask.to_multipolygon` which caused bad offsets
+
+## Version 0.7.15 - Released 2021-12-01
 
 ### Added:
 
@@ -25,7 +33,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * kwimage.morphology
 * kwimage.draw_header_text
-* `Mask.to_multi_polygon` and `Polygon.to_mask` now take a flag `pixels_are` which
+* `Mask.to_multi_polygon` and `Polygon.to_mask` now take a flag `pixels_are`
+  which will treat pixels as areas or points.
 
 
 ### Fixed

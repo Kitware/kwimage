@@ -599,6 +599,9 @@ deploy/wheels:
         - |
             WHEEL_PATHS=(wheelhouse/*.whl)
             WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
+            source dev/secrets_configuration.sh
+            TWINE_PASSWORD=${!VARNAME_TWINE_PASSWORD}
+            TWINE_USERNAME=${!VARNAME_TWINE_USERNAME}
             echo "$WHEEL_PATHS_STR"
             for WHEEL_PATH in "${WHEEL_PATHS[@]}"
             do
@@ -610,7 +613,9 @@ deploy/wheels:
             export VERSION=$(python -c "import setup; print(setup.VERSION)")
             # do sed twice to handle the case of https clone with and without a read token
             URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g' | sed -e 's|git@||g' | sed -e 's|:|/|g')
-            git push --tags $DEPLOY_REMOTE
+            source dev/secrets_configuration.sh
+            CI_SECRET=${!VARNAME_CI_SECRET}
+            PUSH_TOKEN=${!VARNAME_PUSH_TOKEN}
             echo "URL_HOST = $URL_HOST"
             # A git config user name and email is required. Set if needed.
             if [[ "$(git config user.email)" == "" ]]; then
@@ -618,6 +623,7 @@ deploy/wheels:
                 git config user.name "Gitlab-CI"
             fi
             TAG_NAME="v${VERSION}"
+            echo "TAG_NAME = $TAG_NAME"
             if [ $(git tag -l "$TAG_NAME") ]; then
                 echo "Tag already exists"
             else
@@ -625,8 +631,7 @@ deploy/wheels:
                 # git push origin :refs/tags/$TAG_NAME
                 # and then tag with -f
                 git tag $TAG_NAME -m "tarball tag $VERSION"
-                git tag $VERSION -m "tarball tag $VERSION"
-                git push --tags "https://${PUSH_TOKEN}@${URL_HOST}"
+                git push --tags "https://git-push-token:${PUSH_TOKEN}@${URL_HOST}"
             fi
             
     only:
