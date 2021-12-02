@@ -12,8 +12,8 @@ def bench_mask_to_polygon():
     # Mask with one small polygon away from the border
     poly = kwimage.Polygon.random().scale(32)
 
-    # test_formats = MaskFormat.cannonical
-    test_formats = [MaskFormat.C_MASK]
+    # test_formats = [MaskFormat.C_MASK]
+    test_formats = MaskFormat.cannonical
     # mask = input_formats['c_mask']
     # import xdev
     # xdev.profile_now(mask.to_multi_polygon)()
@@ -25,14 +25,11 @@ def bench_mask_to_polygon():
     basis = {
         'format': test_formats,
         'pixels_are': ['points', 'areas'],
-        'pre_translate': [True, False],
-        # 'pre_translate': [False],
         'dim': [0, 128, 256, 512, 640]
     }
     xlabel = 'dim'
-    kw_labels = ['pixels_are', 'pre_translate']
+    kw_labels = ['pixels_are']
     group_labels = {
-        'style': ['pre_translate'],
         'size': ['pixels_are'],
     }
     group_labels['hue'] = list(

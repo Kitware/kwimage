@@ -1419,7 +1419,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return boxes
 
     @profile
-    def to_multi_polygon(self, pixels_are='points', pre_translate=False):
+    def to_multi_polygon(self, pixels_are='points'):
         """
         Returns a MultiPolygon object fit around this raster including disjoint
         pieces and holes.
@@ -1563,8 +1563,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> data[6, 5:9] = 1
             >>> #data = kwimage.imresize(data, scale=2.0, interpolation='nearest')
             >>> self = kwimage.Mask.coerce(data)
-            >>> self = self.translate((0, 0), output_dims=(10, 9))
-            >>> #self = self.translate((0, 1), output_dims=(11, 11))
+            >>> #self = self.translate((0, 0), output_dims=(10, 9))
+            >>> self = self.translate((0, 1), output_dims=(11, 11))
             >>> dims = self.shape[0:2]
             >>> multi_poly1 = self.to_multi_polygon(pixels_are='points')
             >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas')
@@ -1611,33 +1611,13 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> kwplot.imshow(raster2.draw_on(), pnum=(2, 3, 6), title='rasterized')
         """
         from kwimage.structs.polygon import Polygon, MultiPolygon
-        # It should be faster to only exact the patch of non-zero values
-        # x, y, w, h = self.get_xywh().astype(int).tolist()
-        # if w > 0 or h > 0:
-        if pixels_are == 'areas':
-            temp_mask = self.to_c_mask().data
-            xy_offset = (0, 0)
-        else:
-            if pre_translate:
-                # This might not be needed,
-                # output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
-                warnings.warn('pre translate is not needed. Do not use', DeprecationWarning)
-                x, y, w, h = self.get_xywh().astype(int).tolist()
-                output_dims = (h, w)
-                xy_offset = (x, y)
-                temp = self.translate((-x, -y), output_dims)
-                temp_mask = temp.to_c_mask(copy=False).data
-            else:
-                xy_offset = (0, 0)
-                temp_mask = self.to_c_mask(copy=False).data
-            # TODO: polygons and masks should keep track what "pixels_are"
-        polys = _find_contours(temp_mask, offset=xy_offset,
-                               pixels_are=pixels_are)
-
+        # Note: it is not necessarilly faster to to only exact the patch of
+        # non-zero values
+        temp_mask = self.to_c_mask(copy=False).data
+        # TODO: polygons and masks should keep track what "pixels_are"
+        polys = _find_contours(temp_mask, pixels_are=pixels_are)
         poly_list = [Polygon(**data) for data in polys]
         multi_poly = MultiPolygon(poly_list)
-        # else:
-        #     multi_poly = MultiPolygon([])
         return multi_poly
 
     def get_convex_hull(self):
@@ -1867,15 +1847,12 @@ class MaskList(_generic.ObjectList):
         return self
 
 
-def _find_contours(binary_mask, offset=(0, 0), pixels_are='points'):
+def _find_contours(binary_mask, pixels_are='points'):
     """
     Finds the contours in a binary mask
 
     Args:
         binary_mask (ndarray): a binary valued numpy array
-
-        offset (Tuple[float, float]):
-            translation to be applied to the countours when they are returned
 
         pixel_are (str):
             Can either be "points" or "areas".
@@ -1893,26 +1870,23 @@ def _find_contours(binary_mask, offset=(0, 0), pixels_are='points'):
         List[Dict]: list of polygon exteriors and interiors
     """
     if pixels_are == 'points':
-        polys = _opencv_find_contours(binary_mask, offset=offset)
+        polys = _opencv_find_contours(binary_mask)
     elif pixels_are == 'areas':
-        polys = _rasterio_find_contours(binary_mask, offset=offset)
+        polys = _rasterio_find_contours(binary_mask)
     else:
         raise KeyError(pixels_are)
     return polys
 
 
-def _rasterio_find_contours(binary_mask, offset=(0, 0)):
+def _rasterio_find_contours(binary_mask):
     from rasterio import features
-    import numpy as np
     if binary_mask.size == 0:
         return []
     shapes = list(features.shapes(binary_mask, connectivity=8))
-    x, y = offset
-    translate = np.array([x - 0.5, y - 0.5]).ravel()[None, :]
+    translate = np.array([-0.5, -0.5]).ravel()[None, :]
     polys = []
     for shape, value in shapes:
         if value > 0:
-            print('shape = {!r}'.format(shape))
             coords = shape['coordinates']
             exterior = np.array(coords[0]) + translate
             interiors = [np.array(p) + translate for p in coords[1:]]
@@ -1923,11 +1897,10 @@ def _rasterio_find_contours(binary_mask, offset=(0, 0)):
     return polys
 
 
-def _opencv_find_contours(binary_mask, offset=(0, 0)):
+def _opencv_find_contours(binary_mask):
     import cv2
-    x, y = offset
     p = 2
-    offset = (x - p, y - p)
+    offset = (0 - p, 0 - p)
     padded_mask = cv2.copyMakeBorder(binary_mask, p, p, p, p,
                                      cv2.BORDER_CONSTANT, value=0)
 
