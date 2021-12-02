@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.16 - Unreleased
 
+### Changed
+* Mask translation is now more efficient for c/f formats.
+
+### Fixed
+* Bug introduced in `Mask.to_multipolygon` which caused bad offsets
 
 ## Version 0.7.15 - Released 2021-12-01
 

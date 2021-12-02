@@ -37,6 +37,7 @@ import numpy as np
 import ubelt as ub
 import itertools as it
 import warnings
+import numbers
 from . import _generic
 
 try:
@@ -649,7 +650,9 @@ class _MaskTransformMixin(object):
     @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
-        Efficiently translate an array_rle in the encoding space
+        Translate the pixel values in the mask.
+
+        Works efficiently in rle or mask format when the offset is integral.
 
         Args:
             offset (Tuple): x,y offset
@@ -667,17 +670,51 @@ class _MaskTransformMixin(object):
             >>> offset = (1, 1)
             >>> data2 = self.translate(offset, shape).to_c_mask().data
             >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
+
+        Example:
+            >>> from kwimage.structs.mask import MaskFormat  # NOQA
+            >>> shape = (10, 10)
+            >>> offset = (2, -3)
+            >>> self = Mask.random(shape=(8, 8), rng=0)
+            >>> # avoid pycocotools
+            >>> test_formats = [MaskFormat.C_MASK, MaskFormat.F_MASK, MaskFormat.ARRAY_RLE]
+            >>> input_formats = {f: self.toformat(f) for f in test_formats}
+            >>> results = {}
+            >>> for f, mask in input_formats.items():
+            >>>     new_mask = mask.translate(offset, shape)
+            >>>     results[f] = new_mask
+            >>> assert ub.allsame(
+            >>>     [r.toformat(MaskFormat.C_MASK).data
+            >>>     for r in results.values()], eq=np.allclose)
         """
         import kwimage
         if output_dims is None:
             output_dims = self.shape
         if not ub.iterable(offset):
             offset = (offset, offset)
-        rle = self.to_array_rle(copy=False).data
 
-        new_rle = kwimage.rle_translate(rle, offset, output_dims)
-        new_rle['size'] = new_rle['shape']
-        new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
+        integer_offset = all(isinstance(o, numbers.Integral) for o in offset)
+        mask_format = self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}
+        if mask_format or not integer_offset:
+            integer_offset = None  # hack
+            if integer_offset:
+                # TODO: be more efficient
+                offset_x, offset_y = offset
+                new_data = np.zeros_like(self.data, shape=output_dims)
+                new_self = Mask(new_data, self.format)
+            else:
+                c_data = self.toformat(MaskFormat.C_MASK, copy=False).data
+                transform = kwimage.Affine.affine(offset=offset)
+                dsize = output_dims[::-1]
+                new_c_data = kwimage.warp_affine(
+                    c_data, transform, dsize=dsize, interpolation='nearest')
+                new_c_self = Mask(new_c_data, MaskFormat.C_MASK)
+                new_self = new_c_self.toformat(self.format, copy=False)
+        else:
+            rle = self.to_array_rle(copy=False).data
+            new_rle = kwimage.rle_translate(rle, offset, output_dims)
+            new_rle['size'] = new_rle['shape']
+            new_self = Mask(new_rle, MaskFormat.ARRAY_RLE)
         return new_self
 
 
@@ -1301,7 +1338,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
             ]
         """
-        import warnings
         warnings.warn('depricated use to_multi_polygon', DeprecationWarning)
         p = 2
 
@@ -1383,7 +1419,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return boxes
 
     @profile
-    def to_multi_polygon(self, pixels_are='points'):
+    def to_multi_polygon(self, pixels_are='points', pre_translate=False):
         """
         Returns a MultiPolygon object fit around this raster including disjoint
         pieces and holes.
@@ -1441,11 +1477,53 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> multi_poly.draw()
 
         Example:
+            >>> # Test empty cases
             >>> import kwimage
-            >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
-            >>> poly = self.to_multi_polygon()
-            >>> poly.to_multi_polygon()
+            >>> mask0 = kwimage.Mask(np.zeros((0, 0), dtype=np.uint8), format='c_mask')
+            >>> mask1 = kwimage.Mask(np.zeros((1, 1), dtype=np.uint8), format='c_mask')
+            >>> mask2 = kwimage.Mask(np.zeros((2, 2), dtype=np.uint8), format='c_mask')
+            >>> mask3 = kwimage.Mask(np.zeros((3, 3), dtype=np.uint8), format='c_mask')
+            >>> pixels_are = 'points'
+            >>> poly0 = mask0.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly1 = mask1.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly2 = mask2.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly3 = mask3.to_multi_polygon(pixels_are=pixels_are)
+            >>> assert len(poly0) == 0
+            >>> assert len(poly1) == 0
+            >>> assert len(poly2) == 0
+            >>> assert len(poly3) == 0
+            >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> pixels_are = 'areas'
+            >>> poly0 = mask0.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly1 = mask1.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly2 = mask2.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly3 = mask3.to_multi_polygon(pixels_are=pixels_are)
+            >>> assert len(poly0) == 0
+            >>> assert len(poly1) == 0
+            >>> assert len(poly2) == 0
+            >>> assert len(poly3) == 0
 
+        Example:
+            >>> # Test full ones cases
+            >>> import kwimage
+            >>> mask1 = kwimage.Mask(np.ones((1, 1), dtype=np.uint8), format='c_mask')
+            >>> mask2 = kwimage.Mask(np.ones((2, 2), dtype=np.uint8), format='c_mask')
+            >>> mask3 = kwimage.Mask(np.ones((3, 3), dtype=np.uint8), format='c_mask')
+            >>> pixels_are = 'points'
+            >>> poly1 = mask1.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly2 = mask2.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly3 = mask3.to_multi_polygon(pixels_are=pixels_are)
+            >>> assert np.all(poly1.to_mask(mask1.shape).data == 1)
+            >>> assert np.all(poly2.to_mask(mask2.shape).data == 1)
+            >>> assert np.all(poly3.to_mask(mask3.shape).data == 1)
+            >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> pixels_are = 'areas'
+            >>> poly1 = mask1.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly2 = mask2.to_multi_polygon(pixels_are=pixels_are)
+            >>> poly3 = mask3.to_multi_polygon(pixels_are=pixels_are)
+            >>> assert np.all(poly1.to_mask(mask1.shape).data == 1)
+            >>> assert np.all(poly2.to_mask(mask2.shape).data == 1)
+            >>> assert np.all(poly3.to_mask(mask3.shape).data == 1)
 
         Example:
             # Corner case, only two pixels are on
@@ -1457,7 +1535,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> poly = self.to_multi_polygon()
 
             poly.to_mask(self.shape).data.sum()
-
             self.to_array_rle().to_c_mask().data.sum()
             temp.to_c_mask().data.sum()
 
@@ -1485,40 +1562,42 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> data[9, 5:9] = 1
             >>> data[6, 5:9] = 1
             >>> #data = kwimage.imresize(data, scale=2.0, interpolation='nearest')
-            >>> dims = data.shape[0:2]
             >>> self = kwimage.Mask.coerce(data)
+            >>> self = self.translate((0, 0), output_dims=(10, 9))
+            >>> #self = self.translate((0, 1), output_dims=(11, 11))
+            >>> dims = self.shape[0:2]
             >>> multi_poly1 = self.to_multi_polygon(pixels_are='points')
             >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas')
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
-            >>> pretty_data = kwplot.make_heatmask(data/1.0, cmap='magma')[..., 0:3]
-            >>> def _pixel_grid_lines(data, ax):
-            >>>     h, w = data.shape[0:2]
+            >>> pretty_data = kwplot.make_heatmask(self.data/1.0, cmap='magma')[..., 0:3]
+            >>> def _pixel_grid_lines(self, ax):
+            >>>     h, w = self.data.shape[0:2]
             >>>     ybasis = np.arange(0, h) + 0.5
             >>>     xbasis = np.arange(0, w) + 0.5
-            >>>     xmin = np.full(h, 0) - 0.5
-            >>>     xmax = np.full(h, w) - 0.5
-            >>>     ymin = np.full(h, 0) - 0.5
-            >>>     ymax = np.full(h, w) - 0.5
+            >>>     xmin = 0 - 0.5
+            >>>     xmax = w - 0.5
+            >>>     ymin = 0 - 0.5
+            >>>     ymax = h - 0.5
             >>>     ax.hlines(y=ybasis, xmin=xmin, xmax=xmax, color="gainsboro")
             >>>     ax.vlines(x=xbasis, ymin=ymin, ymax=ymax, color="gainsboro")
-            >>> def _setup_grid(pnum):
+            >>> def _setup_grid(self, pnum):
             >>>     ax = kwplot.imshow(pretty_data, show_ticks=True, pnum=pnum)[1]
             >>>     # The gray ticks show the center of the pixels
             >>>     ax.grid(color='dimgray', linewidth=0.5)
-            >>>     ax.set_xticks(np.arange(data.shape[1]))
-            >>>     ax.set_yticks(np.arange(data.shape[0]))
+            >>>     ax.set_xticks(np.arange(self.data.shape[1]))
+            >>>     ax.set_yticks(np.arange(self.data.shape[0]))
             >>>     # Also draw black lines around the edges of the pixels
-            >>>     _pixel_grid_lines(data, ax=ax)
+            >>>     _pixel_grid_lines(self, ax=ax)
             >>>     return ax
             >>> # Overlay the extracted polygons
-            >>> ax = _setup_grid(pnum=(2, 3, 1))
+            >>> ax = _setup_grid(self, pnum=(2, 3, 1))
             >>> ax.set_title('input binary mask data')
-            >>> ax = _setup_grid(pnum=(2, 3, 2))
+            >>> ax = _setup_grid(self, pnum=(2, 3, 2))
             >>> multi_poly1.draw(linewidth=5, alpha=0.5, radius=0.2, ax=ax, fill=False, vertex=0.2)
             >>> ax.set_title('opencv "point" polygons')
-            >>> ax = _setup_grid(pnum=(2, 3, 3))
+            >>> ax = _setup_grid(self, pnum=(2, 3, 3))
             >>> multi_poly2.draw(linewidth=5, alpha=0.5, radius=0.2, color='limegreen', ax=ax, fill=False, vertex=0.2)
             >>> ax.set_title('raterio "area" polygons')
             >>> ax.figure.suptitle(ub.codeblock(
@@ -1533,26 +1612,32 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         from kwimage.structs.polygon import Polygon, MultiPolygon
         # It should be faster to only exact the patch of non-zero values
-        x, y, w, h = self.get_xywh().astype(int).tolist()
-        if w > 0 or h > 0:
-
-            if pixels_are == 'areas':
-                temp_mask = self.to_c_mask().data
-                xy_offset = (0, 0)
-            else:
-                output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
-                xy_offset = (-x, -y)
-                # FIXME: In the case where
-                temp = self.translate(xy_offset, output_dims)
-                temp_mask = temp.to_c_mask().data
-                # TODO: polygons and masks should keep track what "pixels_are"
-            polys = _find_contours(temp_mask, offset=xy_offset,
-                                   pixels_are=pixels_are)
-
-            poly_list = [Polygon(**data) for data in polys]
-            multi_poly = MultiPolygon(poly_list)
+        # x, y, w, h = self.get_xywh().astype(int).tolist()
+        # if w > 0 or h > 0:
+        if pixels_are == 'areas':
+            temp_mask = self.to_c_mask().data
+            xy_offset = (0, 0)
         else:
-            multi_poly = MultiPolygon([])
+            if pre_translate:
+                # This might not be needed,
+                # output_dims = (h + 1, w + 1)  # add one to ensure we keep all pixels
+                warnings.warn('pre translate is not needed. Do not use', DeprecationWarning)
+                x, y, w, h = self.get_xywh().astype(int).tolist()
+                output_dims = (h, w)
+                xy_offset = (x, y)
+                temp = self.translate((-x, -y), output_dims)
+                temp_mask = temp.to_c_mask(copy=False).data
+            else:
+                xy_offset = (0, 0)
+                temp_mask = self.to_c_mask(copy=False).data
+            # TODO: polygons and masks should keep track what "pixels_are"
+        polys = _find_contours(temp_mask, offset=xy_offset,
+                               pixels_are=pixels_are)
+
+        poly_list = [Polygon(**data) for data in polys]
+        multi_poly = MultiPolygon(poly_list)
+        # else:
+        #     multi_poly = MultiPolygon([])
         return multi_poly
 
     def get_convex_hull(self):
@@ -1819,6 +1904,8 @@ def _find_contours(binary_mask, offset=(0, 0), pixels_are='points'):
 def _rasterio_find_contours(binary_mask, offset=(0, 0)):
     from rasterio import features
     import numpy as np
+    if binary_mask.size == 0:
+        return []
     shapes = list(features.shapes(binary_mask, connectivity=8))
     x, y = offset
     translate = np.array([x - 0.5, y - 0.5]).ravel()[None, :]
@@ -1856,7 +1943,9 @@ def _opencv_find_contours(binary_mask, offset=(0, 0)):
         _img, _contours, _hierarchy = _ret
 
     if _hierarchy is None:
-        raise Exception('Contour extraction from binary mask failed')
+        if len(_contours) == 0:
+            return []
+        raise AssertionError('Contour extraction from binary mask failed')
 
     _hierarchy = _hierarchy[0]
 
