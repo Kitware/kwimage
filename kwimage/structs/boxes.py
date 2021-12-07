@@ -1372,6 +1372,31 @@ class _BoxTransformMixins(object):
                 np.clip(y2, y_min, y_max, out=y2)
         return new
 
+    def pad(self, x_left, y_top, x_right, y_bot, inplace=False):
+        """
+        Adds extra width/height to the left, top, right, and bottom
+        of each bounding box.
+
+        """
+        impl = kwarray.ArrayAPI.impl(self.data)
+
+        if inplace:
+            new = self
+            new_data = self.data
+        else:
+            new_data = impl.astype(self.data, float, copy=True)
+            new = Boxes(new_data, self.format)
+
+        if _numel(new_data) > 0:
+            if self.format in [BoxFormat.LTRB]:
+                new_data[..., 0] -= x_left
+                new_data[..., 1] -= y_top
+                new_data[..., 2] += x_right
+                new_data[..., 3] += y_bot
+            else:
+                raise NotImplementedError('Cannot pad: {}'.format(self.format))
+        return new
+
     def transpose(self):
         """
         Reflects box coordinates about the line y=x.
@@ -1478,7 +1503,7 @@ class _BoxDrawMixins(object):
                                  alpha=alpha, centers=centers, fill=fill,
                                  lw=lw, ax=ax)
 
-    def draw_on(self, image, color='blue', alpha=None, labels=None,
+    def draw_on(self, image=None, color='blue', alpha=None, labels=None,
                 copy=False, thickness=2, label_loc='top_left'):
         """
         Draws boxes directly on the image using OpenCV
@@ -1549,6 +1574,18 @@ class _BoxDrawMixins(object):
             >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> from kwimage.structs.boxes import *  # NOQA
+            >>> self = Boxes.random(num=10, scale=256, rng=0, format='ltrb')
+            >>> image = self.draw_on()
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> kwplot.show_if_requested()
         """
         import cv2
         import kwimage
@@ -1558,6 +1595,15 @@ class _BoxDrawMixins(object):
             x = min(max(x, 0), w - 1)
             y = min(max(y, 0), h - 1)
             return tuple(map(int, map(round, (x, y))))
+
+        if image is None:
+            # If image is not given, use the boxes to allocate enough
+            # room to draw
+            bounds = self.bounding_box().scale(1.1).quantize()
+            w = bounds.width.item()
+            h = bounds.height.item()
+            w = h = max(w, h)
+            image = np.zeros((h, w, 3), dtype=np.float32)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
         h, w = image.shape[0:2]

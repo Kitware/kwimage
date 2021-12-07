@@ -351,7 +351,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image, color='white', radius=None, copy=False):
+    def draw_on(self, image=None, color='white', radius=None, copy=False):
         """
         CommandLine:
             xdoctest -m ~/code/kwimage/kwimage/structs/points.py Points.draw_on --show
@@ -415,8 +415,24 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10).scale(32)
+            >>> image = self.draw_on(radius=3, color='distinct')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> kwplot.show_if_requested()
         """
         import kwimage
+        if image is None:
+            maxx, maxy = self.xy.max(axis=0)
+            maxx = int(np.ceil(maxx * 1.1))
+            maxy = int(np.ceil(maxy * 1.1))
+            image = np.zeros((maxx, maxy, 3), dtype=np.float32)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 

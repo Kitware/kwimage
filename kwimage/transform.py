@@ -203,6 +203,11 @@ class Matrix(Transform):
         self.matrix = rng.rand(*shape)
         return self
 
+    def __getitem__(self, index):
+        if self.matrix is None:
+            return np.asarray(self)[index]
+        return self.matrix[index]
+
 
 class Linear(Matrix):
     pass
@@ -212,8 +217,94 @@ class Projective(Linear):
     """
     Currently just a stub class that may be used to implement projective /
     homography transforms in the future.
+
+    References:
+        https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
     """
-    pass
+
+    @classmethod
+    def fit(cls, pts1, pts2):
+        """
+        Fit an projective transformation between a set of corresponding points
+
+        Args:
+            pts1 (ndarray): An Nx2 array of points in "space 1".
+            pts2 (ndarray): A corresponding Nx2 array of points in "space 2"
+
+        Returns:
+            Projective : a transform that warps from "space1" to "space2".
+
+        Notes:
+            A projective matrix has 8 degrees of freedome, so at least 8 point
+            pairs are needed.
+
+        References:
+            http://dip.sun.ac.za/~stefan/TW793/attach/notes/homography_estimation.pdf
+            http://szeliski.org/Book/drafts/SzeliskiBook_20100903_draft.pdf Page 317
+            http://vision.ece.ucsb.edu/~zuliani/Research/RANSAC/docs/RANSAC4Dummies.pdf page 53
+
+        Example:
+            >>> # Create a set of points, warp them, then recover the warp
+            >>> import kwimage
+            >>> points = kwimage.Points.random(9).scale(64)
+            >>> A1 = kwimage.Affine.affine(scale=0.9, theta=-3.2, offset=(2, 3), about=(32, 32), skew=2.3)
+            >>> A2 = kwimage.Affine.affine(scale=0.8, theta=0.8, offset=(2, 0), about=(32, 32))
+            >>> A12_real = A2 @ A1.inv()
+            >>> points1 = points.warp(A1)
+            >>> points2 = points.warp(A2)
+            >>> # Make the correspondence non-affine
+            >>> points2.data['xy'].data[0, 0] += 3.5
+            >>> points2.data['xy'].data[3, 1] += 8.5
+            >>> # Recover the warp
+            >>> pts1, pts2 = points1.xy, points2.xy
+            >>> A_recovered = kwimage.Projective.fit(pts1, pts2)
+            >>> #assert np.all(np.isclose(A_recovered.matrix, A12_real.matrix))
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> base1 = np.zeros((96, 96, 3))
+            >>> base1[32:-32, 5:-5] = 0.5
+            >>> base2 = np.zeros((96, 96, 3))
+            >>> img1 = points1.draw_on(base1, radius=3, color='blue')
+            >>> img2 = points2.draw_on(base2, radius=3, color='green')
+            >>> img1_warp = cv2.warpPerspective(img1, A_recovered.matrix, dsize=img1.shape[0:2][::-1])
+            >>> canvas = kwimage.stack_images([img1, img2, img1_warp], pad=10, axis=1, bg_value=(1., 1., 1.))
+            >>> kwplot.imshow(canvas)
+        """
+        xy1_mn = pts1.T
+        xy2_mn = pts2.T
+        x1_mn = xy1_mn[0]
+        y1_mn = xy1_mn[1]
+        x2_mn = xy2_mn[0]
+        y2_mn = xy2_mn[1]
+        num_pts = x1_mn.shape[0]
+        # Concatenate all 2x9 matrices into an Mx9 matrix
+        Mx9 = np.empty((2 * num_pts, 9), dtype=float)
+        for ix in range(num_pts):
+            u2        = x2_mn[ix]
+            v2        = y2_mn[ix]
+            x1        = x1_mn[ix]
+            y1        = y1_mn[ix]
+            (d, e, f) = (     -x1,      -y1,  -1)
+            (g, h, i) = ( v2 * x1,  v2 * y1,  v2)
+            (j, k, l) = (      x1,       y1,   1)
+            (p, q, r) = (-u2 * x1, -u2 * y1, -u2)
+            Mx9[ix * 2]     = (0, 0, 0, d, e, f, g, h, i)
+            Mx9[ix * 2 + 1] = (j, k, l, 0, 0, 0, p, q, r)
+        M = Mx9
+        try:
+            USVt = np.linalg.svd(M, full_matrices=True, compute_uv=True)
+        except MemoryError:
+            import scipy.sparse as sps
+            import scipy.sparse.linalg as spsl
+            M_sparse = sps.lil_matrix(M)
+            USVt = spsl.svds(M_sparse)
+        except np.linalg.LinAlgError:
+            raise
+        except Exception:
+            raise
+        U, s, Vt = USVt
+        h = Vt[8]  # Hack for Cython.wraparound(False)
+        mat = np.vstack((h[0:3], h[3:6], h[6:9]))
+        return Projective(mat)
 
 
 class Affine(Projective):
@@ -246,11 +337,6 @@ class Affine(Projective):
     @property
     def shape(self):
         return (3, 3)
-
-    def __getitem__(self, index):
-        if self.matrix is None:
-            return np.asarray(self)[index]
-        return self.matrix[index]
 
     def __json__(self):
         if self.matrix is None:
@@ -824,6 +910,98 @@ class Affine(Projective):
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
+
+    @classmethod
+    def fit(cls, pts1, pts2):
+        """
+        Fit an affine transformation between a set of corresponding points
+
+        Args:
+            pts1 (ndarray): An Nx2 array of points in "space 1".
+            pts2 (ndarray): A corresponding Nx2 array of points in "space 2"
+
+        Returns:
+            Affine : a transform that warps from "space1" to "space2".
+
+        Notes:
+            An affine matrix has 6 degrees of freedome, so at least 6
+            point pairs are needed.
+
+        References:
+            https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf page 22
+
+        Example:
+            >>> # Create a set of points, warp them, then recover the warp
+            >>> import kwimage
+            >>> points = kwimage.Points.random(6).scale(64)
+            >>> #A1 = kwimage.Affine.affine(scale=0.9, theta=-3.2, offset=(2, 3), about=(32, 32), skew=2.3)
+            >>> #A2 = kwimage.Affine.affine(scale=0.8, theta=0.8, offset=(2, 0), about=(32, 32))
+            >>> A1 = kwimage.Affine.random()
+            >>> A2 = kwimage.Affine.random()
+            >>> A12_real = A2 @ A1.inv()
+            >>> points1 = points.warp(A1)
+            >>> points2 = points.warp(A2)
+            >>> # Recover the warp
+            >>> pts1, pts2 = points1.xy, points2.xy
+            >>> A_recovered = kwimage.Affine.fit(pts1, pts2)
+            >>> assert np.all(np.isclose(A_recovered.matrix, A12_real.matrix))
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> base1 = np.zeros((96, 96, 3))
+            >>> base1[32:-32, 5:-5] = 0.5
+            >>> base2 = np.zeros((96, 96, 3))
+            >>> img1 = points1.draw_on(base1, radius=3, color='blue')
+            >>> img2 = points2.draw_on(base2, radius=3, color='green')
+            >>> img1_warp = kwimage.warp_affine(img1, A_recovered)
+            >>> canvas = kwimage.stack_images([img1, img2, img1_warp], pad=10, axis=1, bg_value=(1., 1., 1.))
+            >>> kwplot.imshow(canvas)
+        """
+        x1_mn = pts1[:, 0]
+        y1_mn = pts1[:, 1]
+        x2_mn = pts2[:, 0]
+        y2_mn = pts2[:, 1]
+        num_pts = x1_mn.shape[0]
+        Mx6 = np.empty((2 * num_pts, 6), dtype=float)
+        b = np.empty((2 * num_pts, 1), dtype=float)
+        for ix in range(num_pts):  # Loop over inliers
+            # Concatenate all 2x9 matrices into an Mx6 matrix
+            x1 = x1_mn[ix]
+            x2 = x2_mn[ix]
+            y1 = y1_mn[ix]
+            y2 = y2_mn[ix]
+            Mx6[ix * 2]     = (x1, y1, 0, 0, 1, 0)
+            Mx6[ix * 2 + 1] = ( 0, 0, x1, y1, 0, 1)
+            b[ix * 2] = x2
+            b[ix * 2 + 1] = y2
+
+        M = Mx6
+        try:
+            USVt = np.linalg.svd(M, full_matrices=True, compute_uv=True)
+        except MemoryError:
+            import scipy.sparse as sps
+            import scipy.sparse.linalg as spsl
+            M_sparse = sps.lil_matrix(M)
+            USVt = spsl.svds(M_sparse)
+        except np.linalg.LinAlgError:
+            raise
+        except Exception:
+            raise
+
+        U, s, Vt = USVt
+
+        # Inefficient, but the math works
+        # We want to solve Ax=b (where A is the Mx6 in this case)
+        # Ax = b
+        # (U S V.T) x = b
+        # x = (U.T inv(S) V) b
+        Sinv = np.zeros((len(Vt), len(U)))
+        Sinv[np.diag_indices(len(s))] = 1 / s
+        a = Vt.T.dot(Sinv).dot(U.T).dot(b).T[0]
+        mat = np.array([
+            [a[0], a[1], a[4]],
+            [a[2], a[3], a[5]],
+            [   0, 0, 1],
+        ])
+        return Affine(mat)
 
 
 # def _ensure_iterablen(scalar, n):
