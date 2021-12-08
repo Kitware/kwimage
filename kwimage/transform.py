@@ -260,6 +260,9 @@ class Projective(Linear):
             >>> A_recovered = kwimage.Projective.fit(pts1, pts2)
             >>> #assert np.all(np.isclose(A_recovered.matrix, A12_real.matrix))
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import cv2
+            >>> import kwplot
+            >>> kwplot.autompl()
             >>> base1 = np.zeros((96, 96, 3))
             >>> base1[32:-32, 5:-5] = 0.5
             >>> base2 = np.zeros((96, 96, 3))
@@ -269,42 +272,86 @@ class Projective(Linear):
             >>> canvas = kwimage.stack_images([img1, img2, img1_warp], pad=10, axis=1, bg_value=(1., 1., 1.))
             >>> kwplot.imshow(canvas)
         """
-        xy1_mn = pts1.T
-        xy2_mn = pts2.T
-        x1_mn = xy1_mn[0]
-        y1_mn = xy1_mn[1]
-        x2_mn = xy2_mn[0]
-        y2_mn = xy2_mn[1]
-        num_pts = x1_mn.shape[0]
-        # Concatenate all 2x9 matrices into an Mx9 matrix
-        Mx9 = np.empty((2 * num_pts, 9), dtype=float)
-        for ix in range(num_pts):
-            u2        = x2_mn[ix]
-            v2        = y2_mn[ix]
-            x1        = x1_mn[ix]
-            y1        = y1_mn[ix]
-            (d, e, f) = (     -x1,      -y1,  -1)
-            (g, h, i) = ( v2 * x1,  v2 * y1,  v2)
-            (j, k, l) = (      x1,       y1,   1)
-            (p, q, r) = (-u2 * x1, -u2 * y1, -u2)
-            Mx9[ix * 2]     = (0, 0, 0, d, e, f, g, h, i)
-            Mx9[ix * 2 + 1] = (j, k, l, 0, 0, 0, p, q, r)
-        M = Mx9
-        try:
-            USVt = np.linalg.svd(M, full_matrices=True, compute_uv=True)
-        except MemoryError:
-            import scipy.sparse as sps
-            import scipy.sparse.linalg as spsl
-            M_sparse = sps.lil_matrix(M)
-            USVt = spsl.svds(M_sparse)
-        except np.linalg.LinAlgError:
-            raise
-        except Exception:
-            raise
-        U, s, Vt = USVt
-        h = Vt[8]  # Hack for Cython.wraparound(False)
-        mat = np.vstack((h[0:3], h[3:6], h[6:9]))
-        return Projective(mat)
+        if 0:
+            import cv2
+            inlier_method = 'all'
+            inlier_method_lut = {
+                'all': 0,
+                'lmeds': cv2.LMEDS,
+                'ransac': cv2.RANSAC,
+                'prosac': cv2.RHO,
+            }
+            cv2_method = inlier_method_lut[inlier_method]
+            # This probably does the point normaliztion internally,
+            # but I'm not sure
+            H, mask = cv2.findHomography(pts1, pts2, method=cv2_method)
+            return Projective(H)
+        else:
+            def whiten_xy_points(xy_m):
+                """
+                whitens points to mean=0, stddev=1 and returns transformation
+                """
+                mu_xy  = xy_m.mean(axis=1)  # center of mass
+                std_xy = xy_m.std(axis=1)
+                std_xy[std_xy == 0] = 1  # prevent divide by zero
+                tx, ty = -mu_xy / std_xy
+                sx, sy = 1 / std_xy
+                T = np.array([(sx, 0, tx),
+                              (0, sy, ty),
+                              (0,  0,  1)])
+                xy_norm = ((xy_m.T - mu_xy) / std_xy).T
+                return xy_norm, T
+            # Hartley Precondition (to reduce sensitivity to noise)
+            xy1_mn, T1 = whiten_xy_points(pts1.T)
+            xy2_mn, T2 = whiten_xy_points(pts2.T)
+            # xy1_mn = pts1.T
+            # xy2_mn = pts2.T
+            x1_mn = xy1_mn[0]
+            y1_mn = xy1_mn[1]
+            x2_mn = xy2_mn[0]
+            y2_mn = xy2_mn[1]
+            num_pts = x1_mn.shape[0]
+            # Concatenate all 2x9 matrices into an Mx9 matrix
+            Mx9 = np.empty((2 * num_pts, 9), dtype=float)
+            for ix in range(num_pts):
+                u2        = x2_mn[ix]
+                v2        = y2_mn[ix]
+                x1        = x1_mn[ix]
+                y1        = y1_mn[ix]
+                (d, e, f) = (     -x1,      -y1,  -1)
+                (g, h, i) = ( v2 * x1,  v2 * y1,  v2)
+                (j, k, l) = (      x1,       y1,   1)
+                (p, q, r) = (-u2 * x1, -u2 * y1, -u2)
+                Mx9[ix * 2]     = (0, 0, 0, d, e, f, g, h, i)
+                Mx9[ix * 2 + 1] = (j, k, l, 0, 0, 0, p, q, r)
+            M = (Mx9.T @ Mx9)
+            # M = Mx9
+            try:
+                # https://math.stackexchange.com/questions/772039/how-does-the-svd-solve-the-least-squares-problem/2173715#2173715
+                # http://twistedoakstudios.com/blog/Post7254_visualizing-the-eigenvectors-of-a-rotation
+                USVt = np.linalg.svd(M, full_matrices=True, compute_uv=True)
+            except MemoryError:
+                import scipy.sparse as sps
+                import scipy.sparse.linalg as spsl
+                M_sparse = sps.lil_matrix(M)
+                USVt = spsl.svds(M_sparse)
+            except np.linalg.LinAlgError:
+                raise
+            except Exception:
+                raise
+            # U is the co-domain unitary matrix
+            # V is the domain unitary matrix
+            # s contains the singular values
+            U, s, Vt = USVt
+            # The column of V (row of Vt) corresponding to the lowest singular
+            # value is the solution to the least squares problem
+            H_prime = Vt[8].reshape(3, 3)
+
+            # Then compute ax = b  [aka: x = npl.solve(a, b)]
+            M = np.linalg.inv(T2) @ H_prime @ T1  # Unnormalize
+            # homographies that only differ by a scale factor are equivalent
+            M /= M[2, 2]
+            return Projective(M)
 
 
 class Affine(Projective):
@@ -955,6 +1002,17 @@ class Affine(Projective):
             >>> canvas = kwimage.stack_images([img1, img2, img1_warp], pad=10, axis=1, bg_value=(1., 1., 1.))
             >>> kwplot.imshow(canvas)
         """
+        if 0:
+            # Not sure if cv2 has this variant of the affine matrix calc
+            import cv2
+            inlier_method = 'ransac'
+            inlier_method_lut = {
+                'lmeds': cv2.LMEDS,
+                'ransac': cv2.RANSAC,
+            }
+            cv2_method = inlier_method_lut[inlier_method]
+            A, mask = cv2.estimateAffine2D(pts1, pts2, method=cv2_method)
+
         x1_mn = pts1[:, 0]
         y1_mn = pts1[:, 1]
         x2_mn = pts2[:, 0]
