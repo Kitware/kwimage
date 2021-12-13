@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.17 - Unreleased
 
+### Added
+
+* `kwimage.Color.distinct` now uses `distinctipy` as a backend, and gains
+  functionality to exclude existing colors.
+
 
 ## Version 0.7.16 - Released 2021-12-02
 

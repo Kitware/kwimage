@@ -574,10 +574,40 @@ class _BoxConversionMixins(object):
     to_shapley = to_shapely  # originally had incorrect spelling
 
     @classmethod
+    def from_shapely(cls, geom):
+        """
+        Given a shapely polygon, return a Boxes object of its Bounds.
+
+        Returns:
+            Boxes
+        """
+        from shapely.geometry import Polygon
+        if isinstance(geom, Polygon):
+            xmin, ymin, xmax, ymax = geom.bounds
+            self = Boxes(np.array([geom.bounds]), 'ltrb')
+        else:
+            raise NotImplementedError
+        return self
+
+    @classmethod
+    def coerce(Boxes, data):
+        from shapely.geometry import Polygon
+        if isinstance(data, Boxes):
+            self = data
+        elif isinstance(data, Polygon):
+            self = Boxes.from_shapely(data)
+        else:
+            raise NotImplementedError
+        return self
+
+    @classmethod
     def from_imgaug(Boxes, bboi):
         """
         Args:
             bboi (ia.BoundingBoxesOnImage):
+
+        Returns:
+            Boxes
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
