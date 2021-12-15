@@ -981,6 +981,12 @@ class Affine(Projective):
                 with timer:
                     self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shear=np.random.rand())
         """
+        if shear is not None and shearx is None:
+            # Hack so old data is readable (this should be ok as long as the
+            # data wasnt reserialized)
+            shearx = shear
+            shear = None
+
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
         shear_ = 0 if shear is None else shear
