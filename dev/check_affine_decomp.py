@@ -80,7 +80,6 @@ A_matrix = sympy.Matrix([[a11, a12, a13], [a21, a22, a23], [a31, a32, a33]])
 
 
 # This is the guided solution by Stéphane Laurent
-
 recon_sx = sympy.sqrt(a11 * a11 + a21 * a21)
 recon_theta = sympy.atan2(a21, a11)
 recon_sin_t = sympy.sin(recon_theta)

@@ -559,14 +559,14 @@ class Affine(Projective):
             >>> params = self.decompose()
             >>> self.det()
 
-        Ignore:
+        Example:
             >>> from kwimage.transform import *  # NOQA
             >>> import kwimage
             >>> import pandas as pd
             >>> # Test consistency of decompose + reconstruct
             >>> param_grid = list(ub.named_product({
             >>>     'theta': np.linspace(-4 * np.pi, 4 * np.pi, 12),
-            >>>     'm': np.linspace(- 10 * np.pi, 10 * np.pi, 24),
+            >>>     'shearx': np.linspace(- 10 * np.pi, 10 * np.pi, 24),
             >>> }))
             >>> def normalize_angle(radian):
             >>>     return np.arctan2(np.sin(radian), np.cos(radian))
@@ -577,21 +577,20 @@ class Affine(Projective):
             >>>     # Test drift with multiple decompose / reconstructions
             >>>     params_list = [params0]
             >>>     recon_list = [recon0]
-            >>>     n = 10
+            >>>     n = 4
             >>>     for _ in range(n):
-            >>>         skimage.transform.AffineTransform(matrix=prev.matrix).shear
             >>>         prev = recon_list[-1]
             >>>         params = prev.decompose()
             >>>         recon = kwimage.Affine.coerce(**params)
             >>>         params_list.append(params)
             >>>         recon_list.append(recon)
             >>>     params_df = pd.DataFrame(params_list)
+            >>>     #print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
             >>>     print(params_df)
             >>>     assert ub.allsame(normalize_angle(params_df['theta']), eq=np.isclose)
-            >>>     assert ub.allsame(params_df['m'], eq=np.allclose)
+            >>>     assert ub.allsame(params_df['shearx'], eq=np.allclose)
             >>>     assert ub.allsame(params_df['scale'], eq=np.allclose)
             >>>     assert ub.allsame(params_df['offset'], eq=np.allclose)
-            >>> print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
 
         Ignore:
             import affine
@@ -682,7 +681,6 @@ class Affine(Projective):
             'offset': (tx, ty),
             'scale': (sx, sy),
             'shearx': shearx,
-            # 'shear': shearx,
             'theta': theta,
         }
         return params
