@@ -88,15 +88,21 @@ First, if I just try to solve for "sx", I get no result.
 
 ## Option 1: Matrix equality
 mat_equation = sympy.Eq(A_matrix, A_params)
-soln_sx = sympy.solve(mat_equation, sx)
+soln_sx = sympy.solve(mat_equation, sx, exclude=[theta, sy, m], manual=True, dict=True)
 print('soln_sx = {!r}'.format(soln_sx))
 
 ## Option 2: List of equations
 lhs_iter = it.chain.from_iterable(A_matrix.tolist())
 rhs_iter = it.chain.from_iterable(A_params.tolist())
 equations = [sympy.Eq(lhs, rhs) for lhs, rhs in zip(lhs_iter, rhs_iter)]
-soln_sx = sympy.solve(equations, sx)
+soln_sx = sympy.solve(equations, sx, theta, manual=True)
 print('soln_sx = {!r}'.format(soln_sx))
+
+
+if 0:
+    sympy.solveset(mat_equation, sx, sympy.Reals)
+    sympy.nonlinsolve(equations, sx)
+    sympy.solve(equations, (m, sx, sy, theta), particular=True, manual=True, quintics=False)
 
 """
 soln_sx = []
@@ -110,19 +116,48 @@ but it does not agree with what I would expect
 """
 
 solve_for = (sx, theta, sy, m)
-solutions = sympy.solve(mat_equation, *solve_for)
-for sol, symbol in zip(solutions[0], solve_for):
-    sol = sympy.simplify(sol)
-    print('sol({!r}) = {!r}'.format(symbol, sol))
-    # sympy.pretty_print(sol)
+solutions = sympy.solve(mat_equation, *solve_for, dict=True, minimal=True, quick=True, cubics=False, quartics=False, quintics=False, check=False)
+for sol in solutions:
+    for sym, symsol0 in sol.items():
+        symsol = sympy.radsimp(symsol0)
+        symsol = sympy.trigsimp(symsol)
+        symsol = sympy.simplify(symsol)
+        print('\n=====')
+        print('sym = {!r}'.format(sym))
+        print('symsol0 = {!r}'.format(symsol0))
+        print('symsol  = {!r}'.format(symsol))
+        print('--')
+        sympy.pretty_print(symsol, wrap_line=False)
+        print('--')
+        print('=====\n')
 
 """
 sol(sx) = -(a11**2 + a11*sqrt(a11**2 + a21**2) + a21**2)/(a11 + sqrt(a11**2 + a21**2))
 sol(theta) = -2*atan((a11 + sqrt(a11**2 + a21**2))/a21)
 sol(sy) = (-8*a11**6*a22 + 8*a11**5*a12*a21 - 8*a11**5*a22*sqrt(a11**2 + a21**2) + 8*a11**4*a12*a21*sqrt(a11**2 + a21**2) - 12*a11**4*a21**2*a22 + 12*a11**3*a12*a21**3 - 8*a11**3*a21**2*a22*sqrt(a11**2 + a21**2) + 8*a11**2*a12*a21**3*sqrt(a11**2 + a21**2) - 4*a11**2*a21**4*a22 + 4*a11*a12*a21**5 - a11*a21**4*a22*sqrt(a11**2 + a21**2) + a12*a21**5*sqrt(a11**2 + a21**2))/(8*a11**6 + 8*a11**5*sqrt(a11**2 + a21**2) + 16*a11**4*a21**2 + 12*a11**3*a21**2*sqrt(a11**2 + a21**2) + 9*a11**2*a21**4 + 4*a11*a21**4*sqrt(a11**2 + a21**2) + a21**6)
 sol(m) = (a11*a12 + a21*a22)/(a11*a22 - a12*a21)
-"""
 
+
+
+expr1 = -2*sympy.atan((a11 + sympy.sqrt(a11**2 + a21**2))/a21)
+expr2 = sympy.atan2(a21, a11)
+
+subs = {s: np.random.rand() for s in expr1.free_symbols}
+expr1.subs(subs)
+expr2.subs(subs)
+
+
+
+a11, a12, a22, a21 = np.random.rand(4)
+atan2 = np.arctan2
+atan = np.arctan
+sqrt = np.sqrt
+theta_alt1 = -2*atan((a11 + sqrt(a11**2 + a21**2))/a21)
+theta_alt2 = -2*atan((a11 + sqrt(a11**2 + a21**2)) / a21)
+print('theta_alt1 = {!r}'.format(theta_alt1))
+print('theta_alt2 = {!r}'.format(theta_alt2))
+theta_main = atan2(a21, a11)
+"""
 
 """
 After having a hard time getting the above to work, I wanted to see
@@ -140,6 +175,8 @@ recon_msy = a12 * recon_sin_t + a22 * recon_cos_t
 
 condition2 = sympy.simplify(sympy.Eq(recon_sin_t, 0))
 condition1 = sympy.simplify(sympy.Not(condition2))
+# condition1 = sympy.Gt(recon_sin_t ** 2, recon_cos_t ** 2)
+# condition2 = sympy.Le(recon_sin_t ** 2, recon_cos_t ** 2)
 sy_cond1 = (recon_msy * recon_cos_t - a12) / recon_sin_t
 sy_cond2 = (a22 - recon_msy * recon_sin_t) / recon_cos_t
 
@@ -196,33 +233,7 @@ My thought is that the conditional is messing is up, so I tried just
 using two cases:
 """
 
-recon_sy2 = sy_cond1
-recon_m2 = recon_msy / recon_sy2
-
-recon_S2 = sympy.Matrix([  # scale
-    [recon_sx,  0],
-    [ 0, recon_sy2]])
-
-recon_H2 = sympy.Matrix([  # shear
-    [1, recon_m2],
-    [0, 1]])
-
-
-recon_sy3 = sy_cond2
-recon_m3 = recon_msy / recon_sy3
-
-recon_S3 = sympy.Matrix([  # scale
-    [recon_sx,  0],
-    [ 0, recon_sy3]])
-
-recon_H3 = sympy.Matrix([  # shear
-    [1, recon_m3],
-    [0, 1]])
-
-
-# Recombine the components
-A_recon2 = sympy.simplify((recon_R @ recon_H2 @ recon_S2))
-A_recon3 = sympy.simplify((recon_R @ recon_H3 @ recon_S3))
+(A_recon2, _), (A_recon3, _) = sympy.piecewise_fold(A_recon).args
 print('')
 print(ub.hzcat(['A_recon2 = ', sympy.pretty(A_recon2)]))
 print('')
@@ -248,3 +259,24 @@ I'm not quite seeing how a22/a12 pops out of the top/bottom equations
 respectively, but they should if this decomposition is correct, but these
 results are making me worried that it is not.
 """
+
+# checks
+
+lhs_iter = it.chain.from_iterable(A_matrix.tolist())
+rhs_iter = it.chain.from_iterable(A_params.tolist())
+subs = {lhs: rhs for lhs, rhs in zip(lhs_iter, rhs_iter)}
+# subs.pop(A_matrix[0, 1])
+
+recon_12 = A_recon[0, 1]
+recon_12_a = A_recon2[1, 1]
+recon_12_b = A_recon3[0, 1]
+
+sympy.pretty_print(sympy.simplify(recon_12.subs(subs)))
+
+sympy.simplify(recon_12_b.subs(subs))
+sympy.simplify(recon_12_a.subs(subs))
+
+z = A_recon[0, 1].subs(subs)
+sympy.solve(z, A_matrix[0, 1])
+
+# sympy.Eq(A_recon[0, 1], )

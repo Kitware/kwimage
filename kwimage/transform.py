@@ -542,6 +542,7 @@ class Affine(Projective):
         References:
             https://math.stackexchange.com/questions/612006/decompose-affine
             https://math.stackexchange.com/a/3521141/353527
+            https://stackoverflow.com/questions/70357473/how-to-decompose-a-2x2-affine-matrix-with-sympy
 
         Example:
             >>> from kwimage.transform import *  # NOQA
