@@ -218,16 +218,16 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
         >>> import kwimage
         >>> import numpy as np
         >>> #
-        >>> img = kwimage.grab_test_image('astro', dsize=(32, 32))
+        >>> img = kwimage.grab_test_image('astro', dsize=(32, 32))[..., 0:3]
         >>> #
         >>> # regular crop
         >>> new_img1 = kwimage.imcrop(img, dsize=(5,6))
-        >>> assert new_img1.shape == (6, 5, 3)
+        >>> assert new_img1.shape[0:2] == (6, 5)
         >>> #
         >>> # padding for coords outside the image bounds
         >>> new_img2 = kwimage.imcrop(img, dsize=(5,6),
         >>>             origin=(-1,0), border_value=[1, 0, 0])
-        >>> assert np.all(new_img2[:, 0] == [1, 0, 0])
+        >>> assert np.all(new_img2[:, 0, 0:3] == [1, 0, 0])
         >>> #
         >>> # codes for corner- and edge-centered cropping
         >>> new_img3 = kwimage.imcrop(img, dsize=(5,6),
@@ -473,8 +473,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     Example:
         >>> # Check aliasing
         >>> import kwimage
-        >>> img = kwimage.grab_test_image('checkerboard')
-        >>> img = kwimage.grab_test_image('astro')
+        >>> #img = kwimage.grab_test_image('checkerboard')
+        >>> img = kwimage.grab_test_image('pm5644')
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -1138,7 +1138,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> import kwimage
         >>> from kwimage.transform import Affine
-        >>> image = kwimage.grab_test_image('astro', dsize=(512, 512))
+        >>> image = kwimage.grab_test_image('pm5644')
         >>> transform = Affine.coerce(offset=(-100, -50), scale=2, theta=0.1)
         >>> warped_piecewise, info = warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=32)
         >>> warped_normal, info = warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=None)
@@ -1160,6 +1160,41 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> transform = kwimage.Affine.coerce(offset=.5) @ transform
         >>> transform = kwimage.Affine.coerce(scale=2) @ transform
         >>> warped = kwimage.warp_affine(image, transform, dsize=(12, 12))
+
+    Example:
+        >>> # Demo how nans are handled
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> image = kwimage.grab_test_image('pm5644')
+        >>> image = kwimage.ensure_float01(image)
+        >>> image[100:200, 400:700] = np.nan
+        >>> transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
+        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
+        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> print('warped1.shape = {!r}'.format(warped1.shape))
+        >>> print('warped2.shape = {!r}'.format(warped2.shape))
+        >>> assert warped2.shape == warped1.shape
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nRows=1, nCols=2)
+        >>> kwplot.imshow(warped1, pnum=pnum_(), title='antialias=True')
+        >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
+        >>> kwplot.show_if_requested()
+
+    Ignore:
+        transform_ = transform
+        params = transform_.decompose()
+        recon = transform_.affine(**params)
+
+        theta = np.linspace(-np.pi, np.pi)[:, None]
+        pts = np.c_[np.sin(theta), np.cos(theta), np.ones(len(theta))]
+
+        poly = kwimage.Polygon.random()
+        poly1 = poly.warp(transform_)
+        poly2 = poly.warp(recon)
+        pts_warp1 = transform_.matrix @ pts.T
+        pts_warp2 = transform_.matrix @ pts.T
     """
     from kwimage.transform import Affine
     import kwimage

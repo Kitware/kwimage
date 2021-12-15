@@ -276,6 +276,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
                 backend = 'turbojpeg'
             else:
                 backend = 'cv2'
+        elif _fpath_lower.endswith('.svg'):
+            backend = 'svg'  # a bit hacky, not a raster format
         else:
             backend = 'cv2'
 
@@ -300,6 +302,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
             import itk
             itk_obj = itk.imread(fpath)
             image = np.asarray(itk_obj)
+        elif backend == 'svg':
+            image, src_space, auto_dst_space = _imread_svg(fpath)
         else:
             raise KeyError('Unknown imread backend={!r}'.format(backend))
 
@@ -1394,3 +1398,35 @@ def _dtype_equality(dtype1, dtype2):
     dtype1_ = getattr(dtype1, 'type', dtype1)
     dtype2_ = getattr(dtype2, 'type', dtype2)
     return dtype1_ == dtype2_
+
+
+def _imread_svg(fpath):
+    """
+    References:
+        https://pypi.org/project/svglib/
+
+    Ignore:
+        fpath = ub.grabdata('https://upload.wikimedia.org/wikipedia/commons/a/aa/Philips_PM5544.svg')
+        image = kwimage.imread(fpath)
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(image)
+
+        image = kwimage.grab_test_image('pm5644')
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(image)
+
+    """
+    from reportlab.graphics import renderPM
+    from svglib.svglib import svg2rlg
+    import io
+    from PIL import Image
+    file = io.BytesIO()
+    drawing = svg2rlg(fpath)
+    renderPM.drawToFile(drawing, file, fmt="PNG")
+    file.seek(0)
+    pil_img = Image.open(file)
+    imdata = np.asarray(pil_img)
+    src_space = auto_dst_space = 'rgb'
+    return imdata, src_space, auto_dst_space

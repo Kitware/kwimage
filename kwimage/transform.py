@@ -15,6 +15,9 @@ except Exception:
     profile = ub.identity
 
 
+FIXED_X_SHEAR = True  # This breaks compat with skimage, but might fix something that is incorret
+
+
 class Transform(ub.NiceRepr):
     pass
 
@@ -43,7 +46,9 @@ class Matrix(Transform):
         self.matrix = matrix
 
     def __nice__(self):
-        return repr(self.matrix)
+        prefix = '<{}('.format(self.__class__.__name__)
+        return np.array2string(self.matrix, separator=', ', prefix=prefix)
+        # return repr(self.matrix)
 
     def __repr__(self):
         return self.__str__()
@@ -432,8 +437,8 @@ class Affine(Projective):
         # New much faster impl
         tx, ty = params['offset']
         sx, sy = params['scale']
-        math.isclose(params['shear'], 0)
-        math.isclose(params['shear'], 0)
+        # math.isclose(params['shearx'], 0)
+        # math.isclose(params['shear'], 0)
         if math.isclose(tx, 0) and math.isclose(ty, 0):
             params.pop('offset')
         elif tx == ty:
@@ -442,23 +447,12 @@ class Affine(Projective):
             params.pop('scale')
         elif sx == sy:
             params['scale'] = sx
-        if math.isclose(params['shear'], 0):
-            params.pop('shear')
+        if math.isclose(params['shearx'], 0):
+            params.pop('shearx')
+        # if math.isclose(params['shear'], 0):
+        #     params.pop('shear')
         if math.isclose(params['theta'], 0):
             params.pop('theta')
-        # else:
-        #     if np.allclose(params['offset'], (0, 0)):
-        #         params.pop('offset')
-        #     elif ub.allsame(params['offset']):
-        #         params['offset'] = params['offset'][0]
-        #     if np.allclose(params['scale'], (1, 1)):
-        #         params.pop('scale')
-        #     elif ub.allsame(params['scale']):
-        #         params['scale'] = params['scale'][0]
-        #     if np.allclose(params['shear'], 0):
-        #         params.pop('shear')
-        #     if np.isclose(params['theta'], 0):
-        #         params.pop('theta')
         return params
 
     @classmethod
@@ -501,7 +495,7 @@ class Affine(Projective):
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
             else:
-                known_params = {'scale', 'shear', 'offset', 'theta', 'type'}
+                known_params = {'scale', 'shear', 'offset', 'theta', 'type', 'shearx'}
                 params = {key: data[key] for key in known_params if key in data}
                 if len(known_params & keys):
                     params.pop('type', None)
@@ -543,12 +537,14 @@ class Affine(Projective):
         rotation, and skew parameters.
 
         Returns:
-            Dict: decomposed offset, scale, theta, and shear params
+            Dict: decomposed offset, scale, theta, and shearx params
 
         References:
             https://math.stackexchange.com/questions/612006/decompose-affine
+            https://math.stackexchange.com/a/3521141/353527
 
         Example:
+            >>> from kwimage.transform import *  # NOQA
             >>> self = Affine.random()
             >>> params = self.decompose()
             >>> recon = Affine.coerce(**params)
@@ -561,6 +557,40 @@ class Affine(Projective):
             >>> self = Affine.scale(0.001) @ Affine.random()
             >>> params = self.decompose()
             >>> self.det()
+
+        Ignore:
+            >>> from kwimage.transform import *  # NOQA
+            >>> import kwimage
+            >>> import pandas as pd
+            >>> # Test consistency of decompose + reconstruct
+            >>> param_grid = list(ub.named_product({
+            >>>     'theta': np.linspace(-4 * np.pi, 4 * np.pi, 12),
+            >>>     'm': np.linspace(- 10 * np.pi, 10 * np.pi, 24),
+            >>> }))
+            >>> def normalize_angle(radian):
+            >>>     return np.arctan2(np.sin(radian), np.cos(radian))
+            >>> for pextra in param_grid:
+            >>>     params0 = dict(scale=(3.05, 3.07), offset=(10.5, 12.1), **pextra)
+            >>>     self = recon0 = kwimage.Affine.affine(**params0)
+            >>>     self.decompose()
+            >>>     # Test drift with multiple decompose / reconstructions
+            >>>     params_list = [params0]
+            >>>     recon_list = [recon0]
+            >>>     n = 10
+            >>>     for _ in range(n):
+            >>>         skimage.transform.AffineTransform(matrix=prev.matrix).shear
+            >>>         prev = recon_list[-1]
+            >>>         params = prev.decompose()
+            >>>         recon = kwimage.Affine.coerce(**params)
+            >>>         params_list.append(params)
+            >>>         recon_list.append(recon)
+            >>>     params_df = pd.DataFrame(params_list)
+            >>>     print(params_df)
+            >>>     assert ub.allsame(normalize_angle(params_df['theta']), eq=np.isclose)
+            >>>     assert ub.allsame(params_df['m'], eq=np.allclose)
+            >>>     assert ub.allsame(params_df['scale'], eq=np.allclose)
+            >>>     assert ub.allsame(params_df['offset'], eq=np.allclose)
+            >>> print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
 
         Ignore:
             import affine
@@ -576,8 +606,6 @@ class Affine(Projective):
             print(aff._scaling)
             print(self.eccentricity())
             print(aff.eccentricity)
-
-            pass
 
         Ignore:
             import timerit
@@ -602,42 +630,60 @@ class Affine(Projective):
                     math.atan2(a21, a11)
         """
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
+
         sx = math.sqrt(a11 * a11 + a21 * a21)
         theta = math.atan2(a21, a11)
         sin_t = math.sin(theta)
         cos_t = math.cos(theta)
+
         msy = a12 * cos_t + a22 * sin_t
+
         if abs(cos_t) < abs(sin_t):
             sy = (msy * cos_t - a12) / sin_t
         else:
             sy = (a22 - msy * sin_t) / cos_t
-        m = msy / sy
+        shearx = msy / sy
         tx, ty = a13, a23
+
+        if 0:
+            # Note: shearx is not shear, but we can use it to solve for it
+            # shear = sympy.symbols('shear', **domain)
+            # shear_equations = [
+            #     sympy.Eq(sy * (shearx * sympy.cos(theta) - sympy.sin(theta)), -sy * sympy.sin(shear + theta)),
+            #     sympy.Eq(sy * (shearx * sympy.sin(theta) + sympy.cos(theta)),  sy * sympy.cos(shear + theta))
+            # ]
+            # sympy.solve(shear_equations[0], shear)
+            # sympy.solve(shear_equations[1], shear)
+            # [-theta - asin(shearx*cos(theta) - sin(theta)),
+            #  -theta + asin(shearx*cos(theta) - sin(theta)) + pi]
+            # [-theta + acos(shearx*sin(theta) + cos(theta)),
+            #  -theta - acos(shearx*sin(theta) + cos(theta)) + 2*pi]
+            mc_sub_s = shearx * np.cos(theta) - np.sin(theta)
+            if abs(mc_sub_s) <= 1:
+                shear0 = -theta - mc_sub_s
+                shear1 = -theta + mc_sub_s + np.pi
+            else:
+                ms_add_c = shearx * np.sin(theta) + np.cos(theta)
+                shear0 = -theta + ms_add_c
+                shear1 = -theta - ms_add_c + 2 * np.pi
+
+            def normalize_angle(radian):
+                return np.arctan2(np.sin(radian), np.cos(radian))
+            shear0 = normalize_angle(shear0)
+            shear1 = normalize_angle(shear1)
+            # sklearn def
+            # if 0:
+            #     rot = math.atan2(a21, a11)
+            #     beta = math.atan2(-a12, a11)
+            #     sklearn_shear = beta - rot
+
         params = {
             'offset': (tx, ty),
             'scale': (sx, sy),
-            'shear': m,
+            'shearx': shearx,
+            # 'shear': shearx,
             'theta': theta,
         }
-
-        # a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
-        # sx = np.sqrt(a11 ** 2 + a21 ** 2)
-        # theta = np.arctan2(a21, a11)
-        # sin_t = np.sin(theta)
-        # cos_t = np.cos(theta)
-        # msy = a12 * cos_t + a22 * sin_t
-        # if abs(cos_t) < abs(sin_t):
-        #     sy = (msy * cos_t - a12) / sin_t
-        # else:
-        #     sy = (a22 - msy * sin_t) / cos_t
-        # m = msy / sy
-        # tx, ty = a13, a23
-        # params = {
-        #     'offset': (tx, ty),
-        #     'scale': (sx, sy),
-        #     'shear': m,
-        #     'theta': theta,
-        # }
         return params
 
     @classmethod
@@ -721,7 +767,7 @@ class Affine(Projective):
             rng : random number generator
             **kw: passed to :func:`Affine.random_params`.
                 can contain coercable random distributions for scale, offset,
-                about, theta, and shear.
+                about, theta, and shearx.
 
         Returns:
             Affine
@@ -736,7 +782,7 @@ class Affine(Projective):
         Args:
             rng : random number generator
             **kw: can contain coercable random distributions for
-                scale, offset, about, theta, and shear.
+                scale, offset, about, theta, and shearx.
 
         Returns:
             Dict: affine parameters suitable to be passed to Affine.affine
@@ -797,8 +843,8 @@ class Affine(Projective):
             theta_kw = dict(mean=0, std=1, low=-np.pi / 8, high=np.pi / 8)
             theta_dist = TN(**theta_kw, rng=rng)
 
-        if 'shear' in kw:
-            shear_dist = _coerce_distri(kw['shear'])
+        if 'shearx' in kw:
+            shear_dist = _coerce_distri(kw['shearx'])
         else:
             shear_dist = distributions.Constant(0, rng=rng)
 
@@ -815,7 +861,7 @@ class Affine(Projective):
             scale=(xscale_dist.sample(), yscale_dist.sample()),
             offset=(xoffset_dist.sample(), yoffset_dist.sample()),
             theta=theta_dist.sample(),
-            shear=shear_dist.sample(),
+            shearx=shear_dist.sample(),
             about=(xabout_dist.sample(), yabout_dist.sample()),
         )
         return params
@@ -823,7 +869,7 @@ class Affine(Projective):
     @classmethod
     @profile
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
-               about=None, **kwargs):
+               about=None, shearx=None, **kwargs):
         """
         Create an affine matrix from high-level parameters
 
@@ -839,9 +885,13 @@ class Affine(Projective):
 
             shear (float):
                 counter-clockwise shear angle in radians
+                BROKEN, dont use.
 
             about (float | Tuple[float, float]):
                 x, y location of the origin
+
+            shearx (float):
+                a shear factor, needs more docs
 
         TODO:
             - [ ] Add aliases -
@@ -859,16 +909,16 @@ class Affine(Projective):
             >>> offset = rng.randn(2) * 10
             >>> about = rng.randn(2) * 10
             >>> theta = rng.randn() * 10
-            >>> shear = rng.randn() * 10
+            >>> shearx = rng.randn() * 10
             >>> # Create combined matrix from all params
             >>> F = Affine.affine(
-            >>>     scale=scale, offset=offset, theta=theta, shear=shear,
+            >>>     scale=scale, offset=offset, theta=theta, shearx=shearx,
             >>>     about=about)
             >>> # Test that combining components matches
             >>> S = Affine.affine(scale=scale)
             >>> T = Affine.affine(offset=offset)
             >>> R = Affine.affine(theta=theta)
-            >>> H = Affine.affine(shear=shear)
+            >>> H = Affine.affine(shearx=shearx)
             >>> O = Affine.affine(offset=about)
             >>> # combine (note shear must be on the RHS of rotation)
             >>> alt  = O @ T @ R @ H @ S @ O.inv()
@@ -886,8 +936,8 @@ class Affine(Projective):
             >>> # Shows the symbolic construction of the code
             >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
             >>> from sympy.abc import theta
-            >>> x0, y0, sx, sy, theta, shear, tx, ty = sympy.symbols(
-            >>>     'x0, y0, sx, sy, theta, shear, tx, ty')
+            >>> params = x0, y0, sx, sy, theta, shear, shearx, tx, ty = sympy.symbols(
+            >>>     'x0, y0, sx, sy, theta, shear, shearx, tx, ty')
             >>> # move the center to 0, 0
             >>> tr1_ = np.array([[1, 0,  -x0],
             >>>                  [0, 1,  -y0],
@@ -897,10 +947,14 @@ class Affine(Projective):
             >>>     [sx,  0, 0],
             >>>     [ 0, sy, 0],
             >>>     [ 0,  0, 1]])
-            >>> H = np.array([  # shear
-            >>>     [1, -sympy.sin(shear), 0],
-            >>>     [0,  sympy.cos(shear), 0],
-            >>>     [0,                 0, 1]])
+            >>> #H = np.array([  # shear BROKEN
+            >>> #    [1, -sympy.sin(shear), 0],
+            >>> #    [0,  sympy.cos(shear), 0],
+            >>> #    [0,                 0, 1]])
+            >>> H = np.array([  # x-shear
+            >>>     [1,  shearx, 0],
+            >>>     [0,  1, 0],
+            >>>     [0,  0, 1]])
             >>> R = np.array([  # rotation
             >>>     [sympy.cos(theta), -sympy.sin(theta), 0],
             >>>     [sympy.sin(theta),  sympy.cos(theta), 0],
@@ -925,38 +979,69 @@ class Affine(Projective):
             for timer in ti.reset('time'):
                 with timer:
                     self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shear=np.random.rand())
-
         """
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
         shear_ = 0 if shear is None else shear
+        xshear_ = 0 if shearx is None else shearx
         theta_ = 0 if theta is None else theta
         about_ = 0 if about is None else about
         sx, sy = _ensure_iterable2(scale_)
         tx, ty = _ensure_iterable2(offset_)
         x0, y0 = _ensure_iterable2(about_)
 
-        # Make auxially varables to reduce the number of sin/cos calls
-        shear_p_theta = shear_ + theta_
-
         cos_theta = math.cos(theta_)
         sin_theta = math.sin(theta_)
-        cos_shear_p_theta = math.cos(shear_p_theta)
-        sin_shear_p_theta = math.sin(shear_p_theta)
 
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta
-        sy_sin_shear_p_theta = sy * sin_shear_p_theta
-        sy_cos_shear_p_theta = sy * cos_shear_p_theta
-        tx_ = tx + x0 - (x0 * sx_cos_theta) + (y0 * sy_sin_shear_p_theta)
-        ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * sy_cos_shear_p_theta)
-        # Sympy simplified expression
-        mat = np.array([sx_cos_theta, -sy_sin_shear_p_theta, tx_,
-                        sx_sin_theta,  sy_cos_shear_p_theta, ty_,
-                                   0,                     0,  1])
-        mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
-        self = cls(mat)
-        return self
+
+        if FIXED_X_SHEAR:
+            # aff = [
+            #     [sx*cos(theta), sy*(shearx*cos(theta) - sin(theta)), -sx*x0*cos(theta) - sy*y0*(shearx*cos(theta) - sin(theta)) + tx + x0],
+            #     [sx*sin(theta), sy*(shearx*sin(theta) + cos(theta)), -sx*x0*sin(theta) - sy*y0*(shearx*sin(theta) + cos(theta)) + ty + y0],
+            #     [0, 0, 1],
+            # ]
+            assert shear_ == 0, 'shear={} is broken. Use shearx'.format(shear)
+            sy_cos_theta = sy * cos_theta
+            sy_sin_theta = sy * sin_theta
+
+            m_sy_cos_theta = xshear_ * sy_cos_theta
+            m_sy_sin_theta = xshear_ * sy_sin_theta
+
+            a12 = m_sy_cos_theta - sy_sin_theta
+            a22 = m_sy_sin_theta + sy_cos_theta
+
+            # tx + x0 + -sx*x0*cos(theta) - y0*sy*(shearx*cos(theta) - sin(theta)) +
+            # ty + y0 + -sx*x0*sin(theta) - y0*sy*(shearx*sin(theta) + cos(theta)) +
+            tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
+            ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
+
+            mat = np.array([sx_cos_theta, a12, tx_,
+                            sx_sin_theta, a22, ty_,
+                                       0,   0,  1])
+            mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
+            self = cls(mat)
+            return self
+        else:
+            raise Exception('broken!')
+            # Make auxially varables to reduce the number of sin/cos calls
+            shear_p_theta = shear_ + theta_
+
+            cos_shear_p_theta = math.cos(shear_p_theta)
+            sin_shear_p_theta = math.sin(shear_p_theta)
+
+            sy_sin_shear_p_theta = sy * sin_shear_p_theta
+            sy_cos_shear_p_theta = sy * cos_shear_p_theta
+            tx_ = tx + x0 - (x0 * sx_cos_theta) + (y0 * sy_sin_shear_p_theta)
+            ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * sy_cos_shear_p_theta)
+            # Sympy simplified expression
+            mat = np.array([sx_cos_theta, -sy_sin_shear_p_theta, tx_,
+                            sx_sin_theta,  sy_cos_shear_p_theta, ty_,
+                                       0,                     0,  1])
+            mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
+            self = cls(mat)
+            return self
 
     @classmethod
     def fit(cls, pts1, pts2):

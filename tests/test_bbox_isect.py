@@ -1,5 +1,6 @@
 
 def test_bbox_isect_failure_case():
+    import ubelt as ub
     import numpy as np
     import kwimage
     small_box = kwimage.Boxes(np.array([[119.86356797952962, -0.8880716867719497, 119.86816351547256, -0.892667222714885]]), 'ltrb')

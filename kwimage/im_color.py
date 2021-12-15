@@ -299,9 +299,10 @@ class Color(ub.NiceRepr):
         Example:
             >>> from kwimage.im_color import *  # NOQA
             >>> from kwimage.im_color import _draw_color_swatch
+            >>> import kwimage
             >>> colors1 = kwimage.Color.distinct(10, legacy=False)
             >>> swatch1 = _draw_color_swatch(colors1, cellshape=9)
-            >>> colors2 = kwimage.Color.distinct(10, existing=colors)
+            >>> colors2 = kwimage.Color.distinct(10, existing=colors1)
             >>> swatch2 = _draw_color_swatch(colors1 + colors2, cellshape=9)
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
