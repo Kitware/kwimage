@@ -6,11 +6,11 @@ TODO:
     - [ ]  Make function SegmentationList -> Boxes
 
 """
-import ubelt as ub
 import cv2
-import numpy as np
 import skimage
 import numbers
+import ubelt as ub
+import numpy as np
 from . import _generic
 
 try:
@@ -745,6 +745,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
             >>> image = np.zeros_like(mask.data)
             >>> self.fill(image, pixels_are='areas')
+
+        Example:
+            >>> # Test case where there are multiple channels
+            >>> import kwimage
+            >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
+            >>> self = mask.to_multi_polygon()
+            >>> image = np.zeros(mask.shape[0:2] + (2,))
+            >>> fill_v1 = self.fill(image.copy(), value=1)
+            >>> fill_v2 = self.fill(image.copy(), value=(1, 2))
+            >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
         """
         if pixels_are == 'areas':
             # rasterio hac: todo nicer organization
@@ -756,11 +766,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             cv_contours = self._to_cv_countours()
             line_type = cv2.LINE_8
             # Modification happens inplace
-            if len(image.shape) == 2 or image.shape[2] < 4:
+            if len(image.shape) == 2:
+                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+            elif len(image.shape) == 3 and image.shape[2] < 4:
+                if isinstance(value, numbers.Number):
+                    value = (value,) * image.shape[2]
                 cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
             else:
                 # handle bands > 3
                 for bx in enumerate(range(image.shape[2])):
+                    print('bx = {!r}'.format(bx))
                     tmp = np.ascontiguousarray(image[..., bx])
                     cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
                     image[..., bx] = tmp

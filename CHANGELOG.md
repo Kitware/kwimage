@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.1 - Unreleased
 
+### Fixed
+* Previously Polygon.fill would only fill the first channel, this is now fixed
 
 ## Version 0.7.17 - Released 2021-12-16
 
