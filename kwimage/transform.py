@@ -15,9 +15,6 @@ except Exception:
     profile = ub.identity
 
 
-FIXED_X_SHEAR = True  # This breaks compat with skimage, but might fix something that is incorret
-
-
 class Transform(ub.NiceRepr):
     pass
 
@@ -434,11 +431,8 @@ class Affine(Projective):
         """
         params = self.decompose()
         params['type'] = 'affine'
-        # New much faster impl
         tx, ty = params['offset']
         sx, sy = params['scale']
-        # math.isclose(params['shearx'], 0)
-        # math.isclose(params['shear'], 0)
         if math.isclose(tx, 0) and math.isclose(ty, 0):
             params.pop('offset')
         elif tx == ty:
@@ -449,8 +443,6 @@ class Affine(Projective):
             params['scale'] = sx
         if math.isclose(params['shearx'], 0):
             params.pop('shearx')
-        # if math.isclose(params['shear'], 0):
-        #     params.pop('shear')
         if math.isclose(params['theta'], 0):
             params.pop('theta')
         return params
@@ -495,7 +487,7 @@ class Affine(Projective):
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
             else:
-                known_params = {'scale', 'shear', 'offset', 'theta', 'type', 'shearx'}
+                known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear'}
                 params = {key: data[key] for key in known_params if key in data}
                 if len(known_params & keys):
                     params.pop('type', None)
@@ -529,161 +521,6 @@ class Affine(Projective):
 
         ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
         return ecc
-
-    @profile
-    def decompose(self):
-        """
-        Decompose the affine matrix into its individual scale, translation,
-        rotation, and skew parameters.
-
-        Returns:
-            Dict: decomposed offset, scale, theta, and shearx params
-
-        References:
-            https://math.stackexchange.com/questions/612006/decompose-affine
-            https://math.stackexchange.com/a/3521141/353527
-            https://stackoverflow.com/questions/70357473/how-to-decompose-a-2x2-affine-matrix-with-sympy
-
-        Example:
-            >>> from kwimage.transform import *  # NOQA
-            >>> self = Affine.random()
-            >>> params = self.decompose()
-            >>> recon = Affine.coerce(**params)
-            >>> params2 = recon.decompose()
-            >>> pt = np.vstack([np.random.rand(2, 1), [1]])
-            >>> result1 = self.matrix[0:2] @ pt
-            >>> result2 = recon.matrix[0:2] @ pt
-            >>> assert np.allclose(result1, result2)
-
-            >>> self = Affine.scale(0.001) @ Affine.random()
-            >>> params = self.decompose()
-            >>> self.det()
-
-        Example:
-            >>> from kwimage.transform import *  # NOQA
-            >>> import kwimage
-            >>> import pandas as pd
-            >>> # Test consistency of decompose + reconstruct
-            >>> param_grid = list(ub.named_product({
-            >>>     'theta': np.linspace(-4 * np.pi, 4 * np.pi, 12),
-            >>>     'shearx': np.linspace(- 10 * np.pi, 10 * np.pi, 24),
-            >>> }))
-            >>> def normalize_angle(radian):
-            >>>     return np.arctan2(np.sin(radian), np.cos(radian))
-            >>> for pextra in param_grid:
-            >>>     params0 = dict(scale=(3.05, 3.07), offset=(10.5, 12.1), **pextra)
-            >>>     self = recon0 = kwimage.Affine.affine(**params0)
-            >>>     self.decompose()
-            >>>     # Test drift with multiple decompose / reconstructions
-            >>>     params_list = [params0]
-            >>>     recon_list = [recon0]
-            >>>     n = 4
-            >>>     for _ in range(n):
-            >>>         prev = recon_list[-1]
-            >>>         params = prev.decompose()
-            >>>         recon = kwimage.Affine.coerce(**params)
-            >>>         params_list.append(params)
-            >>>         recon_list.append(recon)
-            >>>     params_df = pd.DataFrame(params_list)
-            >>>     #print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
-            >>>     print(params_df)
-            >>>     assert ub.allsame(normalize_angle(params_df['theta']), eq=np.isclose)
-            >>>     assert ub.allsame(params_df['shearx'], eq=np.allclose)
-            >>>     assert ub.allsame(params_df['scale'], eq=np.allclose)
-            >>>     assert ub.allsame(params_df['offset'], eq=np.allclose)
-
-        Ignore:
-            import affine
-            self = Affine.random()
-            a, b, c, d, e, f = self.matrix.ravel()[0:6]
-            aff = affine.Affine(a, b, c, d, e, f)
-            assert np.isclose(self.det(), aff.determinant)
-
-            params = self.decompose()
-            assert np.isclose(params['theta'], np.deg2rad(aff.rotation_angle))
-
-            print(params['scale'])
-            print(aff._scaling)
-            print(self.eccentricity())
-            print(aff.eccentricity)
-
-        Ignore:
-            import timerit
-            ti = timerit.Timerit(100, bestof=10, verbose=2)
-            for timer in ti.reset('time'):
-                self = Affine.random()
-                with timer:
-                    self.decompose()
-
-            # Wow: using math instead of numpy for scalars is much faster!
-
-            for timer in ti.reset('time'):
-                with timer:
-                    math.sqrt(a11 * a11 + a21 * a21)
-
-            for timer in ti.reset('time'):
-                with timer:
-                    np.arctan2(a21, a11)
-
-            for timer in ti.reset('time'):
-                with timer:
-                    math.atan2(a21, a11)
-        """
-        a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
-
-        sx = math.sqrt(a11 * a11 + a21 * a21)
-        theta = math.atan2(a21, a11)
-        sin_t = math.sin(theta)
-        cos_t = math.cos(theta)
-
-        msy = a12 * cos_t + a22 * sin_t
-
-        if abs(cos_t) < abs(sin_t):
-            sy = (msy * cos_t - a12) / sin_t
-        else:
-            sy = (a22 - msy * sin_t) / cos_t
-        shearx = msy / sy
-        tx, ty = a13, a23
-
-        if 0:
-            # Note: shearx is not shear, but we can use it to solve for it
-            # shear = sympy.symbols('shear', **domain)
-            # shear_equations = [
-            #     sympy.Eq(sy * (shearx * sympy.cos(theta) - sympy.sin(theta)), -sy * sympy.sin(shear + theta)),
-            #     sympy.Eq(sy * (shearx * sympy.sin(theta) + sympy.cos(theta)),  sy * sympy.cos(shear + theta))
-            # ]
-            # sympy.solve(shear_equations[0], shear)
-            # sympy.solve(shear_equations[1], shear)
-            # [-theta - asin(shearx*cos(theta) - sin(theta)),
-            #  -theta + asin(shearx*cos(theta) - sin(theta)) + pi]
-            # [-theta + acos(shearx*sin(theta) + cos(theta)),
-            #  -theta - acos(shearx*sin(theta) + cos(theta)) + 2*pi]
-            mc_sub_s = shearx * np.cos(theta) - np.sin(theta)
-            if abs(mc_sub_s) <= 1:
-                shear0 = -theta - mc_sub_s
-                shear1 = -theta + mc_sub_s + np.pi
-            else:
-                ms_add_c = shearx * np.sin(theta) + np.cos(theta)
-                shear0 = -theta + ms_add_c
-                shear1 = -theta - ms_add_c + 2 * np.pi
-
-            def normalize_angle(radian):
-                return np.arctan2(np.sin(radian), np.cos(radian))
-            shear0 = normalize_angle(shear0)
-            shear1 = normalize_angle(shear1)
-            # sklearn def
-            # if 0:
-            #     rot = math.atan2(a21, a11)
-            #     beta = math.atan2(-a12, a11)
-            #     sklearn_shear = beta - rot
-
-        params = {
-            'offset': (tx, ty),
-            'scale': (sx, sy),
-            'shearx': shearx,
-            'theta': theta,
-        }
-        return params
 
     @classmethod
     def scale(cls, scale):
@@ -865,6 +702,132 @@ class Affine(Projective):
         )
         return params
 
+    @profile
+    def decompose(self):
+        """
+        Decompose the affine matrix into its individual scale, translation,
+        rotation, and skew parameters.
+
+        Returns:
+            Dict: decomposed offset, scale, theta, and shearx params
+
+        References:
+            https://math.stackexchange.com/questions/612006/decompose-affine
+            https://math.stackexchange.com/a/3521141/353527
+            https://stackoverflow.com/questions/70357473/how-to-decompose-a-2x2-affine-matrix-with-sympy
+            https://en.wikipedia.org/wiki/Transformation_matrix
+            https://en.wikipedia.org/wiki/Shear_mapping
+
+        Example:
+            >>> from kwimage.transform import *  # NOQA
+            >>> self = Affine.random()
+            >>> params = self.decompose()
+            >>> recon = Affine.coerce(**params)
+            >>> params2 = recon.decompose()
+            >>> pt = np.vstack([np.random.rand(2, 1), [1]])
+            >>> result1 = self.matrix[0:2] @ pt
+            >>> result2 = recon.matrix[0:2] @ pt
+            >>> assert np.allclose(result1, result2)
+
+            >>> self = Affine.scale(0.001) @ Affine.random()
+            >>> params = self.decompose()
+            >>> self.det()
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:pandas)
+            >>> from kwimage.transform import *  # NOQA
+            >>> import kwimage
+            >>> import pandas as pd
+            >>> # Test consistency of decompose + reconstruct
+            >>> param_grid = list(ub.named_product({
+            >>>     'theta': np.linspace(-4 * np.pi, 4 * np.pi, 12),
+            >>>     'shearx': np.linspace(- 10 * np.pi, 10 * np.pi, 24),
+            >>> }))
+            >>> def normalize_angle(radian):
+            >>>     return np.arctan2(np.sin(radian), np.cos(radian))
+            >>> for pextra in param_grid:
+            >>>     params0 = dict(scale=(3.05, 3.07), offset=(10.5, 12.1), **pextra)
+            >>>     self = recon0 = kwimage.Affine.affine(**params0)
+            >>>     self.decompose()
+            >>>     # Test drift with multiple decompose / reconstructions
+            >>>     params_list = [params0]
+            >>>     recon_list = [recon0]
+            >>>     n = 4
+            >>>     for _ in range(n):
+            >>>         prev = recon_list[-1]
+            >>>         params = prev.decompose()
+            >>>         recon = kwimage.Affine.coerce(**params)
+            >>>         params_list.append(params)
+            >>>         recon_list.append(recon)
+            >>>     params_df = pd.DataFrame(params_list)
+            >>>     #print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
+            >>>     print(params_df)
+            >>>     assert ub.allsame(normalize_angle(params_df['theta']), eq=np.isclose)
+            >>>     assert ub.allsame(params_df['shearx'], eq=np.allclose)
+            >>>     assert ub.allsame(params_df['scale'], eq=np.allclose)
+            >>>     assert ub.allsame(params_df['offset'], eq=np.allclose)
+
+        Ignore:
+            import affine
+            self = Affine.random()
+            a, b, c, d, e, f = self.matrix.ravel()[0:6]
+            aff = affine.Affine(a, b, c, d, e, f)
+            assert np.isclose(self.det(), aff.determinant)
+
+            params = self.decompose()
+            assert np.isclose(params['theta'], np.deg2rad(aff.rotation_angle))
+
+            print(params['scale'])
+            print(aff._scaling)
+            print(self.eccentricity())
+            print(aff.eccentricity)
+
+        Ignore:
+            import timerit
+            ti = timerit.Timerit(100, bestof=10, verbose=2)
+            for timer in ti.reset('time'):
+                self = Affine.random()
+                with timer:
+                    self.decompose()
+
+            # Wow: using math instead of numpy for scalars is much faster!
+
+            for timer in ti.reset('time'):
+                with timer:
+                    math.sqrt(a11 * a11 + a21 * a21)
+
+            for timer in ti.reset('time'):
+                with timer:
+                    np.arctan2(a21, a11)
+
+            for timer in ti.reset('time'):
+                with timer:
+                    math.atan2(a21, a11)
+        """
+        a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
+
+        sx = math.sqrt(a11 * a11 + a21 * a21)
+        theta = math.atan2(a21, a11)
+        sin_t = math.sin(theta)
+        cos_t = math.cos(theta)
+
+        msy = a12 * cos_t + a22 * sin_t
+
+        if abs(cos_t) < abs(sin_t):
+            sy = (msy * cos_t - a12) / sin_t
+        else:
+            sy = (a22 - msy * sin_t) / cos_t
+        shearx = msy / sy
+        tx, ty = a13, a23
+
+        params = {
+            'offset': (tx, ty),
+            'scale': (sx, sy),
+            'shearx': shearx,
+            'theta': theta,
+        }
+        return params
+
     @classmethod
     @profile
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
@@ -882,18 +845,17 @@ class Affine(Projective):
             theta (float):
                 counter-clockwise rotation angle in radians
 
-            shear (float):
-                counter-clockwise shear angle in radians
-                BROKEN, dont use.
+            shearx (float):
+                shear factor parallel to the x-axis.
 
             about (float | Tuple[float, float]):
                 x, y location of the origin
 
-            shearx (float):
-                a shear factor, needs more docs
+            shear (float):
+                BROKEN, dont use.  counter-clockwise shear angle in radians
 
         TODO:
-            - [ ] Add aliases -
+            - [ ] Add aliases? -
                 origin : alias for about
                 rotation : alias for theta
                 translation : alias for offset
@@ -982,12 +944,22 @@ class Affine(Projective):
         if shear is not None and shearx is None:
             # Hack so old data is readable (this should be ok as long as the
             # data wasnt reserialized)
+            import warnings
+            warnings.warn(ub.paragraph(
+                '''
+                The `shear` parameter is deprecated and will be removed because
+                of a serious bug. Use `shearx` instead. See Issue #8 on
+                https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
+                for more details. To ease the impact of this bug we will
+                interpret `shear` as `shearx`, which should result in a correct
+                reconstruction, as long as the data was never reserialized.
+                '''
+            ))
             shearx = shear
             shear = None
 
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
-        shear_ = 0 if shear is None else shear
         xshear_ = 0 if shearx is None else shearx
         theta_ = 0 if theta is None else theta
         about_ = 0 if about is None else about
@@ -1001,52 +973,24 @@ class Affine(Projective):
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta
 
-        if FIXED_X_SHEAR:
-            # aff = [
-            #     [sx*cos(theta), sy*(shearx*cos(theta) - sin(theta)), -sx*x0*cos(theta) - sy*y0*(shearx*cos(theta) - sin(theta)) + tx + x0],
-            #     [sx*sin(theta), sy*(shearx*sin(theta) + cos(theta)), -sx*x0*sin(theta) - sy*y0*(shearx*sin(theta) + cos(theta)) + ty + y0],
-            #     [0, 0, 1],
-            # ]
-            assert shear_ == 0, 'shear={} is broken. Use shearx'.format(shear)
-            sy_cos_theta = sy * cos_theta
-            sy_sin_theta = sy * sin_theta
+        sy_cos_theta = sy * cos_theta
+        sy_sin_theta = sy * sin_theta
 
-            m_sy_cos_theta = xshear_ * sy_cos_theta
-            m_sy_sin_theta = xshear_ * sy_sin_theta
+        m_sy_cos_theta = xshear_ * sy_cos_theta
+        m_sy_sin_theta = xshear_ * sy_sin_theta
 
-            a12 = m_sy_cos_theta - sy_sin_theta
-            a22 = m_sy_sin_theta + sy_cos_theta
+        a12 = m_sy_cos_theta - sy_sin_theta
+        a22 = m_sy_sin_theta + sy_cos_theta
 
-            # tx + x0 + -sx*x0*cos(theta) - y0*sy*(shearx*cos(theta) - sin(theta)) +
-            # ty + y0 + -sx*x0*sin(theta) - y0*sy*(shearx*sin(theta) + cos(theta)) +
-            tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
-            ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
+        tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
+        ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
 
-            mat = np.array([sx_cos_theta, a12, tx_,
-                            sx_sin_theta, a22, ty_,
-                                       0,   0,  1])
-            mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
-            self = cls(mat)
-            return self
-        else:
-            raise Exception('broken!')
-            # Make auxially varables to reduce the number of sin/cos calls
-            shear_p_theta = shear_ + theta_
-
-            cos_shear_p_theta = math.cos(shear_p_theta)
-            sin_shear_p_theta = math.sin(shear_p_theta)
-
-            sy_sin_shear_p_theta = sy * sin_shear_p_theta
-            sy_cos_shear_p_theta = sy * cos_shear_p_theta
-            tx_ = tx + x0 - (x0 * sx_cos_theta) + (y0 * sy_sin_shear_p_theta)
-            ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * sy_cos_shear_p_theta)
-            # Sympy simplified expression
-            mat = np.array([sx_cos_theta, -sy_sin_shear_p_theta, tx_,
-                            sx_sin_theta,  sy_cos_shear_p_theta, ty_,
-                                       0,                     0,  1])
-            mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
-            self = cls(mat)
-            return self
+        mat = np.array([sx_cos_theta, a12, tx_,
+                        sx_sin_theta, a22, ty_,
+                                   0,   0,  1])
+        mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
+        self = cls(mat)
+        return self
 
     @classmethod
     def fit(cls, pts1, pts2):

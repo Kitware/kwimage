@@ -16,8 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Serious bug in `kwimage.Affine`, where `decompose` and `affine` were not
   inverse. Behavior of kwimage.Affine with shear is now deprecated as it was
-  inconsistent. New parameter that impacts shear is `xshear`, which I dont have a good
-  explanation for at this time.
+  inconsistent. New parameter that impacts shear is `xshear`.
 
 
 ## Version 0.7.16 - Released 2021-12-02

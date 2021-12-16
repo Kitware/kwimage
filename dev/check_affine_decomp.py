@@ -198,3 +198,35 @@ soln_theta1 = soln_theta0.subs(sx, recon_sx)
 # sympy.simplify(sympy.Eq(recon_theta - soln_theta1, 0))
 
 
+# Can we get the skimage formulation to work?
+if 0:
+    # Note: shearx is not shear, but we can use it to solve for it
+    # shear = sympy.symbols('shear', **domain)
+    # shear_equations = [
+    #     sympy.Eq(sy * (shearx * sympy.cos(theta) - sympy.sin(theta)), -sy * sympy.sin(shear + theta)),
+    #     sympy.Eq(sy * (shearx * sympy.sin(theta) + sympy.cos(theta)),  sy * sympy.cos(shear + theta))
+    # ]
+    # sympy.solve(shear_equations[0], shear)
+    # sympy.solve(shear_equations[1], shear)
+    # [-theta - asin(shearx*cos(theta) - sin(theta)),
+    #  -theta + asin(shearx*cos(theta) - sin(theta)) + pi]
+    # [-theta + acos(shearx*sin(theta) + cos(theta)),
+    #  -theta - acos(shearx*sin(theta) + cos(theta)) + 2*pi]
+    mc_sub_s = shearx * np.cos(theta) - np.sin(theta)
+    if abs(mc_sub_s) <= 1:
+        shear0 = -theta - mc_sub_s
+        shear1 = -theta + mc_sub_s + np.pi
+    else:
+        ms_add_c = shearx * np.sin(theta) + np.cos(theta)
+        shear0 = -theta + ms_add_c
+        shear1 = -theta - ms_add_c + 2 * np.pi
+
+    def normalize_angle(radian):
+        return np.arctan2(np.sin(radian), np.cos(radian))
+    shear0 = normalize_angle(shear0)
+    shear1 = normalize_angle(shear1)
+    # sklearn def
+    # if 0:
+    #     rot = math.atan2(a21, a11)
+    #     beta = math.atan2(-a12, a11)
+    #     sklearn_shear = beta - rot

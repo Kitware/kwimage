@@ -1,7 +1,6 @@
 import kwimage
-import itertools as it
-import numpy as np
 import kwarray
+import numpy as np
 import ubelt as ub
 
 
@@ -24,7 +23,7 @@ def image_variations(image_basis):
     #     np.uint8
     # }
 
-    for imgkw in list(basis_product(image_basis)):
+    for imgkw in list(ub.named_product(image_basis)):
         if imgkw['channels'] is None:
             shape = imgkw['dims']
         else:
@@ -35,41 +34,6 @@ def image_variations(image_basis):
             img = img * 255
         img = img.astype(dtype)
         yield imgkw, img
-
-
-def basis_product(basis):
-    """
-    Args:
-        basis (Dict[str, List[T]]): list of values for each axes
-
-    Yields:
-        Dict[str, T] - points in the grid
-
-    TODO:
-        - [ ] Where does this live?
-
-        - [ ] What is a better name?
-
-            * labeled_product
-            * grid_product
-
-    Example:
-        >>> basis = {
-        >>>     'a': [1, 2, 3],
-        >>>     'b': [4, 5],
-        >>>     'c': [6],
-        >>> }
-        >>> list(basis_product(basis))
-        [{'a': 1, 'b': 4, 'c': 6},
-         {'a': 1, 'b': 5, 'c': 6},
-         {'a': 2, 'b': 4, 'c': 6},
-         {'a': 2, 'b': 5, 'c': 6},
-         {'a': 3, 'b': 4, 'c': 6},
-         {'a': 3, 'b': 5, 'c': 6}]
-    """
-    keys = list(basis.keys())
-    for vals in it.product(*basis.values()):
-        yield dict(zip(keys, vals))
 
 
 def test_imresize_multi_channel():
@@ -97,7 +61,7 @@ def test_imresize_multi_channel():
 
     image_basis = {
         'dims': [
-            (32, 32),
+            # (32, 32),
             # (37, 41),
             (53, 31)
         ],
@@ -116,11 +80,11 @@ def test_imresize_multi_channel():
         ],
     }
 
-    resize_kw_list = list(basis_product(resize_kw_basis))
+    resize_kw_list = list(ub.named_product(resize_kw_basis))
 
     failures = []
     success = []
-    ti = ub.Timerit(1, bestof=1, verbose=1)
+    ti = ub.Timerit(1, bestof=1, verbose=0)
 
     for imgkw, img in image_variations(image_basis):
         for resize_kw in resize_kw_list:
@@ -140,21 +104,3 @@ def test_imresize_multi_channel():
     print('n_pass = {}'.format(len(success)))
     print('n_fail = {}'.format(len(failures)))
     print('failures = {}'.format(ub.repr2(failures, nl=1)))
-
-    # print('ti.rankings = {}'.format(
-    #     ub.repr2(ti.rankings, nl=2, align=':', precision=6)))
-
-    # np.split(img, img.shape[-1], -1)
-    # if 0:
-    #     # numpy seems faster
-    #     img = np.random.rand(64, 64, 3)
-    #     import timerit
-    #     ti = timerit.Timerit(100, bestof=10, verbose=2)
-    #     for timer in ti.reset('cv2'):
-    #         with timer:
-    #             parts = cv2.split(img)
-
-    #     for timer in ti.reset('np'):
-    #         with timer:
-    #             parts = np.split(img, img.shape[-1], -1)
-    #     parts = cv2.split(img)

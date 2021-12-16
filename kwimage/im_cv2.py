@@ -475,6 +475,9 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> import kwimage
         >>> #img = kwimage.grab_test_image('checkerboard')
         >>> img = kwimage.grab_test_image('pm5644')
+        >>> # test with nans
+        >>> img = kwimage.ensure_float01(img)
+        >>> img[100:200, 400:700] = np.nan
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()

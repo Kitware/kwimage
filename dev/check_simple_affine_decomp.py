@@ -239,7 +239,7 @@ recon_msy = a12 * recon_cos_t + a22 * recon_sin_t
 
 if 0:
     recon_m = (a11 * a21 + a12 * a22) / (a11 * a22 - a12 * a21)
-    recon_sy = recon_msy / recon_m
+    recon_sy = sympy.simplify(recon_msy / recon_m)
 else:
     condition2 = sympy.simplify(sympy.Eq(recon_sin_t, 0))
     condition1 = sympy.simplify(sympy.Not(condition2))
@@ -253,6 +253,11 @@ else:
 recon_symbols = {sx: recon_sx, theta: recon_theta, m: recon_m, sy: recon_sy}
 
 for sym, symval in recon_symbols.items():
+    # symval = sympy.radsimp(symval)
+    symval = sympy.trigsimp(symval)
+    symval = sympy.simplify(symval)
+    if not isinstance(symval, sympy.Piecewise):
+        symval = sympy.radsimp(symval)
     print('\n=====')
     print('sym = {!r}'.format(sym))
     print('symval  = {!r}'.format(symval))
