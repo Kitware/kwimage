@@ -250,7 +250,17 @@ else:
     recon_sy = sympy.Piecewise((sy_cond1, condition1), (sy_cond2, condition2))
     recon_m = sympy.simplify(recon_msy / recon_sy)
 
-A_recon = A_params.subs({sx: recon_sx, theta: recon_theta, m: recon_m, sy: recon_sy})
+recon_symbols = {sx: recon_sx, theta: recon_theta, m: recon_m, sy: recon_sy}
+
+for sym, symval in recon_symbols.items():
+    print('\n=====')
+    print('sym = {!r}'.format(sym))
+    print('symval  = {!r}'.format(symval))
+    print('--')
+    sympy.pretty_print(symval)
+    print('=====\n')
+
+A_recon = A_params.subs(recon_symbols)
 # A_recon[1, 1]
 # print(ub.hzcat(['A_recon = ', sympy.pretty(A_recon)]))
 A_recon = sympy.simplify(A_recon)
@@ -259,6 +269,67 @@ print(ub.hzcat(['A_recon = ', sympy.pretty(A_recon)]))
 
 """
 This gives the desired result. Thank you @Michael Albright
+
+=====
+sym = sx
+symval  = sqrt(a11**2 + a21**2)
+--
+   _____________
+  ╱    2      2
+╲╱  a₁₁  + a₂₁
+=====
+
+
+=====
+sym = theta
+symval  = atan2(a21, a11)
+--
+atan2(a₂₁, a₁₁)
+=====
+
+
+=====
+sym = m
+symval  = (a11*a12 + a21*a22)/(a11*a22 - a12*a21)
+--
+a₁₁⋅a₁₂ + a₂₁⋅a₂₂
+─────────────────
+a₁₁⋅a₂₂ - a₁₂⋅a₂₁
+=====
+
+
+=====
+sym = sy
+symval  = Piecewise((sqrt(a11**2 + a21**2)*(a11*(a11*a12/sqrt(a11**2 + a21**2) + a21*a22/sqrt(a11**2 + a21**2))/sqrt(a11**2 + a21**2) - a12)/a21, Ne(a21/sqrt(a11**2 + a21**2), 0)), (sqrt(a11**2 + a21**2)*(-a21*(a11*a12/sqrt(a11**2 + a21**2) + a21*a22/sqrt(a11**2 + a21**2))/sqrt(a11**2 + a21**2) + a22)/a11, True))
+--
+⎧                  ⎛    ⎛    a₁₁⋅a₁₂            a₂₁⋅a₂₂     ⎞      ⎞
+⎪                  ⎜a₁₁⋅⎜──────────────── + ────────────────⎟      ⎟
+⎪                  ⎜    ⎜   _____________      _____________⎟      ⎟
+⎪    _____________ ⎜    ⎜  ╱    2      2      ╱    2      2 ⎟      ⎟
+⎪   ╱    2      2  ⎜    ⎝╲╱  a₁₁  + a₂₁     ╲╱  a₁₁  + a₂₁  ⎠      ⎟
+⎪ ╲╱  a₁₁  + a₂₁  ⋅⎜───────────────────────────────────────── - a₁₂⎟
+⎪                  ⎜                _____________                  ⎟
+⎪                  ⎜               ╱    2      2                   ⎟
+⎪                  ⎝             ╲╱  a₁₁  + a₂₁                    ⎠             a₂₁
+⎪ ──────────────────────────────────────────────────────────────────   for ──────────────── ≠ 0
+⎪                                a₂₁                                          _____________
+⎪                                                                            ╱    2      2
+⎨                                                                          ╲╱  a₁₁  + a₂₁
+⎪
+⎪                 ⎛      ⎛    a₁₁⋅a₁₂            a₂₁⋅a₂₂     ⎞      ⎞
+⎪                 ⎜  a₂₁⋅⎜──────────────── + ────────────────⎟      ⎟
+⎪                 ⎜      ⎜   _____________      _____________⎟      ⎟
+⎪   _____________ ⎜      ⎜  ╱    2      2      ╱    2      2 ⎟      ⎟
+⎪  ╱    2      2  ⎜      ⎝╲╱  a₁₁  + a₂₁     ╲╱  a₁₁  + a₂₁  ⎠      ⎟
+⎪╲╱  a₁₁  + a₂₁  ⋅⎜- ───────────────────────────────────────── + a₂₂⎟
+⎪                 ⎜                  _____________                  ⎟
+⎪                 ⎜                 ╱    2      2                   ⎟
+⎪                 ⎝               ╲╱  a₁₁  + a₂₁                    ⎠
+⎪────────────────────────────────────────────────────────────────────         otherwise
+⎩                                a₁₁
+=====
+
+
 
 A_recon = ⎡a₁₁  a₁₂⎤
           ⎢        ⎥
