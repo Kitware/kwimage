@@ -4,7 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.16 - Unreleased
+## Version 0.7.17 - Unreleased
+
+### Added
+
+* `kwimage.Color.distinct` now uses `distinctipy` as a backend, and gains
+  functionality to exclude existing colors.
+
+
+### Fixed
+
+* Serious bug in `kwimage.Affine`, where `decompose` and `affine` were not
+  inverse. Behavior of kwimage.Affine with shear is now deprecated as it was
+  inconsistent. New parameter that impacts shear is `xshear`.
+
+
+## Version 0.7.16 - Released 2021-12-02
 
 ### Changed
 * Mask translation is now more efficient for c/f formats.

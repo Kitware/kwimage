@@ -82,7 +82,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         backend (str, default='auto'): which backend reader to use. By default
             the file extension is used to determine this, but it can be
             manually overridden. Valid backends are 'gdal', 'skimage', 'itk',
-            and 'cv2'.
+            'pil', and 'cv2'.
 
         **kw : backend-specific arguments
 
@@ -276,6 +276,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
                 backend = 'turbojpeg'
             else:
                 backend = 'cv2'
+        elif _fpath_lower.endswith('.svg'):
+            backend = 'svg'  # a bit hacky, not a raster format
         else:
             backend = 'cv2'
 
@@ -293,11 +295,15 @@ def imread(fpath, space='auto', backend='auto', **kw):
             image, src_space, auto_dst_space = _imread_turbojpeg(fpath)
         elif backend == 'skimage':
             image, src_space, auto_dst_space = _imread_skimage(fpath)
+        elif backend == 'pil':
+            image, src_space, auto_dst_space = _imread_pil(fpath)
         elif backend == 'itk':
             src_space, auto_dst_space = None, None
             import itk
             itk_obj = itk.imread(fpath)
             image = np.asarray(itk_obj)
+        elif backend == 'svg':
+            image, src_space, auto_dst_space = _imread_svg(fpath)
         else:
             raise KeyError('Unknown imread backend={!r}'.format(backend))
 
@@ -380,6 +386,22 @@ def _imread_turbojpeg(fpath):
             src_space = 'rgb'
             auto_dst_space = 'rgb'
         image = jpeg.decode(data, pixel_format=pixel_format)
+    return image, src_space, auto_dst_space
+
+
+def _imread_pil(fpath):
+    from PIL import Image
+    pil_img = Image.open(fpath)
+    image = np.array(pil_img)
+    if pil_img.mode == 'RGB':
+        src_space = 'rgb'
+        auto_dst_space = 'rgb'
+    elif len(image.shape) == 2 or len(image.shape[2]) == 1:
+        src_space = 'gray'
+        auto_dst_space = 'gray'
+    if len(image.shape) == 3 or len(image.shape[2]) == 3:
+        src_space = 'rgb'
+        auto_dst_space = 'rgb'
     return image, src_space, auto_dst_space
 
 
@@ -820,6 +842,24 @@ def load_image_shape(fpath):
             Recall this library uses the convention that "shape" is refers to
             height,width,channels and "size" is width,height ordering.
 
+    TODO:
+        - [ ] FIXME: has a bug
+
+    Ignore:
+        # demo bug
+        import kwimage
+        fpath = kwimage.grab_test_image_fpath('astro')
+        # These should be consistent
+        # THe problem is CV2_IMREAD_UNCHANGED reads the alpha band, but PIL
+        # does not seem to in either mode. Very strange
+        shapes = {}
+        shapes['pil_load_shape'] = kwimage.load_image_shape(fpath)
+        shapes['pil'] = kwimage.imread(fpath, backend='pil').shape
+        shapes['cv2'] = kwimage.imread(fpath, backend='cv2').shape
+        shapes['gdal'] = kwimage.imread(fpath, backend='gdal').shape
+        shapes['skimage'] = kwimage.imread(fpath, backend='skimage').shape
+        print('shapes = {}'.format(ub.repr2(shapes, nl=1, align=':')))
+
     Benchmark:
         >>> # For large files, PIL is much faster
         >>> from osgeo import gdal
@@ -851,7 +891,6 @@ def load_image_shape(fpath):
         pil_img = Image.open(fpath)
         width, height = pil_img.size
         num_channels = len(pil_img.getbands())
-        pil_img.close()
     except Exception as pil_ex:
         if not _have_gdal():
             raise
@@ -866,6 +905,8 @@ def load_image_shape(fpath):
             gdal_dset = None
         except Exception:
             raise pil_ex
+    finally:
+        pil_img.close()
     shape = (height, width, num_channels)
     return shape
 
@@ -1357,3 +1398,35 @@ def _dtype_equality(dtype1, dtype2):
     dtype1_ = getattr(dtype1, 'type', dtype1)
     dtype2_ = getattr(dtype2, 'type', dtype2)
     return dtype1_ == dtype2_
+
+
+def _imread_svg(fpath):
+    """
+    References:
+        https://pypi.org/project/svglib/
+
+    Ignore:
+        fpath = ub.grabdata('https://upload.wikimedia.org/wikipedia/commons/a/aa/Philips_PM5544.svg')
+        image = kwimage.imread(fpath)
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(image)
+
+        image = kwimage.grab_test_image('pm5644')
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(image)
+
+    """
+    from reportlab.graphics import renderPM
+    from svglib.svglib import svg2rlg
+    import io
+    from PIL import Image
+    file = io.BytesIO()
+    drawing = svg2rlg(fpath)
+    renderPM.drawToFile(drawing, file, fmt="PNG")
+    file.seek(0)
+    pil_img = Image.open(file)
+    imdata = np.asarray(pil_img)
+    src_space = auto_dst_space = 'rgb'
+    return imdata, src_space, auto_dst_space

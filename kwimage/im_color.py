@@ -288,23 +288,81 @@ class Color(ub.NiceRepr):
         return names
 
     @classmethod
-    def distinct(Color, num, space='rgb'):
+    def distinct(Color, num, existing=None, space='rgb', legacy='auto',
+                 exclude_black=True, exclude_white=True):
         """
         Make multiple distinct colors
+
+        References:
+            https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:matplotlib)
+            >>> from kwimage.im_color import *  # NOQA
+            >>> from kwimage.im_color import _draw_color_swatch
+            >>> import kwimage
+            >>> colors1 = kwimage.Color.distinct(10, legacy=False)
+            >>> swatch1 = _draw_color_swatch(colors1, cellshape=9)
+            >>> colors2 = kwimage.Color.distinct(10, existing=colors1)
+            >>> swatch2 = _draw_color_swatch(colors1 + colors2, cellshape=9)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(swatch1, pnum=(1, 2, 1), fnum=1)
+            >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
+
         """
         import matplotlib as mpl
         import matplotlib._cm  as _cm
-        cm = mpl.colors.LinearSegmentedColormap.from_list(
-            'gist_rainbow', _cm.datad['gist_rainbow'],
-            mpl.rcParams['image.lut'])
-        distinct_colors = [
-            np.array(cm(i / num)).tolist()[0:3]
-            for i in range(num)
-        ]
+        if legacy == 'auto':
+            legacy = (existing is None)
+
+        if legacy:
+            assert existing is None
+            # Old behavior
+            cm = mpl.colors.LinearSegmentedColormap.from_list(
+                'gist_rainbow', _cm.datad['gist_rainbow'],
+                mpl.rcParams['image.lut'])
+
+            distinct_colors = [
+                np.array(cm(i / num)).tolist()[0:3]
+                for i in range(num)
+            ]
+            if space == 'rgb':
+                return distinct_colors
+            else:
+                return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
+        else:
+            from distinctipy import distinctipy
+            if space != 'rgb':
+                raise NotImplementedError
+            exclude_colors = existing
+            if exclude_colors is None:
+                exclude_colors = []
+            if exclude_black:
+                exclude_colors = exclude_colors + [(0., 0., 0.)]
+            if exclude_white:
+                exclude_colors = exclude_colors + [(1., 1., 1.)]
+            # convert string to int for seed
+            seed = int(ub.hash_data(exclude_colors, base=10)) + num
+            distinct_colors = distinctipy.get_colors(
+                num, exclude_colors=exclude_colors, rng=seed)
+            distinct_colors = [tuple(map(float, c)) for c in distinct_colors]
+            return distinct_colors
+
         if space == 'rgb':
             return distinct_colors
         else:
             return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
+
+        if 0:
+            import kwimage
+            from distinctipy import distinctipy
+            existing_colors = kwimage.Color.distinct(5)
+            distinctipy.color_swatch(existing_colors)
+            # distinctipy.get_colors(10)
+            new_colors = distinctipy.get_colors(10, existing_colors)
+            distinctipy.color_swatch(existing_colors + new_colors)
 
     @classmethod
     def random(Color, pool='named'):
@@ -355,6 +413,44 @@ class Color(ub.NiceRepr):
         vec1 = np.array(self.as01(space))
         vec2 = np.array(other.as01(space))
         return np.linalg.norm(vec1 - vec2)
+
+
+def _draw_color_swatch(colors, cellshape=9):
+    """
+    Draw colors in a grid
+    """
+    import kwimage
+    import math
+    if not ub.iterable(cellshape):
+        cellshape = [cellshape, cellshape]
+    cell_h = cellshape[0]
+    cell_w = cellshape[1]
+    cells = []
+    for color in colors:
+        color_arr = np.array(kwimage.Color(color).as01()).astype(np.float32)
+        cell_pixel = color_arr[None, None]
+        cell = np.tile(cell_pixel, (cell_h, cell_w, 1))
+        cells.append(cell)
+
+    num_colors = len(colors)
+    num_cells_side0 = max(1, int(np.sqrt(num_colors)))
+    num_cells_side1 = math.ceil(num_colors / num_cells_side0)
+    num_cells = num_cells_side1 * num_cells_side0
+    num_null_cells = num_cells - num_colors
+    if num_null_cells > 0:
+        null_cell = np.zeros((cell_h, cell_w, 3), dtype=np.float32)
+        pts1 = np.array([(0, 0),                   (cell_w - 1, 0)])
+        pts2 = np.array([(cell_w - 1, cell_h - 1), (0, cell_h - 1)])
+        null_cell = kwimage.draw_line_segments_on_image(
+            null_cell, pts1, pts2, color='red')
+        # null_cell = kwimage.draw_text_on_image(
+        #     {'width': cell_w, 'height': cell_h}, text='X', color='red',
+        #     halign='center', valign='center')
+        null_cell = kwimage.ensure_float01(null_cell)
+        cells.extend([null_cell] * num_null_cells)
+    swatch = kwimage.stack_images_grid(
+        cells, chunksize=num_cells_side0, axis=0)
+    return swatch
 
 
 BASE_COLORS = {

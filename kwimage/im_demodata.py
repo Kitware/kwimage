@@ -47,6 +47,12 @@ _TEST_IMAGES = {
         'sha256': '36391b4d36b4b5e2597c53f9465951910542fbec82f5a0213715759d1de9714f',
         'url': 'https://i.imgur.com/kCi7C1r.png',
     },
+    'pm5644': {
+        # Test pattern
+        'fname': 'Philips_Pattern_pm5644.png',
+        'sha256': 'eba500341492649d4fa4e83b5200abbffa6673de5de4c20ed669dedeb00d3941',
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Philips_Pattern_pm5644.png'
+    },
     'tsukuba_l': {
         'fname': 'tsukuba_l.png',
         'sha256': 'e29144841f4e2200e88eb6ad928cfa3ee0c55ccac0a28532c9293c4a5e0b284d',
@@ -148,18 +154,22 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>> kwimage.grab_test_image('astro', dsize=(255, 255)).shape
         (255, 255, 3)
     """
-    from kwimage import im_cv2
+    import kwimage
+    # from kwimage import im_cv2
     if key == 'checkerboard':
         image = checkerboard()
     else:
         fpath = grab_test_image_fpath(key)
-        bgr = cv2.imread(fpath)
-        image = im_cv2.convert_colorspace(bgr, 'bgr', dst_space=space,
-                                          implicit=True)
+        image = kwimage.imread(fpath)
+        # bgr = cv2.imread(fpath)
+        # image = im_cv2.convert_colorspace(bgr, 'bgr', dst_space=space,
+        #                                   implicit=True)
     if dsize:
-        interpolation = im_cv2._coerce_interpolation(interpolation,
-                                                     cv2.INTER_LANCZOS4)
-        image = cv2.resize(image, dsize, interpolation=interpolation)
+        image = kwimage.imresize(image, dsize=dsize,
+                                 interpolation=interpolation)
+        # interpolation = im_cv2._coerce_interpolation(interpolation,
+        #                                              cv2.INTER_LANCZOS4)
+        # image = cv2.resize(image, dsize, interpolation=interpolation)
     return image
 
 

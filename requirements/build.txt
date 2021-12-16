@@ -1,8 +1,8 @@
-numpy >= 1.9.0
+numpy>=1.19.2   # tensorflow minimum
 scikit-build
 ninja
 cmake
 Cython
 ninja
-ubelt >= 0.7.1
+ubelt>=0.10.1
 cffi

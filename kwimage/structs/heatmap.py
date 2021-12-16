@@ -634,8 +634,6 @@ class _HeatmapWarpMixin(object):
         import kwimage
         M = self.tf_data_to_img.params[0:3]
         dsize = tuple(map(int, self.img_dims[::-1]))
-        # flags = kwimage.im_cv2._coerce_interpolation('lanczos')
-        # flags = kwimage.im_cv2._coerce_interpolation('nearest')
         flags = kwimage.im_cv2._coerce_interpolation(interpolation)
         aligned = cv2.warpAffine(mask, M[0:2], dsize=tuple(dsize), flags=flags)
         aligned = np.clip(aligned, 0, 1)
@@ -778,7 +776,8 @@ class _HeatmapWarpMixin(object):
 
         mat = impl.asarray(mat)
 
-        tf = skimage.transform.AffineTransform(matrix=mat)
+        mat_np = impl.numpy(mat)
+        tf = skimage.transform.AffineTransform(matrix=mat_np)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
         mat_notrans = torch.Tensor(tf_notrans.params)
