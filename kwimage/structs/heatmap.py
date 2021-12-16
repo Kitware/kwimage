@@ -776,7 +776,8 @@ class _HeatmapWarpMixin(object):
 
         mat = impl.asarray(mat)
 
-        tf = skimage.transform.AffineTransform(matrix=mat)
+        mat_np = impl.numpy(mat)
+        tf = skimage.transform.AffineTransform(matrix=mat_np)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
         mat_notrans = torch.Tensor(tf_notrans.params)
