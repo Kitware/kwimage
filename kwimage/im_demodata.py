@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
-import cv2
 
 
 _TEST_IMAGES = {
@@ -161,15 +160,9 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
     else:
         fpath = grab_test_image_fpath(key)
         image = kwimage.imread(fpath)
-        # bgr = cv2.imread(fpath)
-        # image = im_cv2.convert_colorspace(bgr, 'bgr', dst_space=space,
-        #                                   implicit=True)
     if dsize:
         image = kwimage.imresize(image, dsize=dsize,
                                  interpolation=interpolation)
-        # interpolation = im_cv2._coerce_interpolation(interpolation,
-        #                                              cv2.INTER_LANCZOS4)
-        # image = cv2.resize(image, dsize, interpolation=interpolation)
     return image
 
 
