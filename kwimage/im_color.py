@@ -297,6 +297,7 @@ class Color(ub.NiceRepr):
             https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:matplotlib)
             >>> from kwimage.im_color import *  # NOQA
             >>> from kwimage.im_color import _draw_color_swatch
             >>> import kwimage
@@ -342,10 +343,10 @@ class Color(ub.NiceRepr):
                 exclude_colors = exclude_colors + [(0., 0., 0.)]
             if exclude_white:
                 exclude_colors = exclude_colors + [(1., 1., 1.)]
-            # TODO: use rng when it is exposed
+            # convert string to int for seed
+            seed = int(ub.hash_data(exclude_colors, base=10)) + num
             distinct_colors = distinctipy.get_colors(
-                num, exclude_colors=exclude_colors)
-            # rng=100)
+                num, exclude_colors=exclude_colors, rng=seed)
             distinct_colors = [tuple(map(float, c)) for c in distinct_colors]
             return distinct_colors
 
