@@ -641,40 +641,41 @@ deploy/wheels:
 
 .__local_docker_heredoc__:
         - | 
-            docker run -it python:3.8 bash
+            # Commands to help developers debug pipelines on their local machine
+            # Grab the base docker image, (forwarding your ssh credentials), clone
+            # the watch repo, create the environment, and run the tests. 
+            #docker login gitlab.kitware.com:4567
 
+            IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
+            docker run -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -it $IMAGE_NAME bash
+            # Will need to chmod things afterwords
+            export PIP_CACHE_DIR=/pip_cache
+            echo $PIP_CACHE_DIR
+            chmod -R o+rw $PIP_CACHE_DIR
+            chmod -R o+rw $PIP_CACHE_DIR
+            chmod -R g+rw $PIP_CACHE_DIR
+            USER=$(whoami)
+            chown -R $USER $PIP_CACHE_DIR
             cd $HOME
-            git clone https://gitlab.kitware.com/computer-vision/kwimage.git
-            cd $HOME/kwimage
-            git checkout dev/0.5.10
+            git clone /io ./repo
 
-            python -V  # Print out python version for debugging
+            cd $HOME/repo
+
+            # Make a virtualenv
             export PYVER=$(python -c "import sys; print('{}{}'.format(*sys.version_info[0:2]))")
             pip install virtualenv
             virtualenv venv$PYVER
             source venv$PYVER/bin/activate
-            pip install pip -U
-            pip install pip setuptools -U
-            python -V  # Print out python version for debugging
+            #pip install pip -U
+            #pip install pip setuptools -U
+
+            # STRICT VARIANT
+            ./dev/make_strict_req.sh
+            pip install -r requirements-strict.txt -r requirements-strict/headless.txt
             pip install -e .
+            ./run_tests.py
 
-
-            cd $HOME
-            git clone https://gitlab.kitware.com/computer-vision/kwimage.git
-
-            # python setup.py bdist_wheel --universal
-
-            python -V  # Print out python version for debugging
-            export PYVER=$(python -c "import sys; print('{}{}'.format(*sys.version_info[0:2]))")
-            pip install virtualenv
-            virtualenv venv$PYVER
-            source venv$PYVER/bin/activate
-            pip install pip -U
-            pip install pip setuptools -U
-            python -V  # Print out python version for debugging
-            pip install .[tests]
-
-            xdoctest -m kwimage.structs.boxes all
-            
-            ./run_doctests.sh
+            # LOOSE VARIANT
+            pip install -r requirements.txt
+            pip install -e .[tests,headless]
             ./run_tests.py

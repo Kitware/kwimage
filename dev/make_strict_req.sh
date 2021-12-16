@@ -9,4 +9,7 @@ sed 's/>=/==/' requirements/runtime.txt > requirements-strict/runtime.txt
 sed 's/>=/==/' requirements/optional.txt > requirements-strict/optional.txt
 sed 's/>=/==/' requirements/tests.txt > requirements-strict/tests.txt
 sed 's/>=/==/' requirements/build.txt > requirements-strict/build.txt
+sed 's/>=/==/' requirements/headless.txt > requirements-strict/headless.txt
+sed 's/>=/==/' requirements/graphics.txt > requirements-strict/graphics.txt
+sed 's/>=/==/' requirements/problematic.txt > requirements-strict/problematic.txt
 sed 's/requirements/requirements-strict/' requirements.txt > requirements-strict.txt
