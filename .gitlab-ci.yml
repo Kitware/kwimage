@@ -646,7 +646,7 @@ deploy/wheels:
             # the watch repo, create the environment, and run the tests. 
             #docker login gitlab.kitware.com:4567
 
-            IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
+            IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.7
             docker run -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -it $IMAGE_NAME bash
             # Will need to chmod things afterwords
             export PIP_CACHE_DIR=/pip_cache
@@ -671,6 +671,9 @@ deploy/wheels:
 
             # STRICT VARIANT
             ./dev/make_strict_req.sh
+            pip install pip-tools
+            pip install scikit-build cmake ninja
+            pip install -r requirements-strict/build.txt
             pip install -r requirements-strict.txt -r requirements-strict/headless.txt
             pip install -e .
             ./run_tests.py
