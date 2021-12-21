@@ -64,12 +64,59 @@ stages:
         - export CIBW_SKIP="pp*"
         # Configure podman options (specific to custom cibuildwheel fork)
         - export CIBW_OCI_EXE="podman"
-        - export CIBW_OCI_EXTRA_ARGS_CREATE="--events-backend=file --privileged"
-        - export CIBW_OCI_EXTRA_ARGS_COMMON="--cgroup-manager=cgroupfs --storage-driver=vfs --root=$HOME/.local/share/containers/vfs-storage/"
-        - export CIBW_OCI_EXTRA_ARGS_START="--events-backend=file --cgroup-manager=cgroupfs --storage-driver=vfs"
+        #- export CIBW_OCI_EXTRA_ARGS_CREATE="--events-backend=file --privileged"
+        #- export CIBW_OCI_EXTRA_ARGS_COMMON="--cgroup-manager=cgroupfs --storage-driver=vfs --root=$HOME/.local/share/containers/vfs-storage/"
+        #- export CIBW_OCI_EXTRA_ARGS_START="--events-backend=file --cgroup-manager=cgroupfs --storage-driver=vfs"
+        - |
+          codeblock()
+          {
+              PYEXE=python3
+              echo "$1" | $PYEXE -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip('\n'))"
+          }
+          # Make a storage.conf and containers.conf file
+          #
+          # https://github.com/containers/common/blob/main/docs/containers.conf.5.md
+          # https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
+          export CONTAINERS_CONF=$(realpath "temp_containers.conf")
+          export CONTAINERS_STORAGE_CONF=$(realpath "temp_storage.conf")
+          # --
+          codeblock "
+          [storage]
+          driver=\"vfs\"
+          graphroot=\"$HOME/.local/share/containers/vfs-storage\"
+          runroot=\"$HOME/.local/share/containers/vfs-runroot\"
+          [storage.options.aufs]
+          mountopt=\"rw\"
+          " > $CONTAINERS_STORAGE_CONF
+          # --
+          # For defaults see /usr/share/containers/containers.conf
+          codeblock "
+          [containers]
+          default_capabilities = [
+            \"CHOWN\",
+            \"DAC_OVERRIDE\",
+            \"FOWNER\",
+            \"FSETID\",
+            \"KILL\",
+            \"NET_BIND_SERVICE\",
+            \"SETFCAP\",
+            \"SETGID\",
+            \"SETPCAP\",
+            \"SETUID\",
+            \"SYS_CHROOT\"
+          ]
+          [engine]
+          cgroup_manager=\"cgroupfs\"
+          events_logger=\"file\"
+          [machine]
+          " > $CONTAINERS_CONF
+          #podman run ubi8 mount
+          #podman run --privileged ubi8 mount
+          cat $CONTAINERS_CONF
+          cat $CONTAINERS_STORAGE_CONF
         - cibuildwheel --platform linux --print-build-identifiers
-        # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
         - cibuildwheel --output-dir wheelhouse --platform linux
+        # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
         - ls $CIBW_OCI_ROOT
         - ls wheelhouse
 
@@ -763,5 +810,63 @@ deploy/wheels:
           export CIBW_OCI_EXTRA_ARGS_START=""
           export CIBW_OCI_SLEEP_TIME="0.00"
           cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
-
           # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
+          
+          
+          #https://infosecadalid.com/2021/08/30/containers-rootful-rootless-privileged-and-super-privileged/
+          #
+          # rw,relatime  
+          
+          codeblock()
+          {
+              PYEXE=python3
+              echo "$1" | $PYEXE -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip('\n'))"
+          }
+          # Make a storage.conf and containers.conf file
+          #
+          # https://github.com/containers/common/blob/main/docs/containers.conf.5.md
+          # https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
+          export CONTAINERS_CONF=$(realpath "temp_containers.conf")
+          export CONTAINERS_STORAGE_CONF=$(realpath "temp_storage.conf")
+          # --
+          codeblock "
+          [storage]
+          driver=\"vfs\"
+          graphroot=\"$HOME/.local/share/containers/vfs-storage\"
+          runroot=\"$HOME/.local/share/containers/vfs-runroot\"
+          [storage.options.aufs]
+          mountopt=\"rw\"
+          " > $CONTAINERS_STORAGE_CONF
+          # --
+          # For defaults see /usr/share/containers/containers.conf
+          codeblock "
+          [containers]
+          default_capabilities = [
+            \"CHOWN\",
+            \"DAC_OVERRIDE\",
+            \"FOWNER\",
+            \"FSETID\",
+            \"KILL\",
+            \"NET_BIND_SERVICE\",
+            \"SETFCAP\",
+            \"SETGID\",
+            \"SETPCAP\",
+            \"SETUID\",
+            \"SYS_CHROOT\"
+          ]
+          [engine]
+          cgroup_manager=\"cgroupfs\"
+          events_logger=\"file\"
+          [machine]
+          " > $CONTAINERS_CONF
+          #podman run ubi8 mount
+          #podman run --privileged ubi8 mount
+          cat $CONTAINERS_CONF
+          cat $CONTAINERS_STORAGE_CONF
+
+          cd $HOME/repo
+          export CIBW_SKIP="pp* cp310-* cp39-* cp37-* cp36-* *musllinux*"
+          export CIBW_OCI_EXE="podman"
+          cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
+          
+
