@@ -786,12 +786,12 @@ deploy/wheels:
           git clone /io ./repo
           cd $HOME/repo
 
-          cat /etc/os-release
-          podman --version
-          podman info --debug
+          #cat /etc/os-release
+          #podman --version
+          #podman info --debug
           #(cd /internal_cibuildwheel && git pull)
-          pwd
-          ls -al
+          #pwd
+          #ls -al
 
           cibuildwheel --platform linux --print-build-identifiers
 
@@ -800,7 +800,7 @@ deploy/wheels:
           cibuildwheel --platform linux --archs x86_64 --print-build-identifiers
           cd $HOME/repo
           export CIBW_CONTAINER_ENGINE="podman"
-          cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
+          #cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
           # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
           
           #https://infosecadalid.com/2021/08/30/containers-rootful-rootless-privileged-and-super-privileged/
@@ -847,7 +847,6 @@ deploy/wheels:
           [engine]
           cgroup_manager=\"cgroupfs\"
           events_logger=\"file\"
-          [machine]
           " > $CONTAINERS_CONF
           #podman run ubi8 mount
           #podman run --privileged ubi8 mount
