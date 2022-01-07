@@ -11,4 +11,4 @@ six>=1.11.0
 ubelt>=0.10.1
 kwarray>=0.5.19
 
-distinctipy>=1.2.0
+distinctipy>=1.2.1
