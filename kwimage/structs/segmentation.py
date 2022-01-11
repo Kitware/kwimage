@@ -4,7 +4,6 @@ backend.
 """
 # from kwimage.structs import _generic
 import numpy as np
-import six
 import numbers
 from . import _generic
 import ubelt as ub
@@ -214,7 +213,7 @@ def _coerce_coco_segmentation(data, dims=None):
                 else:
                     assert tuple(map(int, dims)) == tuple(map(int, data_shape)), (
                         '{} {}'.format(dims, data_shape))
-            if isinstance(data['counts'], (six.text_type, six.binary_type)):
+            if isinstance(data['counts'], (str, bytes)):
                 self = kwimage.Mask(data, MaskFormat.BYTES_RLE)
             else:
                 self = kwimage.Mask(data, MaskFormat.ARRAY_RLE)

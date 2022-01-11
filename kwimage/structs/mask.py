@@ -32,7 +32,6 @@ Notes:
 import os
 import cv2
 import copy
-import six
 import numpy as np
 import ubelt as ub
 import itertools as it
@@ -1793,10 +1792,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             # This is actually the original style, but it relies on
             # to_bytes_rle, which doesnt always work.
             data = bytes_rle.data.copy()
-            if six.PY3:
-                data['counts'] = ub.ensure_unicode(data['counts'])
-            else:
-                data['counts'] = data['counts']
+            data['counts'] = ub.ensure_unicode(data['counts'])
             return data
         else:
             data = self.to_array_rle().data.copy()

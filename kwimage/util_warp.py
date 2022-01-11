@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 TODO:
     - [ ] Replace internal padded slice with kwarray.padded_slice
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import numpy as np
 import kwarray

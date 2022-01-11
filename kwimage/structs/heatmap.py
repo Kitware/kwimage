@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 TODO:
     - [ ] Remove doctest dependency on ndsampler?
@@ -79,13 +78,11 @@ Example:
     >>> kwplot.imshow(raster)
     >>> kwplot.show_if_requested()
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
 import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
-import six
 import functools
 from . import _generic
 
@@ -256,7 +253,7 @@ class _HeatmapDrawMixin(object):
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
             return colormask
 
-        if isinstance(channel, six.string_types):
+        if isinstance(channel, str):
             # TODO: this is a bit hacky / inefficient, needs cleanup
             if imgspace:
                 mat = self.tf_data_to_img.params

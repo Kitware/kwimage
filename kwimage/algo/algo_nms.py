@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import numpy as np
 import ubelt as ub

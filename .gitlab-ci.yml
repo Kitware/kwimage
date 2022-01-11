@@ -220,7 +220,7 @@ stages:
     - ls wheelhouse || echo "wheelhouse does not exist"
     - MB_PYTHON_TAG=py3-none-any
     - VERSION=$(python -c "import setup; print(setup.VERSION)")
-    - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+    - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
     - pip install $BDIST_WHEEL_PATH
     #- xdoctest -m kwimage --style=google all
     #- export KWIMAGE_DISABLE_C_EXTENSIONS=1
@@ -573,12 +573,15 @@ build/py3-none-any:
 
     script: 
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1
-        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py bdist_wheel
-        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist
-        - ls dist
+        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py bdist_wheel --dist-dir wheelhouse
+        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist --dist-dir wheelhouse
+        - ls wheelhouse
+
+
+          # TODO: modernize bdist_wheel: pip wheel . -w wheelhouse --no-deps
         #- MB_PYTHON_TAG=py3-none-any
         #- # VERSION=$(python -c "import setup; print(setup.VERSION)")
-        #- # BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        #- # BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         #- # pip install $BDIST_WHEEL_PATH
         #- # pip install pygments
         ## Hack to test the installed wheel. TODO: make run_tests work better in this case.
@@ -588,7 +591,7 @@ build/py3-none-any:
           
     artifacts:
         paths:
-            - dist/*.whl
+            - wheelhouse/*.whl
     cache:
         paths:
             - .cache/pip
@@ -602,10 +605,10 @@ gpgsign/py3-none-any:
         gpgsign
 
     script: 
-        - ls dist
+        - ls wheelhouse
         - MB_PYTHON_TAG=py3-none-any
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
-        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
         - echo "GPG_KEYID = $GPG_KEYID"
@@ -625,7 +628,7 @@ gpgsign/py3-none-any:
         #- # $GPG_EXECUTABLE --list-keys
         - echo "Signing wheels"
         - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - ls dist
+        - ls wheelhouse
         - echo "Verifying wheels"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
@@ -633,7 +636,7 @@ gpgsign/py3-none-any:
 
     artifacts:
         paths:
-            - dist/*.asc
+            - wheelhouse/*.asc
 
     only:
         refs:

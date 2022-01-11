@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
 Not sure how to best classify these functions
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import numpy as np
 import math

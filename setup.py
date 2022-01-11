@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Ignore:
     cat requirements/*.txt | sort -u | grep -o '^[^#]*'

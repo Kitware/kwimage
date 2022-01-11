@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Vectorized Bounding Boxes
 
@@ -52,13 +51,11 @@ Example:
               [0.  , 0.02, 1.  , 0.  ],
               [0.  , 0.02, 0.  , 1.  ]])
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 import ubelt as ub
 import warnings
 import skimage
 import kwarray
-import six
 from distutils.version import LooseVersion
 from . import _generic  # NOQA
 
@@ -1216,7 +1213,7 @@ class _BoxTransformMixins(object):
 
         if _numel(new_data) > 0:
 
-            if isinstance(about, six.string_types):
+            if isinstance(about, str):
                 if about == 'origin':
                     about = None
                 elif about == 'center':

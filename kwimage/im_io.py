@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """
 This module provides functions ``imread`` and ``imwrite`` which are wrappers
 around concrete readers/writers provided by other libraries. This allows us to
 support a wider array of formats than any of individual backends.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import numpy as np
 import warnings  # NOQA
