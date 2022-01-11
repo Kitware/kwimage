@@ -577,7 +577,6 @@ build/py3-none-any:
         - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist --dist-dir wheelhouse
         - ls wheelhouse
 
-
           # TODO: modernize bdist_wheel: pip wheel . -w wheelhouse --no-deps
         #- MB_PYTHON_TAG=py3-none-any
         #- # VERSION=$(python -c "import setup; print(setup.VERSION)")

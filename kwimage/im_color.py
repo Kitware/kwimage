@@ -309,12 +309,12 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
 
         """
-        import matplotlib as mpl
-        import matplotlib._cm  as _cm
         if legacy == 'auto':
             legacy = (existing is None)
 
         if legacy:
+            import matplotlib as mpl
+            import matplotlib._cm  as _cm
             assert existing is None
             # Old behavior
             cm = mpl.colors.LinearSegmentedColormap.from_list(

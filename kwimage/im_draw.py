@@ -508,6 +508,7 @@ def draw_line_segments_on_image(
 
     Example:
         >>> import kwimage
+        >>> # xdoc: +REQUIRES(module:matplotlib)
         >>> pts1 = kwimage.Points.random(10).scale(512).xy
         >>> pts2 = kwimage.Points.random(10).scale(512).xy
         >>> img = np.ones((512, 512, 3), dtype=np.uint8) * 255
