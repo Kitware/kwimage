@@ -775,7 +775,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             else:
                 # handle bands > 3
                 for bx in enumerate(range(image.shape[2])):
-                    print('bx = {!r}'.format(bx))
                     tmp = np.ascontiguousarray(image[..., bx])
                     cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
                     image[..., bx] = tmp
