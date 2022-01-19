@@ -72,7 +72,7 @@ else:
 
 __all__ = ['Boxes']
 
-if not _internal.DISABLE_C_EXTENSIONS:
+if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
     try:
         from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
     except ImportError:
