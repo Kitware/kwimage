@@ -504,6 +504,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
               cv2.resize will error but it is fine for linear interpolation
 
         - [ ] TODO: add padding options when letterbox=True
+
+        - [ ] Allow for pre-clipping when letterbox=True
     """
     old_w, old_h = img.shape[0:2][::-1]
 

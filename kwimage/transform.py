@@ -6,7 +6,7 @@ import numpy as np
 import kwarray
 import skimage.transform
 import math
-
+from kwimage import _internal
 
 try:
     import xdev
@@ -944,17 +944,18 @@ class Affine(Projective):
         if shear is not None and shearx is None:
             # Hack so old data is readable (this should be ok as long as the
             # data wasnt reserialized)
-            import warnings
-            warnings.warn(ub.paragraph(
-                '''
-                The `shear` parameter is deprecated and will be removed because
-                of a serious bug. Use `shearx` instead. See Issue #8 on
-                https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
-                for more details. To ease the impact of this bug we will
-                interpret `shear` as `shearx`, which should result in a correct
-                reconstruction, as long as the data was never reserialized.
-                '''
-            ))
+            if not _internal.KWIMAGE_DISABLE_TRANSFORM_WARNINGS:
+                import warnings
+                warnings.warn(ub.paragraph(
+                    '''
+                    The `shear` parameter is deprecated and will be removed because
+                    of a serious bug. Use `shearx` instead. See Issue #8 on
+                    https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
+                    for more details. To ease the impact of this bug we will
+                    interpret `shear` as `shearx`, which should result in a correct
+                    reconstruction, as long as the data was never reserialized.
+                    '''
+                ))
             shearx = shear
             shear = None
 

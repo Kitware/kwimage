@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.1 - Unreleased
 
+### Changed
+* Consolidated environment variables in a new `kwiamge._internal` module.
+
 ### Fixed
 * Previously Polygon.fill would only fill the first channel, this is now fixed
 

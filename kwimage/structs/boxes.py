@@ -58,6 +58,7 @@ import skimage
 import kwarray
 from distutils.version import LooseVersion
 from . import _generic  # NOQA
+from kwimage import _internal
 
 try:
     import torch
@@ -71,11 +72,7 @@ else:
 
 __all__ = ['Boxes']
 
-import os
-val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
-DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
-
-if not DISABLE_C_EXTENSIONS:
+if not _internal.DISABLE_C_EXTENSIONS:
     try:
         from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
     except ImportError:
