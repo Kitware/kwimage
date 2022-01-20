@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Previously Polygon.fill would only fill the first channel, this is now fixed
+* `kwimage.imwrite` now raises an exception if the file fails to write.
 
 ## Version 0.7.17 - Released 2021-12-16
 

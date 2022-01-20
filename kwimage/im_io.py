@@ -734,6 +734,24 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> fpath = temp.name
         >>> with pytest.raises(NotImplementedError):
         >>>     kwimage.imwrite(fpath, data)
+
+    Example:
+        >>> import ubelt as ub
+        >>> dpath = ub.Path(ub.ensure_app_cache_dir('kwimage/badwrite'))
+        >>> dpath.delete().ensuredir()
+        >>> imdata = kwimage.ensure_uint255(kwimage.grab_test_image())[:, :, 0]
+        >>> import pytest
+        >>> fpath = dpath / 'does-not-exist/img.jpg'
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='cv2')
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='skimage')
+        >>> # xdoctest: +SKIP
+        >>> # TODO: run tests conditionally
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='gdal')
+        >>> with pytest.raises((IOError, RuntimeError)):
+        ...     kwimage.imwrite(fpath, imdata, backend='itk')
     """
     fpath = os.fspath(fpath)
 
@@ -802,7 +820,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
     if backend == 'cv2':
         try:
-            cv2.imwrite(fpath, image, **kwargs)
+            flag = cv2.imwrite(fpath, image, **kwargs)
         except cv2.error as ex:
             if 'could not find a writer for the specified extension' in str(ex):
                 raise ValueError(
@@ -810,6 +828,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                     '(e.g. png/jpg)'.format(fpath))
             else:
                 raise
+        else:
+            if not flag:
+                raise IOError('kwimage failed to write with opencv backend')
+
     elif backend == 'skimage':
         import skimage.io
         skimage.io.imsave(fpath, image, **kwargs)
@@ -896,7 +918,7 @@ def load_image_shape(fpath):
             from osgeo import gdal
             gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
             if gdal_dset is None:
-                raise Exception
+                raise Exception(gdal.GetLastErrorMsg())
             width = gdal_dset.RasterXSize
             height = gdal_dset.RasterYSize
             num_channels = gdal_dset.RasterCount
@@ -1240,9 +1262,14 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     # NOTE: if data_set2 is None here, that may be because the directory
     # we are trying to write to does not exist.
     if data_set2 is None:
-        raise Exception(
-            'Unable to create gtiff driver for fpath={}, options={}'.format(
-                fpath, _options))
+        last_gdal_error = gdal.GetLastErrorMsg()
+        if 'No such file or directory' in last_gdal_error:
+            ex_cls = IOError
+        else:
+            ex_cls = Exception
+        raise ex_cls(
+            'Unable to create gtiff driver for fpath={}, options={}, last_gdal_error={}'.format(
+                fpath, _options, last_gdal_error))
     data_set2.FlushCache()
 
     # Dereference everything
