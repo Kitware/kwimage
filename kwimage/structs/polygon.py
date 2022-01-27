@@ -1132,6 +1132,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
 
+        TODO:
+            - [ ] edgecolor
+            - [ ] fillcolor
+
         Args:
             image (ndarray): image to raster polygon on.
             color (str | tuple): data coercable to a color
@@ -1231,10 +1235,20 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if border or True:
             thickness = 4
             contour_idx = -1
-            image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
-                                     thickness, line_type)
-        # image = kwimage.ensure_float01(image)[..., 0:3]
+            if alpha is None or alpha == 1.0:
+                # Modification happens inplace
+                image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
+                                         thickness, line_type)
+            else:
+                orig = image.copy()
+                mask = np.zeros_like(orig)
+                # rgba = tuple(rgba[0:3]) + (0.1,)
+                mask = cv2.drawContours(mask, cv_contours, contour_idx, rgba,
+                                        thickness, line_type)
+                image = kwimage.overlay_alpha_images(mask, orig)
+                rgba = kwimage.Color(rgba)._forimage(image)
 
+        # image = kwimage.ensure_float01(image)[..., 0:3]
         # print('--- D')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
@@ -1697,6 +1711,7 @@ class MultiPolygon(_generic.ObjectList):
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
     def draw_on(self, *args, **kwargs):
+        Polygon.draw_on.__doc__
         for item in self.data:
             if item is not None:
                 image = item.draw_on(*args, **kwargs)
@@ -1818,3 +1833,8 @@ class PolygonList(_generic.ObjectList):
             if p is not None:
                 p.fill(image, value=value, pixels_are=pixels_are)
         return image
+
+    def draw_on(self, *args, **kw):
+        Polygon.draw_on.__doc__
+        # ^ docstring
+        return super().draw_on(*args, **kw)

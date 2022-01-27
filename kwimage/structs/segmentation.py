@@ -18,6 +18,9 @@ class _WrapperObject(ub.NiceRepr):
         return self.data.draw(*args, **kw)
 
     def draw_on(self, *args, **kw):
+        """
+        See help(self.data.draw_on)
+        """
         return self.data.draw_on(*args, **kw)
 
     def warp(self, *args, **kw):
