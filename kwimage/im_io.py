@@ -737,6 +737,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
     Example:
         >>> import ubelt as ub
+        >>> import kwimage
         >>> dpath = ub.Path(ub.ensure_app_cache_dir('kwimage/badwrite'))
         >>> dpath.delete().ensuredir()
         >>> imdata = kwimage.ensure_uint255(kwimage.grab_test_image())[:, :, 0]
