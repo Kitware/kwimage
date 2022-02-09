@@ -451,9 +451,17 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False):
     """
     gdal imread backend
+
+    Args:
+        overview (int):
+            if specified load a specific overview level
+
+        ignore_color_table (bool):
+            if True and the image has a color table, return its indexes
+            instead of the colored image.
 
     References:
         [GDAL_Config_Options] https://gdal.org/user/configoptions.html
@@ -486,7 +494,7 @@ def _imread_gdal(fpath, overview=None):
             if overview is not None:
                 raise NotImplementedError
 
-            color_table = band.GetColorTable()
+            color_table = None if ignore_color_table else band.GetColorTable()
             if color_table is None:
                 buf = band.ReadAsArray()
                 if buf is None:
@@ -496,7 +504,6 @@ def _imread_gdal(fpath, overview=None):
                     if buf is None:
                         raise IOError('GDal was unable to read this band')
                 image = np.array(buf)
-
             else:
                 # The buffer is an index into the color table
                 buf = band.ReadAsArray()
@@ -517,7 +524,6 @@ def _imread_gdal(fpath, overview=None):
 
                 idx_to_color = np.array(idx_to_color, dtype=dtype)
                 image = idx_to_color[buf]
-
         else:
             default_bands = [gdal_dset.GetRasterBand(i)
                              for i in range(1, num_channels + 1)]

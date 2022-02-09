@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.1 - Unreleased
 
+### Added
+
+* Added option to `ignore_color_table` when using gdal imread backend.
+
+
 ### Changed
 * Consolidated environment variables in a new `kwiamge._internal` module.
 
