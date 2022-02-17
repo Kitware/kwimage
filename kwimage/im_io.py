@@ -914,6 +914,7 @@ def load_image_shape(fpath):
             time per loop: best=46.640 µs, mean=47.314 ± 0.4 µs
     """
     from PIL import Image
+    pil_img = None
     try:
         pil_img = Image.open(fpath)
         width, height = pil_img.size
@@ -933,7 +934,8 @@ def load_image_shape(fpath):
         except Exception:
             raise pil_ex
     finally:
-        pil_img.close()
+        if pil_img is not None:
+            pil_img.close()
     shape = (height, width, num_channels)
     return shape
 
