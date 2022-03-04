@@ -10,7 +10,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Added option to `ignore_color_table` when using gdal imread backend.
 
-
 ### Changes
 
 * Fixes for `intensity_normalize` 
