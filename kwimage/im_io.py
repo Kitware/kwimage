@@ -1007,7 +1007,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
                                      overview_resample='NEAREST',
                                      interleave='PIXEL',
-                                     options=None):
+                                     options=None,
+                                     nodata=None,
+                                     crs=None, transform=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -1034,6 +1036,16 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         options (List[str]): other gdal options. See [GDAL_GTiff_Options]_ for
             details.
+
+        nodata (int):
+            if specified, writes a nodata value to the geotiff in each band
+
+        transform (kwimage.Affine):
+            An affine transform from image coordinates into a specified
+            coordinate reference system (must set crs).
+
+        crs (str):
+            The coordinate reference system for the geo_transform.
 
     Returns:
         str: the file path where the data was written
@@ -1253,9 +1265,26 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     # Create an in-memory dataset where we will prepare the COG data structure
     driver = gdal.GetDriverByName(str('MEM'))
     data_set = driver.Create(str(''), x_size, y_size, num_bands, eType=eType)
+
+    if transform is not None or crs is not None:
+        import affine
+        # TODO: add ability to add RPC
+        if crs is None or transform is None:
+            raise ValueError('Specify transform and crs together')
+        a, b, c, d, e, f = transform.matrix.ravel()[0:6]
+        aff = affine.Affine(a, b, c, d, e, f)
+        data_set.SetProjection(crs)
+        data_set.SetGeoTransform(aff.to_gdal())
+
     for i in range(num_bands):
         band_data = np.ascontiguousarray(data[:, :, i])
-        data_set.GetRasterBand(i + 1).WriteArray(band_data)
+        band = data_set.GetRasterBand(i + 1)
+        band.WriteArray(band_data)
+        if nodata is not None:
+            band.SetNoDataValue(nodata)
+        # TODO:
+        # could set the color interpretation here
+        band = None
 
     if overviewlist:
         # Build the downsampled overviews (for fast zoom in / out)
