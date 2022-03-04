@@ -706,7 +706,8 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
             reorg_mask = mask.swapaxes(0, axis)
             parts = []
             for item, item_mask in zip(reorg, reorg_mask):
-                part = normalize_intensity(item, nodata=nodata, axis=None, mask=item_mask)
+                part = normalize_intensity(item, nodata=nodata, axis=None,
+                                           mask=item_mask)
                 parts.append(part[None, :])
         recomb = np.concatenate(parts, axis=0)
         final = recomb.swapaxes(0, axis)
