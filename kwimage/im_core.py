@@ -729,16 +729,20 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     assert not np.any(np.isnan(imdata_valid))
 
     normalizer = find_robust_normalizers(imdata_valid, params=params)
-    # print('normalizer = {!r}'.format(normalizer))
 
     if normalizer['type'] is None:
         imdata_normalized = imdata.astype(dtype)
     elif normalizer['type'] == 'normalize':
         # Note: we are using kwarray normalize, the one in kwimage is deprecated
-        imdata_normalized = kwarray.normalize(
-            imdata.astype(dtype), mode=normalizer['mode'],
+        imdata_valid_normalized = kwarray.normalize(
+            imdata_valid.astype(dtype), mode=normalizer['mode'],
             beta=normalizer['beta'], alpha=normalizer['alpha'],
         )
+        if mask is None:
+            imdata_normalized = imdata_valid_normalized
+        else:
+            imdata_normalized = imdata.copy()
+            imdata_normalized[mask] = imdata_valid_normalized
     else:
         raise KeyError(normalizer['type'])
 
