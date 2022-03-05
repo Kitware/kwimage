@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Vectorized Bounding Boxes
 
@@ -52,15 +51,14 @@ Example:
               [0.  , 0.02, 1.  , 0.  ],
               [0.  , 0.02, 0.  , 1.  ]])
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 import ubelt as ub
 import warnings
 import skimage
 import kwarray
-import six
 from distutils.version import LooseVersion
 from . import _generic  # NOQA
+from kwimage import _internal
 
 try:
     import torch
@@ -74,11 +72,7 @@ else:
 
 __all__ = ['Boxes']
 
-import os
-val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
-DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
-
-if not DISABLE_C_EXTENSIONS:
+if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
     try:
         from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
     except ImportError:
@@ -1216,7 +1210,7 @@ class _BoxTransformMixins(object):
 
         if _numel(new_data) > 0:
 
-            if isinstance(about, six.string_types):
+            if isinstance(about, str):
                 if about == 'origin':
                     about = None
                 elif about == 'center':

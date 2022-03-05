@@ -4,6 +4,14 @@
 # GITLAB LINTER
 # https://gitlab.kitware.com/computer-vision/kwimage/-/ci/lint
 
+.__heredoc__: &__heredoc__
+    - | 
+        NOTE: INSTRUCTION HAVE BEEN MOVED TO ./dev/setup_secrets.sh
+        This file should need minimal modification.
+
+        Template for this files is (somewhat) from
+        ~/misc/templates/PYPKG/.gitlab-ci.yml
+
 
 # This CI file has 4 types of jobs:
 # (1) in the build stage we we build the wheels on a manylinux docker image
@@ -39,24 +47,77 @@ stages:
         - docker
         - privileged
 
-    image: gitlab.kitware.com:4567/computer-vision/ci-docker/podman
+    image: gitlab.kitware.com:4567/computer-vision/ci-docker/podman:3.2.1
 
     script:
         - podman --version
         - podman info --debug
-        - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
+        #- python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
+        - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@new_podman_support
         - pwd
         - ls -al
-        - export CIBW_SKIP="pp* cp27-* cp35-*"
-        - export CIBW_OCI_EXE="podman"
         # NOTE: this requires that some mechanism exists in cibuildwheel to
         # ignore this directory when it copys the repo into the container
         - mkdir -p ".cache/containers/vfs-storage/"
-        - export CIBW_OCI_ROOT=$(realpath ".cache/containers/vfs-storage/")
-        - echo "CIBW_OCI_ROOT = $CIBW_OCI_ROOT"
+        # Configure cibuildwheel options
+        #- export CIBW_SKIP="pp* cp27-* cp35-*"
+        - export CIBW_SKIP="pp*"
+        # Configure podman options (specific to custom cibuildwheel fork)
+        - export CIBW_CONTAINER_ENGINE="podman"
+        #- export CIBW_OCI_EXTRA_ARGS_CREATE="--events-backend=file --privileged"
+        #- export CIBW_OCI_EXTRA_ARGS_COMMON="--cgroup-manager=cgroupfs --storage-driver=vfs --root=$HOME/.local/share/containers/vfs-storage/"
+        #- export CIBW_OCI_EXTRA_ARGS_START="--events-backend=file --cgroup-manager=cgroupfs --storage-driver=vfs"
+        - |
+          codeblock()
+          {
+              PYEXE=python3
+              echo "$1" | $PYEXE -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip('\n'))"
+          }
+          # Make a storage.conf and containers.conf file
+          #
+          # https://github.com/containers/common/blob/main/docs/containers.conf.5.md
+          # https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
+          export CONTAINERS_CONF=$(realpath "temp_containers.conf")
+          export CONTAINERS_STORAGE_CONF=$(realpath "temp_storage.conf")
+          # --
+          codeblock "
+          [storage]
+          driver=\"vfs\"
+          graphroot=\"$HOME/.local/share/containers/vfs-storage\"
+          runroot=\"$HOME/.local/share/containers/vfs-runroot\"
+          [storage.options.aufs]
+          mountopt=\"rw\"
+          " > $CONTAINERS_STORAGE_CONF
+          # --
+          # For defaults see /usr/share/containers/containers.conf
+          codeblock "
+          [containers]
+          default_capabilities = [
+            \"CHOWN\",
+            \"DAC_OVERRIDE\",
+            \"FOWNER\",
+            \"FSETID\",
+            \"KILL\",
+            \"NET_BIND_SERVICE\",
+            \"SETFCAP\",
+            \"SETGID\",
+            \"SETPCAP\",
+            \"SETUID\",
+            \"SYS_CHROOT\"
+          ]
+          [engine]
+          cgroup_manager=\"cgroupfs\"
+          events_logger=\"file\"
+          [machine]
+          " > $CONTAINERS_CONF
+          #podman run ubi8 mount
+          #podman run --privileged ubi8 mount
+          cat $CONTAINERS_CONF
+          cat $CONTAINERS_STORAGE_CONF
+        - podman info --debug
         - cibuildwheel --platform linux --print-build-identifiers
-        # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
         - cibuildwheel --output-dir wheelhouse --platform linux
+        # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
         - ls $CIBW_OCI_ROOT
         - ls wheelhouse
 
@@ -159,7 +220,7 @@ stages:
     - ls wheelhouse || echo "wheelhouse does not exist"
     - MB_PYTHON_TAG=py3-none-any
     - VERSION=$(python -c "import setup; print(setup.VERSION)")
-    - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+    - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
     - pip install $BDIST_WHEEL_PATH
     #- xdoctest -m kwimage --style=google all
     #- export KWIMAGE_DISABLE_C_EXTENSIONS=1
@@ -269,6 +330,8 @@ gpgsign/wheels:
 
 
 # Aliases for the images that run the tests
+.image_python3_10: &image_python3_10
+    gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.10
 .image_python39: &image_python39
     gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.9
 .image_python38: &image_python38
@@ -281,6 +344,47 @@ gpgsign/wheels:
 
 ### JOBS ###
 # Define the actual jobs
+#
+# ---------------
+# Python 3.10 Jobs
+
+#build/cp3_10-cp3_10-linux:
+#    <<: 
+#        - *cibuildwheel_template
+#    variables:
+#        CIBW_BUILD: "cp310-*"
+
+#test_full_loose/cp3_10-cp3_10-linux:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python3_10
+#    needs: 
+#        -  build/cp3_10-cp3_10-linux
+
+#test_minimal_loose/cp3_10-cp3_10-linux:
+#    <<: 
+#        - *test_minimal_loose_template
+#    image:
+#        *image_python3_10
+#    needs: 
+#        -  build/cp3_10-cp3_10-linux
+
+#test_full_strict/cp3_10-cp3_10-linux:
+#    <<: 
+#        - *test_full_strict_template
+#    image:
+#        *image_python3_10
+#    needs: 
+#        -  build/cp3_10-cp3_10-linux
+
+#test_minimal_strict/cp3_10-cp3_10-linux:
+#    <<: 
+#        - *test_minimal_strict_template
+#    image:
+#        *image_python3_10
+#    needs: 
+#        -  build/cp3_10-cp3_10-linux
 
 # ---------------
 # Python 3.9 Jobs
@@ -469,12 +573,14 @@ build/py3-none-any:
 
     script: 
         - export KWIMAGE_DISABLE_C_EXTENSIONS=1
-        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py bdist_wheel
-        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist
-        - ls dist
+        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py bdist_wheel --dist-dir wheelhouse
+        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist --dist-dir wheelhouse
+        - ls wheelhouse
+
+          # TODO: modernize bdist_wheel: pip wheel . -w wheelhouse --no-deps
         #- MB_PYTHON_TAG=py3-none-any
         #- # VERSION=$(python -c "import setup; print(setup.VERSION)")
-        #- # BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        #- # BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         #- # pip install $BDIST_WHEEL_PATH
         #- # pip install pygments
         ## Hack to test the installed wheel. TODO: make run_tests work better in this case.
@@ -484,7 +590,7 @@ build/py3-none-any:
           
     artifacts:
         paths:
-            - dist/*.whl
+            - wheelhouse/*.whl
     cache:
         paths:
             - .cache/pip
@@ -498,10 +604,10 @@ gpgsign/py3-none-any:
         gpgsign
 
     script: 
-        - ls dist
+        - ls wheelhouse
         - MB_PYTHON_TAG=py3-none-any
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
-        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
+        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
         - echo "GPG_KEYID = $GPG_KEYID"
@@ -521,7 +627,7 @@ gpgsign/py3-none-any:
         #- # $GPG_EXECUTABLE --list-keys
         - echo "Signing wheels"
         - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - ls dist
+        - ls wheelhouse
         - echo "Verifying wheels"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
         - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
@@ -529,7 +635,7 @@ gpgsign/py3-none-any:
 
     artifacts:
         paths:
-            - dist/*.asc
+            - wheelhouse/*.asc
 
     only:
         refs:
@@ -541,45 +647,6 @@ gpgsign/py3-none-any:
             - release
     image:
         python:3.7
-
-# I think the deploy/wheels step just takes care of this 
-#deploy/py3-none-any:
-#    <<: 
-#        - *common_template
-
-#    image:
-#        python:3.7
-
-#    stage: 
-#        deploy
-
-#    script: 
-#        - ls dist
-#        - MB_PYTHON_TAG=py3-none-any
-#        - VERSION=$(python -c "import setup; print(setup.VERSION)")
-#        - BDIST_WHEEL_PATH=dist/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-#        - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
-#        - pip install requests[security] twine 
-#        - echo "Checking wheels"
-#        - ls -al ${BDIST_WHEEL_PATH}*
-#        - twine check $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-#        - echo "Uploading wheels"
-#        # todo, can we tag the branch here as well?
-#        # note TWINE_USERNAME and TWINE_PASSWORD are protected variables only available on master and release branch
-#        - twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-#        # Have the server git-tag the release and push the tags
-#        - VERSION=$(python -c "import setup; print(setup.VERSION)")
-#        # do sed twice to handle the case of https clone with and without a read token
-#        - URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g')
-#        - echo "URL_HOST = $URL_HOST"
-#        - git config user.email "ci@gitlab.kitware.com"
-#        - git config user.name "Gitlab-CI"
-#        - git tag $VERSION -m "tarball tag $VERSION"
-#        - git push --tags "https://${GIT_PUSH_TOKEN}@${URL_HOST}"
-            
-#    only:
-#        refs:
-#            - release
 
 
 deploy/wheels:
@@ -646,7 +713,7 @@ deploy/wheels:
             # the watch repo, create the environment, and run the tests. 
             #docker login gitlab.kitware.com:4567
 
-            IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
+            IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
             docker run -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -it $IMAGE_NAME bash
             # Will need to chmod things afterwords
             export PIP_CACHE_DIR=/pip_cache
@@ -671,6 +738,10 @@ deploy/wheels:
 
             # STRICT VARIANT
             ./dev/make_strict_req.sh
+            #pip install pip-tools
+            #pip install pip -U
+            #pip install scikit-build cmake ninja
+            pip install -r requirements-strict/build.txt
             pip install -r requirements-strict.txt -r requirements-strict/headless.txt
             pip install -e .
             ./run_tests.py
@@ -679,3 +750,114 @@ deploy/wheels:
             pip install -r requirements.txt
             pip install -e .[tests,headless]
             ./run_tests.py
+
+
+.__local_podman_heredoc__:
+        - | 
+          # Test podman in docker locally
+          IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/podman:3.2.1
+
+          # Cannot clone issue:
+          # https://github.com/containers/podman/issues/10802
+          # Podman requires a clone system call
+          # This invocation of docker with --privledged works around it:
+          docker run --privileged -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -v $HOME/code/cibuildwheel:/cibuildwheel -it $IMAGE_NAME bash
+
+          # Once inside docker, we can test that podman works correctly
+          mkdir -p "$HOME/.local/.cache/containers/vfs-storage/"
+          #podman --cgroup-manager=cgroupfs --storage-driver=vfs --root=$HOME/.local/share/containers/vfs-storage/ info --debug
+
+          export PIP_CACHE_DIR=/pip_cache
+          echo $PIP_CACHE_DIR
+          chmod -R o+rw $PIP_CACHE_DIR
+          chmod -R o+rw $PIP_CACHE_DIR
+          chmod -R g+rw $PIP_CACHE_DIR
+          USER=$(whoami)
+          chown -R $USER $PIP_CACHE_DIR
+
+          # Install the local host copy of cibuildwheel
+          #git clone /cibuildwheel /internal_cibuildwheel
+          #cd /internal_cibuildwheel
+          #python3 -m pip install .
+          #python3 -m pip uninstall cibuildwheel
+          #cibuildwheel --platform linux --print-build-identifiers
+          python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@new_podman_support
+
+          # Install the repo
+          cd $HOME
+          git clone /io ./repo
+          cd $HOME/repo
+
+          #cat /etc/os-release
+          #podman --version
+          #podman info --debug
+          #(cd /internal_cibuildwheel && git pull)
+          #pwd
+          #ls -al
+
+          cibuildwheel --platform linux --print-build-identifiers
+
+          #export CIBW_OCI_EXTRA_ARGS_CREATE="--events-backend=file --cap-add CAP_SYS_ADMIN --cap-add=SYS_PTRACE"
+          export CIBW_SKIP="pp* cp310-* cp39-* cp37-* cp36-* *musllinux*"
+          cibuildwheel --platform linux --archs x86_64 --print-build-identifiers
+          cd $HOME/repo
+          export CIBW_CONTAINER_ENGINE="podman"
+          #cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
+          # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
+          
+          #https://infosecadalid.com/2021/08/30/containers-rootful-rootless-privileged-and-super-privileged/
+          #
+          # rw,relatime  
+          
+          codeblock()
+          {
+              PYEXE=python3
+              echo "$1" | $PYEXE -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip('\n'))"
+          }
+          # Make a storage.conf and containers.conf file
+          #
+          # https://github.com/containers/common/blob/main/docs/containers.conf.5.md
+          # https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
+          export CONTAINERS_CONF=$(realpath "temp_containers.conf")
+          export CONTAINERS_STORAGE_CONF=$(realpath "temp_storage.conf")
+          # --
+          codeblock "
+          [storage]
+          driver=\"vfs\"
+          graphroot=\"$HOME/.local/share/containers/vfs-storage\"
+          runroot=\"$HOME/.local/share/containers/vfs-runroot\"
+          [storage.options.aufs]
+          mountopt=\"rw\"
+          " > $CONTAINERS_STORAGE_CONF
+          # --
+          # For defaults see /usr/share/containers/containers.conf
+          codeblock "
+          [containers]
+          default_capabilities = [
+            \"CHOWN\",
+            \"DAC_OVERRIDE\",
+            \"FOWNER\",
+            \"FSETID\",
+            \"KILL\",
+            \"NET_BIND_SERVICE\",
+            \"SETFCAP\",
+            \"SETGID\",
+            \"SETPCAP\",
+            \"SETUID\",
+            \"SYS_CHROOT\"
+          ]
+          [engine]
+          cgroup_manager=\"cgroupfs\"
+          events_logger=\"file\"
+          " > $CONTAINERS_CONF
+          #podman run ubi8 mount
+          #podman run --privileged ubi8 mount
+          cat $CONTAINERS_CONF
+          cat $CONTAINERS_STORAGE_CONF
+
+          cd $HOME/repo
+          export CIBW_SKIP="pp* cp310-* cp39-* cp37-* cp36-* *musllinux*"
+          export CIBW_CONTAINER_ENGINE="podman"
+          cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
+          
+

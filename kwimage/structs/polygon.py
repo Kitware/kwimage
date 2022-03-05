@@ -6,11 +6,11 @@ TODO:
     - [ ]  Make function SegmentationList -> Boxes
 
 """
-import ubelt as ub
 import cv2
-import numpy as np
 import skimage
 import numbers
+import ubelt as ub
+import numpy as np
 from . import _generic
 
 try:
@@ -745,6 +745,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
             >>> image = np.zeros_like(mask.data)
             >>> self.fill(image, pixels_are='areas')
+
+        Example:
+            >>> # Test case where there are multiple channels
+            >>> import kwimage
+            >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
+            >>> self = mask.to_multi_polygon()
+            >>> image = np.zeros(mask.shape[0:2] + (2,))
+            >>> fill_v1 = self.fill(image.copy(), value=1)
+            >>> fill_v2 = self.fill(image.copy(), value=(1, 2))
+            >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
         """
         if pixels_are == 'areas':
             # rasterio hac: todo nicer organization
@@ -756,7 +766,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             cv_contours = self._to_cv_countours()
             line_type = cv2.LINE_8
             # Modification happens inplace
-            if len(image.shape) == 2 or image.shape[2] < 4:
+            if len(image.shape) == 2:
+                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+            elif len(image.shape) == 3 and image.shape[2] < 4:
+                if isinstance(value, numbers.Number):
+                    value = (value,) * image.shape[2]
                 cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
             else:
                 # handle bands > 3
@@ -1118,6 +1132,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
 
+        TODO:
+            - [ ] edgecolor
+            - [ ] fillcolor
+
         Args:
             image (ndarray): image to raster polygon on.
             color (str | tuple): data coercable to a color
@@ -1217,10 +1235,20 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if border or True:
             thickness = 4
             contour_idx = -1
-            image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
-                                     thickness, line_type)
-        # image = kwimage.ensure_float01(image)[..., 0:3]
+            if alpha is None or alpha == 1.0:
+                # Modification happens inplace
+                image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
+                                         thickness, line_type)
+            else:
+                orig = image.copy()
+                mask = np.zeros_like(orig)
+                # rgba = tuple(rgba[0:3]) + (0.1,)
+                mask = cv2.drawContours(mask, cv_contours, contour_idx, rgba,
+                                        thickness, line_type)
+                image = kwimage.overlay_alpha_images(mask, orig)
+                rgba = kwimage.Color(rgba)._forimage(image)
 
+        # image = kwimage.ensure_float01(image)[..., 0:3]
         # print('--- D')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
@@ -1683,6 +1711,7 @@ class MultiPolygon(_generic.ObjectList):
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
     def draw_on(self, *args, **kwargs):
+        Polygon.draw_on.__doc__
         for item in self.data:
             if item is not None:
                 image = item.draw_on(*args, **kwargs)
@@ -1804,3 +1833,8 @@ class PolygonList(_generic.ObjectList):
             if p is not None:
                 p.fill(image, value=value, pixels_are=pixels_are)
         return image
+
+    def draw_on(self, *args, **kw):
+        Polygon.draw_on.__doc__
+        # ^ docstring
+        return super().draw_on(*args, **kw)

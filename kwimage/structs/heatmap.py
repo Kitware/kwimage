@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 TODO:
     - [ ] Remove doctest dependency on ndsampler?
@@ -79,13 +78,11 @@ Example:
     >>> kwplot.imshow(raster)
     >>> kwplot.show_if_requested()
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
 import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
-import six
 import functools
 from . import _generic
 
@@ -137,12 +134,18 @@ class _HeatmapDrawMixin(object):
         Args:
             channel (int | str): index of category to visualize, or a special
                 code indicating how to visualize multiple classes.
+                Can be class_idx, class_probs, or class_energy.
 
             imgspace (bool, default=False): colorize the image after
                 warping into the image space.
 
         CommandLine:
             xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py _HeatmapDrawMixin.colorize --show
+
+        Ignore:
+            import xdev
+            from kwimage.structs.heatmap import *  # NOQA
+            globals().update(xdev.get_func_kwargs(Heatmap.colorize))
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
@@ -245,6 +248,7 @@ class _HeatmapDrawMixin(object):
                 layer[..., 3] = chan
                 layer[..., 0:3] = color
                 layers.append(layer)
+
             colormask = kwimage.overlay_alpha_layers(layers)
             colormask[..., 3] *= with_alpha
             return colormask
@@ -256,7 +260,7 @@ class _HeatmapDrawMixin(object):
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
             return colormask
 
-        if isinstance(channel, six.string_types):
+        if isinstance(channel, str):
             # TODO: this is a bit hacky / inefficient, needs cleanup
             if imgspace:
                 mat = self.tf_data_to_img.params
@@ -488,6 +492,7 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.autompl()
             >>> kwplot.imshow(canvas)
 
+        Ignore:
             import xdev
             globals().update(xdev.get_func_kwargs(Heatmap.draw_on))
 

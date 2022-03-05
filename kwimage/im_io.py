@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 """
 This module provides functions ``imread`` and ``imwrite`` which are wrappers
 around concrete readers/writers provided by other libraries. This allows us to
 support a wider array of formats than any of individual backends.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import numpy as np
 import warnings  # NOQA
@@ -453,9 +451,17 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False):
     """
     gdal imread backend
+
+    Args:
+        overview (int):
+            if specified load a specific overview level
+
+        ignore_color_table (bool):
+            if True and the image has a color table, return its indexes
+            instead of the colored image.
 
     References:
         [GDAL_Config_Options] https://gdal.org/user/configoptions.html
@@ -488,7 +494,7 @@ def _imread_gdal(fpath, overview=None):
             if overview is not None:
                 raise NotImplementedError
 
-            color_table = band.GetColorTable()
+            color_table = None if ignore_color_table else band.GetColorTable()
             if color_table is None:
                 buf = band.ReadAsArray()
                 if buf is None:
@@ -498,7 +504,6 @@ def _imread_gdal(fpath, overview=None):
                     if buf is None:
                         raise IOError('GDal was unable to read this band')
                 image = np.array(buf)
-
             else:
                 # The buffer is an index into the color table
                 buf = band.ReadAsArray()
@@ -519,7 +524,6 @@ def _imread_gdal(fpath, overview=None):
 
                 idx_to_color = np.array(idx_to_color, dtype=dtype)
                 image = idx_to_color[buf]
-
         else:
             default_bands = [gdal_dset.GetRasterBand(i)
                              for i in range(1, num_channels + 1)]
@@ -736,6 +740,25 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> fpath = temp.name
         >>> with pytest.raises(NotImplementedError):
         >>>     kwimage.imwrite(fpath, data)
+
+    Example:
+        >>> import ubelt as ub
+        >>> import kwimage
+        >>> dpath = ub.Path(ub.ensure_app_cache_dir('kwimage/badwrite'))
+        >>> dpath.delete().ensuredir()
+        >>> imdata = kwimage.ensure_uint255(kwimage.grab_test_image())[:, :, 0]
+        >>> import pytest
+        >>> fpath = dpath / 'does-not-exist/img.jpg'
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='cv2')
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='skimage')
+        >>> # xdoctest: +SKIP
+        >>> # TODO: run tests conditionally
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='gdal')
+        >>> with pytest.raises((IOError, RuntimeError)):
+        ...     kwimage.imwrite(fpath, imdata, backend='itk')
     """
     fpath = os.fspath(fpath)
 
@@ -804,7 +827,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
     if backend == 'cv2':
         try:
-            cv2.imwrite(fpath, image, **kwargs)
+            flag = cv2.imwrite(fpath, image, **kwargs)
         except cv2.error as ex:
             if 'could not find a writer for the specified extension' in str(ex):
                 raise ValueError(
@@ -812,6 +835,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                     '(e.g. png/jpg)'.format(fpath))
             else:
                 raise
+        else:
+            if not flag:
+                raise IOError('kwimage failed to write with opencv backend')
+
     elif backend == 'skimage':
         import skimage.io
         skimage.io.imsave(fpath, image, **kwargs)
@@ -887,6 +914,7 @@ def load_image_shape(fpath):
             time per loop: best=46.640 µs, mean=47.314 ± 0.4 µs
     """
     from PIL import Image
+    pil_img = None
     try:
         pil_img = Image.open(fpath)
         width, height = pil_img.size
@@ -898,7 +926,7 @@ def load_image_shape(fpath):
             from osgeo import gdal
             gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
             if gdal_dset is None:
-                raise Exception
+                raise Exception(gdal.GetLastErrorMsg())
             width = gdal_dset.RasterXSize
             height = gdal_dset.RasterYSize
             num_channels = gdal_dset.RasterCount
@@ -906,7 +934,8 @@ def load_image_shape(fpath):
         except Exception:
             raise pil_ex
     finally:
-        pil_img.close()
+        if pil_img is not None:
+            pil_img.close()
     shape = (height, width, num_channels)
     return shape
 
@@ -978,7 +1007,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
                                      overview_resample='NEAREST',
                                      interleave='PIXEL',
-                                     options=None):
+                                     options=None,
+                                     nodata=None,
+                                     crs=None, transform=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -1005,6 +1036,16 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         options (List[str]): other gdal options. See [GDAL_GTiff_Options]_ for
             details.
+
+        nodata (int):
+            if specified, writes a nodata value to the geotiff in each band
+
+        transform (kwimage.Affine):
+            An affine transform from image coordinates into a specified
+            coordinate reference system (must set crs).
+
+        crs (str):
+            The coordinate reference system for the geo_transform.
 
     Returns:
         str: the file path where the data was written
@@ -1224,9 +1265,26 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     # Create an in-memory dataset where we will prepare the COG data structure
     driver = gdal.GetDriverByName(str('MEM'))
     data_set = driver.Create(str(''), x_size, y_size, num_bands, eType=eType)
+
+    if transform is not None or crs is not None:
+        import affine
+        # TODO: add ability to add RPC
+        if crs is None or transform is None:
+            raise ValueError('Specify transform and crs together')
+        a, b, c, d, e, f = transform.matrix.ravel()[0:6]
+        aff = affine.Affine(a, b, c, d, e, f)
+        data_set.SetProjection(crs)
+        data_set.SetGeoTransform(aff.to_gdal())
+
     for i in range(num_bands):
         band_data = np.ascontiguousarray(data[:, :, i])
-        data_set.GetRasterBand(i + 1).WriteArray(band_data)
+        band = data_set.GetRasterBand(i + 1)
+        band.WriteArray(band_data)
+        if nodata is not None:
+            band.SetNoDataValue(nodata)
+        # TODO:
+        # could set the color interpretation here
+        band = None
 
     if overviewlist:
         # Build the downsampled overviews (for fast zoom in / out)
@@ -1242,9 +1300,14 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     # NOTE: if data_set2 is None here, that may be because the directory
     # we are trying to write to does not exist.
     if data_set2 is None:
-        raise Exception(
-            'Unable to create gtiff driver for fpath={}, options={}'.format(
-                fpath, _options))
+        last_gdal_error = gdal.GetLastErrorMsg()
+        if 'No such file or directory' in last_gdal_error:
+            ex_cls = IOError
+        else:
+            ex_cls = Exception
+        raise ex_cls(
+            'Unable to create gtiff driver for fpath={}, options={}, last_gdal_error={}'.format(
+                fpath, _options, last_gdal_error))
     data_set2.FlushCache()
 
     # Dereference everything

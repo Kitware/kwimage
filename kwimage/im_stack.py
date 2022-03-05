@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
 Stack images
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
 import numpy as np
 import skimage
@@ -31,6 +29,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
             to pad between images.
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
+        bg_value (number | ndarray[number]) : background value, if specified,
+            uses this as a fill value.
 
     Returns:
         ndarray: an image of stacked images side by side
@@ -121,6 +121,8 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
             to pad between images.
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
+        bg_value (number | ndarray[number]) : background value, if specified,
+            uses this as a fill value.
 
     Returns:
         ndarray: an image of stacked images in a grid pattern

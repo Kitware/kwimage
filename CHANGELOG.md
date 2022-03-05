@@ -4,7 +4,28 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.17 - Unreleased
+## Version 0.8.1 - Unreleased
+
+### Added
+
+* Added option to `ignore_color_table` when using gdal imread backend.
+
+### Changes
+
+* Fixes for `intensity_normalize` 
+* Allow user to specify nodata, transform, and crs when writing a geotiff
+
+
+### Changed
+* Consolidated environment variables in a new `kwiamge._internal` module.
+
+### Fixed
+* Previously Polygon.fill would only fill the first channel, this is now fixed
+* `kwimage.imwrite` now raises an exception if the file fails to write.
+* Fixed alpha in `Polygon.draw_on` for polygon borders.
+* Fixed issue in `load_image_shape` when PIL fails.
+
+## Version 0.7.17 - Released 2021-12-16
 
 ### Added
 

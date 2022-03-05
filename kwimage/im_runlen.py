@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Logic pertaining to run-length encodings
 
@@ -7,7 +6,6 @@ SeeAlso:
         backend representation. Also contains cython logic for handling
         the coco-rle format.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 
 

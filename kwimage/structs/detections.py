@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Structure for efficient access and modification of bounding boxes with
 associated scores and class labels. Builds on top of the `kwimage.Boxes`
@@ -29,8 +28,6 @@ If you want to visualize boxes and scores you can do this:
     >>> plt.gca().set_ylim(0, 224)
 
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-import six
 import numpy as np
 import ubelt as ub
 from kwimage.structs import boxes as _boxes
@@ -303,7 +300,7 @@ class _DetDrawMixin:
                     parts.append('score')
                 labels = '+'.join(parts)
 
-            if isinstance(labels, six.string_types):
+            if isinstance(labels, str):
                 if labels in ['class', 'class+score']:
                     if self.classes:
                         identifers = list(ub.take(self.classes, self.class_idxs))
@@ -735,7 +732,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         cnames = kwargs.get('cnames', kwargs.get('class_names', kwargs.get('catnames', None)))
         if cnames is not None:
-            if len(cnames) and isinstance(ub.peek(cnames), six.string_types):
+            if len(cnames) and isinstance(ub.peek(cnames), str):
                 if 'classes' not in data:
                     data['classes'] = sorted(set(cnames))
                 if 'class_idxs' not in data:
@@ -1522,7 +1519,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 sseg_list.append(sseg)
             self.data['segmentations'] = kwimage.SegmentationList.coerce(sseg_list)
 
-        if isinstance(keypoints, six.string_types):
+        if isinstance(keypoints, str):
             kp_classes = [1, 2, 3, 4]
             self.meta['kp_classes'] = kp_classes
             if keypoints == 'jagged':

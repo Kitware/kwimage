@@ -29,10 +29,8 @@ Notes:
     semantics which are w/h.
 
 """
-import os
 import cv2
 import copy
-import six
 import numpy as np
 import ubelt as ub
 import itertools as it
@@ -45,14 +43,10 @@ try:
 except Exception:
     torch = None
 
-
 try:
-    from xdev import profile
+    from xdev import profile  # NOQA
 except Exception:
-    from ubelt import identity as profile
-
-
-KWIMAGE_DISABLE_IMPORT_WARNINGS = os.environ.get('KWIMAGE_DISABLE_IMPORT_WARNINGS', '')
+    from ubelt import identity as profile  # NOQA
 
 
 class _Mask_Backends():
@@ -61,26 +55,23 @@ class _Mask_Backends():
         self._funcs = None
 
     def _lazy_init(self):
-        _funcs = {}
-        val = os.environ.get('KWIMAGE_DISABLE_C_EXTENSIONS', '').lower()
-        DISABLE_C_EXTENSIONS = val in {'true', 'on', 'yes', '1'}
-
+        from kwimage import _internal
         _funcs = {}
         try:
             from pycocotools import _mask
             _funcs['pycoco'] = _mask
         except Exception as ex:
-            if not KWIMAGE_DISABLE_IMPORT_WARNINGS:
+            if not _internal.KWIMAGE_DISABLE_IMPORT_WARNINGS:
                 warnings.warn(
                     'optional module pycocotools is not available: {}'.format(
                         str(ex)))
 
-        if not DISABLE_C_EXTENSIONS:
+        if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
             try:
                 from kwimage.structs._mask_backend import cython_mask
                 _funcs['kwimage'] = cython_mask
             except Exception as ex:
-                if not KWIMAGE_DISABLE_IMPORT_WARNINGS:
+                if not _internal.KWIMAGE_DISABLE_IMPORT_WARNINGS:
                     warnings.warn(
                         'optional mask_backend is not available: {}'.format(str(ex)))
 
@@ -88,12 +79,13 @@ class _Mask_Backends():
         self._valid = frozenset(self._funcs.keys())
 
     def get_backend(self, prefs):
+        from kwimage import _internal
         if self._funcs is None:
             self._lazy_init()
 
         valid = ub.oset(prefs) & set(self._funcs)
         if not valid:
-            if not KWIMAGE_DISABLE_IMPORT_WARNINGS:
+            if not _internal.KWIMAGE_DISABLE_IMPORT_WARNINGS:
                 warnings.warn('no valid mask backend')
             return None, None
         key = ub.peek(valid)
@@ -1793,10 +1785,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             # This is actually the original style, but it relies on
             # to_bytes_rle, which doesnt always work.
             data = bytes_rle.data.copy()
-            if six.PY3:
-                data['counts'] = ub.ensure_unicode(data['counts'])
-            else:
-                data['counts'] = data['counts']
+            data['counts'] = ub.ensure_unicode(data['counts'])
             return data
         else:
             data = self.to_array_rle().data.copy()

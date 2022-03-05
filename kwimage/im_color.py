@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
-import six
 import ubelt as ub
 from collections import OrderedDict
 from . import im_core
@@ -209,7 +206,7 @@ class Color(ub.NiceRepr):
                 'is_01': all([c >= 0.0 and c <= 1.0 for c in channels]),
             }
             return tests01
-        if isinstance(channels, six.string_types):
+        if isinstance(channels, str):
             return False
         return all(_test_base01(channels).values())
 
@@ -236,7 +233,7 @@ class Color(ub.NiceRepr):
 
     def _ensure_color01(Color, color):
         """ Infer what type color is and normalize to 01 """
-        if isinstance(color, six.string_types):
+        if isinstance(color, str):
             color = Color._string_to_01(color)
         elif Color._is_base255(color):
             color = Color._255_to_01(color)
@@ -312,12 +309,12 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
 
         """
-        import matplotlib as mpl
-        import matplotlib._cm  as _cm
         if legacy == 'auto':
             legacy = (existing is None)
 
         if legacy:
+            import matplotlib as mpl
+            import matplotlib._cm  as _cm
             assert existing is None
             # Old behavior
             cm = mpl.colors.LinearSegmentedColormap.from_list(

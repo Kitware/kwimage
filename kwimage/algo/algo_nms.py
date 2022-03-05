@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import numpy as np
 import ubelt as ub
@@ -197,12 +195,7 @@ class _NMS_Impls():
 
     def _lazy_init(self):
         _funcs = {}
-
-        TRUTHY_ENVIRONS = {'true', 'on', 'yes', '1'}
-        DISABLE_C_EXTENSIONS = os.environ.get(
-            'KWIMAGE_DISABLE_C_EXTENSIONS', '').lower() in TRUTHY_ENVIRONS
-        DISABLE_TORCHVISION_NMS = os.environ.get(
-            'KWIMAGE_DISABLE_TORCHVISION_NMS', '').lower() in TRUTHY_ENVIRONS
+        from kwimage import _internal
 
         # These are pure python and should always be available
         from kwimage.algo._nms_backend import py_nms
@@ -215,7 +208,7 @@ class _NMS_Impls():
         if torch is not None and recent_numpy:
             _funcs['torch'] = torch_nms.torch_nms
 
-            if not DISABLE_TORCHVISION_NMS:
+            if not _internal.KWIMAGE_DISABLE_TORCHVISION_NMS:
                 # The torchvision _C libraray may cause segfaults, which is
                 # why we have an option to disable even trying it
                 try:
@@ -236,14 +229,14 @@ class _NMS_Impls():
             # See https://gitlab.kitware.com/computer-vision/kwimage/-/jobs/6061311
             # for an example of when this last occurred
             try:
-                if not DISABLE_C_EXTENSIONS:
+                if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
                     from kwimage.algo._nms_backend import cpu_nms
                     _funcs['cython_cpu'] = cpu_nms.cpu_nms
             except Exception as ex:
                 warnings.warn(
                     'optional cpu_nms is not available: {}'.format(str(ex)))
             try:
-                if not DISABLE_C_EXTENSIONS:
+                if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
                     if torch is not None and torch.cuda.is_available():
                         from kwimage.algo._nms_backend import gpu_nms
                         _funcs['cython_gpu'] = gpu_nms.gpu_nms

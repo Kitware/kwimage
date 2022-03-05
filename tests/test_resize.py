@@ -84,7 +84,8 @@ def test_imresize_multi_channel():
 
     failures = []
     success = []
-    ti = ub.Timerit(1, bestof=1, verbose=0)
+    import timerit
+    ti = timerit.Timerit(1, bestof=1, verbose=0)
 
     for imgkw, img in image_variations(image_basis):
         for resize_kw in resize_kw_list:

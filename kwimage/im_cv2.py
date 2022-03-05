@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 Wrappers around cv2 functions
 
 Note: all functions in kwimage work with RGB input by default instead of BGR.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import cv2
-import six
 import numpy as np
 import ubelt as ub
 import numbers
@@ -92,7 +89,7 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation = shrink_default
 
     # Handle coercion from string to cv2 integer flag
-    if isinstance(interpolation, six.text_type):
+    if isinstance(interpolation, str):
         try:
             return _CV2_INTERPOLATION_TYPES[interpolation]
         except KeyError:
@@ -139,7 +136,7 @@ def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
         border_mode = default
 
     # Handle coercion from string to cv2 integer flag
-    if isinstance(border_mode, six.text_type):
+    if isinstance(border_mode, str):
         try:
             return _CV2_BORDER_MODES[border_mode]
         except KeyError:
@@ -507,6 +504,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
               cv2.resize will error but it is fine for linear interpolation
 
         - [ ] TODO: add padding options when letterbox=True
+
+        - [ ] Allow for pre-clipping when letterbox=True
     """
     old_w, old_h = img.shape[0:2][::-1]
 

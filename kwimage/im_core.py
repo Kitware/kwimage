@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
 Not sure how to best classify these functions
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import numpy as np
 import math
@@ -604,7 +602,7 @@ def find_robust_normalizers(data, params='auto'):
 
 
 def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
-                        dtype=np.float32, params='auto'):
+                        dtype=np.float32, params='auto', mask=None):
     """
     Normalize data intensities using heuristics to help put sensor data with
     extremely high or low contrast into a visible range.
@@ -699,32 +697,52 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         # be implementd more effciently.
         assert not return_info
         reorg = imdata.swapaxes(0, axis)
-        parts = []
-        for item in reorg:
-            part = normalize_intensity(item, nodata=nodata, axis=None)
-            parts.append(part[None, :])
+        if mask is None:
+            parts = []
+            for item in reorg:
+                part = normalize_intensity(item, nodata=nodata, axis=None)
+                parts.append(part[None, :])
+        else:
+            reorg_mask = mask.swapaxes(0, axis)
+            parts = []
+            for item, item_mask in zip(reorg, reorg_mask):
+                part = normalize_intensity(item, nodata=nodata, axis=None,
+                                           mask=item_mask)
+                parts.append(part[None, :])
         recomb = np.concatenate(parts, axis=0)
         final = recomb.swapaxes(0, axis)
         return final
 
-    if nodata is not None:
-        mask = imdata != nodata
-        imdata_valid = imdata[mask]
-    else:
-        mask = None
+    if imdata.dtype.kind == 'f':
+        if mask is None:
+            mask = ~np.isnan(imdata)
+
+    if mask is None:
+        if nodata is not None:
+            mask = imdata != nodata
+
+    if mask is None:
         imdata_valid = imdata
+    else:
+        imdata_valid = imdata[mask]
+
+    assert not np.any(np.isnan(imdata_valid))
 
     normalizer = find_robust_normalizers(imdata_valid, params=params)
-    # print('normalizer = {!r}'.format(normalizer))
 
     if normalizer['type'] is None:
         imdata_normalized = imdata.astype(dtype)
     elif normalizer['type'] == 'normalize':
         # Note: we are using kwarray normalize, the one in kwimage is deprecated
-        imdata_normalized = kwarray.normalize(
-            imdata.astype(dtype), mode=normalizer['mode'],
+        imdata_valid_normalized = kwarray.normalize(
+            imdata_valid.astype(dtype), mode=normalizer['mode'],
             beta=normalizer['beta'], alpha=normalizer['alpha'],
         )
+        if mask is None:
+            imdata_normalized = imdata_valid_normalized
+        else:
+            imdata_normalized = imdata.copy()
+            imdata_normalized[mask] = imdata_valid_normalized
     else:
         raise KeyError(normalizer['type'])
 
