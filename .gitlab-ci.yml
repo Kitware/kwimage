@@ -283,7 +283,6 @@ gpgsign/wheels:
 
     script: 
         - ls wheelhouse
-        - ls dist
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
         - echo "GPG_KEYID = $GPG_KEYID"
@@ -313,7 +312,6 @@ gpgsign/wheels:
                 $GPG_EXECUTABLE --verify $WHEEL_PATH.asc $WHEEL_PATH 
             done
         - ls wheelhouse
-        - ls dist
 
     artifacts:
         paths:
