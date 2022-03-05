@@ -660,7 +660,6 @@ deploy/wheels:
     script: 
         - pip install six pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U 
         - ls wheelhouse
-        - ls dist
         - |
             WHEEL_PATHS=(wheelhouse/*.whl)
             WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
