@@ -451,7 +451,7 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None, ignore_color_table=False):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
     """
     gdal imread backend
 
@@ -463,6 +463,12 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False):
             if True and the image has a color table, return its indexes
             instead of the colored image.
 
+        nodata (None | str):
+            if None, any nodata attributes are ignored. Otherwise specifies how
+            nodata values should be handled. If "ma", returns a masked array
+            instead of a normal ndarray. If "float", always returns a float
+            array where masked values are replaced with nan.
+
     References:
         [GDAL_Config_Options] https://gdal.org/user/configoptions.html
         https://gis.stackexchange.com/questions/180961/reading-a-specific-overview-layer-from-geotiff-file-using-gdal-python
@@ -470,12 +476,61 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False):
     Ignore:
         >>> import kwimage
         >>> fpath = kwimage.grab_test_image_fpath('amazon')
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test nodata values
+        >>> import kwimage
+        >>> from osgeo import osr
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> geo_fpath = dpath / 'dummy_geotiff.tif'
+        >>> # compute dummy values for a geotransform to CRS84
+        >>> img_h, img_w = imdata.shape[0:2]
+        >>> img_box = kwimage.Boxes([[0, 0, img_w, img_h]], 'xywh')
+        >>> wld_box = kwimage.Boxes([[-73.7595528, 42.6552404, 0.0001, 0.0001]], 'xywh')
+        >>> img_corners = img_box.corners()
+        >>> wld_corners = wld_box.corners()
+        >>> transform = kwimage.Affine.fit(img_corners, wld_corners)
+        >>> nodata = -9999
+        >>> srs = osr.SpatialReference()
+        >>> srs.ImportFromEPSG(4326)
+        >>> crs = srs.ExportToWkt()
+        >>> # Set a region to be nodata
+        >>> imdata = imdata.astype(np.int16)
+        >>> imdata[-100:] = nodata
+        >>> imdata[0:200:, -200:-180] = nodata
+        >>> mask = (imdata == nodata)
+        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata=-9999,
+        >>>                 crs=crs, transform=transform)
+        >>> # Read the geotiff with different methods
+        >>> raw_recon = kwimage.imread(geo_fpath, nodata=None)
+        >>> ma_recon = kwimage.imread(geo_fpath, nodata='ma')
+        >>> nan_recon = kwimage.imread(geo_fpath, nodata='float')
+        >>> # raw values should be read
+        >>> assert np.all(raw_recon[mask] == nodata)
+        >>> assert not np.any(raw_recon[~mask] == nodata)
+        >>> # nans should be in nodata places
+        >>> assert np.all(np.isnan(nan_recon[mask]))
+        >>> assert not np.any(np.isnan(nan_recon[~mask]))
+        >>> # check locations are masked correctly
+        >>> assert np.all(ma_recon[mask].mask)
+        >>> assert not np.any(ma_recon[~mask].mask)
     """
     try:
         from osgeo import gdal
     except ImportError:
         import gdal
     try:
+
+        if nodata is not None:
+            if isinstance(nodata, str):
+                if nodata not in {'ma', 'float'}:
+                    raise KeyError('nodata={} must be ma, float, or None'.format(nodata))
+            else:
+                raise TypeError(type(nodata))
+
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
@@ -524,6 +579,11 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False):
 
                 idx_to_color = np.array(idx_to_color, dtype=dtype)
                 image = idx_to_color[buf]
+
+            if nodata is not None:
+                # TODO: not sure if this works right for
+                # color table images
+                band_nodata = band.GetNoDataValue()
         else:
             default_bands = [gdal_dset.GetRasterBand(i)
                              for i in range(1, num_channels + 1)]
@@ -542,6 +602,8 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False):
             shape = (band0.YSize, band0.XSize, num_channels)
             # Preallocate and populate image
             image = np.empty(shape, dtype=dtype)
+            if nodata is not None:
+                mask = np.empty(shape, dtype=bool)
             for idx, band in enumerate(bands):
                 buf = band.ReadAsArray()
                 if buf is None:
@@ -551,6 +613,19 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False):
                         from {!r}
                         '''.format(idx, band, fpath)))
                 image[:, :, idx] = buf
+                if nodata is not None:
+                    band_nodata = band.GetNoDataValue()
+                    mask[:, :, idx] = (buf == band_nodata)
+
+        if nodata is not None:
+            if nodata == 'ma':
+                image = np.ma.array(image, mask=mask)
+            elif nodata == 'float':
+                promote_dtype = np.result_type(image.dtype, np.float32)
+                image = image.astype(promote_dtype)
+                image[mask] = np.nan
+            else:
+                raise AssertionError
 
         # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
