@@ -584,6 +584,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
                 # TODO: not sure if this works right for
                 # color table images
                 band_nodata = band.GetNoDataValue()
+                mask = band_nodata == buf
         else:
             default_bands = [gdal_dset.GetRasterBand(i)
                              for i in range(1, num_channels + 1)]
@@ -670,7 +671,22 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             to determine this. Valid backends are 'gdal', 'skimage', 'itk', and
             'cv2'.
 
-        **kwargs : args passed to the backend writer
+        **kwargs : args passed to the backend writer.
+
+            When the backend is gdal, available options are:
+                compress (str): Common options are auto, DEFLATE, LZW, JPEG.
+                blocksize (int): size of tiled blocks (e.g. 256)
+                overviews (None | str | int | list): Number of overviews.
+                overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
+                options (List[str]): other gdal options.
+                nodata (int): denotes a integer value as nodata.
+                transform (kwimage.Affine): Transform into CRS
+                crs (str): The coordinate reference system for transform.
+            See :func:`_imwrite_cloud_optimized_geotiff` for more details each options.
+
+            When the backend is itk, see :func:`itk.imwrite` for options
+            When the backend is skimage, see :func:`skimage.io.imsave` for options
+            When the backend is cv2 see :func:`cv2.imwrite` for options.
 
     Returns:
         str: path to the written file
@@ -1346,6 +1362,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         # TODO: add ability to add RPC
         if crs is None or transform is None:
             raise ValueError('Specify transform and crs together')
+        # TODO: Allow transform to be a normal gdal object or something
+        # coercable to an affine object.
         a, b, c, d, e, f = transform.matrix.ravel()[0:6]
         aff = affine.Affine(a, b, c, d, e, f)
         data_set.SetProjection(crs)
