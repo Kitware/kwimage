@@ -726,61 +726,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         return mask
 
-    def fill(self, image, value=1, pixels_are='points'):
-        """
-        Inplace fill in an image based on this polyon.
-
-        Args:
-            image (ndarray): image to draw on
-            value (int | Tuple[int], default=1): value fill in with
-            pixels_are (str): either points or areas
-
-        Returns:
-            ndarray: the image that has been modified in place
-
-        Example:
-            >>> # xdoctest: +REQUIRES(module:rasterio)
-            >>> import kwimage
-            >>> mask = kwimage.Mask.random()
-            >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
-            >>> image = np.zeros_like(mask.data)
-            >>> self.fill(image, pixels_are='areas')
-
-        Example:
-            >>> # Test case where there are multiple channels
-            >>> import kwimage
-            >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
-            >>> self = mask.to_multi_polygon()
-            >>> image = np.zeros(mask.shape[0:2] + (2,))
-            >>> fill_v1 = self.fill(image.copy(), value=1)
-            >>> fill_v2 = self.fill(image.copy(), value=(1, 2))
-            >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
-        """
-        if pixels_are == 'areas':
-            # rasterio hac: todo nicer organization
-            from rasterio import features
-            shapes = [self.translate((0.5, 0.5)).to_geojson()]
-            features.rasterize(shapes, out=image, default_value=1)
-        elif pixels_are == 'points':
-            # line_type = cv2.LINE_AA
-            cv_contours = self._to_cv_countours()
-            line_type = cv2.LINE_8
-            # Modification happens inplace
-            if len(image.shape) == 2:
-                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
-            elif len(image.shape) == 3 and image.shape[2] < 4:
-                if isinstance(value, numbers.Number):
-                    value = (value,) * image.shape[2]
-                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
-            else:
-                # handle bands > 3
-                for bx in enumerate(range(image.shape[2])):
-                    tmp = np.ascontiguousarray(image[..., bx])
-                    cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
-                    image[..., bx] = tmp
-
-        return image
-
     def _to_cv_countours(self):
         """
         OpenCV polygon representation, which is a list of points.  Holes are
@@ -974,6 +919,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             )
         return geom
 
+    @property
+    def area(self):
+        """ Computes are via shapley conversion """
+        return self.to_shapley().area
+
     def to_geojson(self):
         """
         Converts polygon to a geojson structure
@@ -1125,6 +1075,61 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         np.clip(xs, x_min, x_max, out=xs)
         np.clip(ys, y_min, y_max, out=ys)
         return self2
+
+    def fill(self, image, value=1, pixels_are='points'):
+        """
+        Inplace fill in an image based on this polyon.
+
+        Args:
+            image (ndarray): image to draw on
+            value (int | Tuple[int], default=1): value fill in with
+            pixels_are (str): either points or areas
+
+        Returns:
+            ndarray: the image that has been modified in place
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> import kwimage
+            >>> mask = kwimage.Mask.random()
+            >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
+            >>> image = np.zeros_like(mask.data)
+            >>> self.fill(image, pixels_are='areas')
+
+        Example:
+            >>> # Test case where there are multiple channels
+            >>> import kwimage
+            >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
+            >>> self = mask.to_multi_polygon()
+            >>> image = np.zeros(mask.shape[0:2] + (2,))
+            >>> fill_v1 = self.fill(image.copy(), value=1)
+            >>> fill_v2 = self.fill(image.copy(), value=(1, 2))
+            >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
+        """
+        if pixels_are == 'areas':
+            # rasterio hac: todo nicer organization
+            from rasterio import features
+            shapes = [self.translate((0.5, 0.5)).to_geojson()]
+            features.rasterize(shapes, out=image, default_value=1)
+        elif pixels_are == 'points':
+            # line_type = cv2.LINE_AA
+            cv_contours = self._to_cv_countours()
+            line_type = cv2.LINE_8
+            # Modification happens inplace
+            if len(image.shape) == 2:
+                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+            elif len(image.shape) == 3 and image.shape[2] < 4:
+                if isinstance(value, numbers.Number):
+                    value = (value,) * image.shape[2]
+                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+            else:
+                # handle bands > 3
+                for bx in enumerate(range(image.shape[2])):
+                    tmp = np.ascontiguousarray(image[..., bx])
+                    cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
+                    image[..., bx] = tmp
+
+        return image
 
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
                 copy=False):
@@ -1467,6 +1472,11 @@ class MultiPolygon(_generic.ObjectList):
     Attributes:
         data (List[Polygon])
     """
+
+    @property
+    def area(self):
+        """ Computes are via shapley conversion """
+        return self.to_shapley().area
 
     @classmethod
     def random(self, n=3, n_holes=0, rng=None, tight=False):
