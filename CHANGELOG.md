@@ -7,6 +7,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.8.3 - Unreleased
 
 
+### Added
+* facecolor and edgecolor in `Polygon.draw_on`
+
+### Fixed
+* Bug in MultiPolygon draw
+
+### Changed
+* Speed up drawing in PolygonList and other generic draw funcs
+
 ## Version 0.8.2 - Released 2022-03-14
 
 ### Added
