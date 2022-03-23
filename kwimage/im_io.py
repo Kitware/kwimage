@@ -542,6 +542,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         >>> assert recon2_0.shape == (434, 578)
         >>> assert recon2_3a.shape == (109, 145)
         >>> assert recon2_3b.shape == (109, 145)
+        >>> # TODO: test an image with a color table
     """
     try:
         from osgeo import gdal
@@ -612,6 +613,10 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
                 # color table images
                 band_nodata = band.GetNoDataValue()
                 mask = band_nodata == buf
+                if color_table is not None:
+                    # Fix mask to align with color table
+                    table_chans = idx_to_color.shape[1]
+                    mask = np.tile(mask[:, :, None], (1, 1, table_chans))
         else:
             default_bands = [gdal_dset.GetRasterBand(i)
                              for i in range(1, num_channels + 1)]
