@@ -573,8 +573,11 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
             band = gdal_dset.GetRasterBand(1)
 
             if overview is not None:
+                overview_count = band.GetOverviewCount()
                 if overview < 0:
-                    overview = band.GetOverviewCount() + overview
+                    overview = max(overview_count + overview, 0)
+                if overview > overview_count:
+                    raise ValueError('Image has no overview={}'.format(overview))
                 band = band.GetOverview(overview)
 
             color_table = None if ignore_color_table else band.GetColorTable()
@@ -625,8 +628,11 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
             if overview is None:
                 bands = default_bands
             else:
+                overview_count = default_band0.GetOverviewCount()
                 if overview < 0:
-                    overview = default_band0.GetOverviewCount() + overview
+                    overview = max(overview_count + overview, 0)
+                if overview > overview_count:
+                    raise ValueError('Image has no overview={}'.format(overview))
                 bands = [b.GetOverview(overview) for b in default_bands]
 
             band0 = bands[0]
