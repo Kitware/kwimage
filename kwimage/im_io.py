@@ -572,15 +572,16 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         if num_channels == 1:
             band = gdal_dset.GetRasterBand(1)
 
-            if overview is not None:
+            if overview:
                 overview_count = band.GetOverviewCount()
                 if overview < 0:
                     overview = max(overview_count + overview, 0)
                 if overview > overview_count:
                     raise ValueError('Image has no overview={}'.format(overview))
-                band = band.GetOverview(overview)
-                if band is None:
-                    raise AssertionError
+                if overview > 0:
+                    band = band.GetOverview(overview)
+                    if band is None:
+                        raise AssertionError
 
             color_table = None if ignore_color_table else band.GetColorTable()
             if color_table is None:
@@ -627,17 +628,20 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
                              for i in range(1, num_channels + 1)]
             default_band0 = default_bands[0]
 
-            if overview is None:
-                bands = default_bands
-            else:
+            if overview:
                 overview_count = default_band0.GetOverviewCount()
                 if overview < 0:
                     overview = max(overview_count + overview, 0)
                 if overview > overview_count:
                     raise ValueError('Image has no overview={}'.format(overview))
-                bands = [b.GetOverview(overview) for b in default_bands]
-                if any(b is None for b in bands):
-                    raise AssertionError
+                if overview > 0:
+                    bands = [b.GetOverview(overview) for b in default_bands]
+                    if any(b is None for b in bands):
+                        raise AssertionError
+                else:
+                    bands = default_bands
+            else:
+                bands = default_bands
 
             band0 = bands[0]
             gdal_dtype = band0.DataType
