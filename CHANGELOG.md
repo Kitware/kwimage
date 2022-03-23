@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Bug in MultiPolygon draw
+* imread overviews now work for grayscale images
 
 ### Changed
 * Speed up drawing in PolygonList and other generic draw funcs

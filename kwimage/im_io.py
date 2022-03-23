@@ -517,6 +517,31 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         >>> # check locations are masked correctly
         >>> assert np.all(ma_recon[mask].mask)
         >>> assert not np.any(ma_recon[~mask].mask)
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test overview values
+        >>> import kwimage
+        >>> from osgeo import osr
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> fpath1 = dpath / 'dummy_overviews_rgb.tif'
+        >>> fpath2 = dpath / 'dummy_overviews_gray.tif'
+        >>> kwimage.imwrite(fpath1, imdata, overviews=3, backend='gdal')
+        >>> kwimage.imwrite(fpath2, imdata[:, :, 0], overviews=3, backend='gdal')
+        >>> recon1_3a = kwimage.imread(fpath1, overview=-1, backend='gdal')
+        >>> recon1_3b = kwimage.imread(fpath1, overview=2, backend='gdal')
+        >>> recon1_0 = kwimage.imread(fpath1, overview=0, backend='gdal')
+        >>> assert recon1_0.shape == (434, 578, 3)
+        >>> assert recon1_3a.shape == (109, 145, 3)
+        >>> assert recon1_3b.shape == (109, 145, 3)
+        >>> recon2_3a = kwimage.imread(fpath2, overview=-1, backend='gdal')
+        >>> recon2_3b = kwimage.imread(fpath2, overview=2, backend='gdal')
+        >>> recon2_0 = kwimage.imread(fpath2, overview=0, backend='gdal')
+        >>> assert recon2_0.shape == (434, 578)
+        >>> assert recon2_3a.shape == (109, 145)
+        >>> assert recon2_3b.shape == (109, 145)
     """
     try:
         from osgeo import gdal
@@ -547,7 +572,9 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
             band = gdal_dset.GetRasterBand(1)
 
             if overview is not None:
-                raise NotImplementedError
+                if overview < 0:
+                    overview = band.GetOverviewCount() + overview
+                band = band.GetOverview(overview)
 
             color_table = None if ignore_color_table else band.GetColorTable()
             if color_table is None:
