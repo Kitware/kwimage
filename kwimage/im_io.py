@@ -579,6 +579,8 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
                 if overview > overview_count:
                     raise ValueError('Image has no overview={}'.format(overview))
                 band = band.GetOverview(overview)
+                if band is None:
+                    raise AssertionError
 
             color_table = None if ignore_color_table else band.GetColorTable()
             if color_table is None:
@@ -634,6 +636,8 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
                 if overview > overview_count:
                     raise ValueError('Image has no overview={}'.format(overview))
                 bands = [b.GetOverview(overview) for b in default_bands]
+                if any(b is None for b in bands):
+                    raise AssertionError
 
             band0 = bands[0]
             gdal_dtype = band0.DataType
