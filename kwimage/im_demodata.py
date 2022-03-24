@@ -221,12 +221,18 @@ grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
 
-def checkerboard(num_squares=8, dsize=(512, 512)):
+def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512)):
     """
     Creates a checkerboard image
 
     Args:
-        num_squares (int): number of squares in a row
+        num_squares (int):
+            Number of squares in a row. Defaults to 8
+
+        square_shape (int | Tuple[int, int]):
+            If 'auto', chosen based on `num_squares`. Otherwise this is
+            the height, width of each square in pixels.
+
         dsize (Tuple[int, int]): width and height
 
     References:
@@ -235,14 +241,43 @@ def checkerboard(num_squares=8, dsize=(512, 512)):
     Example:
         >>> from kwimage.im_demodata import *  # NOQA
         >>> img = checkerboard()
+
+        checkerboard(dsize=(16, 16))
+        checkerboard(num_squares=4, dsize=(16, 16))
+        checkerboard(square_shape=8, dsize=(16, 16))
     """
     import numpy as np
-    num_squares = 8
-    num_pairs = num_squares // 2
+    if num_squares == 'auto' and square_shape == 'auto':
+        num_squares = 8
+
+    if num_squares == 'auto':
+        assert square_shape != 'auto'
+        if not ub.iterable(square_shape):
+            square_shape = [square_shape, square_shape]
+        h, w = square_shape
+        num_w = dsize[0] // w
+        num_h = dsize[1] // h
+        num_squares = num_h, num_w
+    elif square_shape == 'auto':
+        assert num_squares != 'auto'
+        if not ub.iterable(num_squares):
+            num_squares = [num_squares, num_squares]
+        num_h, num_w = num_squares
+        w = dsize[0] // num_w
+        h = dsize[1] // num_h
+        square_shape = (h, w)
+    else:
+        if not ub.iterable(num_squares):
+            num_squares = [num_squares, num_squares]
+        if not ub.iterable(square_shape):
+            square_shape = [square_shape, square_shape]
+
+    num_w, num_h = num_squares
+
+    num_pairs_w = num_w // 2
+    num_pairs_h = num_h // 2
     # img_size = 512
-    w = dsize[0] // num_squares
-    h = dsize[1] // num_squares
-    base = np.array([[1, 0] * num_pairs, [0, 1] * num_pairs] * num_pairs)
+    base = np.array([[1, 0] * num_pairs_w, [0, 1] * num_pairs_w] * num_pairs_h)
     expansion = np.ones((h, w))
     img = np.kron(base, expansion)
     return img
