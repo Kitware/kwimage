@@ -1234,8 +1234,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # Test empty polygon draw
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.from_coco([])
+            >>> image_in = np.zeros((128, 128), dtype=np.float32)
+            >>> image_out = self.draw_on(image_in)
         """
         import kwimage
+
+        is_empty = len(self.data['exterior']) == 0
+        if is_empty:
+            if copy:
+                image = image.copy()
+            return image
+
         # return shape of contours to openCV contours
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
