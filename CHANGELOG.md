@@ -1,4 +1,4 @@
-# Changelog
+m # Changelog
 
 This changelog follows the specifications detailed in: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
@@ -11,7 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * facecolor and edgecolor in `Polygon.draw_on`
 
 ### Fixed
-* Bug in MultiPolygon draw
+* Bug in MultiPolygon draw, `Polygon.draw_on` no longer crashes when polygon is empty.
 * imread overviews now work for grayscale images
 
 ### Changed
