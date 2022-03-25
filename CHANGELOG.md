@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Speed up drawing in PolygonList and other generic draw funcs
+* improve checkerboard
 
 ## Version 0.8.2 - Released 2022-03-14
 
