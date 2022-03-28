@@ -922,7 +922,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     @property
     def area(self):
         """ Computes are via shapley conversion """
-        return self.to_shapley().area
+        return self.to_shapely().area
 
     def to_geojson(self):
         """
@@ -1555,7 +1555,7 @@ class MultiPolygon(_generic.ObjectList):
     @property
     def area(self):
         """ Computes are via shapley conversion """
-        return self.to_shapley().area
+        return self.to_shapely().area
 
     @classmethod
     def random(self, n=3, n_holes=0, rng=None, tight=False):
