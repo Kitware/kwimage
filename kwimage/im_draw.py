@@ -1039,7 +1039,6 @@ def fill_nans_with_checkers(canvas, square_shape=8):
 
     Example:
         >>> from kwimage.im_draw import *  # NOQA
-        >>> import kwplot
         >>> import kwimage
         >>> orig_img = kwimage.ensure_float01(kwimage.grab_test_image())
         >>> poly1 = kwimage.Polygon.random().scale(orig_img.shape[0] // 2)
