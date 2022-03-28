@@ -51,8 +51,8 @@ The top-level API is:
                               grab_test_image_fpath,)
     from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
                           draw_line_segments_on_image, draw_text_on_image,
-                          draw_vector_field, make_heatmask, make_orimask,
-                          make_vector_field,)
+                          draw_vector_field, fill_nans_with_checkers,
+                          make_heatmask, make_orimask, make_vector_field,)
     from .im_filter import (fourier_mask, radial_fourier_mask,)
     from .im_io import (imread, imwrite, load_image_shape,)
     from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
