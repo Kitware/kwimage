@@ -1049,6 +1049,8 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
         >>> canvas = img.copy()
         >>> canvas = fill_nans_with_checkers(canvas)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img, pnum=(1, 2, 1))
         >>> kwplot.imshow(canvas, pnum=(1, 2, 2))
