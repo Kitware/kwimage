@@ -1068,6 +1068,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         Spatially warp the detections.
 
+        Args:
+            transform (TransformCoercable): usually a kwimage.Affine object
+            input_dims (Tuple[int, int]): shape of the expected input canvas
+            output_dims (Tuple[int, int]): shape of the expected output canvas
+            inplace (bool): if true operate inplace
+
+        Returns:
+            Detections: the warped detections object
+
         Example:
             >>> import skimage
             >>> transform = skimage.transform.AffineTransform(scale=(2, 3), translation=(4, 5))
@@ -1093,7 +1102,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
-        Spatially warp the detections.
+        Spatially scale the detections.
 
         Example:
             >>> import skimage
@@ -1116,7 +1125,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
-        Spatially warp the detections.
+        Spatially translate the detections.
 
         Example:
             >>> import skimage

@@ -517,6 +517,32 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         >>> # check locations are masked correctly
         >>> assert np.all(ma_recon[mask].mask)
         >>> assert not np.any(ma_recon[~mask].mask)
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test overview values
+        >>> import kwimage
+        >>> from osgeo import osr
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> fpath1 = dpath / 'dummy_overviews_rgb.tif'
+        >>> fpath2 = dpath / 'dummy_overviews_gray.tif'
+        >>> kwimage.imwrite(fpath1, imdata, overviews=3, backend='gdal')
+        >>> kwimage.imwrite(fpath2, imdata[:, :, 0], overviews=3, backend='gdal')
+        >>> recon1_3a = kwimage.imread(fpath1, overview=-1, backend='gdal')
+        >>> recon1_3b = kwimage.imread(fpath1, overview=2, backend='gdal')
+        >>> recon1_0 = kwimage.imread(fpath1, overview=0, backend='gdal')
+        >>> assert recon1_0.shape == (434, 578, 3)
+        >>> assert recon1_3a.shape == (109, 145, 3)
+        >>> assert recon1_3b.shape == (109, 145, 3)
+        >>> recon2_3a = kwimage.imread(fpath2, overview=-1, backend='gdal')
+        >>> recon2_3b = kwimage.imread(fpath2, overview=2, backend='gdal')
+        >>> recon2_0 = kwimage.imread(fpath2, overview=0, backend='gdal')
+        >>> assert recon2_0.shape == (434, 578)
+        >>> assert recon2_3a.shape == (109, 145)
+        >>> assert recon2_3b.shape == (109, 145)
+        >>> # TODO: test an image with a color table
     """
     try:
         from osgeo import gdal
@@ -546,8 +572,16 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         if num_channels == 1:
             band = gdal_dset.GetRasterBand(1)
 
-            if overview is not None:
-                raise NotImplementedError
+            if overview:
+                overview_count = band.GetOverviewCount()
+                if overview < 0:
+                    overview = max(overview_count + overview, 0)
+                if overview > overview_count:
+                    raise ValueError('Image has no overview={}'.format(overview))
+                if overview > 0:
+                    band = band.GetOverview(overview)
+                    if band is None:
+                        raise AssertionError
 
             color_table = None if ignore_color_table else band.GetColorTable()
             if color_table is None:
@@ -585,17 +619,29 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
                 # color table images
                 band_nodata = band.GetNoDataValue()
                 mask = band_nodata == buf
+                if color_table is not None:
+                    # Fix mask to align with color table
+                    table_chans = idx_to_color.shape[1]
+                    mask = np.tile(mask[:, :, None], (1, 1, table_chans))
         else:
             default_bands = [gdal_dset.GetRasterBand(i)
                              for i in range(1, num_channels + 1)]
             default_band0 = default_bands[0]
 
-            if overview is None:
-                bands = default_bands
-            else:
+            if overview:
+                overview_count = default_band0.GetOverviewCount()
                 if overview < 0:
-                    overview = default_band0.GetOverviewCount() + overview
-                bands = [b.GetOverview(overview) for b in default_bands]
+                    overview = max(overview_count + overview, 0)
+                if overview > overview_count:
+                    raise ValueError('Image has no overview={}'.format(overview))
+                if overview > 0:
+                    bands = [b.GetOverview(overview) for b in default_bands]
+                    if any(b is None for b in bands):
+                        raise AssertionError
+                else:
+                    bands = default_bands
+            else:
+                bands = default_bands
 
             band0 = bands[0]
             gdal_dtype = band0.DataType

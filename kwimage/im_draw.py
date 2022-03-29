@@ -1025,3 +1025,59 @@ def draw_header_text(image, text, fit=False, color='red', halign='center',
         return stacked
     else:
         return header
+
+
+def fill_nans_with_checkers(canvas, square_shape=8):
+    """
+    Fills nan values with a 2d checkerboard pattern.
+
+    Args:
+        canvas (np.ndarray): data replace nans in
+
+    Returns:
+        np.ndarray: modified canvas
+
+    Example:
+        >>> from kwimage.im_draw import *  # NOQA
+        >>> import kwimage
+        >>> orig_img = kwimage.ensure_float01(kwimage.grab_test_image())
+        >>> poly1 = kwimage.Polygon.random().scale(orig_img.shape[0] // 2)
+        >>> poly2 = kwimage.Polygon.random().scale(orig_img.shape[0])
+        >>> img = orig_img.copy()
+        >>> img = poly1.fill(img, np.nan)
+        >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
+        >>> canvas = img.copy()
+        >>> canvas = fill_nans_with_checkers(canvas)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img, pnum=(1, 2, 1))
+        >>> kwplot.imshow(canvas, pnum=(1, 2, 2))
+    """
+    import kwimage
+    import kwarray
+    canvas = kwarray.atleast_nd(canvas, 3)
+    invalid_mask = np.isnan(canvas)
+    allchan_invalid_mask = invalid_mask.all(axis=2, keepdims=1)
+    anychan_invalid_mask = invalid_mask.any(axis=2, keepdims=1)
+
+    some_invalid_mask = (~allchan_invalid_mask) * anychan_invalid_mask
+    dsize = canvas.shape[0:2][::-1]
+    checkers2d = None
+
+    if np.any(allchan_invalid_mask):
+        if checkers2d is None:
+            checkers2d = kwimage.checkerboard(square_shape=square_shape, dsize=dsize)
+        # canvas = kwimage.ensure_alpha_channel(canvas, (1 - invalid_mask))
+        # checkers = kwimage.ensure_alpha_channel(checkers, 1)
+        locs = np.where(allchan_invalid_mask)
+        canvas[locs[0:2]] = checkers2d[..., None][locs[0:2]]
+
+    if np.any(some_invalid_mask):
+        if checkers2d is None:
+            checkers2d = kwimage.checkerboard(square_shape=8, dsize=dsize)
+
+        locs = np.where(some_invalid_mask)
+        canvas[locs] = checkers2d[locs[0:2]]
+
+    return canvas

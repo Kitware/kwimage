@@ -221,12 +221,18 @@ grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
 
-def checkerboard(num_squares=8, dsize=(512, 512)):
+def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512)):
     """
     Creates a checkerboard image
 
     Args:
-        num_squares (int): number of squares in a row
+        num_squares (int):
+            Number of squares in a row. Defaults to 8
+
+        square_shape (int | Tuple[int, int]):
+            If 'auto', chosen based on `num_squares`. Otherwise this is
+            the height, width of each square in pixels.
+
         dsize (Tuple[int, int]): width and height
 
     References:
@@ -235,14 +241,77 @@ def checkerboard(num_squares=8, dsize=(512, 512)):
     Example:
         >>> from kwimage.im_demodata import *  # NOQA
         >>> img = checkerboard()
+        >>> print(checkerboard(dsize=(16, 16)).shape)
+        >>> print(checkerboard(num_squares=4, dsize=(16, 16)).shape)
+        >>> print(checkerboard(square_shape=3, dsize=(23, 17)).shape)
+        >>> print(checkerboard(square_shape=3, dsize=(1451, 1163)).shape)
+        >>> print(checkerboard(square_shape=3, dsize=(1202, 956)).shape)
     """
     import numpy as np
-    num_squares = 8
-    num_pairs = num_squares // 2
+    if num_squares == 'auto' and square_shape == 'auto':
+        num_squares = 8
+
+    want_w, want_h = dsize
+
+    if square_shape != 'auto':
+        if not ub.iterable(square_shape):
+            square_shape = [square_shape, square_shape]
+        h, w = square_shape
+        gen_h, gen_w = _next_multiple_of(want_h, h * 2), _next_multiple_of(want_w, w * 2)
+    else:
+        gen_h, gen_w = _next_multiple_of(want_h, 4), _next_multiple_of(want_w, 4)
+
+    if num_squares == 'auto':
+        assert square_shape != 'auto'
+        if not ub.iterable(square_shape):
+            square_shape = [square_shape, square_shape]
+        h, w = square_shape
+        num_w = gen_w // w
+        num_h = gen_h // h
+        num_squares = num_h, num_w
+    elif square_shape == 'auto':
+        assert num_squares != 'auto'
+        if not ub.iterable(num_squares):
+            num_squares = [num_squares, num_squares]
+        num_h, num_w = num_squares
+        w = gen_w // num_w
+        h = gen_h // num_h
+        square_shape = (h, w)
+    else:
+        if not ub.iterable(num_squares):
+            num_squares = [num_squares, num_squares]
+        if not ub.iterable(square_shape):
+            square_shape = [square_shape, square_shape]
+
+    num_h, num_w = num_squares
+
+    num_pairs_w = int(num_w // 2)
+    num_pairs_h = int(num_h // 2)
     # img_size = 512
-    w = dsize[0] // num_squares
-    h = dsize[1] // num_squares
-    base = np.array([[1, 0] * num_pairs, [0, 1] * num_pairs] * num_pairs)
+    base = np.array([[1, 0] * num_pairs_w, [0, 1] * num_pairs_w] * num_pairs_h)
     expansion = np.ones((h, w))
-    img = np.kron(base, expansion)
+    img = np.kron(base, expansion)[0:want_h, 0:want_w]
     return img
+
+
+def _next_power_of_two(x):
+    """
+    References:
+        https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
+    """
+    return 2 ** (x - 1).bit_length()
+
+
+def _next_multiple_of_two(x):
+    """
+    References:
+        https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
+    """
+    return x + (x % 2)
+
+def _next_multiple_of(x, m):
+    """
+    References:
+        https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
+    """
+    return (x // m) * m + m

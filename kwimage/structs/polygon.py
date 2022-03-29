@@ -922,7 +922,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     @property
     def area(self):
         """ Computes are via shapley conversion """
-        return self.to_shapley().area
+        return self.to_shapely().area
 
     def to_geojson(self):
         """
@@ -1131,58 +1131,100 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         return image
 
+    @profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
-                copy=False):
+                edgecolor=None, facecolor=None, copy=False):
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
 
-        TODO:
-            - [ ] edgecolor
-            - [ ] fillcolor
-
         Args:
             image (ndarray): image to raster polygon on.
+
             color (str | tuple): data coercable to a color
-            fill (bool, default=True): draw the center mass of the polygon
+
+            fill (bool, default=True): draw the center mass of the polygon.
+                Note: this will be deprecated. Use facecolor instead.
+
             border (bool, default=False): draw the border of the polygon
+                Note: this will be deprecated. Use edgecolor instead.
+
             alpha (float, default=1.0): polygon transparency (setting alpha < 1
                 makes this function much slower).
+
             copy (bool, default=False): if False only copies if necessary
+
+            edgecolor (str | tuple): color for the border
+
+            facecolor (str | tuple): color for the fill
+
+        Returns:
+            np.ndarray
+
+        Notes:
+            This function will only be inplace if alpha=1.0 and the input has 3
+            or 4 channels. Otherwise the output canvas is coerced so colors can
+            be drawn on it. In the case where alpha < 1.0,
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
-            >>> image = np.zeros((128, 128), dtype=np.float32)
-            >>> image = self.draw_on(image)
+            >>> image_in = np.zeros((128, 128), dtype=np.float32)
+            >>> image_out = self.draw_on(image_in)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(image, fnum=1)
 
         Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # Demo drawing on a RGBA canvas
+            >>> # If you initialize an zero rgba canvas, the alpha values are
+            >>> # filled correctly.
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> s = 16
+            >>> self = Polygon.random(n_holes=1, rng=32).scale(s)
+            >>> image_in = np.zeros((s, s, 4), dtype=np.float32)
+            >>> image_out = self.draw_on(image_in, color='black')
+            >>> assert np.all(image_out[..., 0:3] == 0)
+            >>> assert not np.all(image_out[..., 3] == 1)
+            >>> assert not np.all(image_out[..., 3] == 0)
+
+        Example:
             >>> import kwimage
             >>> color = 'blue'
             >>> self = kwimage.Polygon.random(n_holes=1).scale(128)
             >>> image = np.zeros((128, 128), dtype=np.float32)
-            >>> # Test drawong on all channel + dtype combinations
+            >>> # Test drawing on all channel + dtype combinations
             >>> im3 = np.random.rand(128, 128, 3)
             >>> im_chans = {
             >>>     'im3': im3,
             >>>     'im1': kwimage.convert_colorspace(im3, 'rgb', 'gray'),
+            >>>     #'im0': im3[..., 0],
             >>>     'im4': kwimage.convert_colorspace(im3, 'rgb', 'rgba'),
             >>> }
             >>> inputs = {}
             >>> for k, im in im_chans.items():
-            >>>     inputs[k + '_01'] = (kwimage.ensure_float01(im.copy()), {'alpha': None})
-            >>>     inputs[k + '_255'] = (kwimage.ensure_uint255(im.copy()), {'alpha': None})
-            >>>     inputs[k + '_01_a'] = (kwimage.ensure_float01(im.copy()), {'alpha': 0.5})
-            >>>     inputs[k + '_255_a'] = (kwimage.ensure_uint255(im.copy()), {'alpha': 0.5})
+            >>>     inputs[k + '_f01'] = (kwimage.ensure_float01(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_u255'] = (kwimage.ensure_uint255(im.copy()), {'alpha': None})
+            >>>     inputs[k + '_f01_a'] = (kwimage.ensure_float01(im.copy()), {'alpha': 0.5})
+            >>>     inputs[k + '_u255_a'] = (kwimage.ensure_uint255(im.copy()), {'alpha': 0.5})
+            >>> # Check cases when image is/isnot written inplace Construct images
+            >>> # with different dtypes / channels and run a draw_on with different
+            >>> # keyword args.  For each combination, demo if that results in an
+            >>> # implace operation or not.
+            >>> rows = []
             >>> outputs = {}
             >>> for k, v in inputs.items():
             >>>     im, kw = v
             >>>     outputs[k] = self.draw_on(im, color=color, **kw)
+            >>>     inplace = outputs[k] is im
+            >>>     rows.append({'key': k, 'inplace': inplace})
+            >>> # xdoc: +REQUIRES(module:pandas)
+            >>> import pandas as pd
+            >>> df = pd.DataFrame(rows).sort_values('inplace')
+            >>> print(df.to_string())
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2, doclf=True)
@@ -1192,8 +1234,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # Test empty polygon draw
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.from_coco([])
+            >>> image_in = np.zeros((128, 128), dtype=np.float32)
+            >>> image_out = self.draw_on(image_in)
         """
         import kwimage
+
+        is_empty = len(self.data['exterior']) == 0
+        if is_empty:
+            if copy:
+                image = image.copy()
+            return image
+
         # return shape of contours to openCV contours
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
@@ -1206,52 +1262,75 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         cv_contours = self._to_cv_countours()
 
-        if alpha is None or alpha == 1.0:
+        if alpha == 1.0:
+            alpha = None
+
+        if alpha is None:
             # image = kwimage.ensure_uint255(image)
             image = kwimage.atleast_3channels(image, copy=copy)
-            rgba = kwimage.Color(color)._forimage(image)
         else:
             image = kwimage.ensure_float01(image)
             image = kwimage.ensure_alpha_channel(image)
-            rgba = kwimage.Color(color, alpha=alpha)._forimage(image)
 
+        color = kwimage.Color(color, alpha=alpha)._forimage(image)
         # print('--- B')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
         # print('rgba = {!r}'.format(rgba))
 
+        if facecolor is None:
+            if fill:
+                facecolor = color
+        elif facecolor is True:
+            facecolor = color
+        else:
+            facecolor = kwimage.Color(facecolor, alpha=alpha)._forimage(image)
+
         if fill:
             if alpha is None or alpha == 1.0:
                 # Modification happens inplace
-                image = cv2.fillPoly(image, cv_contours, rgba, line_type, shift=0)
+                image = cv2.fillPoly(image, cv_contours, facecolor, line_type, shift=0)
             else:
+                # FIXME: This is very slow when there are a lot of polygons to
+                # draw. An alternative is to draw all polygons on an empty
+                # canvas and then blend that canvas with the original. The
+                # downside is that the polygons wont blend together.
+                # This logic needs to happen outside of this scope at the
+                # PolygonList level.
                 orig = image.copy()
                 mask = np.zeros_like(orig)
-                mask = cv2.fillPoly(mask, cv_contours, rgba, line_type, shift=0)
+                mask = cv2.fillPoly(mask, cv_contours, facecolor, line_type, shift=0)
                 # TODO: could use add weighted
                 image = kwimage.overlay_alpha_images(mask, orig)
-                rgba = kwimage.Color(rgba)._forimage(image)
+                # facecolor = kwimage.Color(facecolor)._forimage(image)
 
         # print('--- C')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
         # print('rgba = {!r}'.format(rgba))
 
-        if border or True:
+        if edgecolor is None:
+            if border:
+                edgecolor = color
+        elif edgecolor is True:
+            edgecolor = color
+        else:
+            edgecolor = kwimage.Color(edgecolor, alpha=alpha)._forimage(image)
+
+        if edgecolor:
             thickness = 4
             contour_idx = -1
             if alpha is None or alpha == 1.0:
                 # Modification happens inplace
-                image = cv2.drawContours(image, cv_contours, contour_idx, rgba,
-                                         thickness, line_type)
+                image = cv2.drawContours(image, cv_contours, contour_idx,
+                                         edgecolor, thickness, line_type)
             else:
                 orig = image.copy()
                 mask = np.zeros_like(orig)
-                # rgba = tuple(rgba[0:3]) + (0.1,)
-                mask = cv2.drawContours(mask, cv_contours, contour_idx, rgba,
-                                        thickness, line_type)
+                mask = cv2.drawContours(mask, cv_contours, contour_idx,
+                                        edgecolor, thickness, line_type)
                 image = kwimage.overlay_alpha_images(mask, orig)
-                rgba = kwimage.Color(rgba)._forimage(image)
+                # edgecolor = kwimage.Color(edgecolor)._forimage(image)
 
         # image = kwimage.ensure_float01(image)[..., 0:3]
         # print('--- D')
@@ -1476,7 +1555,7 @@ class MultiPolygon(_generic.ObjectList):
     @property
     def area(self):
         """ Computes are via shapley conversion """
-        return self.to_shapley().area
+        return self.to_shapely().area
 
     @classmethod
     def random(self, n=3, n_holes=0, rng=None, tight=False):
@@ -1720,11 +1799,11 @@ class MultiPolygon(_generic.ObjectList):
     def swap_axes(self, inplace=False):
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
-    def draw_on(self, *args, **kwargs):
+    def draw_on(self, image, **kwargs):
         Polygon.draw_on.__doc__
         for item in self.data:
             if item is not None:
-                image = item.draw_on(*args, **kwargs)
+                image = item.draw_on(image, **kwargs)
         return image
 
     # def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0):
@@ -1845,6 +1924,33 @@ class PolygonList(_generic.ObjectList):
         return image
 
     def draw_on(self, *args, **kw):
+        """
+        Ignore:
+            >>> # Test that we can draw a lot of polygons quickly by default
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--slow)
+            >>> import kwimage
+            >>> s = 512
+            >>> canvas = kwimage.grab_test_image(dsize=(s, s))
+            >>> kwimage.ensure_float01(canvas)
+            >>> data = [kwimage.MultiPolygon.random().scale(s) for _ in ub.ProgIter(range(1), desc='gen poly')]
+            >>> #data = [kwimage.Polygon.random().scale(s) for _ in ub.ProgIter(range(5), desc='gen poly')]
+            >>> self = kwimage.PolygonList(data)
+            >>> with ub.Timer('regular draw'):
+            >>>     out_canvas1 = self.draw_on(canvas.copy(), fill=0, border=1)
+            >>> with ub.Timer('alpha draw'):
+            >>>     out_canvas2 = self.draw_on(canvas.copy(), alpha=0.5, fill=1, border=1, edgecolor='red')
+            >>> # Disabling fast-draw will make drawing multiples much slower
+            >>> with ub.Timer('alpha draw, nofast'):
+            >>>     out_canvas3 = self.draw_on(canvas.copy(), alpha=0.5, fastdraw=False, fill=1, border=1, edgecolor='red')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> kwplot.imshow(out_canvas1, pnum=(1, 3, 1), fnum=1)
+            >>> kwplot.imshow(out_canvas2, pnum=(1, 3, 2), fnum=1)
+            >>> kwplot.imshow(out_canvas3, pnum=(1, 3, 3), fnum=1)
+        """
         Polygon.draw_on.__doc__
         # ^ docstring
         return super().draw_on(*args, **kw)

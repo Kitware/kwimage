@@ -162,23 +162,58 @@ class ObjectList(Spatial):
         return patches
 
     def draw_on(self, image, **kwargs):
+        """
+        TODO:
+            document fastdraw - it flattens all subobjects into the same layer
+            and then does any alpha blending. Is there a better name?
+        """
+        import kwimage
+
+        # Take care of data prep before looping
+        alpha = kwargs.get('alpha', None)
+        copy = kwargs.pop('copy', False)
+
+        has_float_alpha = alpha is not None and alpha < 1.0
+
+        if has_float_alpha:
+            image = kwimage.ensure_float01(image, copy=copy)
+        elif copy:
+            image = image.copy()
+
+        # Check if we want to do the fastdraw hack
+        fastdraw = kwargs.pop('fastdraw', 'auto')
+        if fastdraw == 'auto':
+            fastdraw = has_float_alpha
+
+        if fastdraw:
+            # Fast draw hack will remove the alpha from the subcalls to
+            # draw_on, instead we will draw with full alpha on an empty canvas
+            # and then blend together everything at the end.
+            orig_canvas = image
+            overlay_canvas = np.zeros_like(image, shape=(image.shape[0:2] + (4,)))
+            image = overlay_canvas
+            kwargs['alpha'] = None
 
         # Handle per-instance arguments
         # If color is given an it corresponds to each subitem
         # then pass the appropriate arg to each subitem
         perinstance = [{} for _ in range(len(self.data))]
-        if 'color' in kwargs:
-            color = kwargs.pop('color', None)
-            if (ub.iterable(color) and len(color) == len(self.data) and
-                 len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
-                for d, c in zip(perinstance, color):
-                    d['color'] = c
-            else:
-                kwargs['color'] = color
+        selflen = len(self.data)
+        _handle_perinstance_color_arg(selflen, perinstance, kwargs, 'color')
+        _handle_perinstance_color_arg(selflen, perinstance, kwargs, 'edgecolor')
+        _handle_perinstance_color_arg(selflen, perinstance, kwargs, 'facecolor')
 
         for item, instkw in zip(self.data, perinstance):
             if item is not None:
                 image = item.draw_on(image=image, **kwargs, **instkw)
+
+        if fastdraw:
+            # Blend the empty canvas back onto
+            overlay_canvas = image
+            overlay_canvas[..., 3] *= alpha
+            image = kwimage.overlay_alpha_images(overlay_canvas, orig_canvas)
+            pass
+
         return image
 
     def tensor(self, device=ub.NoParam):
@@ -227,6 +262,23 @@ class ObjectList(Spatial):
     @classmethod
     def random(cls):
         raise NotImplementedError
+
+
+def _handle_perinstance_color_arg(selflen, perinstance, kwargs, argname):
+    """
+    helper to expand any color argument into multiple color arguments for each
+    instance handled by the generic draw on method. This allows the user to
+    specify a list of colors for each member, or a single color to be applied
+    to everyone.
+    """
+    if argname in kwargs:
+        color = kwargs.pop(argname, None)
+        if (ub.iterable(color) and len(color) == selflen and
+             len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
+            for d, c in zip(perinstance, color):
+                d[argname] = c
+        else:
+            kwargs[argname] = color
 
 
 def _consistent_dtype_fixer(data):
