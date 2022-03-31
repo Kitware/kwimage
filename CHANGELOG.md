@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.4 - Unreleased
 
+### Fixed
+* Bug in `Detections.draw_on(..., color='classes')` when a class is unknown
+* Added workaround to cv2 bug to `Polygon.draw_on` when polygon coordinates are
+  too large. Currently clips the polygon and emits a warning, this prevents
+  crashes, but results may not be correct.
+
 
 ## Version 0.8.3 - Released 2022-03-28
 

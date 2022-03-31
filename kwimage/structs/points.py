@@ -640,9 +640,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> print('orig = {!r}'.format(orig))
             >>> new_name = self._to_coco(style='new-name')
             >>> print('new_name = {}'.format(ub.repr2(new_name, nl=-1)))
-            >>> # xdoctest: +REQUIRES(module:ndsampler)
-            >>> import ndsampler
-            >>> self.meta['classes'] = ndsampler.CategoryTree.coerce(self.meta['classes'])
+            >>> # xdoctest: +REQUIRES(module:kwcoco)
+            >>> import kwcoco
+            >>> self.meta['classes'] = kwcoco.CategoryTree.coerce(self.meta['classes'])
             >>> new_id = self._to_coco(style='new-id')
             >>> print('new_id = {}'.format(ub.repr2(new_id, nl=-1)))
         """
@@ -755,9 +755,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> Points.from_coco(coco_kpts4, classes=[])
 
         Example:
-            >>> # xdoctest: +REQUIRES(module:ndsampler)
-            >>> import ndsampler
-            >>> classes = ndsampler.CategoryTree.from_coco([
+            >>> # xdoctest: +REQUIRES(module:kwcoco)
+            >>> import kwcoco
+            >>> classes = kwcoco.CategoryTree.from_coco([
             >>>     {'name': 'mouth', 'id': 2}, {'name': 'left-hand', 'id': 3}, {'name': 'right-hand', 'id': 5}
             >>> ])
             >>> coco_kpts = [
@@ -807,7 +807,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         try:
                             cidx = classes.id_to_idx[cid]
                         except AttributeError:
-                            raise TypeError('classes needs to be a ndsampler.CategoryTree to parse keypoint_category_id')
+                            raise TypeError('classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id')
                     elif 'keypoint_category' in kpdict:
                         assert classes is not None
                         cname = kpdict['keypoint_category']
@@ -824,7 +824,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         try:
                             cidx = classes.id_to_idx[cid]
                         except AttributeError:
-                            raise TypeError('classes needs to be a ndsampler.CategoryTree to parse keypoint_category_id')
+                            raise TypeError('classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id')
                     elif 'category' in kpdict:
                         if warn:
                             warnings.warn('Keypoints got category, but we would prefer keypoint_category')
