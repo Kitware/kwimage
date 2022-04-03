@@ -773,7 +773,7 @@ class _BoxConversionMixins(object):
         """
         slices_list = []
         for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
-            if endpoint:
+            if not endpoint:
                 br_x = br_x + 1
                 br_y = br_y + 1
             sl = (slice(tl_y, br_y), slice(tl_x, br_x))
