@@ -13,6 +13,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   crashes, but results may not be correct.
 
 
+### Changed
+* `Boxes.from_slice` no longer handles wraparound slices as it is not well
+  defined and previous behavior was buggy.
+
+
 ## Version 0.8.3 - Released 2022-03-28
 
 ### Added

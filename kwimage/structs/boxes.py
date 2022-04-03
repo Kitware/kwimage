@@ -616,7 +616,7 @@ class _BoxConversionMixins(object):
         return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
 
     @classmethod
-    def from_slice(Boxes, slices, shape=None):
+    def from_slice(Boxes, slices, shape=None, clip=True, endpoint=True):
         """
         Creates a box from a 2D slice
 
@@ -630,9 +630,24 @@ class _BoxConversionMixins(object):
                 items are a slice in the y-dimension and x-dimension.
 
             shape (Tuple[int, int]): the height / width of the canvas
-                the slices would be applied to. This is only necessary to
-                specify if the bounds of the slice are undefined or need to be
-                clipped.
+                the slices would be applied to. This is only necessary if clip
+                is True to specify if the bounds of the slice are undefined or
+                need to be clipped.
+
+            clip (bool):
+                if True, assume that the box should be positive.
+                Thus, we clip to 0 and the "shape" if specified.
+
+            endpoint (bool):
+                if True, the endpoint of this slice is included as the
+                bottom/right box coordinate. If False we subtract 1 such that
+                box coordinates lie on pixels specified by the slice.
+
+        Notes:
+            * When using this function the user needs to carefully consider
+              if clip should be True or False in their use case.
+
+            * The bottom-right side of the box includes the "stop" coordinate.
 
         Returns:
             Boxes: a Boxes object containing one box corresponding to the
@@ -655,6 +670,20 @@ class _BoxConversionMixins(object):
             >>> # Only one slice
             >>> boxes = Boxes.from_slice(slice(2, 5), shape=(10, 10))
             >>> assert np.all(boxes.data[0] == [0, 2, 10, 5])
+
+        Example:
+            >>> import kwimage
+            >>> slices = (slice(-10, 10), slice(-11, 17))
+            >>> grid = ub.named_product({
+            >>>     'clip': [True, False],
+            >>>     'shape': [(5, 5), None],
+            >>> })
+            >>> results = {}
+            >>> for kwargs in grid:
+            >>>     key = ub.repr2(kwargs, compact=1)
+            >>>     box = kwimage.Boxes.from_slice(slices, **kwargs)
+            >>>     results[key] = box
+            >>> print('results = {}'.format(ub.repr2(results, nl=1, align=':')))
         """
         # Rectify input slices to agree with a 2D canvas
         if slices is None:
@@ -671,11 +700,15 @@ class _BoxConversionMixins(object):
         rb_x = x_sl.stop
         rb_y = y_sl.stop
 
-        if tl_x is None or tl_x < 0:
+        if tl_x is None:
             tl_x = 0
 
-        if tl_y is None or tl_y < 0:
+        if tl_y is None:
             tl_y = 0
+
+        if clip:
+            tl_y = max(tl_y, 0)
+            tl_x = max(tl_x, 0)
 
         if shape is not None:
             height, width = shape[0:2]
@@ -686,30 +719,63 @@ class _BoxConversionMixins(object):
             if width is None:
                 raise Exception('shape required for unbounded slices')
             rb_x = width
-        elif rb_x < 0:
-            if width is None:
-                raise Exception('shape required for unbounded slices')
-            rb_x = width + rb_x
+        # elif rb_x < 0:
+        #     if clip:
+        #         raise ValueError('Cannot have negative right side when clip=True')
+        #         if width is None:
+        #             raise Exception('shape required for unbounded slices')
+        #         rb_x = width + rb_x
 
         if rb_y is None:
             if height is None:
                 raise Exception('shape required for unbounded slices')
             rb_y = height
-        elif rb_y < 0:
-            if height is None:
-                raise Exception('shape required for unbounded slices')
-            rb_y = height + rb_y
+        # elif rb_y < 0:
+        #     if not clip:
+        #         if height is None:
+        #             raise Exception('shape required for unbounded slices')
+        #         rb_y = height + rb_y
+
+        if not endpoint:
+            rb_x = rb_x - 1
+            rb_y = rb_y - 1
+
+        if rb_x < tl_x:
+            raise ValueError('Invalid x slice {rb_x=} {tl_x=}')
+        if rb_y < tl_y:
+            raise ValueError('Invalid y slice {rb_y=} {tl_y=}')
 
         ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
         box = Boxes(ltrb, 'ltrb')
 
-        if shape is not None:
-            box.clip(0, 0, width, height, inplace=True)
+        if clip:
+            if shape is not None:
+                box.clip(0, 0, width, height, inplace=True)
         return box
 
-    def to_slices(self):
+    def to_slices(self, endpoint=True):
+        """
+        Args:
+            endpoint (bool):
+                Indicates if the box specifies the slice endpoint.
+                The box specifies the slice endpoint if its bottom/right corner
+                should *not* be in the pixels extracted from the slice.
+
+                if True, we assume the bot/right corner of the box specifies
+                the stop point of the slice (i.e is not included).  if False,
+                we add 1 from the bot/right to get the slice stop point such
+                that the bot/right pixel will be included in the slice.
+
+                +--------------+
+                l              r <- box coords
+                s              t <- endpoint=True
+                s               t <- endpoint=False
+        """
         slices_list = []
         for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
+            if endpoint:
+                br_x = br_x + 1
+                br_y = br_y + 1
             sl = (slice(tl_y, br_y), slice(tl_x, br_x))
             slices_list.append(sl)
         return slices_list
