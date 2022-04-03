@@ -185,6 +185,23 @@ class _DetDrawMixin:
             >>> kwplot.show_if_requested()
 
         Ignore:
+            # xdoc: +REQUIRES(module:kwplot)
+            # xdoc: +REQUIRES(--profile)
+            import kwplot
+
+            import kwimage
+            self = kwimage.Detections.random(num=2, scale=512, rng=0, keypoints=True, segmentations=True)
+            image = (np.random.rand(512, 512)).astype(np.float32)
+            self = self.scale(2e6)
+            image2 = self.draw_on(image, color='blue')
+
+            >>> # xdoc: +REQUIRES(--show)
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
+
+        Ignore:
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Detections.draw_on))
         """
@@ -235,9 +252,10 @@ class _DetDrawMixin:
         # Draw each category as a different color
         if color == 'classes':
             import kwimage
+            backup_color = 'blue'
             class_idxs = self.class_idxs
             if class_idxs is None:
-                color = 'blue'
+                color = backup_color
             else:
                 classes = self.classes
                 if classes is None:
@@ -266,7 +284,8 @@ class _DetDrawMixin:
                         cidx_to_color[cidx] = c
                         # kwimage.Color(c).as01()
 
-                color = [cidx_to_color[cidx] for cidx in class_idxs]
+                color = [backup_color if cidx is None else cidx_to_color[cidx]
+                         for cidx in class_idxs]
         return color
 
     def _make_alpha(self, alpha):

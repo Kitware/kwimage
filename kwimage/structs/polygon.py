@@ -11,7 +11,8 @@ import skimage
 import numbers
 import ubelt as ub
 import numpy as np
-from . import _generic
+from kwimage.structs import _generic
+# from . import _generic
 
 try:
     from xdev import profile
@@ -740,8 +741,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         data = self.data
         coords = [data['exterior']] + data['interiors']
-        cv_contours = [np.expand_dims(c.data.astype(int), axis=1)
-                       for c in coords]
+        cv_contour_ = [np.expand_dims(c.data, axis=1) for c in coords]
+        WORKAROUND_OPENCV_5473 = 1
+        if WORKAROUND_OPENCV_5473:
+            max_coord = (1 << 16) // 2
+            for c in cv_contour_:
+                if np.any(c > max_coord):
+                    import warnings
+                    warnings.warn('Drawing a large polygon with cv2 has bugs')
+            cv_contour_ = [c.clip(-max_coord, max_coord) for c in cv_contour_]
+        cv_contours = [c.astype(np.int32) for c in cv_contour_]
         return cv_contours
 
     @classmethod
@@ -1241,6 +1250,19 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> self = Polygon.from_coco([])
             >>> image_in = np.zeros((128, 128), dtype=np.float32)
             >>> image_out = self.draw_on(image_in)
+
+        Example:
+            >>> # Test stupid large polygon draw
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> from kwimage.structs.polygon import _generic
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random().scale(2e11)
+            >>> image = np.zeros((128, 128), dtype=np.float32)
+            >>> image_out = self.draw_on(image)
+
+        Ignore:
+            import xdev
+            globals().update(xdev.get_func_kwargs(kwimage.Polygon.draw_on))
         """
         import kwimage
 
@@ -1249,6 +1271,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             if copy:
                 image = image.copy()
             return image
+
+        # Note: opencv#5473
+        # https://github.com/opencv/opencv/issues/5473
+        # https://stackoverflow.com/questions/37392128/wrong-result-using-function-fillpoly-in-opencv-for-very-large-images
+        # There is a bug where polygons do not draw correctly over the size
+        # of 2 ** 16
 
         # return shape of contours to openCV contours
         dtype_fixer = _generic._consistent_dtype_fixer(image)
@@ -1289,6 +1317,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         if fill:
             if alpha is None or alpha == 1.0:
                 # Modification happens inplace
+                # NOTE: This takes a very long time if contours have
+                # large coordinates (even if the image is small)
                 image = cv2.fillPoly(image, cv_contours, facecolor, line_type, shift=0)
             else:
                 # FIXME: This is very slow when there are a lot of polygons to

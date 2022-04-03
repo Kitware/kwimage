@@ -197,13 +197,13 @@ class ObjectList(Spatial):
         # Handle per-instance arguments
         # If color is given an it corresponds to each subitem
         # then pass the appropriate arg to each subitem
-        perinstance = [{} for _ in range(len(self.data))]
+        instkw_list = [{} for _ in range(len(self.data))]
         selflen = len(self.data)
-        _handle_perinstance_color_arg(selflen, perinstance, kwargs, 'color')
-        _handle_perinstance_color_arg(selflen, perinstance, kwargs, 'edgecolor')
-        _handle_perinstance_color_arg(selflen, perinstance, kwargs, 'facecolor')
+        _handle_perinstance_color_arg(selflen, instkw_list, kwargs, 'color')
+        _handle_perinstance_color_arg(selflen, instkw_list, kwargs, 'edgecolor')
+        _handle_perinstance_color_arg(selflen, instkw_list, kwargs, 'facecolor')
 
-        for item, instkw in zip(self.data, perinstance):
+        for item, instkw in zip(self.data, instkw_list):
             if item is not None:
                 image = item.draw_on(image=image, **kwargs, **instkw)
 
@@ -264,7 +264,7 @@ class ObjectList(Spatial):
         raise NotImplementedError
 
 
-def _handle_perinstance_color_arg(selflen, perinstance, kwargs, argname):
+def _handle_perinstance_color_arg(selflen, instkw_list, kwargs, argname):
     """
     helper to expand any color argument into multiple color arguments for each
     instance handled by the generic draw on method. This allows the user to
@@ -275,7 +275,7 @@ def _handle_perinstance_color_arg(selflen, perinstance, kwargs, argname):
         color = kwargs.pop(argname, None)
         if (ub.iterable(color) and len(color) == selflen and
              len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
-            for d, c in zip(perinstance, color):
+            for d, c in zip(instkw_list, color):
                 d[argname] = c
         else:
             kwargs[argname] = color
