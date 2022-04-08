@@ -522,6 +522,15 @@ class Affine(Projective):
         ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
         return ecc
 
+    def to_shapely(self):
+        """
+        Returns a matrix suitable for shapely.affinity.affine_transform
+        """
+        # from shapely.affinity import affine_transform
+        a, b, x, d, e, y = self.matrix.ravel()[0:6]
+        sh_transform = (a, b, d, e, x, y)
+        return sh_transform
+
     @classmethod
     def scale(cls, scale):
         """

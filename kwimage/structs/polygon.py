@@ -463,15 +463,23 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             data = data.data
         if meta is None:
             meta = {}
+
+        # TODO: Add format option where format can be dict, or shapley
         self.data = data
         self.meta = meta
 
     @property
     def exterior(self):
+        # if self.format = 'dict':
+        # if self.format = 'shapely':
+        # self.data.exterior.coords
         return self.data['exterior']
 
     @property
     def interiors(self):
+        # if self.format = 'dict':
+        # if self.format = 'shapely':
+        # [d.coords for d in z.interiors]
         return self.data['interiors']
 
     def __nice__(self):
@@ -483,9 +491,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Create a circular polygon
 
         Example:
+            >>> import kwimage
             >>> xy = (0.5, 0.5)
             >>> r = .3
-            >>> poly = Polygon.circle(xy, r)
+            >>> poly = kwimage.Polygon.circle(xy, r)
         """
         tau = 2 * np.pi
         theta = np.linspace(0, tau, resolution)
@@ -1407,12 +1416,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> self = Polygon.random(n_holes=1)
             >>> self = self.scale(100)
             >>> # xdoc: +REQUIRES(--show)
-            >>> self.draw()
+            >>> kwargs = dict(edgecolor='orangered', facecolor='dodgerblue', linewidth=10)
+            >>> self.draw(**kwargs)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> from matplotlib import pyplot as plt
             >>> kwplot.figure(fnum=2)
-            >>> self.draw(setlim=True)
+            >>> self.draw(setlim=True, **kwargs)
         """
         import matplotlib as mpl
         from matplotlib.patches import Path
@@ -1472,12 +1482,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                     edgecolor[1] -= .1
                     edgecolor[2] -= .1
                     edgecolor = [min(1, max(0, c)) for c in edgecolor]
-                kw['edgecolor'] = edgecolor
+            kw['edgecolor'] = edgecolor
         else:
             kw['linewidth'] = 0
+        kw['facecolor'] = facecolor
+        print('kw = {!r}'.format(kw))
 
-        patch = mpl.patches.PathPatch(path, alpha=alpha, facecolor=color,
-                                      fill=fill, **kw)
+        patch = mpl.patches.PathPatch(path, alpha=alpha, fill=fill, **kw)
         ax.add_patch(patch)
 
         if vertex:

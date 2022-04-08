@@ -504,7 +504,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         elif isinstance(transform, _generic.ARRAY_TYPES):
             matrix = transform
         elif isinstance(transform, kwimage.Affine):
-            matrix = transform.matrix
+            matrix = np.asarray(transform)
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params
         else:
