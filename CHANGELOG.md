@@ -14,7 +14,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Added workaround to cv2 bug to `Polygon.draw_on` when polygon coordinates are
   too large. Currently clips the polygon and emits a warning, this prevents
   crashes, but results may not be correct.
-* Fix issue in `Polygon.draw` where edges were not respected
+* Fix issue in `Polygon.draw` where facecolor and edgecolor were not respected.
+* Added `to_shapely` for `kwimage.Affine`
 
 
 ### Changed

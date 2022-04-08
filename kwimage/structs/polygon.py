@@ -1381,8 +1381,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,
              border=None, linewidth=None, edgecolor=None, facecolor=None,
-             fill=True, vertex=False):
-        """
+             fill=True, vertex=False, vertexcolor=None):
+        r"""
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
 
@@ -1390,18 +1390,36 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             setlim (bool): if True ensures the limits of the axes contains the
                 polygon
 
-            color (str | Tuple): coercable color
+            color (str | Tuple): coercable color.
+                Default color if specific colors are not given.
 
             alpha (float): fill transparency
+
+            fill (bool):
+                if True fill the polygon with facecolor, otherwise
+                just draw the border if linewidth > 0
 
             setlim (bool): if True, modify the x and y limits of the matplotlib
                 axes such that the polygon is can be seen.
 
             border (bool, default=False):
                 if True, draws an edge border on the polygon.
+                DEPRECATED. Use linewidth instead.
 
             linewidth (bool):
                 width of the border
+
+            edgecolor (Coercable[Color]):
+                color of the border when linewidth > 0
+
+            facecolor (Coercable[Color]):
+                color of the border when linewidth > 0
+
+            vertex (float):
+                if non-zero, draws vertexes on the polygon with this radius.
+
+            vertexcolor (Coercable[Color]):
+                color of vertexes
 
         Returns:
             matplotlib.patches.PathPatch | None :
@@ -1423,6 +1441,40 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> from matplotlib import pyplot as plt
             >>> kwplot.figure(fnum=2)
             >>> self.draw(setlim=True, **kwargs)
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(n_holes=1, rng=33202)
+            >>> # Test over a range of parameters
+            >>> basis = {
+            >>>     'linewidth': [0, 4],
+            >>>     'edgecolor': [None, 'gold'],
+            >>>     'facecolor': ['purple'],
+            >>>     'fill': [True, False],
+            >>>     'alpha': [1.0, 0.5],
+            >>>     'vertex': [0, 0.01],
+            >>>     'vertexcolor': ['green'],
+            >>> }
+            >>> grid = list(ub.named_product(basis))
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> pnum_ = kwplot.PlotNums(nSubplots=len(grid))
+            >>> for kwargs in grid:
+            >>>     fig = kwplot.figure(fnum=1, pnum=pnum_())
+            >>>     ax = fig.gca()
+            >>>     self.draw(ax=ax, **kwargs)
+            >>>     title = ub.repr2(kwargs, compact=True)
+            >>>     title = '\n'.join(textwrap.wrap(
+            >>>         title.replace(',', ' '), break_long_words=False,
+            >>>         width=60))
+            >>>     ax.set_title(title, fontdict={'fontsize': 8})
+            >>>     ax.grid(False)
+            >>>     ax.set_xticks([])
+            >>>     ax.set_yticks([])
+            >>> fig.subplots_adjust(wspace=0.5, hspace=0.3, bottom=0.001, top=0.97)
+            >>> kwplot.show_if_requested()
         """
         import matplotlib as mpl
         from matplotlib.patches import Path
@@ -1492,9 +1544,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         ax.add_patch(patch)
 
         if vertex:
-            data['exterior'].draw(color=color, radius=vertex)
+            if vertexcolor is None:
+                vertexcolor = color
+            data['exterior'].draw(color=vertexcolor, radius=vertex)
             for hole in interiors:
-                hole.draw(color=color, radius=vertex)
+                hole.draw(color=vertexcolor, radius=vertex)
 
         if setlim:
             x1, y1, x2, y2 = self.to_boxes().to_ltrb().data[0]
