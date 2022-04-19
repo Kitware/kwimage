@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.5 - Unreleased
 
+### Added:
+* `kwimage.Affine.to_shapely` method for converting affine transforms to shapely-style 
+
+### Fixed
+* Fix issue in `Polygon.draw` where facecolor and edgecolor were not respected.
+* Added `to_shapely` for `kwimage.Affine`
+* Issue in `kwimage.load_image_shape` when using pathlib.Path
+
 
 ## Version 0.8.4 - Released 2022-04-02
 
@@ -14,8 +22,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Added workaround to cv2 bug to `Polygon.draw_on` when polygon coordinates are
   too large. Currently clips the polygon and emits a warning, this prevents
   crashes, but results may not be correct.
-* Fix issue in `Polygon.draw` where facecolor and edgecolor were not respected.
-* Added `to_shapely` for `kwimage.Affine`
 
 
 ### Changed
