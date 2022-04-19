@@ -533,13 +533,13 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         >>> recon1_3a = kwimage.imread(fpath1, overview=-1, backend='gdal')
         >>> recon1_3b = kwimage.imread(fpath1, overview=2, backend='gdal')
         >>> recon1_0 = kwimage.imread(fpath1, overview=0, backend='gdal')
-        >>> assert recon1_0.shape == (434, 578, 3)
+        >>> assert recon1_0.shape == (868, 1156, 3)
         >>> assert recon1_3a.shape == (109, 145, 3)
         >>> assert recon1_3b.shape == (109, 145, 3)
         >>> recon2_3a = kwimage.imread(fpath2, overview=-1, backend='gdal')
         >>> recon2_3b = kwimage.imread(fpath2, overview=2, backend='gdal')
         >>> recon2_0 = kwimage.imread(fpath2, overview=0, backend='gdal')
-        >>> assert recon2_0.shape == (434, 578)
+        >>> assert recon2_0.shape == (868, 1156)
         >>> assert recon2_3a.shape == (109, 145)
         >>> assert recon2_3b.shape == (109, 145)
         >>> # TODO: test an image with a color table
@@ -1049,9 +1049,19 @@ def load_image_shape(fpath):
             time per loop: best=62.967 µs, mean=63.991 ± 0.8 µs
         Timed PIL for: 100 loops, best of 10
             time per loop: best=46.640 µs, mean=47.314 ± 0.4 µs
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> import ubelt as ub
+        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache')
+        >>> fpath = dpath / 'foo.tif'
+        >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
+        >>> shape = kwimage.load_image_shape(fpath)
+        >>> assert shape == (64, 64, 3)
     """
     from PIL import Image
     pil_img = None
+    fpath = os.fspath(fpath)
     try:
         pil_img = Image.open(fpath)
         width, height = pil_img.size
@@ -1608,17 +1618,18 @@ def _imread_svg(fpath):
         https://pypi.org/project/svglib/
 
     Ignore:
+        # xdoctest: +REQUIRES(module:svglib)
+        # xdoctest: +REQUIRES(module:reportlab)
+        from kwimage.im_io import *  # NOQA
+        from kwimage.im_io import _imread_svg  # NOQA
+        import kwimage
         fpath = ub.grabdata('https://upload.wikimedia.org/wikipedia/commons/a/aa/Philips_PM5544.svg')
+        # This doesnt work quite how I would expect it to.
+        imdata, _, _ = _imread_svg(fpath)
         image = kwimage.imread(fpath)
         import kwplot
         kwplot.autompl()
         kwplot.imshow(image)
-
-        image = kwimage.grab_test_image('pm5644')
-        import kwplot
-        kwplot.autompl()
-        kwplot.imshow(image)
-
     """
     from reportlab.graphics import renderPM
     from svglib.svglib import svg2rlg
