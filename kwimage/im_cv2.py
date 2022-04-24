@@ -1184,6 +1184,31 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
 
+    Example:
+        >>> # Demo how of how we also handle masked arrays
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> _image = kwimage.grab_test_image('pm5644')
+        >>> _image = kwimage.ensure_float01(_image)
+        >>> _image[100:200, 400:700] = np.nan
+        >>> mask = np.isnan(_image)
+        >>> data = np.nan_to_num(_image)
+        >>> image = np.ma.MaskedArray(data=data, mask=mask)
+        >>> transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
+        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
+        >>> assert isinstance(warped1, np.ma.MaskedArray)
+        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> print('warped1.shape = {!r}'.format(warped1.shape))
+        >>> print('warped2.shape = {!r}'.format(warped2.shape))
+        >>> assert warped2.shape == warped1.shape
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nRows=1, nCols=2)
+        >>> kwplot.imshow(warped1, pnum=pnum_(), title='antialias=True')
+        >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
+        >>> kwplot.show_if_requested()
+
     Ignore:
         transform_ = transform
         params = transform_.decompose()
@@ -1200,6 +1225,15 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     """
     from kwimage.transform import Affine
     import kwimage
+
+    if isinstance(image, np.ma.MaskedArray):
+        mask = image.mask
+        orig_mask_dtype = mask.dtype
+        mask = mask.astype(np.uint8)
+    else:
+        mask = None
+
+    is_masked = mask is not None
 
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
@@ -1240,15 +1274,22 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         'antialias_info': None,
     }
 
+    _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
+                           borderMode, borderValue)
+
     if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
         # Handle case where the input image has no size or the destination
         # canvas has no size. In either case we just return empty data
         output_shape = (dsize[1], dsize[0]) + image.shape[2:]
         result = np.full(
             shape=output_shape, fill_value=borderValue, dtype=image.dtype)
+        if is_masked:
+            result_mask = np.full(
+                shape=output_shape, fill_value=False, dtype=mask.dtype)
     elif not antialias:
-        result = _try_warp(image, transform_, large_warp_dim, dsize, max_dsize,
-                           new_origin, flags, borderMode, borderValue)
+        result = _try_warp(image, transform_, *_try_warp_tail_args)
+        if is_masked:
+            result_mask = _try_warp(mask, transform_, *_try_warp_tail_args)
     else:
         # Decompose the affine matrix into its 6 core parameters
         params = transform_.decompose()
@@ -1256,9 +1297,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            result = _try_warp(image, transform_, large_warp_dim, dsize,
-                               max_dsize, new_origin, flags, borderMode,
-                               borderValue)
+            result = _try_warp(image, transform_, *_try_warp_tail_args)
+            if is_masked:
+                result_mask = _try_warp(mask, transform_, *_try_warp_tail_args)
         else:
             # At least one dimension is downsampled
             """
@@ -1274,20 +1315,28 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             noscale_warp = Affine.affine(**ub.dict_diff(params, {'scale'}))
 
             # Execute part of the downscale with iterative pyramid downs
-            downscaled, residual_sx, residual_sy = _prepare_downscale(
-                image, sx, sy)
+            import xdev
+            with xdev.embed_on_exception_context:
+                downscaled, residual_sx, residual_sy = _prepare_downscale(
+                    image, sx, sy)
 
-            # Compute the transform from the downsampled image to the destination
-            rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
+                # Compute the transform from the downsampled image to the destination
+                rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
 
-            info['antialias_info'] = {
-                'noscale_warp': noscale_warp,
-                'rest_warp': rest_warp,
-            }
+                info['antialias_info'] = {
+                    'noscale_warp': noscale_warp,
+                    'rest_warp': rest_warp,
+                }
 
-            result = _try_warp(downscaled, rest_warp, large_warp_dim, dsize,
-                               max_dsize, new_origin, flags, borderMode,
-                               borderValue)
+                result = _try_warp(downscaled, rest_warp, *_try_warp_tail_args)
+
+                if is_masked:
+                    downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
+                    result_mask = _try_warp(downscaled_mask, rest_warp, *_try_warp_tail_args)
+
+    if is_masked:
+        result_mask = result_mask.astype(orig_mask_dtype)
+        result = np.ma.array(result, mask=result_mask)
 
     if return_info:
         return result, info
@@ -1300,6 +1349,10 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
     """
     Helper for warp_affine
     """
+
+    if not image.flags['C_CONTIGUOUS']:
+        image = np.ascontiguousarray(image)
+
     if large_warp_dim == 'auto':
         # this is as close as we can get to actually discovering SHRT_MAX since
         # it's not introspectable through cv2.  numpy and cv2 could be pointing

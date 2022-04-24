@@ -1538,7 +1538,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         else:
             kw['linewidth'] = 0
         kw['facecolor'] = facecolor
-        print('kw = {!r}'.format(kw))
 
         patch = mpl.patches.PathPatch(path, alpha=alpha, fill=fill, **kw)
         ax.add_patch(patch)

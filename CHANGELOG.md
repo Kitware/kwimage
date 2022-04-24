@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.6 - Unreleased
 
+### Added:
+* Intention: ndarray functions in kwimage and kwarray should respect masked arrays.
+
 
 ## Version 0.8.5 - Released 2022-04-19
 
