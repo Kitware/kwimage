@@ -560,6 +560,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         _chosen_resize = _regular_resize
 
     def _patched_resize(img, scale, dsize, interpolation):
+        img = _cv2_imputation(img)
         sx, sy = scale
         num_chan = im_core.num_channels(img)
         if num_chan > 512 or (num_chan > 4 and interpolation == cv2.INTER_AREA):
@@ -871,7 +872,7 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
             sigma_x, sigma_y = sigma
 
     if kernel is None:
-        USE_CV2_DEF = 0
+        # USE_CV2_DEF = 0
         if autokernel_mode == 'zero':
             # When 0 computed internally via cv2
             k_x = k_y = 0
@@ -892,8 +893,8 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
             sa = sym.Rational('3 / 10') * ((k - 1) / 2 - 1) + sym.Rational('8 / 10')
             sym.solve(sym.Eq(s, sa), k)
             """
-            k_x = max(3, round(20 * sigma_x / 3 - 7/3)) | 1
-            k_y = max(3, round(20 * sigma_y / 3 - 7/3)) | 1
+            k_x = max(3, round(20 * sigma_x / 3 - 7 / 3)) | 1
+            k_y = max(3, round(20 * sigma_y / 3 - 7 / 3)) | 1
         else:
             raise KeyError(autokernel_mode)
     sigma = (sigma_x, sigma_y)
@@ -972,6 +973,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         k_x, k_y = 0, 0
 
     borderType = _coerce_border(border_mode)
+    image = _cv2_imputation(image)
     blurred = cv2.GaussianBlur(
         image, (k_x, k_y), sigmaX=sigma_x, sigmaY=sigma_y,
         borderType=borderType, dst=dst
@@ -1349,9 +1351,7 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
     """
     Helper for warp_affine
     """
-
-    if not image.flags['C_CONTIGUOUS']:
-        image = np.ascontiguousarray(image)
+    image = _cv2_imputation(image)
 
     if large_warp_dim == 'auto':
         # this is as close as we can get to actually discovering SHRT_MAX since
@@ -1383,6 +1383,12 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
         return _large_warp(image, transform_, dsize, max_dsize,
                            new_origin, flags, borderMode,
                            borderValue, pieces_per_dim)
+
+
+def _cv2_imputation(image):
+    if not image.flags['C_CONTIGUOUS']:
+        image = np.ascontiguousarray(image)
+    return image
 
 
 def _large_warp(image,
@@ -1777,6 +1783,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
     else:
         raise TypeError(type(mode))
 
+    data = _cv2_imputation(data)
     new = cv2.morphologyEx(
         data, op=morph_mode, kernel=kernel, iterations=iterations)
     return new

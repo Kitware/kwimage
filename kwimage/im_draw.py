@@ -1115,18 +1115,11 @@ def nodata_checkerboard(canvas, square_shape=8):
         >>> kwplot.show_if_requested()
     """
     is_masked = isinstance(canvas, np.ma.MaskedArray)
-
-    ma_mask = None
-    nan_mask = None
     masks = []
-
     if is_masked:
-        ma_mask = canvas.mask
-        masks.append(ma_mask)
-
+        masks.append(canvas.mask)
     if canvas.dtype.kind == 'f':
-        nan_mask = np.isnan(canvas)
-        masks.append(nan_mask)
+        masks.append(np.isnan(canvas))
 
     if masks:
         invalid_mask = np.logical_or.reduce(masks)
