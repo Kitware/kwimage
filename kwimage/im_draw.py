@@ -132,7 +132,8 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     import kwimage
 
     if 'color' not in kwargs:
-        kwargs['color'] = 'red'
+        # kwargs['color'] = 'red'
+        kwargs['color'] = 'strawberry'
 
     # Get the color that is compatible with the input image encoding
     if img is None or isinstance(img, dict):
@@ -690,7 +691,7 @@ def make_orimask(radians, mag=None, alpha=1.0):
 
 
 def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
-                      color='red', thickness=1, tipLength=0.1, line_type='aa'):
+                      color='strawberry', thickness=1, tipLength=0.1, line_type='aa'):
     """
     Create an image representing a 2D vector field.
 
@@ -795,7 +796,7 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
 
 
 def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
-                      alpha=1.0, color='red', thickness=1, tipLength=0.1,
+                      alpha=1.0, color='strawberry', thickness=1, tipLength=0.1,
                       line_type='aa'):
     """
     Create an image representing a 2D vector field.
@@ -907,7 +908,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
     return image
 
 
-def draw_header_text(image, text, fit=False, color='red', halign='center',
+def draw_header_text(image, text, fit=False, color='strawberry', halign='center',
                      stack='auto'):
     """
     Places a black bar on top of an image and writes text in it

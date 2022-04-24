@@ -259,6 +259,9 @@ class Color(ub.NiceRepr):
         elif color in CSS4_COLORS:
             color_hex = CSS4_COLORS[color]
             color01 = Color._hex_to_01(color_hex)
+        elif color in XKCD_COLORS:
+            color_hex = XKCD_COLORS[color]
+            color01 = Color._hex_to_01(color_hex)
         elif color.startswith('#'):
             color01 = Color._hex_to_01(color)
         else:
@@ -281,7 +284,8 @@ class Color(ub.NiceRepr):
             >>> canvas = kwplot.make_legend_img(color_lut)
             >>> kwplot.imshow(canvas)
         """
-        names = sorted(list(BASE_COLORS.keys()) + list(CSS4_COLORS.keys()))
+        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS)
+        names = sorted(NAMED_COLORS)
         return names
 
     @classmethod
@@ -1438,7 +1442,7 @@ XKCD_COLORS = {
     'purple': '#7e1e9c'}
 
 # Normalize name to "xkcd:<name>" to avoid name collisions.
-XKCD_COLORS = {'xkcd:' + name: value for name, value in XKCD_COLORS.items()}
+# XKCD_COLORS = {'xkcd:' + name: value for name, value in XKCD_COLORS.items()}
 
 
 # https://drafts.csswg.org/css-color-4/#named-colors

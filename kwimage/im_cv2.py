@@ -1533,6 +1533,16 @@ def _large_warp(image,
     return result
 
 
+def _prepare_scale_residual(sx, sy, fudge=0):
+    max_scale = max(sx, sy)
+    ideal_num_downs = int(np.log2(1 / max_scale))
+    num_downs = max(ideal_num_downs - fudge, 0)
+    pyr_scale = 1 / (2 ** num_downs)
+    residual_sx = sx / pyr_scale
+    residual_sy = sy / pyr_scale
+    return num_downs, residual_sx, residual_sy
+
+
 def _prepare_downscale(image, sx, sy):
     """
     Does a partial downscale with antialiasing and prepares for a final
@@ -1545,7 +1555,6 @@ def _prepare_downscale(image, sx, sy):
         >>> sx = sy = 1 / 11
         >>> downsampled, rx, ry = _prepare_downscale(image, sx, sy)
     """
-    max_scale = max(sx, sy)
     # The "fudge" factor limits the number of downsampled pyramid
     # operations. A bigger fudge factor means means that the final
     # gaussian kernel for the antialiasing operation will be bigger.
@@ -1567,14 +1576,9 @@ def _prepare_downscale(image, sx, sy):
     # do_final_aa=0.
     fractional = 1
 
-    num_downs = max(int(np.log2(1 / max_scale)) - fudge, 0)
-    pyr_scale = 1 / (2 ** num_downs)
-
+    num_downs, residual_sx, residual_sy = _prepare_scale_residual(sx, sy, fudge)
     # Downsample iteratively with antialiasing
     downscaled = _pyrDownK(image, num_downs)
-
-    residual_sx = sx / pyr_scale
-    residual_sy = sy / pyr_scale
 
     # Do a final small blur to acount for the potential aliasing
     # in any remaining scaling operations.
