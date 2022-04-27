@@ -9,6 +9,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added:
 * Intention: ndarray functions in kwimage and kwarray should respect masked arrays.
 
+### Changed:
+* Deprecate using overview=-1 to get the coarsest overview. Use the string "coarsest" instead.
+* The "overview" argument to gdal now uses 0-based indexing such that overview=0 is no overview, 
+  and overview=1 is the first overview. This corresponds to the scale being `2^{overview}`.
+
 
 ## Version 0.8.5 - Released 2022-04-19
 

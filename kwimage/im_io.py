@@ -451,7 +451,8 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
+                 band_indices=None):
     """
     gdal imread backend
 
@@ -468,6 +469,10 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
             nodata values should be handled. If "ma", returns a masked array
             instead of a normal ndarray. If "float", always returns a float
             array where masked values are replaced with nan.
+
+        band_indices (None | List[int]):
+            if None, all bands are read, otherwise only specified
+            band indexes are read.
 
     References:
         [GDAL_Config_Options] https://gdal.org/user/configoptions.html
@@ -520,9 +525,28 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test band specification
+        >>> import kwimage
+        >>> import pytest
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> fpath1 = dpath / 'dummy_overviews_rgb.tif'
+        >>> kwimage.imwrite(fpath1, imdata, overviews=3, backend='gdal')
+        >>> band0 = kwimage.imread(fpath1, backend='gdal', band_indices=[0, 1])
+        >>> assert band0.shape[2] == 2
+
+        import timerit
+        ti = timerit.Timerit(100, bestof=10, verbose=2)
+        for timer in ti.reset('time'):
+            with timer:
+                band0 = kwimage.imread(fpath1, backend='gdal', band_indices=[0, 1])
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test overview values
         >>> import kwimage
-        >>> from osgeo import osr
+        >>> import pytest
         >>> # Make a dummy geotiff
         >>> imdata = kwimage.grab_test_image('airport')
         >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
@@ -530,14 +554,23 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         >>> fpath2 = dpath / 'dummy_overviews_gray.tif'
         >>> kwimage.imwrite(fpath1, imdata, overviews=3, backend='gdal')
         >>> kwimage.imwrite(fpath2, imdata[:, :, 0], overviews=3, backend='gdal')
-        >>> recon1_3a = kwimage.imread(fpath1, overview=-1, backend='gdal')
-        >>> recon1_3b = kwimage.imread(fpath1, overview=2, backend='gdal')
+        >>> recon1_3a = kwimage.imread(fpath1, overview='coarsest', backend='gdal')
+        >>> recon1_3b = kwimage.imread(fpath1, overview=3, backend='gdal')
+        >>> recon1_None = kwimage.imread(fpath1, backend='gdal')
         >>> recon1_0 = kwimage.imread(fpath1, overview=0, backend='gdal')
+        >>> recon1_1 = kwimage.imread(fpath1, overview=1, backend='gdal')
+        >>> recon1_2 = kwimage.imread(fpath1, overview=2, backend='gdal')
+        >>> recon1_3 = kwimage.imread(fpath1, overview=3, backend='gdal')
+        >>> with pytest.raises(ValueError):
+        >>>     kwimage.imread(fpath1, overview=4, backend='gdal')
         >>> assert recon1_0.shape == (868, 1156, 3)
+        >>> assert recon1_1.shape == (434, 578, 3)
+        >>> assert recon1_2.shape == (217, 289, 3)
+        >>> assert recon1_3.shape == (109, 145, 3)
         >>> assert recon1_3a.shape == (109, 145, 3)
         >>> assert recon1_3b.shape == (109, 145, 3)
-        >>> recon2_3a = kwimage.imread(fpath2, overview=-1, backend='gdal')
-        >>> recon2_3b = kwimage.imread(fpath2, overview=2, backend='gdal')
+        >>> recon2_3a = kwimage.imread(fpath2, overview='coarsest', backend='gdal')
+        >>> recon2_3b = kwimage.imread(fpath2, overview=3, backend='gdal')
         >>> recon2_0 = kwimage.imread(fpath2, overview=0, backend='gdal')
         >>> assert recon2_0.shape == (868, 1156)
         >>> assert recon2_3a.shape == (109, 145)
@@ -561,8 +594,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
-        gdalkw = {}
-        band_indices = None
+        gdalkw = {}  # xoff, yoff, win_xsize, win_ysize
         image, num_channels = _gdal_read(gdal_dset, overview, nodata,
                                          ignore_color_table, band_indices,
                                          gdalkw)
@@ -611,7 +643,14 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
 
     if overview:
         overview_count = default_band0.GetOverviewCount()
+        if isinstance(overview, str):
+            if overview == 'coarsest':
+                overview = overview_count
+            else:
+                raise KeyError(overview)
         if overview < 0:
+            warnings.warn('Using negative overviews is deprecated. '
+                          'Use coarset to get the lowest resolution overview')
             overview = max(overview_count + overview, 0)
         if overview > overview_count:
             raise ValueError('Image has no overview={}'.format(overview))
@@ -634,6 +673,7 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
             if buf is None:
                 # Sometimes this works if you try again. I don't know why.
                 # It spits out annoying messages, not sure how to supress.
+                # TODO: need MWE and an issue describing this workaround.
                 buf = band.ReadAsArray(**gdalkw)
                 if buf is None:
                     raise IOError('GDal was unable to read this band')
@@ -680,17 +720,22 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
         if nodata is not None:
             mask = np.empty(shape, dtype=bool)
         for idx, band in enumerate(bands):
-            buf = band.ReadAsArray(**gdalkw)
-            if buf is None:
+            # load with less memory by specifing buf_obj
+            buf = image[:, :, idx]
+            ret = band.ReadAsArray(buf_obj=buf, **gdalkw)
+            # ret = buf = band.ReadAsArray(**gdalkw)
+            if ret is None:
                 raise IOError(ub.paragraph(
                     '''
                     GDAL was unable to read band: {}, {}'
                     from {!r}
                     '''.format(idx, band, gdal_dset.GetDescription())))
-            image[:, :, idx] = buf
+            # image[:, :, idx] = buf
             if nodata is not None:
                 band_nodata = band.GetNoDataValue()
-                mask[:, :, idx] = (buf == band_nodata)
+                mask_buf = mask[:, :, idx]
+                np.equal(buf, band_nodata, out=mask_buf)
+                # mask[:, :, idx] = (buf == band_nodata)
 
     if nodata is not None:
         if nodata == 'ma':
@@ -1065,6 +1110,7 @@ def load_image_shape(fpath):
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> import ubelt as ub
+        >>> import kwimage
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache')
         >>> fpath = dpath / 'foo.tif'
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
