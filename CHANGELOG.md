@@ -1,10 +1,13 @@
-m # Changelog
+# Changelog
 
 This changelog follows the specifications detailed in: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.8.6 - Unreleased
+## Version 0.8.7 - Unreleased
+
+
+## Version 0.8.6 - Released 2022-04-27
 
 ### Added:
 * Intention: ndarray functions in kwimage and kwarray should respect masked arrays.

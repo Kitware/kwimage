@@ -8,11 +8,11 @@ import skimage.transform
 import math
 from kwimage import _internal
 
-try:
-    import xdev
-    profile = xdev.profile
-except Exception:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except Exception:
+profile = ub.identity
 
 
 class Transform(ub.NiceRepr):
