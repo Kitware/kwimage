@@ -560,6 +560,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         _chosen_resize = _regular_resize
 
     def _patched_resize(img, scale, dsize, interpolation):
+        img = _cv2_imputation(img)
         sx, sy = scale
         num_chan = im_core.num_channels(img)
         if num_chan > 512 or (num_chan > 4 and interpolation == cv2.INTER_AREA):
@@ -871,7 +872,7 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
             sigma_x, sigma_y = sigma
 
     if kernel is None:
-        USE_CV2_DEF = 0
+        # USE_CV2_DEF = 0
         if autokernel_mode == 'zero':
             # When 0 computed internally via cv2
             k_x = k_y = 0
@@ -892,8 +893,8 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
             sa = sym.Rational('3 / 10') * ((k - 1) / 2 - 1) + sym.Rational('8 / 10')
             sym.solve(sym.Eq(s, sa), k)
             """
-            k_x = max(3, round(20 * sigma_x / 3 - 7/3)) | 1
-            k_y = max(3, round(20 * sigma_y / 3 - 7/3)) | 1
+            k_x = max(3, round(20 * sigma_x / 3 - 7 / 3)) | 1
+            k_y = max(3, round(20 * sigma_y / 3 - 7 / 3)) | 1
         else:
             raise KeyError(autokernel_mode)
     sigma = (sigma_x, sigma_y)
@@ -972,6 +973,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         k_x, k_y = 0, 0
 
     borderType = _coerce_border(border_mode)
+    image = _cv2_imputation(image)
     blurred = cv2.GaussianBlur(
         image, (k_x, k_y), sigmaX=sigma_x, sigmaY=sigma_y,
         borderType=borderType, dst=dst
@@ -1184,6 +1186,31 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
 
+    Example:
+        >>> # Demo how of how we also handle masked arrays
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> _image = kwimage.grab_test_image('pm5644')
+        >>> _image = kwimage.ensure_float01(_image)
+        >>> _image[100:200, 400:700] = np.nan
+        >>> mask = np.isnan(_image)
+        >>> data = np.nan_to_num(_image)
+        >>> image = np.ma.MaskedArray(data=data, mask=mask)
+        >>> transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
+        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
+        >>> assert isinstance(warped1, np.ma.MaskedArray)
+        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> print('warped1.shape = {!r}'.format(warped1.shape))
+        >>> print('warped2.shape = {!r}'.format(warped2.shape))
+        >>> assert warped2.shape == warped1.shape
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nRows=1, nCols=2)
+        >>> kwplot.imshow(warped1, pnum=pnum_(), title='antialias=True')
+        >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
+        >>> kwplot.show_if_requested()
+
     Ignore:
         transform_ = transform
         params = transform_.decompose()
@@ -1200,6 +1227,15 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     """
     from kwimage.transform import Affine
     import kwimage
+
+    if isinstance(image, np.ma.MaskedArray):
+        mask = image.mask
+        orig_mask_dtype = mask.dtype
+        mask = mask.astype(np.uint8)
+    else:
+        mask = None
+
+    is_masked = mask is not None
 
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
@@ -1240,15 +1276,22 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         'antialias_info': None,
     }
 
+    _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
+                           borderMode, borderValue)
+
     if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
         # Handle case where the input image has no size or the destination
         # canvas has no size. In either case we just return empty data
         output_shape = (dsize[1], dsize[0]) + image.shape[2:]
         result = np.full(
             shape=output_shape, fill_value=borderValue, dtype=image.dtype)
+        if is_masked:
+            result_mask = np.full(
+                shape=output_shape, fill_value=False, dtype=mask.dtype)
     elif not antialias:
-        result = _try_warp(image, transform_, large_warp_dim, dsize, max_dsize,
-                           new_origin, flags, borderMode, borderValue)
+        result = _try_warp(image, transform_, *_try_warp_tail_args)
+        if is_masked:
+            result_mask = _try_warp(mask, transform_, *_try_warp_tail_args)
     else:
         # Decompose the affine matrix into its 6 core parameters
         params = transform_.decompose()
@@ -1256,9 +1299,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            result = _try_warp(image, transform_, large_warp_dim, dsize,
-                               max_dsize, new_origin, flags, borderMode,
-                               borderValue)
+            result = _try_warp(image, transform_, *_try_warp_tail_args)
+            if is_masked:
+                result_mask = _try_warp(mask, transform_, *_try_warp_tail_args)
         else:
             # At least one dimension is downsampled
             """
@@ -1285,9 +1328,15 @@ def warp_affine(image, transform, dsize=None, antialias=False,
                 'rest_warp': rest_warp,
             }
 
-            result = _try_warp(downscaled, rest_warp, large_warp_dim, dsize,
-                               max_dsize, new_origin, flags, borderMode,
-                               borderValue)
+            result = _try_warp(downscaled, rest_warp, *_try_warp_tail_args)
+
+            if is_masked:
+                downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
+                result_mask = _try_warp(downscaled_mask, rest_warp, *_try_warp_tail_args)
+
+    if is_masked:
+        result_mask = result_mask.astype(orig_mask_dtype)
+        result = np.ma.array(result, mask=result_mask)
 
     if return_info:
         return result, info
@@ -1300,6 +1349,8 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
     """
     Helper for warp_affine
     """
+    image = _cv2_imputation(image)
+
     if large_warp_dim == 'auto':
         # this is as close as we can get to actually discovering SHRT_MAX since
         # it's not introspectable through cv2.  numpy and cv2 could be pointing
@@ -1330,6 +1381,12 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
         return _large_warp(image, transform_, dsize, max_dsize,
                            new_origin, flags, borderMode,
                            borderValue, pieces_per_dim)
+
+
+def _cv2_imputation(image):
+    if not image.flags['C_CONTIGUOUS']:
+        image = np.ascontiguousarray(image)
+    return image
 
 
 def _large_warp(image,
@@ -1474,6 +1531,16 @@ def _large_warp(image,
     return result
 
 
+def _prepare_scale_residual(sx, sy, fudge=0):
+    max_scale = max(sx, sy)
+    ideal_num_downs = int(np.log2(1 / max_scale))
+    num_downs = max(ideal_num_downs - fudge, 0)
+    pyr_scale = 1 / (2 ** num_downs)
+    residual_sx = sx / pyr_scale
+    residual_sy = sy / pyr_scale
+    return num_downs, residual_sx, residual_sy
+
+
 def _prepare_downscale(image, sx, sy):
     """
     Does a partial downscale with antialiasing and prepares for a final
@@ -1486,7 +1553,6 @@ def _prepare_downscale(image, sx, sy):
         >>> sx = sy = 1 / 11
         >>> downsampled, rx, ry = _prepare_downscale(image, sx, sy)
     """
-    max_scale = max(sx, sy)
     # The "fudge" factor limits the number of downsampled pyramid
     # operations. A bigger fudge factor means means that the final
     # gaussian kernel for the antialiasing operation will be bigger.
@@ -1508,14 +1574,9 @@ def _prepare_downscale(image, sx, sy):
     # do_final_aa=0.
     fractional = 1
 
-    num_downs = max(int(np.log2(1 / max_scale)) - fudge, 0)
-    pyr_scale = 1 / (2 ** num_downs)
-
+    num_downs, residual_sx, residual_sy = _prepare_scale_residual(sx, sy, fudge)
     # Downsample iteratively with antialiasing
     downscaled = _pyrDownK(image, num_downs)
-
-    residual_sx = sx / pyr_scale
-    residual_sy = sy / pyr_scale
 
     # Do a final small blur to acount for the potential aliasing
     # in any remaining scaling operations.
@@ -1724,6 +1785,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
     else:
         raise TypeError(type(mode))
 
+    data = _cv2_imputation(data)
     new = cv2.morphologyEx(
         data, op=morph_mode, kernel=kernel, iterations=iterations)
     return new

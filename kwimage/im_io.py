@@ -451,7 +451,8 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
+                 band_indices=None):
     """
     gdal imread backend
 
@@ -468,6 +469,10 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
             nodata values should be handled. If "ma", returns a masked array
             instead of a normal ndarray. If "float", always returns a float
             array where masked values are replaced with nan.
+
+        band_indices (None | List[int]):
+            if None, all bands are read, otherwise only specified
+            band indexes are read.
 
     References:
         [GDAL_Config_Options] https://gdal.org/user/configoptions.html
@@ -520,9 +525,28 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test band specification
+        >>> import kwimage
+        >>> import pytest
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> fpath1 = dpath / 'dummy_overviews_rgb.tif'
+        >>> kwimage.imwrite(fpath1, imdata, overviews=3, backend='gdal')
+        >>> band0 = kwimage.imread(fpath1, backend='gdal', band_indices=[0, 1])
+        >>> assert band0.shape[2] == 2
+
+        import timerit
+        ti = timerit.Timerit(100, bestof=10, verbose=2)
+        for timer in ti.reset('time'):
+            with timer:
+                band0 = kwimage.imread(fpath1, backend='gdal', band_indices=[0, 1])
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test overview values
         >>> import kwimage
-        >>> from osgeo import osr
+        >>> import pytest
         >>> # Make a dummy geotiff
         >>> imdata = kwimage.grab_test_image('airport')
         >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
@@ -530,14 +554,23 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         >>> fpath2 = dpath / 'dummy_overviews_gray.tif'
         >>> kwimage.imwrite(fpath1, imdata, overviews=3, backend='gdal')
         >>> kwimage.imwrite(fpath2, imdata[:, :, 0], overviews=3, backend='gdal')
-        >>> recon1_3a = kwimage.imread(fpath1, overview=-1, backend='gdal')
-        >>> recon1_3b = kwimage.imread(fpath1, overview=2, backend='gdal')
+        >>> recon1_3a = kwimage.imread(fpath1, overview='coarsest', backend='gdal')
+        >>> recon1_3b = kwimage.imread(fpath1, overview=3, backend='gdal')
+        >>> recon1_None = kwimage.imread(fpath1, backend='gdal')
         >>> recon1_0 = kwimage.imread(fpath1, overview=0, backend='gdal')
+        >>> recon1_1 = kwimage.imread(fpath1, overview=1, backend='gdal')
+        >>> recon1_2 = kwimage.imread(fpath1, overview=2, backend='gdal')
+        >>> recon1_3 = kwimage.imread(fpath1, overview=3, backend='gdal')
+        >>> with pytest.raises(ValueError):
+        >>>     kwimage.imread(fpath1, overview=4, backend='gdal')
         >>> assert recon1_0.shape == (868, 1156, 3)
+        >>> assert recon1_1.shape == (434, 578, 3)
+        >>> assert recon1_2.shape == (217, 289, 3)
+        >>> assert recon1_3.shape == (109, 145, 3)
         >>> assert recon1_3a.shape == (109, 145, 3)
         >>> assert recon1_3b.shape == (109, 145, 3)
-        >>> recon2_3a = kwimage.imread(fpath2, overview=-1, backend='gdal')
-        >>> recon2_3b = kwimage.imread(fpath2, overview=2, backend='gdal')
+        >>> recon2_3a = kwimage.imread(fpath2, overview='coarsest', backend='gdal')
+        >>> recon2_3b = kwimage.imread(fpath2, overview=3, backend='gdal')
         >>> recon2_0 = kwimage.imread(fpath2, overview=0, backend='gdal')
         >>> assert recon2_0.shape == (868, 1156)
         >>> assert recon2_3a.shape == (109, 145)
@@ -561,118 +594,10 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
-        # TODO:
-        # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
-        # https://gdal.org/drivers/raster/gtiff.html#subdatasets
-        if len(gdal_dset.GetSubDatasets()):
-            raise NotImplementedError('subdatasets are not handled correctly')
-
-        num_channels = gdal_dset.RasterCount
-
-        if num_channels == 1:
-            band = gdal_dset.GetRasterBand(1)
-
-            if overview:
-                overview_count = band.GetOverviewCount()
-                if overview < 0:
-                    overview = max(overview_count + overview, 0)
-                if overview > overview_count:
-                    raise ValueError('Image has no overview={}'.format(overview))
-                if overview > 0:
-                    band = band.GetOverview(overview)
-                    if band is None:
-                        raise AssertionError
-
-            color_table = None if ignore_color_table else band.GetColorTable()
-            if color_table is None:
-                buf = band.ReadAsArray()
-                if buf is None:
-                    # Sometimes this works if you try again. I don't know why.
-                    # It spits out annoying messages, not sure how to supress.
-                    buf = band.ReadAsArray()
-                    if buf is None:
-                        raise IOError('GDal was unable to read this band')
-                image = np.array(buf)
-            else:
-                # The buffer is an index into the color table
-                buf = band.ReadAsArray()
-
-                gdal_dtype = color_table.GetPaletteInterpretation()
-                dtype = _gdal_to_numpy_dtype(gdal_dtype)
-
-                num_colors = color_table.GetCount()
-                if num_colors <= 0:
-                    raise AssertionError('invalid color table')
-                idx_to_color = []
-                for idx in range(num_colors):
-                    color = color_table.GetColorEntry(idx)
-                    idx_to_color.append(color)
-
-                # The color table specifies the real number of channels
-                num_channels = len(color)
-
-                idx_to_color = np.array(idx_to_color, dtype=dtype)
-                image = idx_to_color[buf]
-
-            if nodata is not None:
-                # TODO: not sure if this works right for
-                # color table images
-                band_nodata = band.GetNoDataValue()
-                mask = band_nodata == buf
-                if color_table is not None:
-                    # Fix mask to align with color table
-                    table_chans = idx_to_color.shape[1]
-                    mask = np.tile(mask[:, :, None], (1, 1, table_chans))
-        else:
-            default_bands = [gdal_dset.GetRasterBand(i)
-                             for i in range(1, num_channels + 1)]
-            default_band0 = default_bands[0]
-
-            if overview:
-                overview_count = default_band0.GetOverviewCount()
-                if overview < 0:
-                    overview = max(overview_count + overview, 0)
-                if overview > overview_count:
-                    raise ValueError('Image has no overview={}'.format(overview))
-                if overview > 0:
-                    bands = [b.GetOverview(overview) for b in default_bands]
-                    if any(b is None for b in bands):
-                        raise AssertionError
-                else:
-                    bands = default_bands
-            else:
-                bands = default_bands
-
-            band0 = bands[0]
-            gdal_dtype = band0.DataType
-            dtype = _gdal_to_numpy_dtype(gdal_dtype)
-            shape = (band0.YSize, band0.XSize, num_channels)
-            # Preallocate and populate image
-            image = np.empty(shape, dtype=dtype)
-            if nodata is not None:
-                mask = np.empty(shape, dtype=bool)
-            for idx, band in enumerate(bands):
-                buf = band.ReadAsArray()
-                if buf is None:
-                    raise IOError(ub.paragraph(
-                        '''
-                        GDAL was unable to read band: {}, {}'
-                        from {!r}
-                        '''.format(idx, band, fpath)))
-                image[:, :, idx] = buf
-                if nodata is not None:
-                    band_nodata = band.GetNoDataValue()
-                    mask[:, :, idx] = (buf == band_nodata)
-
-        if nodata is not None:
-            if nodata == 'ma':
-                image = np.ma.array(image, mask=mask)
-            elif nodata == 'float':
-                promote_dtype = np.result_type(image.dtype, np.float32)
-                image = image.astype(promote_dtype)
-                image[mask] = np.nan
-            else:
-                raise AssertionError
+        gdalkw = {}  # xoff, yoff, win_xsize, win_ysize
+        image, num_channels = _gdal_read(gdal_dset, overview, nodata,
+                                         ignore_color_table, band_indices,
+                                         gdalkw)
 
         # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
@@ -691,6 +616,138 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         gdal_dset = None
     auto_dst_space = src_space
     return image, src_space, auto_dst_space
+
+
+def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
+               band_indices, gdalkw):
+    # TODO:
+    # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
+    # https://gdal.org/drivers/raster/gtiff.html#subdatasets
+    if len(gdal_dset.GetSubDatasets()):
+        raise NotImplementedError('subdatasets are not handled correctly')
+        # INTERLEAVE = gdal_dset.GetMetadata('IMAGE_STRUCTURE').get('INTERLEAVE', '')
+        # if INTERLEAVE == 'BAND':
+        #     if len(gdal_dset.GetSubDatasets()) > 0:
+        #         raise NotImplementedError('Cannot handle interleaved files yet')
+
+    total_num_channels = gdal_dset.RasterCount
+
+    if band_indices is None:
+        band_indices = range(total_num_channels)
+        num_channels = total_num_channels
+    else:
+        num_channels = len(band_indices)
+
+    default_bands = [gdal_dset.GetRasterBand(i + 1) for i in band_indices]
+    default_band0 = default_bands[0]
+
+    if overview:
+        overview_count = default_band0.GetOverviewCount()
+        if isinstance(overview, str):
+            if overview == 'coarsest':
+                overview = overview_count
+            else:
+                raise KeyError(overview)
+        if overview < 0:
+            warnings.warn('Using negative overviews is deprecated. '
+                          'Use coarset to get the lowest resolution overview')
+            overview = max(overview_count + overview, 0)
+        if overview > overview_count:
+            raise ValueError('Image has no overview={}'.format(overview))
+        if overview > 0:
+            bands = [b.GetOverview(overview - 1) for b in default_bands]
+            if any(b is None for b in bands):
+                raise AssertionError(
+                    'Band was None in {}'.format(gdal_dset.GetDescription()))
+        else:
+            bands = default_bands
+    else:
+        bands = default_bands
+
+    if num_channels == 1:
+        band = bands[0]
+
+        color_table = None if ignore_color_table else band.GetColorTable()
+        if color_table is None:
+            buf = band.ReadAsArray(**gdalkw)
+            if buf is None:
+                # Sometimes this works if you try again. I don't know why.
+                # It spits out annoying messages, not sure how to supress.
+                # TODO: need MWE and an issue describing this workaround.
+                buf = band.ReadAsArray(**gdalkw)
+                if buf is None:
+                    raise IOError('GDal was unable to read this band')
+            image = np.array(buf)
+        else:
+            # The buffer is an index into the color table
+            buf = band.ReadAsArray(**gdalkw)
+
+            gdal_dtype = color_table.GetPaletteInterpretation()
+            dtype = _gdal_to_numpy_dtype(gdal_dtype)
+
+            num_colors = color_table.GetCount()
+            if num_colors <= 0:
+                raise AssertionError('invalid color table')
+            idx_to_color = []
+            for idx in range(num_colors):
+                color = color_table.GetColorEntry(idx)
+                idx_to_color.append(color)
+
+            # The color table specifies the real number of channels
+            num_channels = len(color)
+
+            idx_to_color = np.array(idx_to_color, dtype=dtype)
+            image = idx_to_color[buf]
+
+        if nodata is not None:
+            # TODO: not sure if this works right for
+            # color table images
+            band_nodata = band.GetNoDataValue()
+            mask = band_nodata == buf
+            if color_table is not None:
+                # Fix mask to align with color table
+                table_chans = idx_to_color.shape[1]
+                mask = np.tile(mask[:, :, None], (1, 1, table_chans))
+    else:
+        band0 = bands[0]
+        xsize = gdalkw.get('win_xsize', band0.XSize)
+        ysize = gdalkw.get('win_ysize', band0.YSize)
+        gdal_dtype = band0.DataType
+        dtype = _gdal_to_numpy_dtype(gdal_dtype)
+        shape = (ysize, xsize, num_channels)
+        # Preallocate and populate image
+        image = np.empty(shape, dtype=dtype)
+        if nodata is not None:
+            mask = np.empty(shape, dtype=bool)
+        for idx, band in enumerate(bands):
+            # load with less memory by specifing buf_obj
+            buf = image[:, :, idx]
+            ret = band.ReadAsArray(buf_obj=buf, **gdalkw)
+            # ret = buf = band.ReadAsArray(**gdalkw)
+            if ret is None:
+                raise IOError(ub.paragraph(
+                    '''
+                    GDAL was unable to read band: {}, {}'
+                    from {!r}
+                    '''.format(idx, band, gdal_dset.GetDescription())))
+            # image[:, :, idx] = buf
+            if nodata is not None:
+                band_nodata = band.GetNoDataValue()
+                mask_buf = mask[:, :, idx]
+                np.equal(buf, band_nodata, out=mask_buf)
+                # mask[:, :, idx] = (buf == band_nodata)
+
+    if nodata is not None:
+        if nodata == 'ma':
+            image = np.ma.array(image, mask=mask)
+        elif nodata == 'float':
+            promote_dtype = np.result_type(image.dtype, np.float32)
+            image = image.astype(promote_dtype)
+            image[mask] = np.nan
+        else:
+            raise KeyError('nodata={}'.format(nodata))
+
+    return image, num_channels
 
 
 def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
@@ -1053,6 +1110,7 @@ def load_image_shape(fpath):
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> import ubelt as ub
+        >>> import kwimage
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache')
         >>> fpath = dpath / 'foo.tif'
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
