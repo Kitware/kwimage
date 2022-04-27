@@ -1317,24 +1317,22 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             noscale_warp = Affine.affine(**ub.dict_diff(params, {'scale'}))
 
             # Execute part of the downscale with iterative pyramid downs
-            import xdev
-            with xdev.embed_on_exception_context:
-                downscaled, residual_sx, residual_sy = _prepare_downscale(
-                    image, sx, sy)
+            downscaled, residual_sx, residual_sy = _prepare_downscale(
+                image, sx, sy)
 
-                # Compute the transform from the downsampled image to the destination
-                rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
+            # Compute the transform from the downsampled image to the destination
+            rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
 
-                info['antialias_info'] = {
-                    'noscale_warp': noscale_warp,
-                    'rest_warp': rest_warp,
-                }
+            info['antialias_info'] = {
+                'noscale_warp': noscale_warp,
+                'rest_warp': rest_warp,
+            }
 
-                result = _try_warp(downscaled, rest_warp, *_try_warp_tail_args)
+            result = _try_warp(downscaled, rest_warp, *_try_warp_tail_args)
 
-                if is_masked:
-                    downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
-                    result_mask = _try_warp(downscaled_mask, rest_warp, *_try_warp_tail_args)
+            if is_masked:
+                downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
+                result_mask = _try_warp(downscaled_mask, rest_warp, *_try_warp_tail_args)
 
     if is_masked:
         result_mask = result_mask.astype(orig_mask_dtype)

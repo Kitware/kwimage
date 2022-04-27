@@ -561,7 +561,11 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None):
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
-        image, num_channels = _gdal_read(gdal_dset, overview, nodata, ignore_color_table)
+        gdalkw = {}
+        band_indices = None
+        image, num_channels = _gdal_read(gdal_dset, overview, nodata,
+                                         ignore_color_table, band_indices,
+                                         gdalkw)
 
         # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
@@ -614,7 +618,8 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
         if overview > 0:
             bands = [b.GetOverview(overview - 1) for b in default_bands]
             if any(b is None for b in bands):
-                raise AssertionError
+                raise AssertionError(
+                    'Band was None in {}'.format(gdal_dset.GetDescription()))
         else:
             bands = default_bands
     else:
@@ -695,7 +700,7 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
             image = image.astype(promote_dtype)
             image[mask] = np.nan
         else:
-            raise AssertionError
+            raise KeyError('nodata={}'.format(nodata))
 
     return image, num_channels
 
