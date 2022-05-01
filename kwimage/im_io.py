@@ -25,7 +25,7 @@ JPG_EXTENSIONS = (
 # These should be supported by opencv / PIL
 _WELL_KNOWN_EXTENSIONS = (
     JPG_EXTENSIONS +
-    ('.bmp', '.pgm', '.png',)
+    ('.bmp', '.pgm', '.png', '.qoi',)
 )
 
 
@@ -295,6 +295,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
             image, src_space, auto_dst_space = _imread_skimage(fpath)
         elif backend == 'pil':
             image, src_space, auto_dst_space = _imread_pil(fpath)
+        elif backend == 'qoi':
+            image, src_space, auto_dst_space = _imread_qoi(fpath)
         elif backend == 'itk':
             src_space, auto_dst_space = None, None
             import itk
@@ -327,6 +329,34 @@ def imread(fpath, space='auto', backend='auto', **kw):
         print('ex = {!r}'.format(ex))
         print('Error reading fpath = {!r}'.format(fpath))
         raise
+
+
+def _imread_qoi(fpath):
+    """
+    """
+    import qoi
+    image = qoi.read(fpath)
+    src_space, auto_dst_space = None, None
+    return image, src_space, auto_dst_space
+
+
+def _imwrite_qoi(fpath, data):
+    """
+    Only seems to allow RGB 255.
+
+    Ignore:
+        >>> from kwimage.im_io import imread, _imread_qoi, _imwrite_qoi
+        >>> import kwimage
+        >>> data = kwimage.ensure_uint255(kwimage.checkerboard())
+        >>> fpath = 'tmp.qoi'
+        >>> _imwrite_qoi(fpath, data)
+        >>> recon, _, _ = _imread_qoi(fpath)
+    """
+    import kwimage
+    import qoi
+    data = kwimage.atleast_3channels(data)
+    qoi.write(fpath, data)
+    return fpath
 
 
 def _imread_turbojpeg(fpath):
