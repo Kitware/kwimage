@@ -7,7 +7,7 @@ import os
 import numpy as np
 import warnings  # NOQA
 import cv2
-from os.path import exists
+from os.path import exists, dirname
 import ubelt as ub
 from . import im_cv2
 from . import im_core
@@ -1060,8 +1060,17 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             else:
                 raise
         else:
+            # TODO: generalize error handling and diagnostics for all backends
             if not flag:
-                raise IOError('kwimage failed to write with opencv backend')
+                if not exists(dirname(fpath)):
+                    raise IOError((
+                        'kwimage failed to write with opencv backend. '
+                        'Reason: destination fpath {!r} is in a directory that '
+                        'does not exist.').format(fpath))
+                else:
+                    raise IOError(
+                        'kwimage failed to write with opencv backend. '
+                        'Reason: unknown.')
 
     elif backend == 'skimage':
         import skimage.io
