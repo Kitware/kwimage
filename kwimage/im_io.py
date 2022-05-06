@@ -277,7 +277,32 @@ def imread(fpath, space='auto', backend='auto', **kw):
         elif _fpath_lower.endswith('.svg'):
             backend = 'svg'  # a bit hacky, not a raster format
         else:
-            backend = 'cv2'
+            # TODO: if we don't have an extension we could try to inspect the
+            # file header
+            USE_FILE_HEADER = 0
+            if USE_FILE_HEADER:
+                '''
+                for key in kwimage.grab_test_image_fpath.keys():
+                    fpath = kwimage.grab_test_image_fpath(key)
+                    with open(fpath, 'rb') as file:
+                        header_bytes = file.read(4)
+                        print(header_bytes)
+                '''
+                JPEG_HEADER = b'\xff\xd8\xff'
+                PNG_HEADER = b'\x89PNG'
+                NITF_HEADER = b'NITF'
+                with open(fpath, 'rb') as file:
+                    header_bytes = file.read(4)
+                if header_bytes.startswith(JPEG_HEADER):
+                    backend = 'cv2'
+                elif header_bytes.startswith(PNG_HEADER):
+                    backend = 'cv2'
+                elif header_bytes.startswith(NITF_HEADER):
+                    backend = 'gdal'
+                else:
+                    backend = 'cv2'
+            else:
+                backend = 'cv2'
 
     if space == 'auto' and backend != 'cv2':
         # cv2 is the only backend that does weird things, we can
