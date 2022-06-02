@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added:
 * Working on QOI support
+* Added `kitware_green` and `kitware_blue` colors.
 
 
 ## Version 0.8.6 - Released 2022-04-27

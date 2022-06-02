@@ -262,6 +262,9 @@ class Color(ub.NiceRepr):
         elif color in XKCD_COLORS:
             color_hex = XKCD_COLORS[color]
             color01 = Color._hex_to_01(color_hex)
+        elif color in KWPLOT_COLORS:
+            color_hex = KWPLOT_COLORS[color]
+            color01 = Color._hex_to_01(color_hex)
         elif color.startswith('#'):
             color01 = Color._hex_to_01(color)
         else:
@@ -284,7 +287,7 @@ class Color(ub.NiceRepr):
             >>> canvas = kwplot.make_legend_img(color_lut)
             >>> kwplot.imshow(canvas)
         """
-        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS)
+        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS) | set(KWPLOT_COLORS)
         names = sorted(NAMED_COLORS)
         return names
 
@@ -1595,3 +1598,8 @@ CSS4_COLORS = {
     'whitesmoke':           '#F5F5F5',
     'yellow':               '#FFFF00',
     'yellowgreen':          '#9ACD32'}
+
+KWPLOT_COLORS = {
+    'kitware_green': '#3CAF49',
+    'kitware_blue': '#006AB6',
+}
