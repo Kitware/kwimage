@@ -262,8 +262,8 @@ class Color(ub.NiceRepr):
         elif color in XKCD_COLORS:
             color_hex = XKCD_COLORS[color]
             color01 = Color._hex_to_01(color_hex)
-        elif color in KWPLOT_COLORS:
-            color_hex = KWPLOT_COLORS[color]
+        elif color in KITWARE_COLORS:
+            color_hex = KITWARE_COLORS[color]
             color01 = Color._hex_to_01(color_hex)
         elif color.startswith('#'):
             color01 = Color._hex_to_01(color)
@@ -287,7 +287,7 @@ class Color(ub.NiceRepr):
             >>> canvas = kwplot.make_legend_img(color_lut)
             >>> kwplot.imshow(canvas)
         """
-        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS) | set(KWPLOT_COLORS)
+        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS) | set(KITWARE_COLORS)
         names = sorted(NAMED_COLORS)
         return names
 
@@ -1599,7 +1599,28 @@ CSS4_COLORS = {
     'yellow':               '#FFFF00',
     'yellowgreen':          '#9ACD32'}
 
-KWPLOT_COLORS = {
-    'kitware_green': '#3CAF49',
-    'kitware_blue': '#006AB6',
+
+# Kitware color brand guide:
+# https://drive.google.com/file/d/1mUzJw4QrDfxWqqCsPZ_C7QWcQbfR_IBb/view
+"""
+Ignore:
+    import kwimage
+    named_colors = kwimage.Color.named_colors()
+    color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
+    import kwplot
+    kwplot.autompl()
+    canvas = kwplot.make_legend_img(color_lut)
+    kwplot.imshow(canvas)
+"""
+KITWARE_COLORS = {
+    'kitware_green'     : '#3EAE2B',
+    'kitware_blue'      : '#0068C7',
+    'kitware_darkgreen' : '#2E5524',
+    'kitware_darkblue'  : '#003765',
+    'kitware_darkgray'  : '#242A37',
+    'kitware_gray'      : '#8C8985',
+    'kitware_lightgray' : '#DCE3EC',
+    'kitware_red'       : '#F42836',
+    'kitware_orange'    : '#EF7724',
+    'kitware_yellow'    : '#FEBD64',
 }
