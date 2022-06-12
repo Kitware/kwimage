@@ -1409,11 +1409,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             linewidth (bool):
                 width of the border
 
-            edgecolor (Coercable[Color]):
-                color of the border when linewidth > 0
+            edgecolor (None | Coercable[Color]):
+                if None, uses the value of ``color``.
+                Otherwise the color of the border when linewidth > 0.
 
-            facecolor (Coercable[Color]):
-                color of the border when linewidth > 0
+            facecolor (None | Coercable[Color]):
+                if None, uses the value of ``color``.
+                Otherwise, color of the border when fill=True.
 
             vertex (float):
                 if non-zero, draws vertexes on the polygon with this radius.
@@ -1482,6 +1484,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         import kwimage
         if ax is None:
             ax = plt.gca()
+
+        if border is not None:
+            from kwimage._internal import schedule_deprecation3
+            schedule_deprecation3(
+                modname='kwimage', migration='use linewidth instead',
+                name='border', type='kwarg to Polygon.draw_on',
+                deprecate='0.8.7', error='1.0.0', remove='1.1.0',
+            )
 
         data = self.data
 
