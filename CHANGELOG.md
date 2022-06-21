@@ -4,11 +4,16 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.8.7 - Unreleased
+## Version 0.9.0 - Unreleased
 
 ### Added:
 * Working on QOI support
 * Added `kitware_green` and `kitware_blue` "Kitware colors" in `kwimage.Color`.
+
+
+### Changed:
+
+* Moved binary backends to `kwimage_ext` module as optional dependencies. Kwimage is now a pure python package. 
 
 
 ## Version 0.8.6 - Released 2022-04-27
