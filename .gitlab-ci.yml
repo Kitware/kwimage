@@ -1,23 +1,26 @@
-# Note: expand yaml
-# yaml merge-expand .gitlab-ci.yml _expandyml && cat _expandyml
-# 
-# GITLAB LINTER
-# https://gitlab.kitware.com/computer-vision/kwimage/-/ci/lint
-
+# Abuse YAML notation to make a heredoc. This will be ignored by the CI.
 .__heredoc__: &__heredoc__
     - | 
+
         NOTE: INSTRUCTION HAVE BEEN MOVED TO ./dev/setup_secrets.sh
         This file should need minimal modification.
 
-        Template for this files is (somewhat) from
-        ~/misc/templates/PYPKG/.gitlab-ci.yml
+        Template for this files is from
+        ~/code/xcookie/.gitlab-ci.yml
+
+        Templates used in:
+
+        ~/code/kwplot/.gitlab-ci.yml
+        ~/code/kwimage/.gitlab-ci.yml
+        ~/code/kwarray/.gitlab-ci.yml
+        ~/code/kwcoco/.gitlab-ci.yml
+
+        ~/code/ndsampler/.gitlab-ci.yml
 
 
-# This CI file has 4 types of jobs:
-# (1) in the build stage we we build the wheels on a manylinux docker image
-# (2) then in the test stage we install the wheels, run unit tests, and measure coverage
-# (3) after testing we sign the wheels with the CI's GPG key
-# (4) finally if we are on the release branch we will push the signed wheels to pypi
+        Enable the opencv-hack if needed, and turn on/off the desired versions
+        of Python.
+
 
 stages:
   - build
@@ -26,111 +29,8 @@ stages:
   - deploy
 
 
-.__gpg_heredoc__: &__gpg_heredoc__
-        - | 
-            # THIS IS NOT EXECUTE ON THE CI, THIS IS FOR DEVELOPER REFERENCE
-            # ON HOW THE ENCRYPTED GPG KEYS ARE SETUP.
-            # THESE INSTRUCTIONS HAVE MOVED  to dev/setup_secrets.sh
-
-
 ### TEMPLATES ###
 # Define common templates using YAML anchors
-
-
-.cibuildwheel_template: &cibuildwheel_template
-    stage: 
-        build
-
-    tags:
-        # Tags define which runners will accept which jobs
-        - linux
-        - docker
-        - privileged
-
-    image: gitlab.kitware.com:4567/computer-vision/ci-docker/podman:3.2.1
-
-    script:
-        - podman --version
-        - podman info --debug
-        #- python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@dev/flow
-        - python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@new_podman_support
-        - pwd
-        - ls -al
-        # NOTE: this requires that some mechanism exists in cibuildwheel to
-        # ignore this directory when it copys the repo into the container
-        - mkdir -p ".cache/containers/vfs-storage/"
-        # Configure cibuildwheel options
-        #- export CIBW_SKIP="pp* cp27-* cp35-*"
-        - export CIBW_SKIP="pp*"
-        # Configure podman options (specific to custom cibuildwheel fork)
-        - export CIBW_CONTAINER_ENGINE="podman"
-        #- export CIBW_OCI_EXTRA_ARGS_CREATE="--events-backend=file --privileged"
-        #- export CIBW_OCI_EXTRA_ARGS_COMMON="--cgroup-manager=cgroupfs --storage-driver=vfs --root=$HOME/.local/share/containers/vfs-storage/"
-        #- export CIBW_OCI_EXTRA_ARGS_START="--events-backend=file --cgroup-manager=cgroupfs --storage-driver=vfs"
-        - |
-          codeblock()
-          {
-              PYEXE=python3
-              echo "$1" | $PYEXE -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip('\n'))"
-          }
-          # Make a storage.conf and containers.conf file
-          #
-          # https://github.com/containers/common/blob/main/docs/containers.conf.5.md
-          # https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
-          export CONTAINERS_CONF=$(realpath "temp_containers.conf")
-          export CONTAINERS_STORAGE_CONF=$(realpath "temp_storage.conf")
-          # --
-          codeblock "
-          [storage]
-          driver=\"vfs\"
-          graphroot=\"$HOME/.local/share/containers/vfs-storage\"
-          runroot=\"$HOME/.local/share/containers/vfs-runroot\"
-          [storage.options.aufs]
-          mountopt=\"rw\"
-          " > $CONTAINERS_STORAGE_CONF
-          # --
-          # For defaults see /usr/share/containers/containers.conf
-          codeblock "
-          [containers]
-          default_capabilities = [
-            \"CHOWN\",
-            \"DAC_OVERRIDE\",
-            \"FOWNER\",
-            \"FSETID\",
-            \"KILL\",
-            \"NET_BIND_SERVICE\",
-            \"SETFCAP\",
-            \"SETGID\",
-            \"SETPCAP\",
-            \"SETUID\",
-            \"SYS_CHROOT\"
-          ]
-          [engine]
-          cgroup_manager=\"cgroupfs\"
-          events_logger=\"file\"
-          [machine]
-          " > $CONTAINERS_CONF
-          #podman run ubi8 mount
-          #podman run --privileged ubi8 mount
-          cat $CONTAINERS_CONF
-          cat $CONTAINERS_STORAGE_CONF
-        - podman info --debug
-        - cibuildwheel --platform linux --print-build-identifiers
-        - cibuildwheel --output-dir wheelhouse --platform linux
-        # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
-        - ls $CIBW_OCI_ROOT
-        - ls wheelhouse
-
-    artifacts:
-        paths:
-            - wheelhouse/
-
-    # Contents of .cache/containers/vfs-storage are far too large to cache
-    # Not sure if it is possible to cache the download of the images
-    #cache:
-    #    paths:
-    #        - .cache/containers
-    #    TODO: can we use skopeo to cache the images?
 
 .common_template: &common_template
     tags:
@@ -144,457 +44,120 @@ stages:
         # only cache local items.
         PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
+    except:
+        # Don't run the pipeline for new tags
+        - tags
+
     cache:
         paths:
             - .cache/pip
 
 
-.common_test_template: &common_test_template
-    <<: 
-        - *common_template
-
-    stage: 
-        test
-          
-    # Coverage is a regex that will parse the coverage from the test stdout
-    coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
-
-    except:
-        refs:
-          - release 
-          - tags
-        #changes:
-        #    - README.rst
-        #    - CHANGELOG.md
-
-
-# Define anchors to be used in "before_script" parts
-._setup_virtualenv_template: &_setup_virtualenv_template |-
-    # Setup the correct version of python on this manylinux instance
-    python --version  # Print out python version for debugging
-    python -m pip install virtualenv
-    python -m virtualenv venv
-    source venv/bin/activate
-    pip install pip -U
-    pip install setuptools -U
-    pip install pygments
-
-._install_strict_minimal_requirements: &_install_strict_minimal_requirements |-
-    ./dev/make_strict_req.sh
-    pip install -r requirements-strict/runtime.txt -r requirements-strict/tests.txt
-    pip install opencv-python-headless
-
-._install_strict_full_requirements: &_install_strict_full_requirements |-
-    ./dev/make_strict_req.sh
-    pip install -r requirements-strict/optional.txt -r requirements-strict/runtime.txt -r requirements-strict/tests.txt
-    pip install opencv-python-headless
-
-    
-._install_loose_minimal_requirements: &_install_loose_minimal_requirements |-
-    pip install -r requirements/runtime.txt -r requirements/tests.txt
-    pip install opencv-python-headless
-
-
-._install_loose_full_requirements: &_install_loose_full_requirements |-
-    pip install -r requirements/optional.txt -r requirements/runtime.txt -r requirements/tests.txt
-    pip install opencv-python-headless
-
-
-._run_tests_in_sandboxed_dir: &_run_tests_in_sandboxed_dir |-
-    # Hack to test the installed wheel. TODO: make run_tests work better in this case.
-    mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
-
-
-    
-._test_full_script: &_test_full_script
-    - ls wheelhouse || echo "wheelhouse does not exist"
-    - MB_PYTHON_TAG=$(echo ${CI_JOB_NAME} | sed 's/.*\/\(.*\)-manylinux2010/\1/')
-    - VERSION=$(python -c "import setup; print(setup.VERSION)")
-    - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}-*manylinux*_x86_64.whl
-    - pip install $BDIST_WHEEL_PATH
-    # - xdoctest kwimage --style=google all --mask 
-    - *_run_tests_in_sandboxed_dir
-
-
-._test_minimal_script: &_test_minimal_script
-    - ls wheelhouse || echo "wheelhouse does not exist"
-    - MB_PYTHON_TAG=py3-none-any
-    - VERSION=$(python -c "import setup; print(setup.VERSION)")
-    - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-    - pip install $BDIST_WHEEL_PATH
-    #- xdoctest -m kwimage --style=google all
-    #- export KWIMAGE_DISABLE_C_EXTENSIONS=1
-    #- pip install -r requirements/tests.txt
-    - *_run_tests_in_sandboxed_dir
-    
-    
-.test_full_loose_template: &test_full_loose_template
-    <<: 
-        - *common_test_template
-
-    before_script:
-        - *_setup_virtualenv_template
-        - *_install_loose_full_requirements
-
-    script: *_test_full_script
-
-
-.test_minimal_loose_template: &test_minimal_loose_template
-    <<: 
-        - *common_test_template
-
-    before_script:
-        - *_setup_virtualenv_template
-        - *_install_loose_minimal_requirements
-
-    script: *_test_minimal_script
-
-.test_full_strict_template: &test_full_strict_template
-    <<: 
-        - *common_test_template
-
-    before_script:
-        - *_setup_virtualenv_template
-        - *_install_strict_full_requirements
-
-    script: *_test_full_script
-
-
-.test_minimal_strict_template: &test_minimal_strict_template
-    <<: 
-        - *common_test_template
-
-    before_script:
-        - *_setup_virtualenv_template
-        - *_install_strict_minimal_requirements
-
-    script: *_test_minimal_script
-
-
-gpgsign/wheels:
-    <<: 
-        - *common_template
-
-    image:
-        python:3.8
-
-    stage: 
-        gpgsign
-
-    script: 
-        - ls wheelhouse
-        - export GPG_EXECUTABLE=gpg
-        - export GPG_KEYID=$(cat dev/public_gpg_key)
-        - echo "GPG_KEYID = $GPG_KEYID"
-        # Decrypt and import GPG Keys / trust
-        # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on master and release branch
-        - source dev/secrets_configuration.sh
-        - CI_SECRET=${!VARNAME_CI_SECRET}
-        - $GPG_EXECUTABLE --version
-        - openssl version
-        - $GPG_EXECUTABLE --list-keys
-        # note CI_KITWARE_SECRET is a protected variables only available on master and release branch
-        - GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
-        - GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
-        - GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc | $GPG_EXECUTABLE --import 
-        - GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
-
-        - |
-            WHEEL_PATHS=(wheelhouse/*.whl)
-            WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
-            echo "$WHEEL_PATHS_STR"
-            for WHEEL_PATH in "${WHEEL_PATHS[@]}"
-            do
-                echo "------"
-                echo "WHEEL_PATH = $WHEEL_PATH"
-                $GPG_SIGN_CMD --output $WHEEL_PATH.asc $WHEEL_PATH
-                $GPG_EXECUTABLE --verify $WHEEL_PATH.asc $WHEEL_PATH  || echo "hack, the first run of gpg very fails"
-                $GPG_EXECUTABLE --verify $WHEEL_PATH.asc $WHEEL_PATH 
-            done
-        - ls wheelhouse
-
-    artifacts:
-        paths:
-            - wheelhouse/*.asc
-
-    only:
-        refs:
-            # Gitlab will only expose protected variables on protected branches
-            # (which I've set to be master and release), so only run this stage
-            # there.
-            - master
-            - main
-            - release
-
-
-# Aliases for the images that run the tests
-.image_python3_10: &image_python3_10
-    gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.10
-.image_python39: &image_python39
-    gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.9
-.image_python38: &image_python38
-    gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
-.image_python37: &image_python37
-    gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.7
-.image_python36: &image_python36
-    gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
-
-
-### JOBS ###
-# Define the actual jobs
-#
-# ---------------
-# Python 3.10 Jobs
-
-#build/cp3_10-cp3_10-linux:
-#    <<: 
-#        - *cibuildwheel_template
-#    variables:
-#        CIBW_BUILD: "cp310-*"
-
-#test_full_loose/cp3_10-cp3_10-linux:
-#    <<: 
-#        - *test_full_loose_template
-#    image:
-#        *image_python3_10
-#    needs: 
-#        -  build/cp3_10-cp3_10-linux
-
-#test_minimal_loose/cp3_10-cp3_10-linux:
-#    <<: 
-#        - *test_minimal_loose_template
-#    image:
-#        *image_python3_10
-#    needs: 
-#        -  build/cp3_10-cp3_10-linux
-
-#test_full_strict/cp3_10-cp3_10-linux:
-#    <<: 
-#        - *test_full_strict_template
-#    image:
-#        *image_python3_10
-#    needs: 
-#        -  build/cp3_10-cp3_10-linux
-
-#test_minimal_strict/cp3_10-cp3_10-linux:
-#    <<: 
-#        - *test_minimal_strict_template
-#    image:
-#        *image_python3_10
-#    needs: 
-#        -  build/cp3_10-cp3_10-linux
-
-# ---------------
-# Python 3.9 Jobs
-
-build/cp39-cp39-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp39-*"
-
-test_full_loose/cp39-cp39-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python39
-    needs: 
-        -  build/cp39-cp39-manylinux2010
-
-test_minimal_loose/cp39-cp39-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python39
-    needs: 
-        -  build/py3-none-any
-
-test_minimal_strict/cp39-cp39-manylinux2010:
-    <<: 
-        - *test_minimal_strict_template
-    image:
-        *image_python39
-    needs: 
-        -  build/py3-none-any
-
-test_full_strict/cp39-cp39-manylinux2010:
-    <<: 
-        - *test_full_strict_template
-    image:
-        *image_python39
-    needs: 
-        -  build/cp39-cp39-manylinux2010
-
-# ---------------
-# Python 3.8 Jobs
-
-build/cp38-cp38-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp38-*"
-
-test_full_loose/cp38-cp38-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python38
-    needs: 
-        -  build/cp38-cp38-manylinux2010
-
-test_minimal_loose/cp38-cp38-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python38
-    needs: 
-        -  build/py3-none-any
-
-test_minimal_strict/cp38-cp38-manylinux2010:
-    <<: 
-        - *test_minimal_strict_template
-    image:
-        *image_python38
-    needs: 
-        -  build/py3-none-any
-
-test_full_strict/cp38-cp38-manylinux2010:
-    <<: 
-        - *test_full_strict_template
-    image:
-        *image_python38
-    needs: 
-        -  build/cp38-cp38-manylinux2010
-
-# ---------------
-# Python 3.7 Jobs
-
-build/cp37-cp37m-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp37-*"
-
-test_full_loose/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python37
-    needs: 
-        -  build/cp37-cp37m-manylinux2010
-
-test_minimal_loose/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python37
-    needs: 
-        -  build/py3-none-any
-
-test_minimal_strict/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_minimal_strict_template
-    image:
-        *image_python37
-    needs: 
-        -  build/py3-none-any
-
-test_full_strict/cp37-cp37m-manylinux2010:
-    <<: 
-        - *test_full_strict_template
-    image:
-        *image_python37
-    needs: 
-        -  build/cp37-cp37m-manylinux2010
-
-
-# ---------------
-# Python 3.6 Jobs
-
-build/cp36-cp36m-manylinux2010:
-    <<: 
-        - *cibuildwheel_template
-    variables:
-        CIBW_BUILD: "cp36-*"
-
-test_full_loose/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_full_loose_template
-    image:
-        *image_python36
-    needs: 
-        -  build/cp36-cp36m-manylinux2010
-
-test_minimal_loose/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_minimal_loose_template
-    image:
-        *image_python36
-    needs: 
-        -  build/py3-none-any
-
-test_minimal_strict/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_minimal_strict_template
-    image:
-        *image_python36
-    needs: 
-        -  build/py3-none-any
-
-test_full_strict/cp36-cp36m-manylinux2010:
-    <<: 
-        - *test_full_strict_template
-    image:
-        *image_python36
-    needs: 
-        -  build/cp36-cp36m-manylinux2010
-
-
-# ---------------
-# Universal Python Jobs
-build/py3-none-any:
+.build_template: &build_template
+    # Tags define which runners will accept which jobs
     <<: 
         - *common_template
 
     stage: 
         build
-
-    image: gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.7
-
+    
     before_script:
         - python -V  # Print out python version for debugging
-        - pip install virtualenv
-        - virtualenv venv
-        - source venv/bin/activate
-        - pip install pip -U
-        - pip install pip setuptools -U
 
     script: 
-        - export KWIMAGE_DISABLE_C_EXTENSIONS=1
-        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py bdist_wheel --dist-dir wheelhouse
-        - KWIMAGE_DISABLE_C_EXTENSIONS=1 python setup.py sdist --dist-dir wheelhouse
-        - ls wheelhouse
+        #- python setup.py bdist_wheel --universal
+        - python setup.py bdist_wheel 
 
-          # TODO: modernize bdist_wheel: pip wheel . -w wheelhouse --no-deps
-        #- MB_PYTHON_TAG=py3-none-any
-        #- # VERSION=$(python -c "import setup; print(setup.VERSION)")
-        #- # BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-        #- # pip install $BDIST_WHEEL_PATH
-        #- # pip install pygments
-        ## Hack to test the installed wheel. TODO: make run_tests work better in this case.
-        #- # pip install -r requirements/tests.txt
-        #- # mkdir -p foo && cd foo && python -m pytest --cov-config ../.coveragerc --cov-report html --cov-report term --cov=kwimage --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('kwimage'))") ../tests
-        #- # xdoctest -m kwimage
-          
     artifacts:
         paths:
-            - wheelhouse/*.whl
-    cache:
-        paths:
-            - .cache/pip
+            - dist/*.whl
 
 
-gpgsign/py3-none-any:
+.common_test_template: &common_test_template
+    # Tags define which runners will accept which jobs
+    <<: 
+        - *common_template
+
+    variables:
+        # Change pip's cache directory to be inside the project directory since we can
+        # only cache local items.
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+    stage: 
+        test
+    
+    script: 
+        - ./run_tests.py
+
+    # Coverage is a regex that will parse the coverage from the test stdout
+    coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+
+    #except:
+    #    refs:
+    #      - release 
+    #      - tags
+    #    changes:
+    #        - README.rst
+    #        - CHANGELOG.md
+
+
+# Define anchors to be used in "before_script" parts
+._setup_virtualenv_template: &_setup_virtualenv_template |-
+    python -V  # Print out python version for debugging
+    export PYVER=$(python -c "import sys; print('{}{}'.format(*sys.version_info[0:2]))")
+    pip install virtualenv
+    virtualenv venv$PYVER
+    source venv$PYVER/bin/activate
+    pip install pip -U
+    pip install pip setuptools -U
+    python -V  # Print out python version for debugging
+
+
+.test_minimal_strict_template: &test_minimal_strict_template
+    # Tags define which runners will accept which jobs
+    <<: 
+        - *common_test_template
+
+    before_script:
+        - *_setup_virtualenv_template
+        # - pip install .[tests-strict]                   # xcookie: +COMMENT_IF(cv2)
+        - pip install .[tests-strict,headless-strict]  # xcookie: +UNCOMMENT_IF(cv2)
+
+
+.test_full_strict_template: &test_full_strict_template
+    # Tags define which runners will accept which jobs
+    <<: 
+        - *common_test_template
+
+    before_script:
+        - *_setup_virtualenv_template
+        # - pip install .[all-strict]                   # xcookie: +COMMENT_IF(cv2)
+        - pip install .[all-strict,headless-strict]  # xcookie: +UNCOMMENT_IF(cv2)
+
+.test_minimal_loose_template: &test_minimal_loose_template
+    # Tags define which runners will accept which jobs
+    <<: 
+        - *common_test_template
+
+    before_script:
+        - *_setup_virtualenv_template
+        # - pip install .[tests]            # xcookie: +COMMENT_IF(cv2)
+        - pip install .[tests,headless]  # xcookie: +UNCOMMENT_IF(cv2)
+
+
+.test_full_loose_template: &test_full_loose_template
+    # Tags define which runners will accept which jobs
+    <<: 
+        - *common_test_template
+
+    before_script:
+        - *_setup_virtualenv_template
+        # - pip install .[all]            # xcookie: +COMMENT_IF(cv2)
+        - pip install .[all,headless]  # xcookie: +UNCOMMENT_IF(cv2)
+
+
+
+.gpgsign_template: &gpgsign_template
     <<: 
         - *common_template
 
@@ -602,84 +165,83 @@ gpgsign/py3-none-any:
         gpgsign
 
     script: 
-        - ls wheelhouse
-        - MB_PYTHON_TAG=py3-none-any
-        - VERSION=$(python -c "import setup; print(setup.VERSION)")
-        - BDIST_WHEEL_PATH=wheelhouse/kwimage-${VERSION}-${MB_PYTHON_TAG}.whl
-        - export GPG_EXECUTABLE=gpg
-        - export GPG_KEYID=$(cat dev/public_gpg_key)
-        - echo "GPG_KEYID = $GPG_KEYID"
-        # Decrypt and import GPG Keys / trust
-        # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on master and release branch
-        - source dev/secrets_configuration.sh
-        - CI_SECRET=${!VARNAME_CI_SECRET}
-        - PUSH_TOKEN=${!VARNAME_PUSH_TOKEN}
-        - $GPG_EXECUTABLE --version
-        - openssl version
-        - $GPG_EXECUTABLE --list-keys
-        # note CI_KITWARE_SECRET is a protected variables only available on master and release branch
-        - GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
-        - GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
-        - GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc | $GPG_EXECUTABLE --import 
-        - GPG_SIGN_CMD="$GPG_EXECUTABLE --batch --yes --detach-sign --armor --local-user $GPG_KEYID"
-        #- # $GPG_EXECUTABLE --list-keys
-        - echo "Signing wheels"
-        - $GPG_SIGN_CMD --output $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
-        - ls wheelhouse
-        - echo "Verifying wheels"
-        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH  || echo "hack, the first run of gpg very fails"
-        - $GPG_EXECUTABLE --verify $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH 
-        - echo "Verified wheels"
+        - |
+          export GNUPGHOME=$(mktemp -d)
+          export GPG_EXECUTABLE=gpg
+          export GPG_KEYID=$(cat dev/public_gpg_key)
+          echo "GPG_KEYID = $GPG_KEYID"
+          source dev/secrets_configuration.sh
+          # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on main and release branch
+          CI_SECRET=${!VARNAME_CI_SECRET}
+          $GPG_EXECUTABLE --version
+          openssl version
+          $GPG_EXECUTABLE --list-keys
+          $GPG_EXECUTABLE --list-keys
+          # Decrypt and import GPG Keys / trust
+          GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
+          GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
+          GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc | $GPG_EXECUTABLE --import 
+          $GPG_EXECUTABLE --list-keys  || echo "first one fails for some reason"
+          $GPG_EXECUTABLE --list-keys  
+          # The publish script only builds wheels and does gpg signing if DO_UPLOAD is no
+          pip install requests[security] twine 
+          DO_GPG=True GPG_KEYID=$GPG_KEYID TWINE_PASSWORD=$TWINE_PASSWORD TWINE_USERNAME=$TWINE_USERNAME GPG_EXECUTABLE=$GPG_EXECUTABLE DEPLOY_BRANCH=release DO_TAG=False DO_UPLOAD=False ./publish.sh
 
     artifacts:
         paths:
-            - wheelhouse/*.asc
+            - dist/*.asc
+            - dist/*.tar.gz
+            - dist/*.whl
 
     only:
         refs:
             # Gitlab will only expose protected variables on protected branches
-            # (which I've set to be master and release), so only run this stage
+            # (which I've set to be main and release), so only run this stage
             # there.
-            - master
             - main
+            - master
             - release
-    image:
-        python:3.7
 
 
-deploy/wheels:
+.deploy_template: &deploy_template
     <<: 
         - *common_template
-
-    image:
-        python:3.8
 
     stage: 
         deploy
 
     script: 
-        - pip install six pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U 
-        - ls wheelhouse
         - |
-            WHEEL_PATHS=(wheelhouse/*.whl)
-            WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
-            source dev/secrets_configuration.sh
-            TWINE_PASSWORD=${!VARNAME_TWINE_PASSWORD}
-            TWINE_USERNAME=${!VARNAME_TWINE_USERNAME}
-            echo "$WHEEL_PATHS_STR"
-            for WHEEL_PATH in "${WHEEL_PATHS[@]}"
-            do
-                twine check $WHEEL_PATH.asc $WHEEL_PATH
-                twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $WHEEL_PATH.asc $WHEEL_PATH || echo "upload already exists"
-            done
-        - | 
-            # Have the server git-tag the release and push the tags
-            export VERSION=$(python -c "import setup; print(setup.VERSION)")
-            # do sed twice to handle the case of https clone with and without a read token
-            URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g' | sed -e 's|git@||g' | sed -e 's|:|/|g')
+            export GNUPGHOME=$(mktemp -d)
+            export GPG_EXECUTABLE=gpg
+            export GPG_KEYID=$(cat dev/public_gpg_key)
+            echo "GPG_KEYID = $GPG_KEYID"
+            # VARNAME_CI_SECRET points to a protected variable only available on main and release branch
             source dev/secrets_configuration.sh
             CI_SECRET=${!VARNAME_CI_SECRET}
             PUSH_TOKEN=${!VARNAME_PUSH_TOKEN}
+            TWINE_PASSWORD=${!VARNAME_TWINE_PASSWORD}
+            TWINE_USERNAME=${!VARNAME_TWINE_USERNAME}
+            $GPG_EXECUTABLE --version
+            openssl version
+            $GPG_EXECUTABLE --list-keys
+            $GPG_EXECUTABLE --list-keys
+            # Decrypt and import GPG Keys / trust
+            GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
+            GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | $GPG_EXECUTABLE --import-ownertrust
+            GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc | $GPG_EXECUTABLE --import 
+            $GPG_EXECUTABLE --list-keys  || echo "first one fails for some reason"
+            $GPG_EXECUTABLE --list-keys  
+            # Install twine
+            pip install six pyopenssl ndg-httpsclient pyasn1 -U 
+            pip install requests[security] twine 
+            # Execute the publish script for real this time
+            TWINE_REPOSITORY_URL=https://upload.pypi.org/legacy/ DO_GPG=True GPG_KEYID=$GPG_KEYID TWINE_PASSWORD=$TWINE_PASSWORD TWINE_USERNAME=$TWINE_USERNAME GPG_EXECUTABLE=$GPG_EXECUTABLE CURRENT_BRANCH=release DEPLOY_BRANCH=release DO_TAG=True DO_UPLOAD=True ./publish.sh || echo "upload already exists"
+            # Have the server git-tag the release and push the tags
+            VERSION=$(python -c "import setup; print(setup.VERSION)")
+        # do sed twice to handle the case of https clone with and without a read token
+        - | 
+            URL_HOST=$(git remote get-url origin | sed -e 's|https\?://.*@||g' | sed -e 's|https\?://||g' | sed -e 's|git@||g' | sed -e 's|:|/|g')
             echo "URL_HOST = $URL_HOST"
             # A git config user name and email is required. Set if needed.
             if [[ "$(git config user.email)" == "" ]]; then
@@ -697,164 +259,400 @@ deploy/wheels:
                 git tag $TAG_NAME -m "tarball tag $VERSION"
                 git push --tags "https://git-push-token:${PUSH_TOKEN}@${URL_HOST}"
             fi
-            
+
     only:
         refs:
             - release
 
 
+# Aliases for the images that run the tests
+.image_python3_10: &image_python3_10
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.10
+    python:3.10
+.image_python39: &image_python39
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.9
+    python:3.9
+.image_python38: &image_python38
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
+    python:3.8
+.image_python37: &image_python37
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.7
+    python:3.7
+.image_python36: &image_python36
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
+    python:3.6
+.image_python35: &image_python35
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.5
+    python:3.5
+.image_python27: &image_python27
+    #gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:2.7
+    python:2.7
+    
+
+
+### JOBS ###
+# Define the actual jobs
+
+
+# ---------------
+# Python 3.10 Jobs
+
+
+build/cp3_10-cp3_10-linux:
+    <<: 
+        - *build_template
+    image:
+        *image_python3_10
+
+test_full_loose/cp3_10-cp3_10-linux:
+    <<: 
+        - *test_full_loose_template
+    image:
+        *image_python3_10
+    needs: 
+        -  build/cp3_10-cp3_10-linux
+
+test_minimal_loose/cp3_10-cp3_10-linux:
+    <<: 
+        - *test_minimal_loose_template
+    image:
+        *image_python3_10
+    needs: 
+        -  build/cp3_10-cp3_10-linux
+
+test_full_strict/cp3_10-cp3_10-linux:
+    <<: 
+        - *test_full_strict_template
+    image:
+        *image_python3_10
+    needs: 
+        -  build/cp3_10-cp3_10-linux
+
+test_minimal_strict/cp3_10-cp3_10-linux:
+    <<: 
+        - *test_minimal_strict_template
+    image:
+        *image_python3_10
+    needs: 
+        -  build/cp3_10-cp3_10-linux
+
+# ---------------
+# Python 3.9 Jobs
+
+
+build/cp39-cp39-linux:
+    <<: 
+        - *build_template
+    image:
+        *image_python39
+
+test_full_loose/cp39-cp39-linux:
+    <<: 
+        - *test_full_loose_template
+    image:
+        *image_python39
+    needs: 
+        -  build/cp39-cp39-linux
+
+test_minimal_loose/cp39-cp39-linux:
+    <<: 
+        - *test_minimal_loose_template
+    image:
+        *image_python39
+    needs: 
+        -  build/cp39-cp39-linux
+
+test_full_strict/cp39-cp39-linux:
+    <<: 
+        - *test_full_strict_template
+    image:
+        *image_python39
+    needs: 
+        -  build/cp39-cp39-linux
+
+test_minimal_strict/cp39-cp39-linux:
+    <<: 
+        - *test_minimal_strict_template
+    image:
+        *image_python39
+    needs: 
+        -  build/cp39-cp39-linux
+
+# ---------------
+# Python 3.8 Jobs
+
+build/cp38-cp38-linux:
+    <<: 
+        - *build_template
+    image:
+        *image_python38
+
+test_full_loose/cp38-cp38-linux:
+    <<: 
+        - *test_full_loose_template
+    image:
+        *image_python38
+    needs: 
+        -  build/cp38-cp38-linux
+
+test_minimal_loose/cp38-cp38-linux:
+    <<: 
+        - *test_minimal_loose_template
+    image:
+        *image_python38
+    needs: 
+        -  build/cp38-cp38-linux
+
+test_full_strict/cp38-cp38-linux:
+    <<: 
+        - *test_full_strict_template
+    image:
+        *image_python38
+    needs: 
+        -  build/cp38-cp38-linux
+
+test_minimal_strict/cp38-cp38-linux:
+    <<: 
+        - *test_minimal_strict_template
+    image:
+        *image_python38
+    needs: 
+        -  build/cp38-cp38-linux
+
+# for universal builds we only need to gpg sign once
+gpgsign/cp38-cp38-linux:
+    <<: 
+        - *gpgsign_template
+    image:
+        *image_python38
+
+deploy/cp38-cp38-linux:
+    <<: 
+        - *deploy_template
+    image:
+        *image_python38
+      
+
+# ---------------
+# Python 3.7 Jobs
+
+
+build/cp37-cp37-linux:
+    <<: 
+        - *build_template
+    image:
+        *image_python37
+
+test_full_loose/cp37-cp37-linux:
+    <<: 
+        - *test_full_loose_template
+    image:
+        *image_python37
+    needs: 
+        -  build/cp37-cp37-linux
+
+test_minimal_loose/cp37-cp37-linux:
+    <<: 
+        - *test_minimal_loose_template
+    image:
+        *image_python37
+    needs: 
+        -  build/cp37-cp37-linux
+
+test_full_strict/cp37-cp37-linux:
+    <<: 
+        - *test_full_strict_template
+    image:
+        *image_python37
+    needs: 
+        -  build/cp37-cp37-linux
+
+test_minimal_strict/cp37-cp37-linux:
+    <<: 
+        - *test_minimal_strict_template
+    image:
+        *image_python37
+    needs: 
+        -  build/cp37-cp37-linux
+
+
+# ---------------
+# Python 3.6 Jobs
+
+
+build/cp36-cp36m-linux:
+    <<: 
+        - *build_template
+    image:
+        *image_python36
+
+test_full_loose/cp36-cp36m-linux:
+    <<: 
+        - *test_full_loose_template
+    image:
+        *image_python36
+    needs: 
+        -  build/cp36-cp36m-linux
+
+test_minimal_loose/cp36-cp36m-linux:
+    <<: 
+        - *test_minimal_loose_template
+    image:
+        *image_python36
+    needs: 
+        -  build/cp36-cp36m-linux
+
+test_full_strict/cp36-cp36m-linux:
+    <<: 
+        - *test_full_strict_template
+    image:
+        *image_python36
+    needs: 
+        -  build/cp36-cp36m-linux
+
+test_minimal_strict/cp36-cp36m-linux:
+    <<: 
+        - *test_minimal_strict_template
+    image:
+        *image_python36
+    needs: 
+        -  build/cp36-cp36m-linux
+
+
+
+# ---------------
+# Python 3.5 Jobs
+
+
+#build/cp35-cp35m-linux:
+#    <<: 
+#        - *build_template
+#    image:
+#        *image_python35
+
+#test_full_loose/cp35-cp35m-linux:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python35
+#    needs: 
+#        -  build/cp35-cp35m-linux
+
+#test_minimal_loose/cp35-cp35m-linux:
+#    <<: 
+#        - *test_minimal_loose_template
+#    image:
+#        *image_python35
+#    needs: 
+#        -  build/cp35-cp35m-linux
+
+#test_full_strict/cp35-cp35m-linux:
+#    <<: 
+#        - *test_full_strict_template
+#    image:
+#        *image_python35
+#    needs: 
+#        -  build/cp35-cp35m-linux
+
+#test_minimal_strict/cp35-cp35m-linux:
+#    <<: 
+#        - *test_minimal_strict_template
+#    image:
+#        *image_python35
+#    needs: 
+#        -  build/cp35-cp35m-linux
+
+
+
+# ---------------
+# Python 2.7 Jobs
+
+
+#build/cp27-cp27m-linux:
+#    <<: 
+#        - *build_template
+#    image:
+#        *image_python27
+
+#test_full_loose/cp27-cp27m-linux:
+#    <<: 
+#        - *test_full_loose_template
+#    image:
+#        *image_python27
+#    needs: 
+#        -  build/cp27-cp27m-linux
+
+#test_minimal_loose/cp27-cp27m-linux:
+#    <<: 
+#        - *test_minimal_loose_template
+#    image:
+#        *image_python27
+#    needs: 
+#        -  build/cp27-cp27m-linux
+
+#test_full_strict/cp27-cp27m-linux:
+#    <<: 
+#        - *test_full_strict_template
+#    image:
+#        *image_python27
+#    needs: 
+#        -  build/cp27-cp27m-linux
+
+#test_minimal_strict/cp27-cp27m-linux:
+#    <<: 
+#        - *test_minimal_strict_template
+#    image:
+#        *image_python27
+#    needs: 
+#        -  build/cp27-cp27m-linux
+
+
+
 .__local_docker_heredoc__:
-        - | 
-            # Commands to help developers debug pipelines on their local machine
-            # Grab the base docker image, (forwarding your ssh credentials), clone
-            # the watch repo, create the environment, and run the tests. 
-            #docker login gitlab.kitware.com:4567
+    - | 
+        # Commands to help developers debug pipelines on their local machine
+        # Grab the base docker image, (forwarding your ssh credentials), clone
+        # the watch repo, create the environment, and run the tests. 
+        #docker login gitlab.kitware.com:4567
+        #IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
 
-            IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
-            docker run -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -it $IMAGE_NAME bash
-            # Will need to chmod things afterwords
-            export PIP_CACHE_DIR=/pip_cache
-            echo $PIP_CACHE_DIR
-            chmod -R o+rw $PIP_CACHE_DIR
-            chmod -R o+rw $PIP_CACHE_DIR
-            chmod -R g+rw $PIP_CACHE_DIR
-            USER=$(whoami)
-            chown -R $USER $PIP_CACHE_DIR
-            cd $HOME
-            git clone /io ./repo
+        # Use whatever image is defined for Python39 in this file and start a docker session
+        IMAGE_NAME=$(cat .gitlab-ci.yml | yq -r '.".image_python3_10"')
+        docker run -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -it $IMAGE_NAME bash
 
-            cd $HOME/repo
+        # Will need to chmod things afterwords
+        export PIP_CACHE_DIR=/pip_cache
+        echo $PIP_CACHE_DIR
+        chmod -R o+rw $PIP_CACHE_DIR
+        chmod -R o+rw $PIP_CACHE_DIR
+        chmod -R g+rw $PIP_CACHE_DIR
+        USER=$(whoami)
+        chown -R $USER $PIP_CACHE_DIR
+        cd $HOME
+        git clone /io ./repo
 
-            # Make a virtualenv
-            export PYVER=$(python -c "import sys; print('{}{}'.format(*sys.version_info[0:2]))")
-            pip install virtualenv
-            virtualenv venv$PYVER
-            source venv$PYVER/bin/activate
-            #pip install pip -U
-            #pip install pip setuptools -U
+        cd $HOME/repo
 
-            # STRICT VARIANT
-            ./dev/make_strict_req.sh
-            #pip install pip-tools
-            #pip install pip -U
-            #pip install scikit-build cmake ninja
-            pip install -r requirements-strict/build.txt
-            pip install -r requirements-strict.txt -r requirements-strict/headless.txt
-            pip install -e .
-            ./run_tests.py
+        # Make a virtualenv
+        export PYVER=$(python -c "import sys; print('{}{}'.format(*sys.version_info[0:2]))")
+        pip install virtualenv
+        virtualenv venv$PYVER
+        source venv$PYVER/bin/activate
+        #pip install pip -U
+        #pip install pip setuptools -U
 
-            # LOOSE VARIANT
-            pip install -r requirements.txt
-            pip install -e .[tests,headless]
-            ./run_tests.py
+        # FULL STRICT VARIANT
+        pip install -e .[all-strict,headless-strict]
+        ./run_tests.py
 
+        # FULL LOOSE VARIANT
+        pip install -e .[all,headless]
+        ./run_tests.py
 
-.__local_podman_heredoc__:
-        - | 
-          # Test podman in docker locally
-          IMAGE_NAME=gitlab.kitware.com:4567/computer-vision/ci-docker/podman:3.2.1
+        # MINIMAL STRICT VARIANT
+        pip install -e .[runtime-strict,tests-strict]
+        ./run_tests.py
 
-          # Cannot clone issue:
-          # https://github.com/containers/podman/issues/10802
-          # Podman requires a clone system call
-          # This invocation of docker with --privledged works around it:
-          docker run --privileged -v $PWD:/io:ro -v $HOME/.cache/pip:/pip_cache -v $HOME/code/cibuildwheel:/cibuildwheel -it $IMAGE_NAME bash
-
-          # Once inside docker, we can test that podman works correctly
-          mkdir -p "$HOME/.local/.cache/containers/vfs-storage/"
-          #podman --cgroup-manager=cgroupfs --storage-driver=vfs --root=$HOME/.local/share/containers/vfs-storage/ info --debug
-
-          export PIP_CACHE_DIR=/pip_cache
-          echo $PIP_CACHE_DIR
-          chmod -R o+rw $PIP_CACHE_DIR
-          chmod -R o+rw $PIP_CACHE_DIR
-          chmod -R g+rw $PIP_CACHE_DIR
-          USER=$(whoami)
-          chown -R $USER $PIP_CACHE_DIR
-
-          # Install the local host copy of cibuildwheel
-          #git clone /cibuildwheel /internal_cibuildwheel
-          #cd /internal_cibuildwheel
-          #python3 -m pip install .
-          #python3 -m pip uninstall cibuildwheel
-          #cibuildwheel --platform linux --print-build-identifiers
-          python3 -m pip install git+https://github.com/Erotemic/cibuildwheel.git@new_podman_support
-
-          # Install the repo
-          cd $HOME
-          git clone /io ./repo
-          cd $HOME/repo
-
-          #cat /etc/os-release
-          #podman --version
-          #podman info --debug
-          #(cd /internal_cibuildwheel && git pull)
-          #pwd
-          #ls -al
-
-          cibuildwheel --platform linux --print-build-identifiers
-
-          #export CIBW_OCI_EXTRA_ARGS_CREATE="--events-backend=file --cap-add CAP_SYS_ADMIN --cap-add=SYS_PTRACE"
-          export CIBW_SKIP="pp* cp310-* cp39-* cp37-* cp36-* *musllinux*"
-          cibuildwheel --platform linux --archs x86_64 --print-build-identifiers
-          cd $HOME/repo
-          export CIBW_CONTAINER_ENGINE="podman"
-          #cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
-          # - cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64,i686,aarch64,ppc64le,s390x,universal2,arm64,x86,AMD64
-          
-          #https://infosecadalid.com/2021/08/30/containers-rootful-rootless-privileged-and-super-privileged/
-          #
-          # rw,relatime  
-          
-          codeblock()
-          {
-              PYEXE=python3
-              echo "$1" | $PYEXE -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip('\n'))"
-          }
-          # Make a storage.conf and containers.conf file
-          #
-          # https://github.com/containers/common/blob/main/docs/containers.conf.5.md
-          # https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
-          export CONTAINERS_CONF=$(realpath "temp_containers.conf")
-          export CONTAINERS_STORAGE_CONF=$(realpath "temp_storage.conf")
-          # --
-          codeblock "
-          [storage]
-          driver=\"vfs\"
-          graphroot=\"$HOME/.local/share/containers/vfs-storage\"
-          runroot=\"$HOME/.local/share/containers/vfs-runroot\"
-          [storage.options.aufs]
-          mountopt=\"rw\"
-          " > $CONTAINERS_STORAGE_CONF
-          # --
-          # For defaults see /usr/share/containers/containers.conf
-          codeblock "
-          [containers]
-          default_capabilities = [
-            \"CHOWN\",
-            \"DAC_OVERRIDE\",
-            \"FOWNER\",
-            \"FSETID\",
-            \"KILL\",
-            \"NET_BIND_SERVICE\",
-            \"SETFCAP\",
-            \"SETGID\",
-            \"SETPCAP\",
-            \"SETUID\",
-            \"SYS_CHROOT\"
-          ]
-          [engine]
-          cgroup_manager=\"cgroupfs\"
-          events_logger=\"file\"
-          " > $CONTAINERS_CONF
-          #podman run ubi8 mount
-          #podman run --privileged ubi8 mount
-          cat $CONTAINERS_CONF
-          cat $CONTAINERS_STORAGE_CONF
-
-          cd $HOME/repo
-          export CIBW_SKIP="pp* cp310-* cp39-* cp37-* cp36-* *musllinux*"
-          export CIBW_CONTAINER_ENGINE="podman"
-          cibuildwheel --output-dir wheelhouse --platform linux --archs x86_64
-          
-
+        # MINIMAL LOOSE VARIANT
+        pip install -e .[tests]
+        ./run_tests.py

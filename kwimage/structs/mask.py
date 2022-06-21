@@ -27,7 +27,6 @@ Notes:
     IN THIS FILE ONLY: size corresponds to a h/w tuple to be compatible with
     the coco semantics. Everywhere else in this repo, size uses opencv
     semantics which are w/h.
-
 """
 import cv2
 import copy
@@ -68,7 +67,7 @@ class _Mask_Backends():
 
         if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
             try:
-                from kwimage.structs._mask_backend import cython_mask
+                from kwimage_ext.structs._mask_backend import cython_mask
                 _funcs['kwimage'] = cython_mask
             except Exception as ex:
                 if not _internal.KWIMAGE_DISABLE_IMPORT_WARNINGS:

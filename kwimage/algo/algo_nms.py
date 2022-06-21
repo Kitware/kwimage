@@ -1,7 +1,6 @@
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
-import os
 import numpy as np
 import ubelt as ub
 import warnings
@@ -230,7 +229,7 @@ class _NMS_Impls():
             # for an example of when this last occurred
             try:
                 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
-                    from kwimage.algo._nms_backend import cpu_nms
+                    from kwimage_ext.algo._nms_backend import cpu_nms
                     _funcs['cython_cpu'] = cpu_nms.cpu_nms
             except Exception as ex:
                 warnings.warn(
@@ -238,7 +237,7 @@ class _NMS_Impls():
             try:
                 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
                     if torch is not None and torch.cuda.is_available():
-                        from kwimage.algo._nms_backend import gpu_nms
+                        from kwimage_ext.algo._nms_backend import gpu_nms
                         _funcs['cython_gpu'] = gpu_nms.gpu_nms
                         # NOTE: GPU is not the fastests on all systems.
                         # See the benchmarks for more info.

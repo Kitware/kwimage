@@ -1,4 +1,24 @@
 [build-system]
-requires = ["setuptools>=41.0.1", "wheel", "scikit-build>=0.9.0", "numpy", "cmake", "cython", "ninja", "ubelt", "cffi"]
-# build-backend = "setuptools.build_meta"  commented out to disable pep517
-### build-backend = "scikit-build"
+requires = [ "setuptools>=41.0.1", "wheel>=0.37.1",]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.xcookie]
+tags = [ "purepy", "gitlab", "kitware", "cv2"]
+mod_name = "kwimage"
+repo_name = "kwimage"
+min_python = "3.6"
+dev_status = "beta"
+
+[tool.pytest.ini_options]
+addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py"
+norecursedirs = ".git ignore build __pycache__ dev _skbuild"
+filterwarnings = [ "default", "ignore:.*No cfgstr given in Cacher constructor or call.*:Warning", "ignore:.*Define the __nice__ method for.*:Warning", "ignore:.*private pytest class or function.*:Warning",]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [ "pragma: no cover", ".*  # pragma: no cover", ".*  # nocover", "def __repr__", "raise AssertionError", "raise NotImplementedError", "if 0:", "if trace is not None", "verbose = .*", "^ *raise", "^ *pass *$", "if _debug:", "if __name__ == .__main__.:", ".*if six.PY2:",]
+omit = [ "kwimage/__main__.py", "*/setup.py",]

@@ -74,7 +74,7 @@ __all__ = ['Boxes']
 
 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
     try:
-        from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
+        from kwimage_ext.structs._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
     except ImportError:
         _bbox_ious_c = None
     except Exception as ex:

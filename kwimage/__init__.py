@@ -26,7 +26,7 @@ except ImportError as ex:
 
         Alternatively, the user can directly install the cv2 package as a post
         processing step via:
-        `pip install opencv-python-headless` or
+        `pip install opencv-python-headless` xor
         `pip install opencv-python`.
 
         We appologize for this issue and hope this documentation is sufficient.
@@ -41,7 +41,7 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.8.7'
+__version__ = '0.9.0'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
