@@ -646,8 +646,8 @@ class _MaskTransformMixin(object):
         Works efficiently in rle or mask format when the offset is integral.
 
         Args:
-            offset (Tuple): x,y offset
-            output_dims (Tuple, optional): h,w of transformed mask.
+            offset (Tuple | Number): x,y offset
+            output_dims (Tuple[int, int]): h, w of transformed mask.
                 If unspecified the parent shape is used.
 
             inplace (bool): for api compatability, currently ignored
@@ -1429,7 +1429,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 rasterio installed to use this method.
 
         Returns:
-            MultiPolygon: vectorized representation
+            kwimage.MultiPolygon: vectorized representation
 
         Note:
             - The OpenCV (and thus this function) coordinate system places

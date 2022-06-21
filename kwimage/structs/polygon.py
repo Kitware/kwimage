@@ -1409,19 +1409,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             linewidth (bool):
                 width of the border
 
-            edgecolor (None | Coercable[Color]):
+            edgecolor (None | Any):
                 if None, uses the value of ``color``.
                 Otherwise the color of the border when linewidth > 0.
+                Extended types Coercable[kwimage.Color].
 
-            facecolor (None | Coercable[Color]):
+            facecolor (None | Any):
                 if None, uses the value of ``color``.
                 Otherwise, color of the border when fill=True.
+                Extended types Coercable[kwimage.Color].
 
             vertex (float):
                 if non-zero, draws vertexes on the polygon with this radius.
 
-            vertexcolor (Coercable[Color]):
+            vertexcolor (Any):
                 color of vertexes
+                Extended types Coercable[kwimage.Color].
 
         Returns:
             matplotlib.patches.PathPatch | None :
@@ -1768,7 +1771,7 @@ class MultiPolygon(_generic.ObjectList):
         return a mask just big enough to fit the polygon.
 
         Returns:
-            Mask
+            kwimage.Mask
         """
         x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         mask = self.translate((-x, -y)).to_mask(dims=(h, w))

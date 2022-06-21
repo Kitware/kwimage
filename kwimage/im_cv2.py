@@ -183,11 +183,11 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
             image.
             There are also string codes available:
             'lt': make the top left point of the image the top left point of
-                the cropped image.  This is equivalent to img[:dsize[1],
-                :dsize[0]], plus padding.
+                the cropped image.  This is equivalent to
+                ``img[:dsize[1], :dsize[0]]``, plus padding.
             'rb': make the bottom right point of the image the bottom right
                 point of the cropped image.  This is equivalent to
-                img[-dsize[1]:, -dsize[0]:], plus padding.
+                ``img[-dsize[1]:, -dsize[0]:]``, plus padding.
             'cc': make the center of the image the center of the cropped image.
             Any combination of these codes can be used, ex. 'lb', 'ct', ('r',
             200), ...
@@ -196,13 +196,14 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
             the origin of the crop in (x,y) order (same order as dsize/about).
             Mutually exclusive with about. Defaults to top left.
 
-        border_value (Numeric | Tuple | str, default=0):
+        border_value (Number | Tuple | str):
             any border border_value accepted by cv2.copyMakeBorder,
             ex. [255, 0, 0] (blue). Default is 0.
 
-        interpolation (str, default='nearest'):
+        interpolation (str):
             Can be 'nearest', in which case integral cropping is used.
             Can also be 'linear', in which case cv2.getRectSubPix is used.
+            Defaults to 'nearest'.
 
     Returns:
         ndarray: the cropped image
@@ -358,12 +359,12 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     Args:
         img (ndarray): image to resize
 
-        scale (float or Tuple[float, float]):
+        scale (float | Tuple[float, float]):
             Desired floating point scale factor. If a tuple, the dimension
             ordering is x,y. Mutually exclusive with dsize, max_dim, and
             min_dim.
 
-        dsize (Tuple[int] | None):
+        dsize (Tuple[int]):
             The desired with and height of the new image. If a dimension is
             None, then it is automatically computed to preserve aspect ratio.
             Mutually exclusive with size, max_dim, and min_dim.
@@ -386,23 +387,27 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             ``grow_interpolation`` to change the default for an enlarging
             interpolation.
 
-        grow_interpolation (str | int, default="lanczos"):
+        grow_interpolation (str | int):
             The interpolation key or code to use when the image is being
             enlarged. Does nothing if "interpolation" is explicitly given. If
             "interpolation" is not specified "area" is used when shrinking.
+            Defaults to "lanczos".
 
-        letterbox (bool, default=False):
+        letterbox (bool):
             If used in conjunction with dsize, then the image is scaled and
             translated to fit in the center of the new image while maintaining
-            aspect ratio. Zero padding is added if necessary.
+            aspect ratio. Zero padding is added if necessary.  Defaults to
+            False.
 
-        return_info (bool, default=False):
+        return_info (bool):
             if True returns information about the final transformation in a
             dictionary. If there is an offset, the scale is applied before the
-            offset when transforming to the new resized space.
+            offset when transforming to the new resized space.  Defaults to
+            False.
 
-        antialias (bool, default=False):
+        antialias (bool):
             if True blurs to anti-alias before downsampling.
+            Defaults to False.
 
     Returns:
         ndarray | Tuple[ndarray, Dict] :
@@ -657,7 +662,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
             If True and the input image has an alpha channel, we modify
                 src_space and dst_space to ensure they both end with "A".
 
-        dst (ndarray[uint8_t, ndim=2], optional): inplace-output array.
+        dst (ndarray[Any, UInt8]): inplace-output array.
 
     Returns:
         ndarray: img -  image data
@@ -992,10 +997,10 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Note: this is passed directly to cv2, so it is best to ensure that
             it is contiguous and using a dtype that cv2 can handle.
 
-        transform (ndarray | Affine): a coercable affine matrix.
+        transform (ndarray | kwimage.Affine): a coercable affine matrix.
             See :class:`kwimage.Affine` for details on what can be coerced.
 
-        dsize (Tuple[int, int] | None | str, default=None):
+        dsize (Tuple[int, int] | None | str):
             A integer width and height tuple of the resulting "canvas" image.
             If None, then the input image size is used.
 
@@ -1012,13 +1017,13 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             translation such that both the positive and negative coordinates of
             the warped image will fit in the new canvas.
 
-        antialias (bool, default=False):
+        antialias (bool)
             if True determines if the transform is downsampling and applies
-            antialiasing via gaussian a blur.
+            antialiasing via gaussian a blur. Defaults to False
 
-        interpolation (str, default="linear"):
+        interpolation (str):
             interpolation code or cv2 integer. Interpolation codes are linear,
-            nearest, cubic, lancsoz, and area.
+            nearest, cubic, lancsoz, and area. Defaults to "linear".
 
         border_mode (str):
             Border code or cv2 integer. Border codes are constant (default)
@@ -1028,13 +1033,13 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Used as the fill value if border_mode is constant. Otherwise this
             is ignored.
 
-        large_warp_dim (int | None | str, default=None):
+        large_warp_dim (int | None | str):
             If specified, perform the warp piecewise in chunks of the specified
             size. If "auto", it is set to the maximum "short" value in numpy.
             This works around a limitation of cv2.warpAffine, which must have
             image dimensions < SHRT_MAX (=32767 in version 4.5.3)
 
-        return_info (bool, default=Fasle):
+        return_info (bool):
             if True, returns information about the operation. In the case
             where dsize="content", this includes the modified transformation.
 

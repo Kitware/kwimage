@@ -1,11 +1,16 @@
 # python ~/local/tools/supported_python_versions_pip.py matplotlib
 # python ~/local/tools/supported_python_versions_pip.py torch
-matplotlib>=3.3.3  ; python_version >= '3.8.0'   # 3.8+
-matplotlib>=3.1.0  ; python_version <  '3.8.0'   # 3.7-
+# python ~/local/tools/supported_python_versions_pip.py matplotlib
 
-pyqt5>=5.15.4            ;                              python_version >= '3.9.0'   # Python 3.9+
-pyqt5>=5.14.0, <= 5.15.3 ; python_version < '3.9.0' and python_version >= '3.5.0'   # Python 3.5-3.9
-pyqt5>=5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
+matplotlib>=3.5.0     ;                            python_version >= '3.10'    # Python 3.10+
+matplotlib>=3.3.3     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+matplotlib>=3.1.0     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+matplotlib>=3.1.0     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+matplotlib>=3.1.0     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+
+# pyqt5>=5.15.4            ;                              python_version >= '3.9.0'   # Python 3.9+
+# pyqt5>=5.14.0, <= 5.15.3 ; python_version < '3.9.0' and python_version >= '3.5.0'   # Python 3.5-3.9
+# pyqt5>=5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
 
 # TODO torch for 3.10 when available
 torch>=1.9.0            ;                              python_version >= '3.9.0'   # Python 3.9+

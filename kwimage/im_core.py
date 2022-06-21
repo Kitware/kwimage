@@ -47,8 +47,11 @@ def ensure_float01(img, dtype=np.float32, copy=True):
     Args:
         img (ndarray): an image in uint255 or float01 format.
             Other formats will raise errors.
-        dtype (type, default=np.float32): a numpy floating type
-        copy (bool, default=False): always copy if True, else copy if needed.
+
+        dtype (type): a numpy floating type defaults to np.float32
+
+        copy (bool):
+            Always copy if True, else copy if needed. Defaults to True.
 
     Returns:
         ndarray: an array of floats in the range 0-1
@@ -84,7 +87,9 @@ def ensure_uint255(img, copy=True):
     Args:
         img (ndarray): an image in uint255 or float01 format.
             Other formats will raise errors.
-        copy (bool, default=False): always copy if True, else copy if needed.
+
+        copy (bool):
+            always copy if True, else copy if needed. Defaults to True.
 
     Returns:
         ndarray: an array of bytes in the range 0-255
@@ -137,8 +142,9 @@ def make_channels_comparable(img1, img2, atleast3d=False):
     Args:
         img1 (ndarray): first image
         img2 (ndarray): second image
-        atleast3d (bool, default=False): if true we ensure that the channel
-            dimension exists (only relevant for 1-channel images)
+        atleast3d (bool):
+            if true we ensure that the channel dimension exists (only relevant
+            for 1-channel images). Defaults to False.
 
     Example:
         >>> import itertools as it
@@ -227,9 +233,11 @@ def atleast_3channels(arr, copy=True):
     Ensures that there are 3 channels in the image
 
     Args:
-        arr (ndarray[N, M, ...]): the image
-        copy (bool): Always copies if True, if False, then copies only when the
-            size of the array must change.
+        arr (ndarray): an image with 2 or 3 dims.
+
+        copy (bool):
+            Always copies if True, if False, then copies only when the
+            size of the array must change. Defaults to True.
 
     Returns:
         ndarray: with shape (N, M, C), where C in {3, 4}
@@ -274,13 +282,20 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         one data value.
 
     Args:
-        data (Sliceable[T]): data to slice into. Any channels must be the last dimension.
-        in_slice (slice | Tuple[slice, ...]): slice for each dimensions
+        data (Sliceable):
+            data to slice into. Any channels must be the last dimension.
+
+        in_slice (slice | Tuple[slice, ...]):
+            slice for each dimensions
+
         ndim (int): number of spatial dimensions
+
         pad (List[int|Tuple]): additional padding of the slice
+
         padkw (Dict): if unspecified defaults to ``{'mode': 'constant'}``
-        return_info (bool, default=False): if True, return extra information
-            about the transform.
+
+        return_info (bool): if True, return extra information
+            about the transform. Defaults to False.
 
     SeeAlso:
         _padded_slice_embed - finds the embedded slice and padding

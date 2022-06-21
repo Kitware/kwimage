@@ -604,7 +604,7 @@ class Affine(Projective):
         return cls.affine(theta=theta)
 
     @classmethod
-    def random(cls, rng=None, **kw):
+    def random(cls, shape=None, rng=None, **kw):
         """
         Create a random Affine object
 
@@ -617,6 +617,8 @@ class Affine(Projective):
         Returns:
             Affine
         """
+        if shape is None:
+            raise ValueError('cannot specify shape to Affine.random')
         params = cls.random_params(rng=rng, **kw)
         self = cls.affine(**params)
         return self

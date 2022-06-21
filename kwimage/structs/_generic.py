@@ -259,9 +259,9 @@ class ObjectList(Spatial):
     def is_numpy(cls):
         raise NotImplementedError
 
-    @classmethod
-    def random(cls):
-        raise NotImplementedError
+    # @classmethod
+    # def random(cls):
+    #     raise NotImplementedError
 
 
 def _handle_perinstance_color_arg(selflen, instkw_list, kwargs, argname):

@@ -347,7 +347,7 @@ def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
 
     Args:
         im (ndarray): the image
-        classes (Sequence | CategoryTree): list of class names
+        classes (Sequence[str] | kwcoco.CategoryTree): list of class names
         tcx (int, default=None): true class index if known
         probs (ndarray): predicted class probs for each class
         pcx (int, default=None): predicted class index.
@@ -437,7 +437,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
 
     Args:
         img (ndarray): image to copy and draw on
-        boxes (nh.util.Boxes): boxes to draw
+        boxes (kwimage.Boxes | ndarray): boxes to draw
         colorspace (str): string code of the input image colorspace
 
     Example:
@@ -644,7 +644,8 @@ def make_orimask(radians, mag=None, alpha=1.0):
             if an ndarray, then this is explicilty set as the alpha channel
 
     Returns:
-        ndarray[float32]: an rgb / rgba image in 01 space
+        ndarray[Any, Float32]:
+            an rgb / rgba image in 01 space
 
     SeeAlso:
         kwimage.overlay_alpha_images
@@ -697,20 +698,32 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
 
     Args:
         dx (ndarray): grid of vector x components
+
         dy (ndarray): grid of vector y components
+
         stride (int | float): sparsity of vectors, int specifies stride step in
             pixels, a float specifies it as a percentage.
+
         thresh (float): only plot vectors with magnitude greater than thres
+
         scale (float): multiply magnitude for easier visualization
+
         alpha (float): alpha value for vectors. Non-vector regions receive 0
             alpha (if False, no alpha channel is used)
+
         color (str | tuple | kwimage.Color): RGB color of the vectors
+
         thickness (int, default=1): thickness of arrows
+
         tipLength (float, default=0.1): fraction of line length
-        line_type (int): either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA
+
+        line_type (int | str):
+            either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA or a string
+            code.
 
     Returns:
-        ndarray[float32]: vec_img: an rgb/rgba image in 0-1 space
+        ndarray[Any, Float32]:
+            vec_img - an rgb/rgba image in 0-1 space
 
     SeeAlso:
         kwimage.overlay_alpha_images
@@ -803,22 +816,34 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
 
     Args:
         image (ndarray): image to draw on
+
         dx (ndarray): grid of vector x components
+
         dy (ndarray): grid of vector y components
+
         stride (int | float): sparsity of vectors, int specifies stride step in
             pixels, a float specifies it as a percentage.
+
         thresh (float): only plot vectors with magnitude greater than thres
+
         scale (float): multiply magnitude for easier visualization
+
         alpha (float): alpha value for vectors. Non-vector regions receive 0
             alpha (if False, no alpha channel is used)
+
         color (str | tuple | kwimage.Color): RGB color of the vectors
+
         thickness (int, default=1): thickness of arrows
+
         tipLength (float, default=0.1): fraction of line length
-        line_type (int): either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA
+
+        line_type (int | str):
+            either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA or 'aa'
 
     Returns:
-        ndarray[float32]: The image with vectors overlaid. If image=None, then an
-            rgb/a image is created and returned.
+        ndarray[Any, Float32]:
+            The image with vectors overlaid. If image=None, then an rgb/a image
+            is created and returned.
 
     Example:
         >>> from kwimage.im_draw import *  # NOQA

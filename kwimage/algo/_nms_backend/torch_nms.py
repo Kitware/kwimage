@@ -20,11 +20,13 @@ def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
     Args:
         ltrb (Tensor): Bounding boxes of one image in the format (ltrb)
         scores (Tensor): Scores of each box
-        classes (Tensor, optional): the classes of each box. If specified nms is applied to each class separately.
+        classes (Tensor | None):
+            the classes of each box. If specified nms is applied to each class separately.
         thresh (float): iou threshold
 
     Returns:
-        ByteTensor: keep: boolean array indicating which boxes were not pruned.
+        torch.ByteTensor:
+            keep - boolean array indicating which boxes were not pruned.
 
     Example:
         >>> # DISABLE_DOCTEST

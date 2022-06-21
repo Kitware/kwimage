@@ -971,7 +971,8 @@ class _HeatmapAlgoMixin(object):
         image-space after non-max supression is applied.
 
         Args:
-            channel (int | ArrayLike[*DIMS]): class index to detect objects in.
+            channel (int | ArrayLike):
+                class index to detect objects in.
                 Alternatively, channel can be a custom probability map as long
                 as its dimension agree with the heatmap.
 

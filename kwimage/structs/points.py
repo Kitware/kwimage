@@ -81,7 +81,7 @@ class _PointsWarpMixin:
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+            transform (ArrayLike | Callable | kwimage.Affine | GeometricTransform | Augmenter):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -145,7 +145,7 @@ class _PointsWarpMixin:
         Scale a points by a factor
 
         Args:
-            factor (float or Tuple[float, float]):
+            factor (float | Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
 
@@ -171,7 +171,7 @@ class _PointsWarpMixin:
         Shift the points
 
         Args:
-            factor (float or Tuple[float]):
+            factor (float | Tuple[float, float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
 
@@ -726,7 +726,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
             class_idxs (list): only needed if using old style
 
-            classes (list | CategoryTree): list of all keypoint category names
+            classes (list | kwcoco.CategoryTree):
+                list of all keypoint category names
 
             warn (bool, default=False): if True raise warnings
 

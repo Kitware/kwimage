@@ -363,9 +363,11 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
     Non-Maximum Suppression - remove redundant bounding boxes
 
     Args:
-        ltrb (ndarray[float32]): Nx4 boxes in ltrb format
+        ltrb (ndarray[Any, Float32]):
+            Float32 array of shape Nx4 representing boxes in ltrb format
 
-        scores (ndarray[float32]): score for each bbox
+        scores (ndarray[Any, Float32]):
+            Float32 array of shape N representing scores for each box
 
         thresh (float): iou threshold.
             Boxes are removed if they overlap greater than this threshold
@@ -375,7 +377,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
 
         bias (float): bias for iou computation either 0 or 1
 
-        classes (ndarray[int64] or None): integer classes.
+        classes (ndarray[Shape['*'], Int64] | None): integer classes.
             If specified NMS is done on a perclass basis.
 
         impl (str): implementation can be "auto", "python", "cython_cpu",

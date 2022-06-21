@@ -22,14 +22,15 @@ def _coordinate_grid(dims, align_corners=False):
     Creates a homogenous coordinate system.
 
     Args:
-        dims (Tuple[int*]): height / width or depth / height / width
+        dims (Tuple[int, ...]): height / width or depth / height / width
 
         align_corners (bool):
             returns a grid where the left and right corners assigned to the
             extreme values and intermediate values are interpolated.
 
     Returns:
-        Tensor[shape=(3, *DIMS)]
+        Tensor:
+            with shape=(3, *DIMS)
 
     References:
         https://github.com/ClementPinard/SfmLearner-Pytorch/blob/master/inverse_warp.py
@@ -102,7 +103,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     It is also possible to use 4x4 transforms to warp 3D volumetric data.
 
     Args:
-        inputs (Tensor[..., *DIMS]): tensor to warp.
+        inputs (Tensor): tensor to warp.
             Up to 3 (determined by output_dims) of the trailing space-time
             dimensions are warped. Best practice is to use inputs with the
             shape in [B, C, *DIMS].
@@ -112,7 +113,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
             inputs or Bx3x3 or Bx4x4 tensor that specifies a transformation
             matrix for each batch item.
 
-        output_dims (Tuple[int*]):
+        output_dims (Tuple[int, ...]):
             The output space-time dimensions. This can either be in the form
                 (W,), (H, W), or (D, H, W).
 

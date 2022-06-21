@@ -171,7 +171,6 @@ upload_github_secrets(){
     gh secret set "$VARNAME_TWINE_PASSWORD" -b"${!VARNAME_TWINE_PASSWORD}"
     gh secret set "$VARNAME_TEST_TWINE_PASSWORD" -b"${!VARNAME_TEST_TWINE_PASSWORD}"
     gh secret set "$VARNAME_TEST_TWINE_USERNAME" -b"${!VARNAME_TEST_TWINE_USERNAME}"
-
 }
 
 
@@ -389,6 +388,7 @@ export_encrypted_code_signing_keys(){
 }
 
 
+# See the xcookie module gitlab python API
 #gitlab_set_protected_branches(){
 #}
 
