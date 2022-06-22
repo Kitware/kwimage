@@ -13,9 +13,12 @@ matplotlib>=3.1.0     ; python_version < '3.7' and python_version >= '3.6'    # 
 # pyqt5>=5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
 
 # TODO torch for 3.10 when available
-torch>=1.9.0            ;                              python_version >= '3.9.0'   # Python 3.9+
-torch>=1.6.0            ; python_version < '3.9.0' and python_version >= '3.6.0'   # Python 3.6-3.8
-torch>=1.0.0, < 1.6.0   ; python_version < '3.6.0'                                 # Python 3.5-
+torch>=1.11.0    ;                            python_version >= '3.10'    # Python 3.10+
+torch>=1.7.1     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+torch>=1.7.0     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+torch>=1.7.0     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+torch>=1.7.0     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+
 
 PyTurboJPEG  # also requires ``apt install libturbojpeg``
 
