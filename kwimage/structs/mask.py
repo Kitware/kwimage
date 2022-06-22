@@ -1319,6 +1319,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> image = other.draw_on(image, color='red')
             >>> kwplot.imshow(image)
 
+        Ignore:
             polygons = [
                 np.array([[6, 4],[7, 4]], dtype=np.int32),
                 np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
