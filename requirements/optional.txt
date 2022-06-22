@@ -22,8 +22,6 @@ torch>=1.7.0     ; python_version < '3.7' and python_version >= '3.6'    # Pytho
 
 PyTurboJPEG  # also requires ``apt install libturbojpeg``
 
-itk-io >= 5.2.0
-
 itk-io>=5.3rc4 ;                             python_version >= '3.10'  # Python 3.10
 itk-io>=5.1.1  ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
 itk-io>=5.0.1  ; python_version < '3.9'  and python_version >= '3.8'   # Python 3.8
