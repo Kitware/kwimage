@@ -1,5 +1,6 @@
 """
-Logic pertaining to run-length encodings
+Logic pertaining to run-length encodings. Can encode an ndarray as a RLE or
+decode an RLE into an ndarray.
 
 SeeAlso:
     kwimage.structs.mask - stores binary segmentation masks, using RLEs as a
@@ -21,7 +22,9 @@ def encode_run_length(img, binary=False, order='C'):
             Set to True for compatibility with COCO (which does not support
             multi-value RLE encodings).
 
-        order ({'C', 'F'}, default='C'): row-major (C) or column-major (F)
+        order (str):
+            Order of the encoding.  Either 'C' for row major or 'F' for
+            column-major. Defaults to 'C'.
 
     Returns:
         Dict[str, object]: encoding: dictionary items are:
@@ -35,10 +38,13 @@ def encode_run_length(img, binary=False, order='C'):
                 if True, the counts are assumed to encode only 0's and 1's,
                 otherwise the counts encoding specifies any numeric values.
 
-            order ({'C', 'F'}, default='C'): encoding order
+            order (str):
+                Encoding order, either 'C' for row major or 'F' for
+                column-major. Defaults to 'C'.
 
     SeeAlso:
-        * kwimage.Mask - a cython-backed data structure to handle coco-style RLEs
+        :class:`kwimage.Mask` -
+            cython-backed data structure to handle coco-style RLEs
 
     Example:
         >>> import ubelt as ub
@@ -125,14 +131,17 @@ def decode_run_length(counts, shape, binary=False, dtype=np.uint8, order='C'):
     Args:
         counts (ndarray): the run-length encoding
 
-        shape (Tuple[int, int]), the height / width of the mask
+        shape (Tuple[int, int]): the height / width of the mask
 
         binary (bool): if the RLE is binary or non-binary.
             Set to True for compatibility with COCO.
 
-        dtype (dtype, default=np.uint8): data type for decoded image
+        dtype (type):
+            data type for decoded image.  Defaults to np.uint8.
 
-        order ({'C', 'F'}, default='C'): row-major (C) or column-major (F)
+        order (str):
+            Order of the encoding.  Either 'C' for row major or 'F' for
+            column-major. Defaults to 'C'.
 
     Returns:
         ndarray: the reconstructed image
@@ -185,10 +194,14 @@ def rle_translate(rle, offset, output_shape=None):
     Translates a run-length encoded image in RLE-space.
 
     Args:
-        rle (dict): an enconding dict returned by `encode_run_length`
-        offset (Tuple): x,y offset,
-            CAREFUL, this can only accept integers
-        output_shape (Tuple, optional): h,w of transformed mask.
+        rle (dict):
+            an enconding dict returned by :func:`kwimage.encode_run_length`
+
+        offset (Tuple[int, int]):
+            x, y integer offsets.
+
+        output_shape (Tuple[int, int]):
+            h,w of transformed mask.
             If unspecified the input rle shape is used.
 
     SeeAlso:

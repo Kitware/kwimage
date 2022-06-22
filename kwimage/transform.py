@@ -8,11 +8,11 @@ import skimage.transform
 import math
 from kwimage import _internal
 
-try:
-    import xdev
-    profile = xdev.profile
-except Exception:
-    profile = ub.identity
+# try:
+#     import xdev
+#     profile = xdev.profile
+# except Exception:
+profile = ub.identity
 
 
 class Transform(ub.NiceRepr):
@@ -374,7 +374,7 @@ class Affine(Projective):
         >>> m[len(m)] = x = Affine.random() @ None
         >>> assert isinstance(x, Affine)
         >>> # Works, and returns an ndarray
-        >>> m[len(m)] = x = np.eye(3) @ Affine.random(3)
+        >>> m[len(m)] = x = np.eye(3) @ Affine.random()
         >>> assert isinstance(x, np.ndarray)
         >>> # Works, and returns an Matrix
         >>> m[len(m)] = x = Affine.random() @ Matrix.random(3)
@@ -604,7 +604,7 @@ class Affine(Projective):
         return cls.affine(theta=theta)
 
     @classmethod
-    def random(cls, rng=None, **kw):
+    def random(cls, shape=None, rng=None, **kw):
         """
         Create a random Affine object
 
@@ -617,6 +617,8 @@ class Affine(Projective):
         Returns:
             Affine
         """
+        if shape is not None:
+            raise ValueError('cannot specify shape to Affine.random')
         params = cls.random_params(rng=rng, **kw)
         self = cls.affine(**params)
         return self
@@ -749,8 +751,8 @@ class Affine(Projective):
             >>> import pandas as pd
             >>> # Test consistency of decompose + reconstruct
             >>> param_grid = list(ub.named_product({
-            >>>     'theta': np.linspace(-4 * np.pi, 4 * np.pi, 12),
-            >>>     'shearx': np.linspace(- 10 * np.pi, 10 * np.pi, 24),
+            >>>     'theta': np.linspace(-4 * np.pi, 4 * np.pi, 3),
+            >>>     'shearx': np.linspace(- 10 * np.pi, 10 * np.pi, 4),
             >>> }))
             >>> def normalize_angle(radian):
             >>>     return np.arctan2(np.sin(radian), np.cos(radian))

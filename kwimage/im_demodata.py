@@ -1,3 +1,6 @@
+"""
+Keep a manifest of demo images used for testing
+"""
 import ubelt as ub
 
 
@@ -226,10 +229,10 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512)):
     Creates a checkerboard image
 
     Args:
-        num_squares (int):
-            Number of squares in a row. Defaults to 8
+        num_squares (int | str):
+            Number of squares in a row. If 'auto' defaults to 8
 
-        square_shape (int | Tuple[int, int]):
+        square_shape (int | Tuple[int, int] | str):
             If 'auto', chosen based on `num_squares`. Otherwise this is
             the height, width of each square in pixels.
 
@@ -308,6 +311,7 @@ def _next_multiple_of_two(x):
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
     """
     return x + (x % 2)
+
 
 def _next_multiple_of(x, m):
     """

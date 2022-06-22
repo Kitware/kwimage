@@ -7,7 +7,7 @@ import os
 import numpy as np
 import warnings  # NOQA
 import cv2
-from os.path import exists
+from os.path import exists, dirname
 import ubelt as ub
 from . import im_cv2
 from . import im_core
@@ -25,7 +25,7 @@ JPG_EXTENSIONS = (
 # These should be supported by opencv / PIL
 _WELL_KNOWN_EXTENSIONS = (
     JPG_EXTENSIONS +
-    ('.bmp', '.pgm', '.png',)
+    ('.bmp', '.pgm', '.png', '.qoi',)
 )
 
 
@@ -277,7 +277,32 @@ def imread(fpath, space='auto', backend='auto', **kw):
         elif _fpath_lower.endswith('.svg'):
             backend = 'svg'  # a bit hacky, not a raster format
         else:
-            backend = 'cv2'
+            # TODO: if we don't have an extension we could try to inspect the
+            # file header
+            USE_FILE_HEADER = 0
+            if USE_FILE_HEADER:
+                '''
+                for key in kwimage.grab_test_image_fpath.keys():
+                    fpath = kwimage.grab_test_image_fpath(key)
+                    with open(fpath, 'rb') as file:
+                        header_bytes = file.read(4)
+                        print(header_bytes)
+                '''
+                JPEG_HEADER = b'\xff\xd8\xff'
+                PNG_HEADER = b'\x89PNG'
+                NITF_HEADER = b'NITF'
+                with open(fpath, 'rb') as file:
+                    header_bytes = file.read(4)
+                if header_bytes.startswith(JPEG_HEADER):
+                    backend = 'cv2'
+                elif header_bytes.startswith(PNG_HEADER):
+                    backend = 'cv2'
+                elif header_bytes.startswith(NITF_HEADER):
+                    backend = 'gdal'
+                else:
+                    backend = 'cv2'
+            else:
+                backend = 'cv2'
 
     if space == 'auto' and backend != 'cv2':
         # cv2 is the only backend that does weird things, we can
@@ -295,6 +320,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
             image, src_space, auto_dst_space = _imread_skimage(fpath)
         elif backend == 'pil':
             image, src_space, auto_dst_space = _imread_pil(fpath)
+        elif backend == 'qoi':
+            image, src_space, auto_dst_space = _imread_qoi(fpath)
         elif backend == 'itk':
             src_space, auto_dst_space = None, None
             import itk
@@ -327,6 +354,34 @@ def imread(fpath, space='auto', backend='auto', **kw):
         print('ex = {!r}'.format(ex))
         print('Error reading fpath = {!r}'.format(fpath))
         raise
+
+
+def _imread_qoi(fpath):
+    """
+    """
+    import qoi
+    image = qoi.read(fpath)
+    src_space, auto_dst_space = None, None
+    return image, src_space, auto_dst_space
+
+
+def _imwrite_qoi(fpath, data):
+    """
+    Only seems to allow RGB 255.
+
+    Ignore:
+        >>> from kwimage.im_io import imread, _imread_qoi, _imwrite_qoi
+        >>> import kwimage
+        >>> data = kwimage.ensure_uint255(kwimage.checkerboard())
+        >>> fpath = 'tmp.qoi'
+        >>> _imwrite_qoi(fpath, data)
+        >>> recon, _, _ = _imread_qoi(fpath)
+    """
+    import kwimage
+    import qoi
+    data = kwimage.atleast_3channels(data)
+    qoi.write(fpath, data)
+    return fpath
 
 
 def _imread_turbojpeg(fpath):
@@ -1030,8 +1085,17 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             else:
                 raise
         else:
+            # TODO: generalize error handling and diagnostics for all backends
             if not flag:
-                raise IOError('kwimage failed to write with opencv backend')
+                if not exists(dirname(fpath)):
+                    raise IOError((
+                        'kwimage failed to write with opencv backend. '
+                        'Reason: destination fpath {!r} is in a directory that '
+                        'does not exist.').format(fpath))
+                else:
+                    raise IOError(
+                        'kwimage failed to write with opencv backend. '
+                        'Reason: unknown.')
 
     elif backend == 'skimage':
         import skimage.io
@@ -1111,7 +1175,7 @@ def load_image_shape(fpath):
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> import ubelt as ub
         >>> import kwimage
-        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache')
+        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
         >>> fpath = dpath / 'foo.tif'
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
         >>> shape = kwimage.load_image_shape(fpath)

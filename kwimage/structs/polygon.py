@@ -91,7 +91,7 @@ class _PolyWarpMixin:
         Args:
             augmenter (imgaug.augmenters.Augmenter):
             input_dims (Tuple): h/w of the input image
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
@@ -165,7 +165,7 @@ class _PolyWarpMixin:
 
             output_dims (Tuple): unused, only exists for compatibility
 
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -215,14 +215,14 @@ class _PolyWarpMixin:
         Scale a polygon by a factor
 
         Args:
-            factor (float or Tuple[float, float]):
+            factor (float | Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
             about (Tuple | None):
                 if unspecified scales about the origin (0, 0), otherwise the
                 scaling is about this point. Can be "center" and will use
                 centroid of polygon
             output_dims (Tuple): unused in non-raster spatial structures
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -256,10 +256,10 @@ class _PolyWarpMixin:
         Shift the polygon up/down left/right
 
         Args:
-            factor (float or Tuple[float]):
+            factor (float | Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -339,7 +339,7 @@ class _PolyWarpMixin:
         Swap the x and y coordinate axes
 
         Args:
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Returns:
             Polygon: modified polygon
@@ -519,9 +519,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             n (int): number of points in the polygon (must be 3 or more)
             n_holes (int): number of holes
-            tight (bool, default=False): fits the minimum and maximum points
+            tight (bool): fits the minimum and maximum points
                 between 0 and 1
-            convex (bool, default=True): force resulting polygon will be convex
+            convex (bool): force resulting polygon will be convex
                (may remove exterior points)
 
         CommandLine:
@@ -1100,7 +1100,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         Args:
             image (ndarray): image to draw on
-            value (int | Tuple[int], default=1): value fill in with
+            value (int | Tuple[int]): value fill in with. Defaults to 1.
             pixels_are (str): either points or areas
 
         Returns:
@@ -1161,16 +1161,16 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
             color (str | tuple): data coercable to a color
 
-            fill (bool, default=True): draw the center mass of the polygon.
+            fill (bool): draw the center mass of the polygon.
                 Note: this will be deprecated. Use facecolor instead.
 
-            border (bool, default=False): draw the border of the polygon
+            border (bool): draw the border of the polygon
                 Note: this will be deprecated. Use edgecolor instead.
 
-            alpha (float, default=1.0): polygon transparency (setting alpha < 1
-                makes this function much slower).
+            alpha (float): polygon transparency (setting alpha < 1
+                makes this function much slower). Defaults to 1.0
 
-            copy (bool, default=False): if False only copies if necessary
+            copy (bool): if False only copies if necessary
 
             edgecolor (str | tuple): color for the border
 
@@ -1402,24 +1402,29 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             setlim (bool): if True, modify the x and y limits of the matplotlib
                 axes such that the polygon is can be seen.
 
-            border (bool, default=False):
+            border (bool):
                 if True, draws an edge border on the polygon.
                 DEPRECATED. Use linewidth instead.
 
             linewidth (bool):
                 width of the border
 
-            edgecolor (Coercable[Color]):
-                color of the border when linewidth > 0
+            edgecolor (None | Any):
+                if None, uses the value of ``color``.
+                Otherwise the color of the border when linewidth > 0.
+                Extended types Coercable[kwimage.Color].
 
-            facecolor (Coercable[Color]):
-                color of the border when linewidth > 0
+            facecolor (None | Any):
+                if None, uses the value of ``color``.
+                Otherwise, color of the border when fill=True.
+                Extended types Coercable[kwimage.Color].
 
             vertex (float):
                 if non-zero, draws vertexes on the polygon with this radius.
 
-            vertexcolor (Coercable[Color]):
+            vertexcolor (Any):
                 color of vertexes
+                Extended types Coercable[kwimage.Color].
 
         Returns:
             matplotlib.patches.PathPatch | None :
@@ -1482,6 +1487,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         import kwimage
         if ax is None:
             ax = plt.gca()
+
+        if border is not None:
+            from kwimage._internal import schedule_deprecation3
+            schedule_deprecation3(
+                modname='kwimage', migration='use linewidth instead',
+                name='border', type='kwarg to Polygon.draw_on',
+                deprecate='0.8.7', error='1.0.0', remove='1.1.0',
+            )
 
         data = self.data
 
@@ -1671,8 +1684,11 @@ class MultiPolygon(_generic.ObjectList):
         Inplace fill in an image based on this multi-polyon.
 
         Args:
-            image (ndarray): image to draw on (inplace)
-            value (int | Tuple[int], default=1): value fill in with
+            image (ndarray):
+                image to draw on (inplace)
+
+            value (int | Tuple[int, ...]):
+                value fill in with. Defaults to 1.0
 
         Returns:
             ndarray: the image that has been modified in place
@@ -1758,7 +1774,7 @@ class MultiPolygon(_generic.ObjectList):
         return a mask just big enough to fit the polygon.
 
         Returns:
-            Mask
+            kwimage.Mask
         """
         x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         mask = self.translate((-x, -y)).to_mask(dims=(h, w))
@@ -2007,7 +2023,8 @@ class PolygonList(_generic.ObjectList):
 
         Args:
             image (ndarray): image to draw on (inplace)
-            value (int | Tuple[int], default=1): value fill in with
+            value (int | Tuple[int, ...]):
+                value fill in with
 
         Returns:
             ndarray: the image that has been modified in place

@@ -15,27 +15,36 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
     Make a new image with the input images side-by-side
 
     Args:
-        images (Iterable[ndarray[ndim=2]]):  image data
+        images (Iterable[ndarray]):  image data
+
         axis (int): axis to stack on (either 0 or 1)
-        resize (int, str, or None): if None image sizes are not modified,
-            otherwise resize resize can be either 0 or 1.  We resize the
-            `resize`-th image to match the `1 - resize`-th image. Can
-            also be strings "larger" or "smaller".
-        interpolation (int or str): string or cv2-style interpolation type.
+
+        resize (int | str | None):
+            if None image sizes are not modified, otherwise resize resize can
+            be either 0 or 1.  We resize the `resize`-th image to match the `1
+            - resize`-th image. Can also be strings "larger" or "smaller".
+
+        interpolation (int | str):
+            string or cv2-style interpolation type.
             only used if resize or overlap > 0
-        overlap (int): number of pixels to overlap. Using a negative
-            number results in a border.
-        pad (int): if specified overrides `overlap` as a the number of pixels
-            to pad between images.
-        return_info (bool): if True, returns transforms (scales and
-            translations) to map from original image to its new location.
-        bg_value (number | ndarray[number]) : background value, if specified,
-            uses this as a fill value.
+
+        overlap (int):
+            number of pixels to overlap. Using a negative number results in a
+            border.
+
+        pad (int):
+            if specified overrides `overlap` as a the number of pixels to pad
+            between images.
+
+        return_info (bool):
+            if True, returns transforms (scales and translations) to map from
+            original image to its new location.
+
+        bg_value (Number | ndarray):
+            background value, if specified, uses this as a fill value.
 
     Returns:
         ndarray: an image of stacked images side by side
-
-        OR
 
         Tuple[ndarray, List]: where the first item is the aformentioned stacked
             image and the second item is a list of transformations for each
@@ -108,26 +117,30 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
     positions in the output image.
 
     Args:
-        images (Iterable[ndarray[ndim=2]]):  image data
+        images (Iterable[ndarray]):  image data
+
         chunksize (int, default=None): number of rows per column or columns per
             row depending on the value of `axis`.
             If unspecified, computes this as `int(sqrt(len(images)))`.
+
         axis (int, default=0):
             If 0, chunksize is columns per row.
             If 1, chunksize is rows per column.
+
         overlap (int): number of pixels to overlap. Using a negative
             number results in a border.
+
         pad (int): if specified overrides `overlap` as a the number of pixels
             to pad between images.
+
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
-        bg_value (number | ndarray[number]) : background value, if specified,
+
+        bg_value (Number | ndarray) : background value, if specified,
             uses this as a fill value.
 
     Returns:
         ndarray: an image of stacked images in a grid pattern
-
-        OR
 
         Tuple[ndarray, List]: where the first item is the aformentioned stacked
             image and the second item is a list of transformations for each
@@ -203,7 +216,7 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
 
         Args:
             dsize (tuple): original width height
-            scale (float or tuple): desired floating point scale factor
+            scale (float | tuple): desired floating point scale factor
         """
         try:
             sx, sy = scale

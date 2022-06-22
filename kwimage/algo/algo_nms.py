@@ -1,7 +1,6 @@
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
-import os
 import numpy as np
 import ubelt as ub
 import warnings
@@ -24,7 +23,7 @@ def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
 
         scores (ndarray): scores of each box
 
-        diameter (int or Tuple[int, int]): Distance from split point to
+        diameter (int | Tuple[int, int]): Distance from split point to
             consider rectification. If specified as an integer, then number
             is used for both height and width. If specified as a tuple, then
             dims are assumed to be in [height, width] format.
@@ -230,7 +229,7 @@ class _NMS_Impls():
             # for an example of when this last occurred
             try:
                 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
-                    from kwimage.algo._nms_backend import cpu_nms
+                    from kwimage_ext.algo._nms_backend import cpu_nms
                     _funcs['cython_cpu'] = cpu_nms.cpu_nms
             except Exception as ex:
                 warnings.warn(
@@ -238,7 +237,7 @@ class _NMS_Impls():
             try:
                 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
                     if torch is not None and torch.cuda.is_available():
-                        from kwimage.algo._nms_backend import gpu_nms
+                        from kwimage_ext.algo._nms_backend import gpu_nms
                         _funcs['cython_gpu'] = gpu_nms.gpu_nms
                         # NOTE: GPU is not the fastests on all systems.
                         # See the benchmarks for more info.
@@ -364,9 +363,11 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
     Non-Maximum Suppression - remove redundant bounding boxes
 
     Args:
-        ltrb (ndarray[float32]): Nx4 boxes in ltrb format
+        ltrb (ndarray[Any, Float32]):
+            Float32 array of shape Nx4 representing boxes in ltrb format
 
-        scores (ndarray[float32]): score for each bbox
+        scores (ndarray[Any, Float32]):
+            Float32 array of shape N representing scores for each box
 
         thresh (float): iou threshold.
             Boxes are removed if they overlap greater than this threshold
@@ -376,7 +377,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
 
         bias (float): bias for iou computation either 0 or 1
 
-        classes (ndarray[int64] or None): integer classes.
+        classes (ndarray[Shape['*'], Int64] | None): integer classes.
             If specified NMS is done on a perclass basis.
 
         impl (str): implementation can be "auto", "python", "cython_cpu",

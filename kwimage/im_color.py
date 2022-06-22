@@ -262,6 +262,9 @@ class Color(ub.NiceRepr):
         elif color in XKCD_COLORS:
             color_hex = XKCD_COLORS[color]
             color01 = Color._hex_to_01(color_hex)
+        elif color in KITWARE_COLORS:
+            color_hex = KITWARE_COLORS[color]
+            color01 = Color._hex_to_01(color_hex)
         elif color.startswith('#'):
             color01 = Color._hex_to_01(color)
         else:
@@ -279,12 +282,13 @@ class Color(ub.NiceRepr):
             >>> named_colors = kwimage.Color.named_colors()
             >>> color_lut = {name: kwimage.Color(name).as01() for name in named_colors}
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> canvas = kwplot.make_legend_img(color_lut)
             >>> kwplot.imshow(canvas)
         """
-        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS)
+        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS) | set(KITWARE_COLORS)
         names = sorted(NAMED_COLORS)
         return names
 
@@ -300,17 +304,19 @@ class Color(ub.NiceRepr):
         Example:
             >>> # xdoctest: +REQUIRES(module:matplotlib)
             >>> from kwimage.im_color import *  # NOQA
-            >>> from kwimage.im_color import _draw_color_swatch
             >>> import kwimage
-            >>> colors1 = kwimage.Color.distinct(10, legacy=False)
-            >>> swatch1 = _draw_color_swatch(colors1, cellshape=9)
-            >>> colors2 = kwimage.Color.distinct(10, existing=colors1)
-            >>> swatch2 = _draw_color_swatch(colors1 + colors2, cellshape=9)
+            >>> colors1 = kwimage.Color.distinct(5, legacy=False)
+            >>> colors2 = kwimage.Color.distinct(3, existing=colors1)
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> from kwimage.im_color import _draw_color_swatch
+            >>> swatch1 = _draw_color_swatch(colors1, cellshape=9)
+            >>> swatch2 = _draw_color_swatch(colors1 + colors2, cellshape=9)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(swatch1, pnum=(1, 2, 1), fnum=1)
             >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
+            >>> kwplot.show_if_requested()
 
         """
         if legacy == 'auto':
@@ -1595,3 +1601,29 @@ CSS4_COLORS = {
     'whitesmoke':           '#F5F5F5',
     'yellow':               '#FFFF00',
     'yellowgreen':          '#9ACD32'}
+
+
+# Kitware color brand guide:
+# https://drive.google.com/file/d/1mUzJw4QrDfxWqqCsPZ_C7QWcQbfR_IBb/view
+"""
+Ignore:
+    import kwimage
+    named_colors = kwimage.Color.named_colors()
+    color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
+    import kwplot
+    kwplot.autompl()
+    canvas = kwplot.make_legend_img(color_lut)
+    kwplot.imshow(canvas)
+"""
+KITWARE_COLORS = {
+    'kitware_green'     : '#3EAE2B',
+    'kitware_blue'      : '#0068C7',
+    'kitware_darkgreen' : '#2E5524',
+    'kitware_darkblue'  : '#003765',
+    'kitware_darkgray'  : '#242A37',
+    'kitware_gray'      : '#8C8985',
+    'kitware_lightgray' : '#DCE3EC',
+    'kitware_red'       : '#F42836',
+    'kitware_orange'    : '#EF7724',
+    'kitware_yellow'    : '#FEBD64',
+}

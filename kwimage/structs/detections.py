@@ -32,7 +32,11 @@ import numpy as np
 import ubelt as ub
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
-from distutils.version import LooseVersion
+
+try:
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 
 try:
@@ -108,13 +112,14 @@ class _DetDrawMixin:
         Draws boxes directly on the image using OpenCV
 
         Args:
-            image (ndarray[uint8]): must be in uint8 format
+            image (ndarray[Any, UInt8]): must be in uint8 format
 
-            color (str | ColorLike | List[ColorLike]):
+            color (str | Any | List[Any]):
                 one color for all boxes or a list of colors for each box.
                 Or the string "classes", in which case it will use a
                 different color for each class (specified in the classes object
-                if possible)
+                if possible).  Extended types: str | ColorLike |
+                List[ColorLike]
 
             alpha (float): Transparency of overlay. can be a scalar or a list
                 for each box
@@ -137,11 +142,12 @@ class _DetDrawMixin:
             label_loc (str): indicates where labels (if specified) should be
                 drawn. passed to `boxes.draw_on`
 
-            thickness (int, default=2): rectangle thickness, negative values
-                will draw a filled rectangle. passed to `boxes.draw_on`
+            thickness (int): rectangle thickness, negative values
+                will draw a filled rectangle. passed to `boxes.draw_on`.
+                Defaults to 2.
 
         Returns:
-            ndarray[uint8]: image with labeled boxes drawn on it
+            ndarray[Any, UInt8]: image with labeled boxes drawn on it
 
         CommandLine:
             xdoctest -m kwimage.structs.detections _DetDrawMixin.draw_on:1 --profile --show
@@ -355,14 +361,14 @@ class _DetAlgoMixin:
                 no overlap.
             perclass (bool): if True, works on a per-class basis
             impl (str): nms implementation to use
-            daq (Bool | Dict): if False, uses reqgular nms, otherwise uses
+            daq (bool | Dict): if False, uses reqgular nms, otherwise uses
                 divide and conquor algorithm. If `daq` is a Dict, then
                 it is used as the kwargs to `kwimage.daq_spatial_nms`
 
             device_id : try not to use. only used if impl is gpu
 
         Returns:
-            ndarray[int]: indices of boxes to keep
+            ndarray[Shape['*'], Integer]: indices of boxes to keep
         """
         import kwimage
         classes = self.class_idxs if perclass else None
@@ -595,8 +601,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                considered as data (i.e. must be an array aligned with boxes).
             metakeys (List[str]): a list of custom attributes that should be
                considered as metadata (i.e. can be arbitrary).
-            checks (bool, default=True): if True and arguments are passed by
-                kwargs, then check / ensure that all types are compatible
+            checks (bool): if True and arguments are passed by
+                kwargs, then check / ensure that all types are compatible.
+                Defaults to True.
             **kwargs:
                 specify any key for the data or meta dictionaries.
 
@@ -770,16 +777,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             anns (List[Dict]): list of coco-like annotation objects
 
-            dset (CocoDataset): if specified, cats, classes, and kp_classes
+            dset (kwcoco.CocoDataset): if specified, cats, classes, and kp_classes
                 can are ignored.
 
             cats (List[Dict]): coco-format category information.
                 Used only if `dset` is not specified.
 
-            classes (ndsampler.CategoryTree): category tree with coco class
+            classes (kwcoco.CategoryTree): category tree with coco class
                 info. Used only if `dset` is not specified.
 
-            kp_classes (ndsampler.CategoryTree): keypoint category tree with
+            kp_classes (kwcoco.CategoryTree): keypoint category tree with
                 coco keypoint class info. Used only if `dset` is not specified.
 
             shape (tuple): shape of parent image
@@ -977,14 +984,14 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Args:
             cname_to_cat: currently ignored.
 
-            style (str, default='orig'): either 'orig' (for the original coco
+            style (str): either 'orig' (for the original coco
                 format) or 'new' for the more general kwcoco-style coco
-                format.
+                format. Defaults to 'orig'
 
-            image_id (int, default=None):
-                if specified, populates the image_id field of each image
+            image_id (int):
+                if specified, populates the image_id field of each image.
 
-            dset (CocoDataset, default=None):
+            dset (kwcoco.CocoDataset | None):
                 if specified, attempts to populate the category_id field
                 to be compatible with this coco dataset.
 
@@ -1088,9 +1095,14 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Spatially warp the detections.
 
         Args:
-            transform (TransformCoercable): usually a kwimage.Affine object
+            transform (kwimage.Affine | ndarray | Callable | Any):
+                Something coercable to a transform.
+                Usually a kwimage.Affine object
+
             input_dims (Tuple[int, int]): shape of the expected input canvas
+
             output_dims (Tuple[int, int]): shape of the expected output canvas
+
             inplace (bool): if true operate inplace
 
         Returns:
@@ -1214,7 +1226,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Sorts detection indices by descending (or ascending) scores
 
         Returns:
-            ndarray[int]: sorted indices
+            ndarray[Shape['*'], Integer]: sorted indices
+            torch.Tensor: sorted indices if using torch backends
         """
         sortx = self.scores.argsort()
         if reverse:
@@ -1239,7 +1252,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Returns a subset where corresponding locations are True.
 
         Args:
-            flags (ndarray[bool]): mask marking selected items
+            flags (ndarray[Any, Bool] | torch.Tensor):
+                mask marking selected items
 
         Returns:
             kwimage.structs.Detections: subset of self
@@ -1290,7 +1304,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         Returns a subset specified by indices
 
         Args:
-            indices (ndarray[int]): indices to select
+            indices (ndarray[Any, Integer]): indices to select
 
         Returns:
             kwimage.structs.Detections: subset of self
@@ -1453,14 +1467,16 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         Args:
             num (int): number of boxes
-            scale (float | tuple, default=1.0): bounding image size
+            scale (float | tuple): bounding image size. Defaults to 1.0
             classes (int | Sequence): list of class labels or number of classes
-            keypoints (bool, default=False):
+            keypoints (bool):
                 if True include random keypoints for each box.
-            segmentations (bool, default=False):
+                Defaults to False.
+            segmentations (bool):
                 if True include random segmentations for each box.
-            tensor (bool, default=False): determines backend.
-                DEPRECATED.  Call tensor on resulting object instead.
+                Defaults to False.
+            tensor (bool): determines backend.
+                DEPRECATED.  Call ``.tensor()`` on resulting object instead.
             rng (np.random.RandomState): random state
 
         Example:

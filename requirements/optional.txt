@@ -1,17 +1,35 @@
 # python ~/local/tools/supported_python_versions_pip.py matplotlib
 # python ~/local/tools/supported_python_versions_pip.py torch
-matplotlib>=3.3.3  ; python_version >= '3.8.0'   # 3.8+
-matplotlib>=3.1.0  ; python_version <  '3.8.0'   # 3.7-
+# python ~/local/tools/supported_python_versions_pip.py itk-io
 
-pyqt5>=5.15.4            ;                              python_version >= '3.9.0'   # Python 3.9+
-pyqt5>=5.14.0, <= 5.15.3 ; python_version < '3.9.0' and python_version >= '3.5.0'   # Python 3.5-3.9
-pyqt5>=5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
+matplotlib>=3.5.0     ;                            python_version >= '3.10'    # Python 3.10+
+matplotlib>=3.3.3     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+matplotlib>=3.1.0     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+matplotlib>=3.1.0     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+matplotlib>=3.1.0     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+
+# pyqt5>=5.15.4            ;                              python_version >= '3.9.0'   # Python 3.9+
+# pyqt5>=5.14.0, <= 5.15.3 ; python_version < '3.9.0' and python_version >= '3.5.0'   # Python 3.5-3.9
+# pyqt5>=5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
 
 # TODO torch for 3.10 when available
-torch>=1.9.0            ;                              python_version >= '3.9.0'   # Python 3.9+
-torch>=1.6.0            ; python_version < '3.9.0' and python_version >= '3.6.0'   # Python 3.6-3.8
-torch>=1.0.0, < 1.6.0   ; python_version < '3.6.0'                                 # Python 3.5-
+torch>=1.11.0    ;                            python_version >= '3.10'    # Python 3.10+
+torch>=1.7.1     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+torch>=1.7.0     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+torch>=1.7.0     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+torch>=1.7.0     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+
 
 PyTurboJPEG  # also requires ``apt install libturbojpeg``
 
-itk-io >= 5.2.0
+itk-io>=5.3rc4 ;                             python_version >= '3.10'  # Python 3.10
+itk-io>=5.1.2  ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
+itk-io>=5.0.1  ; python_version < '3.9'  and python_version >= '3.8'   # Python 3.8
+itk-io>=5.2.0  ; python_version < '3.8'  and python_version >= '3.7'   # Python 3.7
+itk-io>=5.2.0  ; python_version < '3.7'  and python_version >= '3.6'   # Python 3.6
+itk-io>=5.2.0  ; python_version < '3.6'  and python_version >= '3.5'   # Python 3.5
+itk-io>=5.2.0  ; python_version < '3.5'  and python_version >= '3.4'   # Python 3.4
+itk-io>=5.2.0  ; python_version < '3.4'  and python_version >= '2.7'   # Python 2.7
+
+
+kwimage_ext >= 0.2.0

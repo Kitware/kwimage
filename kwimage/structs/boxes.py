@@ -56,9 +56,14 @@ import ubelt as ub
 import warnings
 import skimage
 import kwarray
-from distutils.version import LooseVersion
-from . import _generic  # NOQA
+from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
+
+try:
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
 
 try:
     import torch
@@ -74,7 +79,7 @@ __all__ = ['Boxes']
 
 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
     try:
-        from ._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
+        from kwimage_ext.structs._boxes_backend.cython_boxes import bbox_ious_c as _bbox_ious_c
     except ImportError:
         _bbox_ious_c = None
     except Exception as ex:
@@ -351,8 +356,10 @@ class _BoxConversionMixins(object):
         Args:
             format (str):
                 the string code for the format you want to transform into.
-            copy (bool, default=True):
+
+            copy (bool):
                 if False, the conversion is done inplace, but only if possible.
+                Defaults to True.
 
         Returns:
             Boxes : transformed boxes
@@ -975,9 +982,13 @@ class _BoxTransformMixins(object):
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Args:
-            augmenter (imgaug.augmenters.Augmenter): an imgaug augmenter
+            augmenter (imgaug.augmenters.Augmenter):
+                an imgaug augmenter
+
             input_dims (Tuple): h/w of the input image
-            inplace (bool, default=False): if True, modifies data inplace
+
+            inplace (bool):
+                if True, modifies data inplace
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
@@ -1008,7 +1019,7 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | imgaug.augmenters.Augmenter):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -1018,7 +1029,7 @@ class _BoxTransformMixins(object):
 
             output_dims (Tuple): unused in non-raster spatial structures
 
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1200,18 +1211,20 @@ class _BoxTransformMixins(object):
         works natively with ltrb, cxywh, xywh, xy, or wh formats
 
         Args:
-            factor (float or Tuple[float, float]):
+            factor (float | Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
 
-            about (str | ArrayLike, default='origin'):
+            about (str | ArrayLike):
                 Origin of the scaling operation, Can be a single point, an
                 array of points for each box, or a special string:
                     'origin': all boxes are scaled about (0, 0)
                     'center': all boxes are scaled about their own center.
+                Defaults to 'origin'
 
             output_dims (Tuple): unused in non-raster spatial structures
 
-            inplace (bool, default=False): if True works inplace if possible
+            inplace (bool):
+                if True works inplace if possible. Defaults to False
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1326,7 +1339,7 @@ class _BoxTransformMixins(object):
         Shift the boxes up/down left/right
 
         Args:
-            factor (float or Tuple[float]):
+            factor (float | Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
 
@@ -1412,8 +1425,9 @@ class _BoxTransformMixins(object):
             y_min (int): minimum x-coordinate
             x_max (int): maximum x-coordinate
             y_max (int): maximum y-coordinate
-            inplace (bool, default=False): if True and possible, perform
-                operation inplace.
+            inplace (bool):
+                if True and possible, perform operation inplace. Defaults to
+                False.
 
         Returns:
             Boxes: clipped boxes
@@ -1601,17 +1615,20 @@ class _BoxDrawMixins(object):
         Args:
             image (ndarray): must be in uint8 format
 
-            color (str | ColorLike | List[ColorLike]):
+            color (str | Any | List[Any]):
                 one color for all boxes or a list of colors for each box
+                Can be any type accepted by kwimage.Color.coerce.
+                Extended types: str | ColorLike | List[ColorLike]
 
             alpha (float): transparency of bboxes
 
             labels (List[str]): a text label for each box
 
-            copy (bool, default=False): if False only copies if necessary
+            copy (bool):
+                if False only copies if necessary. Defaults to False.
 
-            thickness (int, default=2): rectangle thickness, negative values
-                will draw a filled rectangle.
+            thickness (int): rectangle thickness, negative values
+                will draw a filled rectangle. Defaults to 2.
 
             label_loc (str): indicates where labels (if specified) should be
                 drawn.
@@ -2188,7 +2205,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Args:
             boxes (Sequence[Boxes]): list of boxes to concatenate
-            axis (int, default=0): axis to stack on
+            axis (int): axis to stack on. Defaults to 0.
 
         Returns:
             Boxes: stacked boxes
@@ -2224,7 +2241,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Filters boxes based on a boolean criterion
 
         Args:
-            flags (ArrayLike[bool]): true for items to be kept
+            flags (ArrayLike): true for items to be kept.
+                Extended type: ArrayLike[bool]
             axis (int): you usually want this to be 0
             inplace (bool): if True, modifies this object
 
@@ -2251,7 +2269,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Takes a subset of items at specific indices
 
         Args:
-            indices (ArrayLike[int]): indexes of items to take
+            indices (ArrayLike):
+                Indexes of items to take.  Extended type ArrayLike[int].
             axis (int): you usually want this to be 0
             inplace (bool): if True, modifies this object
 
@@ -2343,7 +2362,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         output will depend on the format the boxes are stored in.
 
         Args:
-            inplace (bool, default=False): if True, modifies this object
+            inplace (bool): if True, modifies this object. Defaults to False.
 
         SeeAlso:
             :method:`Boxes.quantize`
@@ -2375,7 +2394,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         right side. Thus the area of the box will never decreases.
 
         Args:
-            inplace (bool, default=False): if True, modifies this object
+            inplace (bool): if True, modifies this object
             dtype (type): type to cast as
 
         SeeAlso:
@@ -2482,15 +2501,20 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Args:
             other (Boxes): boxes to compare IoUs against
-            bias (int, default=0): either 0 or 1, does TL=BR have area of 0 or 1?
-            impl (str, default='auto'): code to specify implementation used to
+
+            bias (int):
+                either 0 or 1, does TL=BR have area of 0 or 1?
+                Defaults to 0.
+
+            impl (str): code to specify implementation used to
                 ious. Can be either torch, py, c, or auto. Efficiency and the
                 exact result will vary by implementation, but they will always
                 be close.  Some implementations only accept certain data types
                 (e.g.  impl='c', only accepts float32 numpy arrays).  See
                 ~/code/kwimage/dev/bench_bbox.py for benchmark details. On my
                 system the torch impl was fastest (when the data was on the
-                GPU).
+                GPU). Defaults to 'auto'
+
             mode : depricated, use impl
 
         SeeAlso:
@@ -2614,8 +2638,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             ious - for a measure of similarity between boxes
 
         Args:
-            other (Boxes): boxes to compare IoOA against
-            bias (int, default=0): either 0 or 1, does TL=BR have area of 0 or 1?
+            other (Boxes):
+                boxes to compare IoOA against
+
+            bias (int):
+                either 0 or 1, does TL=BR have area of 0 or 1? Defaults to 0.
 
         Examples:
             >>> self = Boxes(np.array([[ 0,  0, 10, 10],
@@ -2772,11 +2799,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Determine of points are completely contained by these boxes
 
         Args:
-            other (Points): points to test for containment.
+            other (kwimage.Points): points to test for containment.
                 TODO: support generic data types
 
         Returns:
-            flags (ArrayLike): N x M boolean matrix indicating which box
+            ArrayLike: flags - N x M boolean matrix indicating which box
                 contains which points, where N is the number of boxes and
                 M is the number of points.
 
