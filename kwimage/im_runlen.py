@@ -1,5 +1,6 @@
 """
-Logic pertaining to run-length encodings
+Logic pertaining to run-length encodings. Can encode an ndarray as a RLE or
+decode an RLE into an ndarray.
 
 SeeAlso:
     kwimage.structs.mask - stores binary segmentation masks, using RLEs as a
@@ -193,13 +194,14 @@ def rle_translate(rle, offset, output_shape=None):
     Translates a run-length encoded image in RLE-space.
 
     Args:
-        rle (dict): an enconding dict returned by
-            :func:`kwimage.encode_run_length`
+        rle (dict):
+            an enconding dict returned by :func:`kwimage.encode_run_length`
 
-        offset (Tuple): x,y offset,
-            CAREFUL, this can only accept integers
+        offset (Tuple[int, int]):
+            x, y integer offsets.
 
-        output_shape (Tuple, optional): h,w of transformed mask.
+        output_shape (Tuple[int, int]):
+            h,w of transformed mask.
             If unspecified the input rle shape is used.
 
     SeeAlso:

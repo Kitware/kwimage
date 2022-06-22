@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added:
 * Working on QOI support
 * Added `kitware_green` and `kitware_blue` "Kitware colors" in `kwimage.Color`.
+* Type annotations stubs
 
 
 ### Changed:

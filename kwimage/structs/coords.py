@@ -150,9 +150,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Filters items based on a boolean criterion
 
         Args:
-            flags (ArrayLike[bool]): true for items to be kept
+            flags (ArrayLike):
+                true for items to be kept.
+                Extended type: ArrayLike[bool].
+
             axis (int): you usually want this to be 0
-            inplace (bool, default=False): if True, modifies this object
+
+            inplace (bool):
+                if True, modifies this object
 
         Returns:
             Coords: filtered coords
@@ -177,9 +182,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Takes a subset of items at specific indices
 
         Args:
-            indices (ArrayLike[int]): indexes of items to take
+            indices (ArrayLike):
+                indexes of items to take.
+                Extended type ArrayLike[int].
             axis (int): you usually want this to be 0
-            inplace (bool, default=False): if True, modifies this object
+            inplace (bool): if True, modifies this object
 
         Returns:
             Coords: filtered coords
@@ -201,7 +208,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Args:
             dtype : new type
-            inplace (bool, default=False): if True, modifies this object
+            inplace (bool): if True, modifies this object
 
         Returns:
             Coords: modified coordinates
@@ -215,7 +222,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Rounds data to the nearest integer
 
         Args:
-            inplace (bool, default=False): if True, modifies this object
+            inplace (bool): if True, modifies this object
 
         Example:
             >>> import kwimage
@@ -253,7 +260,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Args:
             coords (Sequence[Coords]): list of coords to concatenate
-            axis (int, default=0): axis to stack on
+            axis (int): axis to stack on. Defaults to 0.
 
         Returns:
             Coords: stacked coords
@@ -345,7 +352,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 which axes in the original coordinates should be mapped to the
                 ``i-th`` position in the returned axes.
 
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Returns:
             Coords: modified coordinates
@@ -433,7 +440,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+            transform (GeometricTransform | ArrayLike | Augmenter | Callable):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -444,7 +451,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             output_dims (Tuple): unused in non-raster structures, only exists
                 for compatibility.
 
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Returns:
             Coords: modified coordinates
@@ -559,7 +566,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Args:
             augmenter (imgaug.augmenters.Augmenter):
             input_dims (Tuple): h/w of the input image
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         CommandLine:
             xdoctest -m ~/code/kwimage/kwimage/structs/coords.py Coords._warp_imgaug
@@ -683,13 +690,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Scale coordinates by a factor
 
         Args:
-            factor (float or Tuple[float, float]):
+            factor (float | Tuple[float, float]):
                 scale factor as either a scalar or per-dimension tuple.
             about (Tuple | None):
                 if unspecified scales about the origin (0, 0), otherwise the
                 rotation is about this point.
             output_dims (Tuple): unused in non-raster spatial structures
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Returns:
             Coords: modified coordinates
@@ -743,10 +750,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Shift the coordinates
 
         Args:
-            offset (float or Tuple[float]):
+            offset (float | Tuple[float, float]):
                 transation offset as either a scalar or a per-dimension tuple.
             output_dims (Tuple): unused in non-raster spatial structures
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Returns:
             Coords: modified coordinates
@@ -793,7 +800,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
             output_dims (Tuple): unused in non-raster spatial structures
 
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Returns:
             Coords: modified coordinates

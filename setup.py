@@ -245,11 +245,18 @@ if __name__ == "__main__":
         author='Jon Crall',
         author_email='jon.crall@kitware.com',
         url='https://gitlab.kitware.com/computer-vision/kwimage',
-        description="A module cut from xcookie",
+        description="The Kitware Image Module",
         long_description=parse_description(),
         long_description_content_type="text/x-rst",
         license="Apache 2",
         packages=find_packages("."),
+        package_data={
+            'kwimage': [
+                'py.typed', '*.pyi',
+                'structs/*.pyi', 'algo/*.pyi',
+                'kwimage/algo/_nms_backend/*.pyi',
+            ],
+        },
         python_requires=">=3.6",
         classifiers=[
             "Development Status :: 4 - Beta",

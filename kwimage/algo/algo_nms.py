@@ -23,7 +23,7 @@ def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
 
         scores (ndarray): scores of each box
 
-        diameter (int or Tuple[int, int]): Distance from split point to
+        diameter (int | Tuple[int, int]): Distance from split point to
             consider rectification. If specified as an integer, then number
             is used for both height and width. If specified as a tuple, then
             dims are assumed to be in [height, width] format.

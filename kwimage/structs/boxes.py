@@ -1206,7 +1206,7 @@ class _BoxTransformMixins(object):
         works natively with ltrb, cxywh, xywh, xy, or wh formats
 
         Args:
-            factor (float or Tuple[float, float]):
+            factor (float | Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
 
             about (str | ArrayLike):
@@ -1334,7 +1334,7 @@ class _BoxTransformMixins(object):
         Shift the boxes up/down left/right
 
         Args:
-            factor (float or Tuple[float]):
+            factor (float | Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
 
@@ -2236,7 +2236,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Filters boxes based on a boolean criterion
 
         Args:
-            flags (ArrayLike[bool]): true for items to be kept
+            flags (ArrayLike): true for items to be kept.
+                Extended type: ArrayLike[bool]
             axis (int): you usually want this to be 0
             inplace (bool): if True, modifies this object
 
@@ -2263,7 +2264,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Takes a subset of items at specific indices
 
         Args:
-            indices (ArrayLike[int]): indexes of items to take
+            indices (ArrayLike):
+                Indexes of items to take.  Extended type ArrayLike[int].
             axis (int): you usually want this to be 0
             inplace (bool): if True, modifies this object
 
@@ -2796,7 +2798,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 TODO: support generic data types
 
         Returns:
-            flags (ArrayLike): N x M boolean matrix indicating which box
+            ArrayLike: flags - N x M boolean matrix indicating which box
                 contains which points, where N is the number of boxes and
                 M is the number of points.
 
