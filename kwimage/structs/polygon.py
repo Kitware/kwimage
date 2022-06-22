@@ -1055,7 +1055,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         Returns an axis-aligned bounding polygon for the segmentation.
 
-        Notes:
+        Note:
             This Polygon will be a Box, not a convex hull! Use shapely for
             convex hulls.
 
@@ -1179,7 +1179,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Returns:
             np.ndarray
 
-        Notes:
+        Note:
             This function will only be inplace if alpha=1.0 and the input has 3
             or 4 channels. Otherwise the output canvas is coerced so colors can
             be drawn on it. In the case where alpha < 1.0,

@@ -825,23 +825,21 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             the "auto" space resolves to None, thus the image is saved as-is.
 
         backend (str):
-            which backend writer to use. By default the file extension is used
+            Which backend writer to use. By default the file extension is used
             to determine this. Valid backends are 'gdal', 'skimage', 'itk', and
             'cv2'.
 
         **kwargs : args passed to the backend writer.
-
             When the backend is gdal, available options are:
-                compress (str): Common options are auto, DEFLATE, LZW, JPEG.
-                blocksize (int): size of tiled blocks (e.g. 256)
-                overviews (None | str | int | list): Number of overviews.
-                overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
-                options (List[str]): other gdal options.
-                nodata (int): denotes a integer value as nodata.
-                transform (kwimage.Affine): Transform into CRS
-                crs (str): The coordinate reference system for transform.
+            compress (str): Common options are auto, DEFLATE, LZW, JPEG.
+            blocksize (int): size of tiled blocks (e.g. 256)
+            overviews (None | str | int | list): Number of overviews.
+            overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
+            options (List[str]): other gdal options.
+            nodata (int): denotes a integer value as nodata.
+            transform (kwimage.Affine): Transform into CRS
+            crs (str): The coordinate reference system for transform.
             See :func:`_imwrite_cloud_optimized_geotiff` for more details each options.
-
             When the backend is itk, see :func:`itk.imwrite` for options
             When the backend is skimage, see :func:`skimage.io.imsave` for options
             When the backend is cv2 see :func:`cv2.imwrite` for options.
@@ -849,7 +847,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Returns:
         str: path to the written file
 
-    Notes:
+    Note:
         The image may be modified to preserve its colorspace depending on which
         backend is used to write the image.
 
@@ -1330,7 +1328,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         .. [GDAL_GTiff_Options] https://gdal.org/drivers/raster/gtiff.html
         https://gdal.org/drivers/raster/cog.html
 
-    Notes:
+    Note:
         Need to fix `CXXABI_1.3.11 not found` with conda gdal sometimes
 
         CLI to reproduce:

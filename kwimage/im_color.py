@@ -61,8 +61,6 @@ class Color(ub.NiceRepr):
     This should only be used when handling small numbers of colors(e.g. 1),
     don't use this to represent an image.
 
-    move to colorutil?
-
     Args:
         space (str): colorspace of wrapped color.
             Assume RGB if not specified and it cannot be inferred
@@ -247,8 +245,9 @@ class Color(ub.NiceRepr):
     @classmethod
     def _string_to_01(Color, color):
         """
-        mplutil.Color._string_to_01('green')
-        mplutil.Color._string_to_01('red')
+        Ignore:
+            mplutil.Color._string_to_01('green')
+            mplutil.Color._string_to_01('red')
         """
         if color == 'random':
             import random
@@ -299,7 +298,7 @@ class Color(ub.NiceRepr):
         Make multiple distinct colors
 
         References:
-            https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
+            .. [HowToDistinct] https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
 
         Example:
             >>> # xdoctest: +REQUIRES(module:matplotlib)
@@ -317,7 +316,6 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(swatch1, pnum=(1, 2, 1), fnum=1)
             >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
             >>> kwplot.show_if_requested()
-
         """
         if legacy == 'auto':
             legacy = (existing is None)
@@ -379,7 +377,7 @@ class Color(ub.NiceRepr):
         """
         Distance between self an another color
 
-        Example:
+        Ignore:
             import kwimage
             self = kwimage.Color((0.16304347826086973, 0.0, 1.0))
             other = kwimage.Color('purple')
@@ -1605,16 +1603,16 @@ CSS4_COLORS = {
 
 # Kitware color brand guide:
 # https://drive.google.com/file/d/1mUzJw4QrDfxWqqCsPZ_C7QWcQbfR_IBb/view
-"""
-Ignore:
-    import kwimage
-    named_colors = kwimage.Color.named_colors()
-    color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
-    import kwplot
-    kwplot.autompl()
-    canvas = kwplot.make_legend_img(color_lut)
-    kwplot.imshow(canvas)
-"""
+# """
+# Ignore:
+#     import kwimage
+#     named_colors = kwimage.Color.named_colors()
+#     color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
+#     import kwplot
+#     kwplot.autompl()
+#     canvas = kwplot.make_legend_img(color_lut)
+#     kwplot.imshow(canvas)
+# """
 KITWARE_COLORS = {
     'kitware_green'     : '#3EAE2B',
     'kitware_blue'      : '#0068C7',

@@ -499,7 +499,7 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     By default linearly stretches pixel intensities to minimum and maximum
     values.
 
-    Notes:
+    Note:
         DEPRECATED: this function has been MOVED to ``kwarray.normalize``
     """
     import kwarray

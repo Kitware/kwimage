@@ -13,17 +13,16 @@ References:
 Goals:
     The goal of this file is to create a datastructure that lets the developer
     seemlessly convert between:
-        (1) raw binary uint8 masks
-        (2) memory-efficient compressed run-length-encodings of binary
-        segmentation masks.
-        (3) convex polygons
-        (4) convex hull polygons
-        (5) bounding box
+    (1) raw binary uint8 masks
+    (2) memory-efficient compressed run-length-encodings of binary segmentation masks.
+    (3) convex polygons
+    (4) convex hull polygons
+    (5) bounding box
 
     It is not there yet, and the API is subject to change in order to better
     accomplish these goals.
 
-Notes:
+Note:
     IN THIS FILE ONLY: size corresponds to a h/w tuple to be compatible with
     the coco semantics. Everywhere else in this repo, size uses opencv
     semantics which are w/h.
@@ -527,7 +526,7 @@ class _MaskTransformMixin(object):
         Returns:
             Mask: the transformed Mask object
 
-        Notes:
+        Note:
             * This function has not been optimized and may be inefficient
 
         Example:
@@ -565,7 +564,7 @@ class _MaskTransformMixin(object):
         Returns:
             Mask: the transformed Mask object
 
-        Notes:
+        Note:
             * This function has not been optimized and may be inefficient
 
         Example:
@@ -1023,22 +1022,18 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> mask = Mask.union(*masks)
             >>> print(mask.area)
 
-        Benchmark:
+        Ignore:
             import ubelt as ub
             ti = ub.Timerit(100, bestof=10, verbose=2)
-
             masks = [Mask.random(shape=(172, 172), rng=i) for i in range(2)]
-
             for timer in ti.reset('native rle union'):
                 masks = [m.to_bytes_rle() for m in masks]
                 with timer:
                     mask = Mask.union(*masks)
-
             for timer in ti.reset('native cmask union'):
                 masks = [m.to_c_mask() for m in masks]
                 with timer:
                     mask = Mask.union(*masks)
-
             for timer in ti.reset('cmask->rle union'):
                 masks = [m.to_c_mask() for m in masks]
                 with timer:
@@ -1303,7 +1298,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             List[ndarray]: polygon around each connected component of the
                 mask. Each ndarray is an Nx2 array of xy points.
 
-        NOTE:
+        Note:
             The returned polygon may not surround points that are only one
             pixel thick.
 
@@ -1432,7 +1427,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwimage.MultiPolygon: vectorized representation
 
         Note:
-            - The OpenCV (and thus this function) coordinate system places
+            The OpenCV (and thus this function) coordinate system places
             coordinates at the center of pixels, and the polygon is traced
             tightly around these coordinates. A single pixel is not considered
             to have any width, so polygon edges will directly trace through the
@@ -1441,9 +1436,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             polygon.
 
         TODO:
-            - [x] add a flag where polygons consider pixels to have width and
-            the resulting polygon is traced around the pixel edges, not the
-            pixel centers.
+            - [x] add a flag where polygons consider pixels to have width and the resulting polygon is traced around the pixel edges, not the pixel centers.
 
             - [ ] Polygons and Masks should keep track of what "pixels_are"
 
@@ -1517,7 +1510,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> assert np.all(poly3.to_mask(mask3.shape).data == 1)
 
         Example:
-            # Corner case, only two pixels are on
+            >>> # Corner case, only two pixels are on
             >>> import kwimage
             >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
             >>> x_coords = np.array([621, 752])
@@ -1525,6 +1518,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self.data[y_coords, x_coords] = 1
             >>> poly = self.to_multi_polygon()
 
+        Ignore:
             poly.to_mask(self.shape).data.sum()
             self.to_array_rle().to_c_mask().data.sum()
             temp.to_c_mask().data.sum()
@@ -1615,7 +1609,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         Returns a list of xy points around the convex hull of this mask
 
-        NOTE:
+        Note:
             The returned polygon may not surround points that are only one
             pixel thick.
 
@@ -1637,8 +1631,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         The area of intersection over the area of union
 
         TODO:
-            - [ ] Write plural Masks version of this class, which should
-                  be able to perform this operation more efficiently.
+            - [ ] Write plural Masks version of this class, which should be able to perform this operation more efficiently.
 
         CommandLine:
             xdoctest -m kwimage.structs.mask Mask.iou
@@ -1670,7 +1663,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Attempts to auto-inspect the format of the data and conver to Mask
 
         Args:
-            data : the data to coerce
+            data (Any) : the data to coerce
+
             dims (Tuple): required for certain formats like polygons
                 height / width of the source image
 

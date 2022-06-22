@@ -9,8 +9,8 @@ from numpy import ndarray
 from typing import List
 import matplotlib as mpl
 import ubelt as ub
-from . import _generic
 from _typeshed import Incomplete
+from kwimage.structs import _generic
 from typing import Any
 
 

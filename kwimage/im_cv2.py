@@ -183,11 +183,11 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
             image.
             There are also string codes available:
             'lt': make the top left point of the image the top left point of
-                the cropped image.  This is equivalent to
-                ``img[:dsize[1], :dsize[0]]``, plus padding.
+            the cropped image.  This is equivalent to
+            ``img[:dsize[1], :dsize[0]]``, plus padding.
             'rb': make the bottom right point of the image the bottom right
-                point of the cropped image.  This is equivalent to
-                ``img[-dsize[1]:, -dsize[0]:]``, plus padding.
+            point of the cropped image.  This is equivalent to
+            ``img[-dsize[1]:, -dsize[0]:]``, plus padding.
             'cc': make the center of the image the center of the cropped image.
             Any combination of these codes can be used, ex. 'lb', 'ct', ('r',
             200), ...
@@ -505,8 +505,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
     TODO:
-        - [X] When interpolation is area and the number of channels > 4
-              cv2.resize will error but it is fine for linear interpolation
+        - [X] When interpolation is area and the number of channels > 4 cv2.resize will error but it is fine for linear interpolation
 
         - [ ] TODO: add padding options when letterbox=True
 
@@ -647,7 +646,8 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
                        implicit=False, dst=None):
     """
     Converts colorspace of img.
-    Convenience function around cv2.cvtColor
+
+    Convenience function around :func:`cv2.cvtColor`
 
     Args:
         img (ndarray): image data with float32 or uint8 precision
@@ -665,7 +665,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
         dst (ndarray[Any, UInt8]): inplace-output array.
 
     Returns:
-        ndarray: img -  image data
+        ndarray: img - image data
 
     Note:
         Note the LAB and HSV colorspaces in float do not go into the 0-1 range.
@@ -761,12 +761,14 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         shape (Tuple[int, int]): patch height and width
         sigma (float | Tuple[float, float]): Gaussian standard deviation
 
+    Returns:
+        ndarray
+
     References:
-        http://docs.opencv.org/modules/imgproc/doc/filtering.html#getgaussiankernel
+        .. [Cv2GaussKern] http://docs.opencv.org/modules/imgproc/doc/filtering.html#getgaussiankernel
 
     TODO:
-        - [ ] Look into this C-implementation
-        https://kwgitlab.kitware.com/computer-vision/heatmap/blob/master/heatmap/heatmap.c
+        - [ ] Look into this C-implementation https://kwgitlab.kitware.com/computer-vision/heatmap/blob/master/heatmap/heatmap.c
 
     CommandLine:
         xdoctest -m kwimage.im_cv2 gaussian_patch --show

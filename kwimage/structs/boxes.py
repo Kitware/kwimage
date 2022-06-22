@@ -627,7 +627,7 @@ class _BoxConversionMixins(object):
         """
         Creates a box from a 2D slice
 
-        Notes:
+        Note:
             The input slices and shape are y/x based because they are typically
             used with c-style arrays. However, the returned boxes use x/y
             ordering by default.
@@ -650,7 +650,7 @@ class _BoxConversionMixins(object):
                 bottom/right box coordinate. If False we subtract 1 such that
                 box coordinates lie on pixels specified by the slice.
 
-        Notes:
+        Note:
             * When using this function the user needs to carefully consider
               if clip should be True or False in their use case.
 
@@ -832,7 +832,7 @@ class _BoxPropertyMixins(object):
         """
         Returns the xy coordinates of the box centers
 
-        Notes:
+        Note:
             the difference between this and `self.center` is that this returns
             a single ndarray[dim=2] whereas `self.center` returns two ndarrays.
         """
@@ -1019,7 +1019,7 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | imgaug.augmenters.Augmenter):
+            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | Any):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -1985,7 +1985,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> kwimage.Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
         <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
-    Notes:
+    Note:
         In the following examples we show cases where :class:`Boxes` can hold a
         single 1-dimensional box array. This is a holdover from an older
         codebase, and some functions may assume that the input is at least 2-D.
@@ -2327,7 +2327,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         Changes the type of the internal array used to represent the boxes
 
-        Notes:
+        Note:
             this operation is not inplace
 
         Example:
@@ -2365,7 +2365,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             inplace (bool): if True, modifies this object. Defaults to False.
 
         SeeAlso:
-            :method:`Boxes.quantize`
+            :func:`Boxes.quantize`
 
         Example:
             >>> import kwimage
@@ -2398,7 +2398,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             dtype (type): type to cast as
 
         SeeAlso:
-            :method:`Boxes.round`
+            :func:`Boxes.round`
 
         Example:
             >>> import kwimage

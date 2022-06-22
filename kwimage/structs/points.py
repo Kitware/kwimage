@@ -882,7 +882,7 @@ class PointsList(_generic.ObjectList):
     """
     Stores a list of Points, each item usually corresponds to a different object.
 
-    Notes:
+    Note:
         # TODO: when the data is homogenous we can use a more efficient
         # representation, otherwise we have to use heterogenous storage.
     """

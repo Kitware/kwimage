@@ -13,31 +13,41 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             Otherwise a canvas will be constructed such that the text will fit.
             The user may specify a dictionary with keys width and height
             to have more control over the constructed canvas.
+
         text (str): text to draw
+
         org (Tuple[int, int]):
             The x, y location of the text string "anchor" in the image as
             specified by halign and valign.  For instance, If valign='bottom',
             halign='left', this is the bottom left corner.
+
         return_info (bool):
             if True, also returns information about the positions the text
             was drawn on.
+
         **kwargs:
             color (tuple): default blue
+
             thickness (int): defaults to 2
+
             fontFace (int): defaults to cv2.FONT_HERSHEY_SIMPLEX
+
             fontScale (float): defaults to 1.0
+
             valign (str):
-                either top, center, or bottom.
-                Defaults to "bottom"
-                NOTE: this default may change to "top" in the future.
+            either top, center, or bottom.
+            Defaults to "bottom"
+            NOTE: this default may change to "top" in the future.
+
             halign (str):
-                either left, center, or right. Defaults to "left".
+            either left, center, or right. Defaults to "left".
+
             border (dict | int):
-                If specified as an integer, draws a black border with that
-                given thickness.  If specified as a dictionary, draws a border
-                with color specified parameters.
-                    "color": border color, defaults to "black".
-                    "thickness": border thickness, defaults to 1.
+            If specified as an integer, draws a black border with that
+            given thickness.  If specified as a dictionary, draws a border
+            with color specified parameters.
+            "color": border color, defaults to "black".
+            "thickness": border thickness, defaults to 1.
 
     Returns:
         ndarray: the image that was drawn on
@@ -47,8 +57,8 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         returns a UMat instead of a ndarray, so be carefull with that.
 
     References:
-        https://stackoverflow.com/questions/27647424/
-        https://stackoverflow.com/questions/51285616/opencvs-gettextsize-and-puttext-return-wrong-size-and-chop-letters-with-low
+        .. [SO27647424] https://stackoverflow.com/questions/27647424/
+        .. [SO51285616] https://stackoverflow.com/questions/51285616/opencvs-gettextsize-and-puttext-return-wrong-size-and-chop-letters-with-low
 
     Example:
         >>> import kwimage
@@ -834,7 +844,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
 
         color (str | tuple | kwimage.Color): RGB color of the vectors
 
-        thickness (int: thickness of arrows
+        thickness (int): thickness of arrows
 
         tipLength (float): fraction of line length
 

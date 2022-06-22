@@ -101,10 +101,10 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
                 align_corners=False, new_mode=False):
     r"""
     A pytorch implementation of warp affine that works similarly to
-    cv2.warpAffine / cv2.warpPerspective.
+    :func:`cv2.warpAffine` and :func:`cv2.warpPerspective`.
 
-    It is possible to use 3x3 transforms to warp 2D image data.
-    It is also possible to use 4x4 transforms to warp 3D volumetric data.
+    It is possible to use 3x3 transforms to warp 2D image data.  It is also
+    possible to use 4x4 transforms to warp 3D volumetric data.
 
     Args:
         inputs (Tensor): tensor to warp.
@@ -119,7 +119,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
         output_dims (Tuple[int, ...]):
             The output space-time dimensions. This can either be in the form
-                (W,), (H, W), or (D, H, W).
+            (W,), (H, W), or (D, H, W).
 
         mode (str):
             Can be bilinear or nearest.
@@ -144,7 +144,10 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
             However, using align_corners=0 does seem to reasonably correspond
             with opencv behavior.
 
-    Notes:
+    Returns:
+        Tensor: warped tensor
+
+    Note:
         Also, it may be possible to speed up the code with `F.affine_grid`
 
         KNOWN ISSUE: There appears to some difference with cv2.warpAffine when
@@ -152,13 +155,12 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
             It may just be floating point issues, but Im' not sure.
 
     TODO:
-        - [ ] FIXME: see example in Mask.scale where this algo breaks when
-        the matrix is `2x3`
+        - [ ] FIXME: see example in Mask.scale where this algo breaks when the matrix is `2x3`
         - [ ] Make this algo work when matrix ix 2x2
 
     References:
-        https://discuss.pytorch.org/t/affine-transformation-matrix-paramters-conversion/19522
-        https://github.com/pytorch/pytorch/issues/15386
+        .. [TorchAffineTransform] https://discuss.pytorch.org/t/affine-transformation-matrix-paramters-conversion/19522
+        .. [TorchIssue15386] https://github.com/pytorch/pytorch/issues/15386
 
     Example:
         >>> # Create a relatively simple affine matrix
@@ -647,7 +649,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
         index (Tuple[slice]): subpixel slice into dst that corresponds with src
         interp_axes (tuple): specify which axes should be spatially interpolated
 
-    Notes:
+    Ascii:
         Inputs:
             +---+---+---+---+---+  dst.shape = (5,)
                   +---+---+        src.shape = (2,)
@@ -912,7 +914,7 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
         output_shape (tuple):
             if specified the output is returned with this shape, otherwise
 
-    Notes:
+    Note:
         This function powers most other functions in this file.
         Speedups here can go a long way.
 
@@ -1359,7 +1361,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
             points.  The leading axis may take any shape, but usually, shape
             will be [N x D] where N is the number of points.
 
-        homog_mode (str'):
+        homog_mode (str):
             what to do for homogenous coordinates. Can either divide, keep, or
             drop. Defaults do 'divide'.
 

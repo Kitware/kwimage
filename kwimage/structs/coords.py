@@ -36,12 +36,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     Currently it is up to the user to maintain what coordinate system this
     geometry belongs to.
 
-    NOTE:
+    Note:
         This class was designed to hold coordinates in r/c format, but in
         general this class is anostic to dimension ordering as long as you are
         consistent. However, there are two places where this matters:
-            (1) drawing and (2) gdal/imgaug-warping. In these places we will
-            assume x/y for legacy reasons. This may change in the future.
+        (1) drawing and (2) gdal/imgaug-warping. In these places we will
+        assume x/y for legacy reasons. This may change in the future.
 
         The term axes with resepct to ``Coords`` always refers to the final
         numpy axis. In other words the final numpy-axis represents ALL of the
@@ -460,7 +460,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Returns:
             Coords: modified coordinates
 
-        Notes:
+        Note:
             Let D = self.dims
 
             transformation matrices can be either:
@@ -1138,6 +1138,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     def draw(self, color='blue', ax=None, alpha=None, coord_axes=[1, 0],
              radius=1, setlim=False):
         """
+        Draw these coordinates via matplotlib
+
         Note:
             unlike other methods, the defaults assume x/y internal data
 
@@ -1147,8 +1149,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
             coord_axes (Tuple): specify which image axes each coordinate dim
                 corresponds to.  For 2D images,
-                    if you are storing r/c data, set to [0,1],
-                    if you are storing x/y data, set to [1,0].
+                if you are storing r/c data, set to [0,1],
+                if you are storing x/y data, set to [1,0].
 
         Returns:
             List[mpl.collections.PatchCollection]: drawn matplotlib objects

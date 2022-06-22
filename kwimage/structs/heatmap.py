@@ -1143,16 +1143,15 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
                 the image and heatmap are spatially aligned.
 
             classes (List[str] | ndsampler.CategoryTree):
-                information about which index in `data['class_probs']`
+                information about which index in ``data['class_probs']``
                 corresponds to which semantic class.
 
-        dims (Tuple): dimensions of the heatmap (See `image_dims) for the
+        dims (Tuple): dimensions of the heatmap (See ``image_dims``) for the
             original image dimensions.
 
         **kwargs: any key that is accepted by the `data` or `meta` dictionaries
             can be specified as a keyword argument to this class and it will
             be properly placed in the appropriate internal dictionary.
-
 
     CommandLine:
         xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py Heatmap --show
@@ -1293,6 +1292,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
             img_dims (Tuple): dimensions of the image the heatmap corresponds to
 
+        Returns:
+            Heatmap
+
         Example:
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random((128, 128), img_dims=(200, 200),
@@ -1331,7 +1333,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             >>> dets.draw()
             >>> dets.data['keypoints'].draw(radius=6)
             >>> dets.data['segmentations'].draw()
-
             >>> self.draw()
         """
         import kwimage
@@ -1705,7 +1706,7 @@ def smooth_prob(prob, k=3, inplace=False, eps=1e-9):
     """
     Smooths the probability map, but preserves the magnitude of the peaks.
 
-    Notes:
+    Note:
         even if inplace is true, we still need to make a copy of the input
         array, however, we do ensure that it is cleaned up before we leave the
         function scope.

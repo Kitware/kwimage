@@ -347,6 +347,8 @@ def process(app, what_: str, name: str, obj: Any, options: Any, lines:
             mode = 'ignore'
         elif line.startswith('CommandLine'):
             mode = 'cmdline'
+        elif line.startswith('Ascii'):
+            mode = 'ascii'
         elif line and not line.startswith(' '):
             # if the line startswith anything but a space, we are no
             # longer in the previous nested scope
@@ -357,13 +359,21 @@ def process(app, what_: str, name: str, obj: Any, options: Any, lines:
         elif mode == 'ignore':
             # print('IGNORE line = {!r}'.format(line))
             pass
+        elif mode == 'ascii':
+            if line.startswith('Ascii'):
+                new_lines.append('.. rubric:: Ascii')
+                new_lines.append('')
+                new_lines.append('.. code-block::')
+                new_lines.append('')
+            else:
+                # new_lines.append(line.strip())
+                new_lines.append(line)
         elif mode == 'cmdline':
             if line.startswith('CommandLine'):
                 new_lines.append('.. rubric:: CommandLine')
                 new_lines.append('')
                 new_lines.append('.. code-block:: bash')
                 new_lines.append('')
-                # new_lines.append('    # CommandLine')
             else:
                 # new_lines.append(line.strip())
                 new_lines.append(line)

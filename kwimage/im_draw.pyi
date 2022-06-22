@@ -43,7 +43,7 @@ def draw_line_segments_on_image(img,
                                 pts2: ndarray,
                                 color: Union[str, List] = 'blue',
                                 colorspace: str = 'rgb',
-                                thickness: int = ...,
+                                thickness: int = 1,
                                 **kwargs) -> ndarray:
     ...
 

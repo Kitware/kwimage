@@ -49,7 +49,7 @@ def convert_colorspace(img: ndarray,
 
 
 def gaussian_patch(shape: Tuple[int, int] = ...,
-                   sigma: Union[float, Tuple[float, float]] = None):
+                   sigma: Union[float, Tuple[float, float]] = None) -> ndarray:
     ...
 
 
