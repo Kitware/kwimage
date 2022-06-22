@@ -18,7 +18,7 @@ class _PointsWarpMixin:
         Args:
             augmenter (imgaug.augmenters.Augmenter):
             input_dims (Tuple): h/w of the input image
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
@@ -93,7 +93,7 @@ class _PointsWarpMixin:
 
             output_dims (Tuple): unused, only exists for compatibility
 
-            inplace (bool, default=False): if True, modifies data inplace
+            inplace (bool): if True, modifies data inplace
 
         Example:
             >>> from kwimage.structs.points import *  # NOQA
@@ -327,7 +327,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         Rounds data to the nearest integer
 
         Args:
-            inplace (bool, default=False): if True, modifies this object
+            inplace (bool): if True, modifies this object
 
         Example:
             >>> import kwimage
@@ -731,7 +731,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             classes (list | kwcoco.CategoryTree):
                 list of all keypoint category names
 
-            warn (bool, default=False): if True raise warnings
+            warn (bool): if True raise warnings
 
         Example:
             >>> ##

@@ -66,21 +66,21 @@ def imread(fpath, space='auto', backend='auto', **kw):
     Args:
         fpath (str): path to the file to be read
 
-        space (str, default='auto'):
+        space (str):
             The desired colorspace of the image. Can by any colorspace accepted
             by `convert_colorspace`, or it can be 'auto', in which case the
             colorspace of the image is unmodified (except in the case where a
             color image is read by opencv, in which case we convert BGR to RGB
             by default). If None, then no modification is made to whatever
-            backend is used to read the image.
+            backend is used to read the image. Defaults to 'auto'.
 
             New in version 0.7.10: when the backend does not resolve to "cv2"
             the "auto" space resolves to None, thus the image is read as-is.
 
-        backend (str, default='auto'): which backend reader to use. By default
+        backend (str): which backend reader to use. By default
             the file extension is used to determine this, but it can be
             manually overridden. Valid backends are 'gdal', 'skimage', 'itk',
-            'pil', and 'cv2'.
+            'pil', and 'cv2'. Defaults to 'auto'.
 
         **kw : backend-specific arguments
 
@@ -814,7 +814,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
         image (ndarray): image data
 
-        space (str | None, default='auto'):
+        space (str | None):
             the colorspace of the image to save. Can by any colorspace accepted
             by `convert_colorspace`, or it can be 'auto', in which case we
             assume the input image is either RGB, RGBA or grayscale.  If None,
@@ -824,7 +824,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             New in version 0.7.10: when the backend does not resolve to "cv2",
             the "auto" space resolves to None, thus the image is saved as-is.
 
-        backend (str, default='auto'):
+        backend (str):
             which backend writer to use. By default the file extension is used
             to determine this. Valid backends are 'gdal', 'skimage', 'itk', and
             'cv2'.
@@ -1288,18 +1288,18 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         data (ndarray[ndim=3]): Raw HWC image data to save. Dimensions should
             be height, width, channels.
 
-        compress (bool, default='auto'): Can be JPEG (lossy) or LZW (lossless),
+        compress (bool): Can be JPEG (lossy) or LZW (lossless),
             or DEFLATE (lossless). Can also be 'auto', which will try to
             heuristically choose a sensible choice.
 
-        blocksize (int, default=256): size of tiled blocks
+        blocksize (int): size of tiled blocks
 
-        overviews (None | str | int | list, default=None):
+        overviews (None | str | int | list):
             If specified as a string, can be 'auto'.
             if specified as a list, then uses exactly those overviews. If
             specified as an integer a list is created using powers of two.
 
-        overview_resample (str, default='NEAREST'): resampling method for
+        overview_resample (str): resampling method for
             overview pyramid. Valid choices are: 'NEAREST', 'AVERAGE',
             'BILINEAR', 'CUBIC', 'CUBICSPLINE', 'LANCZOS'.
 

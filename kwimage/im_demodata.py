@@ -132,10 +132,10 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
             airport - SkySat image of Beijing Capital International Airport on 18 February 2018
             See ``kwimage.grab_test_image.keys`` for a full list.
 
-        space (str, default='rgb'):
-            which colorspace to return in
+        space (str):
+            which colorspace to return in. Defaults to 'rgb'
 
-        dsize (Tuple[int, int], default=None):
+        dsize (Tuple[int, int]):
             if specified resizes image to this size
 
     Returns:

@@ -129,13 +129,13 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
             Can be zeros, border, or reflection.
             See `torch.nn.functional.grid_sample`.
 
-        isinv (bool, default=False):
+        isinv (bool):
             Set to true if `mat` is the inverse transform
 
-        ishomog (bool, default=None):
+        ishomog (bool):
             Set to True if the matrix is non-affine
 
-        align_corners (bool, default=False):
+        align_corners (bool):
             Note the default of False does not work correctly with grid_sample
             in torch <= 1.2, but using align_corners=True isnt typically what
             you want either. We will be stuck with buggy functionality until
@@ -905,11 +905,11 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
             for translating each image differently. Note that by default
             this is a y,x shift for 2 dimensions.
 
-        interp_axes (Sequence, default=None):
+        interp_axes (Sequence):
             axes to perform interpolation on, if not specified the final
             `n` axes are interpolated, where `n=len(shift)`
 
-        output_shape (tuple, default=None):
+        output_shape (tuple):
             if specified the output is returned with this shape, otherwise
 
     Notes:
@@ -1359,9 +1359,9 @@ def warp_points(matrix, pts, homog_mode='divide'):
             points.  The leading axis may take any shape, but usually, shape
             will be [N x D] where N is the number of points.
 
-        homog_mode (str, default='divide'):
+        homog_mode (str'):
             what to do for homogenous coordinates. Can either divide, keep, or
-            drop.
+            drop. Defaults do 'divide'.
 
     Retrns:
         new_pts (ArrayLike): the points after being transformed by the matrix
@@ -1524,7 +1524,7 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
     Args:
         img (ArrayLike): image to sample from
         pts (ArrayLike): subpixel rc-coordinates to sample
-        coord_axes (Sequence, default=None):
+        coord_axes (Sequence):
             axes to perform interpolation on, if not specified the first `d`
             axes are interpolated, where `d=pts.shape[-1]`.
             IE: this indicates which axes each coordinate dimension corresponds to.
@@ -1610,7 +1610,7 @@ def subpixel_setvalue(img, pts, value, coord_axes=None,
         img (ArrayLike): image to set values in
         pts (ArrayLike): subpixel rc-coordinates to set
         value (ArrayLike): value to place in the image
-        coord_axes (Sequence, default=None):
+        coord_axes (Sequence):
             axes to perform interpolation on, if not specified the first `d`
             axes are interpolated, where `d=pts.shape[-1]`.
             IE: this indicates which axes each coordinate dimension corresponds to.

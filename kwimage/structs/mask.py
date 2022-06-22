@@ -153,7 +153,7 @@ class _MaskConversionMixin(object):
             format (str):
                 the string code for the format you want to transform into.
 
-            copy (bool, default=True):
+            copy (bool):
                 if True, we always return copy of the data.
                 if False, we try not to return a copy unless necessary.
 
@@ -192,7 +192,7 @@ class _MaskConversionMixin(object):
         Converts the mask format to a bytes-based run-length encoding.
 
         Args:
-            copy (bool, default=True):
+            copy (bool):
                 if True, we always return copy of the data.
                 if False, we try not to return a copy unless necessary.
 
@@ -251,7 +251,7 @@ class _MaskConversionMixin(object):
         Converts the mask format to an array-based run-length encoding.
 
         Args:
-            copy (bool, default=True):
+            copy (bool):
                 if True, we always return copy of the data.
                 if False, we try not to return a copy unless necessary.
 
@@ -288,7 +288,7 @@ class _MaskConversionMixin(object):
         Convert the mask format to a dense mask array in columnwise (F) order
 
         Args:
-            copy (bool, default=True):
+            copy (bool):
                 if True, we always return copy of the data.
                 if False, we try not to return a copy unless necessary.
 
@@ -357,7 +357,7 @@ class _MaskConversionMixin(object):
         Convert the mask format to a dense mask array in rowwise (C) order
 
         Args:
-            copy (bool, default=True):
+            copy (bool):
                 if True, we always return copy of the data.
                 if False, we try not to return a copy unless necessary.
 
@@ -725,7 +725,7 @@ class _MaskDrawMixin(object):
             image (ndarray): the image to draw on
             color (str | tuple): color code/rgb of the mask
             alpha (float): mask alpha value
-            show_border (bool, default=False): draw border around the mask
+            show_border (bool): draw border around the mask
 
         Returns:
             ndarray: the image with data drawn on it

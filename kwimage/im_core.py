@@ -632,7 +632,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     Args:
         imdata (ndarray): raw intensity data
 
-        return_info (bool, default=False):
+        return_info (bool):
             if True, return information about the chosen normalization
             heuristic.
 

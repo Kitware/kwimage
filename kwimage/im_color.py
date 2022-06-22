@@ -132,7 +132,7 @@ class Color(ub.NiceRepr):
 
         Args:
             image (ndarray): image to return color for
-            space (str, default=rgb): colorspace of the input image.
+            space (str): colorspace of the input image. Defaults to 'rgb'
 
         Example:
             >>> img_f3 = np.zeros([8, 8, 3], dtype=np.float32)

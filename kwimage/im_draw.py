@@ -18,7 +18,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             The x, y location of the text string "anchor" in the image as
             specified by halign and valign.  For instance, If valign='bottom',
             halign='left', this is the bottom left corner.
-        return_info (bool, default=False):
+        return_info (bool):
             if True, also returns information about the positions the text
             was drawn on.
         **kwargs:
@@ -26,11 +26,12 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             thickness (int): defaults to 2
             fontFace (int): defaults to cv2.FONT_HERSHEY_SIMPLEX
             fontScale (float): defaults to 1.0
-            valign (str, default='bottom'):
+            valign (str):
                 either top, center, or bottom.
+                Defaults to "bottom"
                 NOTE: this default may change to "top" in the future.
-            halign (str, default='left'):
-                either left, center, or right
+            halign (str):
+                either left, center, or right. Defaults to "left".
             border (dict | int):
                 If specified as an integer, draws a black border with that
                 given thickness.  If specified as a dictionary, draws a border
@@ -348,9 +349,9 @@ def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
     Args:
         im (ndarray): the image
         classes (Sequence[str] | kwcoco.CategoryTree): list of class names
-        tcx (int, default=None): true class index if known
+        tcx (int): true class index if known
         probs (ndarray): predicted class probs for each class
-        pcx (int, default=None): predicted class index.
+        pcx (int): predicted class index.
             (if None but probs is specified uses argmax of probs)
 
     Example:
@@ -486,9 +487,9 @@ def draw_line_segments_on_image(
         pts2 (ndarray): corresponding xy coordinates of ending points
         color (str | List):
             color code or a list of colors for each line segment
-        colorspace (str, default='rgb'): colorspace of image
-        thickness (int, default=1)
-        lineType (int, default=cv2.LINE_AA) option for cv2.line
+        colorspace (str): colorspace of image. Defaults to 'rgb'
+        thickness (int): Defaults to 1
+        lineType (int): option for cv2.line
 
     Returns:
         ndarray: the modified image (inplace if possible)
@@ -713,9 +714,9 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
 
         color (str | tuple | kwimage.Color): RGB color of the vectors
 
-        thickness (int, default=1): thickness of arrows
+        thickness (int): thickness of arrows
 
-        tipLength (float, default=0.1): fraction of line length
+        tipLength (float): fraction of line length
 
         line_type (int | str):
             either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA or a string
@@ -833,9 +834,9 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
 
         color (str | tuple | kwimage.Color): RGB color of the vectors
 
-        thickness (int, default=1): thickness of arrows
+        thickness (int: thickness of arrows
 
-        tipLength (float, default=0.1): fraction of line length
+        tipLength (float): fraction of line length
 
         line_type (int | str):
             either cv2.LINE_4, cv2.LINE_8, or cv2.LINE_AA or 'aa'

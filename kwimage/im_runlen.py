@@ -17,7 +17,7 @@ def encode_run_length(img, binary=False, order='C'):
     Args:
         img (ndarray): 2D image
 
-        binary (bool, default=False):
+        binary (bool):
             If true, assume that the input image only contains 0's and 1's.
             Set to True for compatibility with COCO (which does not support
             multi-value RLE encodings).
