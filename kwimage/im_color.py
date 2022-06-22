@@ -282,6 +282,7 @@ class Color(ub.NiceRepr):
             >>> named_colors = kwimage.Color.named_colors()
             >>> color_lut = {name: kwimage.Color(name).as01() for name in named_colors}
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> canvas = kwplot.make_legend_img(color_lut)
@@ -303,17 +304,19 @@ class Color(ub.NiceRepr):
         Example:
             >>> # xdoctest: +REQUIRES(module:matplotlib)
             >>> from kwimage.im_color import *  # NOQA
-            >>> from kwimage.im_color import _draw_color_swatch
             >>> import kwimage
-            >>> colors1 = kwimage.Color.distinct(10, legacy=False)
-            >>> swatch1 = _draw_color_swatch(colors1, cellshape=9)
-            >>> colors2 = kwimage.Color.distinct(10, existing=colors1)
-            >>> swatch2 = _draw_color_swatch(colors1 + colors2, cellshape=9)
+            >>> colors1 = kwimage.Color.distinct(5, legacy=False)
+            >>> colors2 = kwimage.Color.distinct(3, existing=colors1)
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> from kwimage.im_color import _draw_color_swatch
+            >>> swatch1 = _draw_color_swatch(colors1, cellshape=9)
+            >>> swatch2 = _draw_color_swatch(colors1 + colors2, cellshape=9)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(swatch1, pnum=(1, 2, 1), fnum=1)
             >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
+            >>> kwplot.show_if_requested()
 
         """
         if legacy == 'auto':

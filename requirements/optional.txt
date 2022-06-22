@@ -21,4 +21,4 @@ PyTurboJPEG  # also requires ``apt install libturbojpeg``
 
 itk-io >= 5.2.0
 
-kwimage_ext >= 0.1.0
+kwimage_ext >= 0.2.0

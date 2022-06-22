@@ -1175,7 +1175,7 @@ def load_image_shape(fpath):
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> import ubelt as ub
         >>> import kwimage
-        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache')
+        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
         >>> fpath = dpath / 'foo.tif'
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
         >>> shape = kwimage.load_image_shape(fpath)

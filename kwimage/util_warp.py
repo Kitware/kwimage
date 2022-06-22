@@ -5,7 +5,11 @@ TODO:
 import ubelt as ub
 import numpy as np
 import kwarray
-from distutils.version import LooseVersion
+
+try:
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 try:
     import torch

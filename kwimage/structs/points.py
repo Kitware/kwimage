@@ -1,8 +1,10 @@
+"""
+Data structures to represent and manipulate 2D Points
+"""
 import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
-from distutils.version import LooseVersion  # NOQA
 import warnings
 from kwimage.structs import _generic
 

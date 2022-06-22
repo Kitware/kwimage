@@ -56,9 +56,14 @@ import ubelt as ub
 import warnings
 import skimage
 import kwarray
-from distutils.version import LooseVersion
-from . import _generic  # NOQA
+from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
+
+try:
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
 
 try:
     import torch
