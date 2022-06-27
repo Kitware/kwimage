@@ -167,7 +167,7 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
     return image
 
 
-def grab_test_image_fpath(key='astro'):
+def grab_test_image_fpath(key='astro', dsize=None):
     """
     Ensures that the test image exists (this might use the network) and returns
     the cached filepath to the requested image.
@@ -178,6 +178,10 @@ def grab_test_image_fpath(key='astro'):
             carl - Carl Sagan
             paraview - ParaView logo
             stars - picture of stars in the sky
+
+        dsize (None | Tuple[int, int]):
+            if specified, we will write a new image to disk with the desired
+            size.
 
     Returns:
         str: path to the requested image
@@ -192,6 +196,19 @@ def grab_test_image_fpath(key='astro'):
         ...     print('attempt to grab key = {!r}'.format(key))
         ...     kwimage.grab_test_image_fpath(key)
         ...     print('grabbed grab key = {!r}'.format(key))
+
+    Example:
+        >>> # xdoctest: +REQUIRES(--network)
+        >>> import kwimage
+        >>> key = ub.peek(kwimage.grab_test_image.keys())
+        >>> # specifying a dsize will construct a new image
+        >>> fpath1 = kwimage.grab_test_image_fpath(key)
+        >>> fpath2 = kwimage.grab_test_image_fpath(key, dsize=(32, 16))
+        >>> print('fpath1 = {}'.format(ub.repr2(fpath1, nl=1)))
+        >>> print('fpath2 = {}'.format(ub.repr2(fpath2, nl=1)))
+        >>> assert fpath1 != fpath2
+        >>> imdata2 = kwimage.imread(fpath2)
+        >>> assert imdata2.shape[0:2] == (16, 32)
     """
     try:
         item = _TEST_IMAGES[key]
@@ -218,6 +235,22 @@ def grab_test_image_fpath(key='astro'):
         grabkw['fname'] = item['fname']
 
     fpath = ub.grabdata(item['url'], **grabkw)
+
+    if dsize is not None:
+        import os
+        stem_suffix = ub.repr2(dsize, compact=True)
+        fpath2 = ub.Path(ub.augpath(fpath, suffix=stem_suffix))
+        # stamp = ub.CacheStamp.sidecar_for(fpath2, depends=[dsize])
+        stamp = ub.CacheStamp(fpath2.name + '.stamp', dpath=fpath2.parent,
+                              depends=dsize, ext='.json')
+        if stamp.expired():
+            import kwimage
+            imdata1 = kwimage.imread(fpath)
+            imdata2 = kwimage.imresize(imdata1, dsize=dsize)
+            kwimage.imwrite(fpath2, imdata2)
+            stamp.renew()
+        fpath = os.fspath(fpath2)
+
     return fpath
 
 grab_test_image.keys = lambda: _TEST_IMAGES.keys()

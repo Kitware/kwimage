@@ -22,31 +22,56 @@ KWIMAGE_DISABLE_TORCHVISION_NMS = _boolean_environ('KWIMAGE_DISABLE_TORCHVISION_
 KWIMAGE_DISABLE_C_EXTENSIONS = _boolean_environ('KWIMAGE_DISABLE_C_EXTENSIONS')
 
 
-def schedule_deprecation3(modname, migration='', name='?', type='?',
+def schedule_deprecation3(modname, name='?', type='?', migration='',
                           deprecate=None, error=None, remove=None):  # nocover
     """
     Deprecation machinery to help provide users with a smoother transition.
+
+    TODO:
+        This can be a new utility to help with generic deprecations
+
+    Example:
+        from ubelt._util_deprecated import *  # NOQA
+        schedule_deprecation3(
+            'ubelt', 'myfunc', 'function', 'do something else',
+            error='0.0.0',)
+
     """
     import ubelt as ub
     import sys
-    from distutils.version import LooseVersion
     import warnings
+    try:  # nocover
+        from packaging.version import parse as Version
+    except ImportError:
+        from distutils.version import LooseVersion as Version
     module = sys.modules[modname]
-    current = LooseVersion(module.__version__)
-    deprecate = None if deprecate is None else LooseVersion(deprecate)
-    remove = None if remove is None else LooseVersion(remove)
-    error = None if error is None else LooseVersion(error)
+    current = Version(module.__version__)
+
+    deprecate_str = ''
+    remove_str = ''
+    error_str = ''
+
+    if deprecate is not None:
+        deprecate = Version(deprecate)
+        deprecate_str = ' in {}'.format(deprecate)
+
+    if remove is not None:
+        remove = Version(remove)
+        remove_str = ' in {}'.format(remove)
+
+    if error is not None:
+        error = Version(error)
+        error_str = ' in {}'.format(error)
+
     if deprecate is None or current >= deprecate:
-        if migration is None:
-            migration = ''
         msg = ub.paragraph(
             '''
-            The "{name}" {type} was deprecated in {deprecate}, will cause
-            an error in {error} and will be removed in {remove}. The current
+            The "{name}" {type} was deprecated{deprecate_str}, will cause
+            an error{error_str} and will be removed{remove_str}. The current
             version is {current}. {migration}
             ''').format(**locals()).strip()
         if remove is not None and current >= remove:
-            raise AssertionError('forgot to remove a deprecated function')
+            raise AssertionError('Forgot to remove deprecated: ' + msg)
         if error is not None and current >= error:
             raise DeprecationWarning(msg)
         else:

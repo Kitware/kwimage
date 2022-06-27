@@ -157,7 +157,16 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     """
     DEPRECATED and removed: use imresize instead
     """
-    raise Exception('imscale is deprecated, use imresize instead')
+    from kwimage._internal import schedule_deprecation3
+    schedule_deprecation3(
+        modname='kwimage',
+        name='imscale',
+        type='function',
+        migration='Use imresize instead.',
+        deprecate=None,
+        error='0.9.1',
+        remove='1.0.0',
+    )
 
 
 def imcrop(img, dsize, about=None, origin=None, border_value=None,
@@ -165,8 +174,8 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
     """
     Crop an image about a specified point, padding if necessary.
 
-    This is like PIL.Image.Image.crop with more convenient arguments,
-    or cv2.getRectSubPix without the baked-in bilinear interpolation.
+    This is like :func:`PIL.Image.Image.crop` with more convenient arguments,
+    or :func:`cv2.getRectSubPix` without the baked-in bilinear interpolation.
 
     Args:
         img (ndarray): image to crop
@@ -515,8 +524,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
     _mutex_args = [scale, dsize, max_dim, min_dim]
     if sum(a is not None for a in _mutex_args) != 1:
-        raise ValueError(
-            'Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim')
+        raise ValueError(ub.paragraph(
+            '''
+            Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim'
+            Got scale={}, dsize={}, max_dim={}, min_dim={}
+            ''').format(*_mutex_args))
 
     if scale is not None:
         try:
