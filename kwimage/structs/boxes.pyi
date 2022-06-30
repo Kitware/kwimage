@@ -1,17 +1,21 @@
 from numpy import ndarray
+from typing import Union
 from typing import List
 import shapely
 from typing import Any
 from typing import Tuple
-from typing import Union
-from typing import Callable
 import kwimage
+from typing import Callable
 from numpy.typing import ArrayLike
 import numpy as np
+from typing import Optional
+import matplotlib
 from torch import Tensor
 from numpy.random import RandomState
 from typing import Sequence
+import torch
 import skimage
+import torch
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
@@ -36,7 +40,7 @@ class BoxFormat:
 def box_ious(ltrb1: ndarray,
              ltrb2: ndarray,
              bias: int = 0,
-             impl: Incomplete | None = ...):
+             impl: Union[str, None] = None):
     ...
 
 
@@ -68,14 +72,15 @@ class _BoxConversionMixins:
     def to_shapely(self) -> List[shapely.geometry.Polygon]:
         ...
 
-    to_shapley: Incomplete
-
-    @classmethod
-    def from_shapely(cls, geom) -> Boxes:
+    def to_shapley(self) -> List[shapely.geometry.Polygon]:
         ...
 
     @classmethod
-    def coerce(Boxes, data):
+    def from_shapely(cls, geom: shapely.geometry.Polygon) -> Boxes:
+        ...
+
+    @classmethod
+    def coerce(Boxes, data) -> Boxes:
         ...
 
     @classmethod
@@ -90,13 +95,13 @@ class _BoxConversionMixins:
                    endpoint: bool = True):
         ...
 
-    def to_slices(self, endpoint: bool = True):
+    def to_slices(self, endpoint: bool = True) -> List[Tuple[slice, slice]]:
         ...
 
-    def to_coco(self, style: str = ...) -> Generator[Any, None, None]:
+    def to_coco(self, style: str = ...) -> Generator[List[float], None, None]:
         ...
 
-    def to_polygons(self):
+    def to_polygons(self) -> kwimage.PolygonList:
         ...
 
 
@@ -163,7 +168,7 @@ class _BoxTransformMixins:
                               Any],
              input_dims: Tuple = None,
              output_dims: Tuple = None,
-             inplace: bool = False):
+             inplace: bool = False) -> Boxes:
         ...
 
     def corners(self) -> np.ndarray:
@@ -173,13 +178,13 @@ class _BoxTransformMixins:
               factor: Union[float, Tuple[float, float]],
               about: Union[str, ArrayLike] = 'origin',
               output_dims: Tuple = None,
-              inplace: bool = False):
+              inplace: bool = False) -> Boxes:
         ...
 
     def translate(self,
                   amount,
                   output_dims: Tuple = None,
-                  inplace: bool = ...):
+                  inplace: bool = ...) -> Boxes:
         ...
 
     def clip(self,
@@ -200,14 +205,14 @@ class _BoxTransformMixins:
 class _BoxDrawMixins:
 
     def draw(self,
-             color: str = ...,
-             alpha: Incomplete | None = ...,
-             labels: Incomplete | None = ...,
-             centers: bool = ...,
+             color: Union[str, Any, List[Any]] = 'blue',
+             alpha: Union[float, List[float], None] = None,
+             labels: Union[List[str], None] = None,
+             centers: bool = False,
              fill: bool = ...,
-             lw: int = ...,
-             ax: Incomplete | None = ...,
-             setlim: bool = ...):
+             lw: float = 2,
+             ax: Optional[matplotlib.axes.Axes] = None,
+             setlim: bool = False):
         ...
 
     def draw_on(self,
@@ -217,7 +222,7 @@ class _BoxDrawMixins:
                 labels: List[str] = None,
                 copy: bool = False,
                 thickness: int = 2,
-                label_loc: str = 'top_left'):
+                label_loc: str = 'top_left') -> ndarray:
         ...
 
 
@@ -238,10 +243,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     def __eq__(self, other):
         ...
 
-    def __len__(self):
+    def __len__(self) -> int:
         ...
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         ...
 
     @classmethod
@@ -252,64 +257,67 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                anchors: ndarray = None,
                anchor_std: float = ...,
                tensor: bool = False,
-               rng: Union[None, int, RandomState] = None):
+               rng: Union[None, int, RandomState] = None) -> Boxes:
         ...
 
-    def copy(self):
+    def copy(self) -> Boxes:
         ...
 
     @classmethod
     def concatenate(cls, boxes: Sequence[Boxes], axis: int = 0) -> Boxes:
         ...
 
-    def compress(self, flags: ArrayLike, axis: int = 0, inplace: bool = False):
+    def compress(self,
+                 flags: ArrayLike,
+                 axis: int = 0,
+                 inplace: bool = False) -> Boxes:
         ...
 
-    def take(self, idxs, axis: int = 0, inplace: bool = False):
+    def take(self, idxs, axis: int = 0, inplace: bool = False) -> Boxes:
         ...
 
-    def is_tensor(self):
+    def is_tensor(self) -> bool:
         ...
 
-    def is_numpy(self):
+    def is_numpy(self) -> bool:
         ...
 
     @property
     def device(self):
         ...
 
-    def astype(self, dtype):
+    def astype(self, dtype) -> Boxes:
         ...
 
-    def round(self, inplace: bool = False):
+    def round(self, inplace: bool = False) -> Boxes:
         ...
 
-    def quantize(self, inplace: bool = False, dtype: type = ...):
+    def quantize(self, inplace: bool = False, dtype: type = ...) -> Boxes:
         ...
 
-    def numpy(self):
+    def numpy(self) -> Boxes:
         ...
 
-    def tensor(self, device=...):
+    def tensor(self, device: Union[int, None, torch.device] = ...) -> Boxes:
         ...
 
     def ious(self,
              other: Boxes,
              bias: int = 0,
              impl: str = 'auto',
-             mode: Incomplete | None = ...):
+             mode: str = None) -> ndarray:
         ...
 
-    def iooas(self, other: Boxes, bias: int = 0):
+    def iooas(self, other: Boxes, bias: int = 0) -> ndarray:
         ...
 
-    def isect_area(self, other, bias: int = ...):
+    def isect_area(self, other: Boxes, bias: int = 0) -> ndarray:
         ...
 
-    def intersection(self, other) -> Boxes:
+    def intersection(self, other: Boxes) -> Boxes:
         ...
 
-    def union_hull(self, other) -> Boxes:
+    def union_hull(self, other: Boxes) -> Boxes:
         ...
 
     def bounding_box(self) -> Boxes:
@@ -318,5 +326,5 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     def contains(self, other: kwimage.Points) -> ArrayLike:
         ...
 
-    def view(self, *shape):
+    def view(self, *shape: Tuple[int, ...]) -> Boxes:
         ...

@@ -470,6 +470,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     @property
     def exterior(self):
+        """
+        Returns:
+            kwimage.Coords
+        """
         # if self.format = 'dict':
         # if self.format = 'shapely':
         # self.data.exterior.coords
@@ -477,18 +481,34 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     @property
     def interiors(self):
+        """
+        Returns:
+            List[kwimage.Coords]
+        """
         # if self.format = 'dict':
         # if self.format = 'shapely':
         # [d.coords for d in z.interiors]
         return self.data['interiors']
 
     def __nice__(self):
+        """
+        Returns:
+            str
+        """
         return ub.repr2(self.data, nl=1)
 
     @classmethod
     def circle(cls, xy, r, resolution=64):
         """
         Create a circular polygon
+
+        Args:
+            xy (Iterable[Number]): x and y center coordinate
+            r (Number): radius
+            resolution (int): number of sides
+
+        Returns:
+            Polygon
 
         Example:
             >>> import kwimage
@@ -523,6 +543,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                 between 0 and 1
             convex (bool): force resulting polygon will be convex
                (may remove exterior points)
+
+        Returns:
+            Polygon
 
         CommandLine:
             xdoctest -m kwimage.structs.polygon Polygon.random
@@ -686,6 +709,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         Args:
             dims (Tuple): height and width of the output mask
+            pixels_are (str): either "points" or "areas"
 
         Returns:
             kwimage.Mask
@@ -858,6 +882,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Args:
             data_geojson (dict): geojson data
 
+        Returns:
+            Polygon
+
         References:
             https://geojson.org/geojson-spec.html
 
@@ -915,6 +942,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     def to_shapely(self):
         """
+        Returns:
+            shapely.geometry.polygon.Polygon
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> # xdoc: +REQUIRES(module:shapely)
@@ -939,7 +969,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     @property
     def area(self):
-        """ Computes are via shapley conversion """
+        """
+        Computes are via shapley conversion
+
+        Returns:
+            float
+        """
         return self.to_shapely().area
 
     def to_geojson(self):
@@ -968,6 +1003,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         Convert a kwimage.Polygon to WKT string
 
+        Returns:
+            str
+
         Example:
             >>> import kwimage
             >>> self = kwimage.Polygon.random()
@@ -983,6 +1021,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     def from_coco(cls, data, dims=None):
         """
         Accepts either new-style or old-style coco polygons
+
+        Args:
+            data (List[Number] | Dict):
+                A new or old-style coco polygon
+
+            dims (None | Tuple[int, ...]):
+                the shape dimensions of the canvas. Unused. Exists for
+                compatibility with masks.
+
+        Returns:
+            Polygon
         """
         if isinstance(data, list):
             if len(data) > 0:
@@ -1004,6 +1053,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     def to_coco(self, style='orig'):
         """
+        Args:
+            style(str): can be "orig" or "new"
+
         Returns:
             List | Dict : coco-style polygons
         """
@@ -1022,16 +1074,27 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             raise KeyError(style)
 
     def to_multi_polygon(self):
+        """
+        Returns:
+            MultiPolygon
+        """
         return MultiPolygon([self])
 
     def to_boxes(self):
         """
         Deprecated: lossy conversion use 'bounding_box' instead
+
+        Returns:
+            kwimage.Boxes
         """
         return self.bounding_box()
 
     @property
     def centroid(self):
+        """
+        Returns:
+            Tuple[Number, Number]
+        """
         shp_centroid = self.to_shapely().centroid
         xy = (shp_centroid.x, shp_centroid.y)
         return xy
@@ -1066,6 +1129,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return new
 
     def copy(self):
+        """
+        Returns:
+            Polygon: a copy
+        """
         self2 = Polygon(self.data, self.meta)
         self2.data['exterior'] = self2.data['exterior'].copy()
         self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
@@ -1073,7 +1140,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
-        Clip polygon to image boundaries.
+        Clip polygon to specified boundaries.
+
+        Returns:
+            Polygon: clipped polygon
 
         Example:
             >>> from kwimage.structs.polygon import *
@@ -1661,7 +1731,12 @@ class MultiPolygon(_generic.ObjectList):
 
     @property
     def area(self):
-        """ Computes are via shapley conversion """
+        """
+        Computes are via shapley conversion
+
+        Returns:
+            float
+        """
         return self.to_shapely().area
 
     @classmethod
@@ -1698,11 +1773,18 @@ class MultiPolygon(_generic.ObjectList):
         return image
 
     def to_multi_polygon(self):
+        """
+        Returns:
+            MultiPolygon
+        """
         return self
 
     def to_boxes(self):
         """
         Deprecated: lossy conversion use 'bounding_box' instead
+
+        Returns:
+            kwimage.Boxes
         """
         return self.bounding_box()
 
@@ -1737,6 +1819,9 @@ class MultiPolygon(_generic.ObjectList):
     def to_mask(self, dims=None, pixels_are='points'):
         """
         Returns a mask object indication regions occupied by this multipolygon
+
+        Returns:
+            kwimage.Mask
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
@@ -1787,6 +1872,9 @@ class MultiPolygon(_generic.ObjectList):
 
         See Segmentation.coerce
 
+        Returns:
+            None | MultiPolygon
+
         Example:
             >>> import kwimage
             >>> dims = (32, 32)
@@ -1815,6 +1903,9 @@ class MultiPolygon(_generic.ObjectList):
 
     def to_shapely(self):
         """
+        Returns:
+            shapely.geometry.MultiPolygon
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> # xdoc: +REQUIRES(module:shapely)
@@ -1834,6 +1925,12 @@ class MultiPolygon(_generic.ObjectList):
         """
         Convert a shapely polygon or multipolygon to a kwimage.MultiPolygon
 
+        Args:
+            geom (shapely.geometry.MultiPolygon | shapely.geometry.Polygon):
+
+        Returns:
+            MultiPolygon
+
         Example:
             >>> import kwimage
             >>> sh_poly = kwimage.Polygon.random().to_shapely()
@@ -1852,6 +1949,12 @@ class MultiPolygon(_generic.ObjectList):
     def from_geojson(MultiPolygon, data_geojson):
         """
         Convert a geojson polygon or multipolygon to a kwimage.MultiPolygon
+
+        Args:
+            data_geojson (Dict): geojson data
+
+        Returns:
+            MultiPolygon
 
         Example:
             >>> import kwimage
@@ -1873,6 +1976,9 @@ class MultiPolygon(_generic.ObjectList):
     def to_geojson(self):
         """
         Converts polygon to a geojson structure
+
+        Returns:
+            Dict
         """
         coords = [poly.to_geojson()['coordinates'] for poly in self.data]
         data_geojson = {
@@ -1885,6 +1991,17 @@ class MultiPolygon(_generic.ObjectList):
     def from_coco(cls, data, dims=None):
         """
         Accepts either new-style or old-style coco multi-polygons
+
+        Args:
+            data (List[List[Number] | Dict]):
+                a new or old style coco multi polygon
+
+            dims (None | Tuple[int, ...]):
+                the shape dimensions of the canvas. Unused. Exists for
+                compatibility with masks.
+
+        Returns:
+            MultiPolygon
         """
         if isinstance(data, list):
             poly_list = [Polygon.from_coco(item, dims=dims)
@@ -1899,6 +2016,9 @@ class MultiPolygon(_generic.ObjectList):
 
     def to_coco(self, style='orig'):
         """
+        Args:
+            style(str): can be "orig" or "new"
+
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = MultiPolygon.random(1, rng=0)
@@ -1907,6 +2027,15 @@ class MultiPolygon(_generic.ObjectList):
         return [item.to_coco(style=style) for item in self.data]
 
     def swap_axes(self, inplace=False):
+        """
+        Swap x and y axis
+
+        Args:
+            inplace (bool):
+
+        Returns:
+            MultiPolygon
+        """
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
     def draw_on(self, image, **kwargs):
@@ -1951,6 +2080,9 @@ class PolygonList(_generic.ObjectList):
     def to_mask_list(self, dims=None, pixels_are='points'):
         """
         Converts all items to masks
+
+        Returns:
+            kwimage.MaskList
         """
         import kwimage
         new = kwimage.MaskList([
@@ -1960,11 +2092,18 @@ class PolygonList(_generic.ObjectList):
         return new
 
     def to_polygon_list(self):
+        """
+        Returns:
+            PolygonList
+        """
         return self
 
     def to_segmentation_list(self):
         """
         Converts all items to segmentation objects
+
+        Returns:
+            kwimage.SegmentationList
         """
         import kwimage
         new = kwimage.SegmentationList([
@@ -1974,6 +2113,10 @@ class PolygonList(_generic.ObjectList):
         return new
 
     def swap_axes(self, inplace=False):
+        """
+        Returns:
+            PolygonList
+        """
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
     def to_geojson(self, as_collection=False):

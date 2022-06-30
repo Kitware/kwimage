@@ -5,9 +5,11 @@ from numpy.typing import ArrayLike
 from typing import Any
 from typing import Tuple
 import kwimage
+from typing import List
+from typing import Iterable
+from numbers import Number
 import shapely
 from typing import Dict
-from typing import List
 from numpy import ndarray
 import numpy as np
 import matplotlib
@@ -84,18 +86,21 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
         ...
 
     @property
-    def exterior(self):
+    def exterior(self) -> kwimage.Coords:
         ...
 
     @property
-    def interiors(self):
+    def interiors(self) -> List[kwimage.Coords]:
         ...
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         ...
 
     @classmethod
-    def circle(cls, xy, r, resolution: int = ...):
+    def circle(cls,
+               xy: Iterable[Number],
+               r: Number,
+               resolution: int = 64) -> Polygon:
         ...
 
     @classmethod
@@ -104,12 +109,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
                n_holes: int = 0,
                convex: bool = True,
                tight: bool = False,
-               rng: Incomplete | None = ...):
+               rng: Incomplete | None = ...) -> Polygon:
         ...
 
     def to_mask(self,
                 dims: Tuple = None,
-                pixels_are: str = ...) -> kwimage.Mask:
+                pixels_are: str = 'points') -> kwimage.Mask:
         ...
 
     def to_relative_mask(self) -> kwimage.Mask:
@@ -130,37 +135,39 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
         ...
 
     @classmethod
-    def from_geojson(Polygon, data_geojson: dict):
+    def from_geojson(Polygon, data_geojson: dict) -> Polygon:
         ...
 
-    def to_shapely(self):
+    def to_shapely(self) -> shapely.geometry.polygon.Polygon:
         ...
 
     @property
-    def area(self):
+    def area(self) -> float:
         ...
 
     def to_geojson(self) -> Dict[str, object]:
         ...
 
-    def to_wkt(self):
+    def to_wkt(self) -> str:
         ...
 
     @classmethod
-    def from_coco(cls, data, dims: Incomplete | None = ...):
+    def from_coco(cls,
+                  data: Union[List[Number], Dict],
+                  dims: Union[None, Tuple[int, ...]] = None) -> Polygon:
         ...
 
-    def to_coco(self, style: str = ...) -> List | Dict:
+    def to_coco(self, style: str = 'orig') -> List | Dict:
         ...
 
-    def to_multi_polygon(self):
+    def to_multi_polygon(self) -> MultiPolygon:
         ...
 
-    def to_boxes(self):
+    def to_boxes(self) -> kwimage.Boxes:
         ...
 
     @property
-    def centroid(self):
+    def centroid(self) -> Tuple[Number, Number]:
         ...
 
     def bounding_box(self) -> kwimage.Boxes:
@@ -169,10 +176,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
     def bounding_box_polygon(self) -> kwimage.Polygon:
         ...
 
-    def copy(self):
+    def copy(self) -> Polygon:
         ...
 
-    def clip(self, x_min, y_min, x_max, y_max, inplace: bool = ...):
+    def clip(self, x_min, y_min, x_max, y_max, inplace: bool = ...) -> Polygon:
         ...
 
     def fill(self,
@@ -211,7 +218,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
 class MultiPolygon(_generic.ObjectList):
 
     @property
-    def area(self):
+    def area(self) -> float:
         ...
 
     @classmethod
@@ -228,47 +235,56 @@ class MultiPolygon(_generic.ObjectList):
              pixels_are: str = ...) -> ndarray:
         ...
 
-    def to_multi_polygon(self):
+    def to_multi_polygon(self) -> MultiPolygon:
         ...
 
-    def to_boxes(self):
+    def to_boxes(self) -> kwimage.Boxes:
         ...
 
     def bounding_box(self) -> kwimage.Boxes:
         ...
 
-    def to_mask(self, dims: Incomplete | None = ..., pixels_are: str = ...):
+    def to_mask(self,
+                dims: Incomplete | None = ...,
+                pixels_are: str = ...) -> kwimage.Mask:
         ...
 
     def to_relative_mask(self) -> kwimage.Mask:
         ...
 
     @classmethod
-    def coerce(cls, data, dims: Incomplete | None = ...):
+    def coerce(cls,
+               data,
+               dims: Incomplete | None = ...) -> None | MultiPolygon:
         ...
 
-    def to_shapely(self):
-        ...
-
-    @classmethod
-    def from_shapely(MultiPolygon, geom):
-        ...
-
-    @classmethod
-    def from_geojson(MultiPolygon, data_geojson):
-        ...
-
-    def to_geojson(self):
+    def to_shapely(self) -> shapely.geometry.MultiPolygon:
         ...
 
     @classmethod
-    def from_coco(cls, data, dims: Incomplete | None = ...):
+    def from_shapely(
+        MultiPolygon, geom: Union[shapely.geometry.MultiPolygon,
+                                  shapely.geometry.Polygon]
+    ) -> MultiPolygon:
         ...
 
-    def to_coco(self, style: str = ...):
+    @classmethod
+    def from_geojson(MultiPolygon, data_geojson: Dict) -> MultiPolygon:
         ...
 
-    def swap_axes(self, inplace: bool = ...):
+    def to_geojson(self) -> Dict:
+        ...
+
+    @classmethod
+    def from_coco(cls,
+                  data: List[Union[List[Number], Dict]],
+                  dims: Union[None, Tuple[int, ...]] = None) -> MultiPolygon:
+        ...
+
+    def to_coco(self, style: str = 'orig'):
+        ...
+
+    def swap_axes(self, inplace: bool = False) -> MultiPolygon:
         ...
 
     def draw_on(self, image, **kwargs):
@@ -279,16 +295,16 @@ class PolygonList(_generic.ObjectList):
 
     def to_mask_list(self,
                      dims: Incomplete | None = ...,
-                     pixels_are: str = ...):
+                     pixels_are: str = ...) -> kwimage.MaskList:
         ...
 
-    def to_polygon_list(self):
+    def to_polygon_list(self) -> PolygonList:
         ...
 
-    def to_segmentation_list(self):
+    def to_segmentation_list(self) -> kwimage.SegmentationList:
         ...
 
-    def swap_axes(self, inplace: bool = ...):
+    def swap_axes(self, inplace: bool = ...) -> PolygonList:
         ...
 
     def to_geojson(self, as_collection: bool = False) -> List[Dict] | Dict:

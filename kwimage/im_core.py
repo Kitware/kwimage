@@ -639,11 +639,18 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         params (str | dict):
             can contain keys, low, high, or center
 
-        nodata:
+        axis (None | int):
+            The axis to normalize over, if unspecified, normalize jointly
+
+        nodata (None | int):
             A value representing nodata to leave unchanged during
             normalization, for example 0
 
-        dtype : can be float32 or float64
+        dtype (type) : can be float32 or float64
+
+        mask (ndarray | None):
+            A mask indicating what pixels should be considered nodata.
+            Mutually exclusive with ``nodata`` argument.
 
     Returns:
         ndarray: a floating point array with values between 0 and 1.

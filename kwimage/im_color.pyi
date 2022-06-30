@@ -1,3 +1,6 @@
+from typing import Union
+from typing import Iterable
+from typing import Tuple
 from typing import List
 import ubelt as ub
 from _typeshed import Incomplete
@@ -8,21 +11,27 @@ class Color(ub.NiceRepr):
     space: Incomplete
 
     def __init__(self,
-                 color,
-                 alpha: Incomplete | None = ...,
-                 space: Incomplete | None = ...) -> None:
+                 color: Union[Color, Iterable[Union[int, float]], str],
+                 alpha: Union[float, None] = None,
+                 space: str = None) -> None:
         ...
 
     def __nice__(self):
         ...
 
-    def ashex(self, space: Incomplete | None = ...):
+    def ashex(self, space: Union[None, str] = None) -> str:
         ...
 
-    def as255(self, space: Incomplete | None = ...):
+    def as255(
+        self,
+        space: Union[None, str] = None
+    ) -> Tuple[int, int, int] | Tuple[int, int, int, int]:
         ...
 
-    def as01(self, space: Incomplete | None = ...):
+    def as01(
+        self,
+        space: Union[None, str] = None
+    ) -> Tuple[float, float, float] | Tuple[float, float, float, float]:
         ...
 
     @classmethod
@@ -36,14 +45,14 @@ class Color(ub.NiceRepr):
                  space: str = ...,
                  legacy: str = ...,
                  exclude_black: bool = ...,
-                 exclude_white: bool = ...):
+                 exclude_white: bool = ...) -> List[Tuple]:
         ...
 
     @classmethod
-    def random(Color, pool: str = ...):
+    def random(Color, pool: str = ...) -> Color:
         ...
 
-    def distance(self, other, space: str = ...):
+    def distance(self, other: Color, space: str = 'lab') -> float:
         ...
 
 
