@@ -17,7 +17,7 @@ def test_warp_affine():
     print('warped2.shape = {!r}'.format(warped2.shape))
     assert warped2.shape == warped1.shape
 
-    if 1:
+    if 0:
         # xdoctest: +REQUIRES(--show)
         import kwplot
         kwplot.autompl()
