@@ -157,8 +157,8 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     """
     DEPRECATED and removed: use imresize instead
     """
-    from kwimage._internal import schedule_deprecation3
-    schedule_deprecation3(
+    from kwimage._internal import schedule_deprecation
+    schedule_deprecation(
         modname='kwimage',
         name='imscale',
         type='function',
@@ -1011,7 +1011,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Note: this is passed directly to cv2, so it is best to ensure that
             it is contiguous and using a dtype that cv2 can handle.
 
-        transform (ndarray | kwimage.Affine): a coercable affine matrix.
+        transform (ndarray | dict | kwimage.Affine): a coercable affine matrix.
             See :class:`kwimage.Affine` for details on what can be coerced.
 
         dsize (Tuple[int, int] | None | str):
@@ -1035,11 +1035,11 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             if True determines if the transform is downsampling and applies
             antialiasing via gaussian a blur. Defaults to False
 
-        interpolation (str):
+        interpolation (str | int):
             interpolation code or cv2 integer. Interpolation codes are linear,
             nearest, cubic, lancsoz, and area. Defaults to "linear".
 
-        border_mode (str):
+        border_mode (str | int):
             Border code or cv2 integer. Border codes are constant (default)
             replicate, reflect, wrap, reflect101, and transparent.
 

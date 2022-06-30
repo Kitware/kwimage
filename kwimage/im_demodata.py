@@ -167,7 +167,7 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
     return image
 
 
-def grab_test_image_fpath(key='astro', dsize=None):
+def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
     """
     Ensures that the test image exists (this might use the network) and returns
     the cached filepath to the requested image.
@@ -180,8 +180,11 @@ def grab_test_image_fpath(key='astro', dsize=None):
             stars - picture of stars in the sky
 
         dsize (None | Tuple[int, int]):
-            if specified, we will write a new image to disk with the desired
-            size.
+            if specified, we will return a variant of the data with the
+            specific dsize
+
+        overviews (None | int):
+            if specified, will return a variant of the data with overviews
 
     Returns:
         str: path to the requested image
@@ -236,20 +239,44 @@ def grab_test_image_fpath(key='astro', dsize=None):
 
     fpath = ub.grabdata(item['url'], **grabkw)
 
-    if dsize is not None:
+    augment_params = {
+        'dsize': dsize,
+        'overviews': overviews,
+    }
+    for k, v in list(augment_params.items()):
+        if v is None:
+            augment_params.pop(k)
+
+    if augment_params:
         import os
-        stem_suffix = ub.repr2(dsize, compact=True)
-        fpath2 = ub.Path(ub.augpath(fpath, suffix=stem_suffix))
-        # stamp = ub.CacheStamp.sidecar_for(fpath2, depends=[dsize])
-        stamp = ub.CacheStamp(fpath2.name + '.stamp', dpath=fpath2.parent,
-                              depends=dsize, ext='.json')
+        stem_suffix = '_' + ub.repr2(augment_params, compact=True)
+
+        ext = None
+        if 'overviews' in augment_params:
+            ext = '.tif'
+
+        fpath_aug = ub.Path(ub.augpath(fpath, suffix=stem_suffix, ext=ext))
+
+        # stamp = ub.CacheStamp.sidecar_for(fpath_aug, depends=[dsize])
+        stamp = ub.CacheStamp(fpath_aug.name + '.stamp', dpath=fpath_aug.parent,
+                              depends=augment_params, ext='.json')
         if stamp.expired():
             import kwimage
-            imdata1 = kwimage.imread(fpath)
-            imdata2 = kwimage.imresize(imdata1, dsize=dsize)
-            kwimage.imwrite(fpath2, imdata2)
+
+            imdata = kwimage.imread(fpath)
+
+            if 'dsize' in augment_params:
+                imdata = kwimage.imresize(
+                    imdata, dsize=augment_params['dsize'])
+
+            writekw = {}
+            if 'overviews' in augment_params:
+                writekw['overviews'] = augment_params['overviews']
+                writekw['backend'] = 'gdal'
+
+            kwimage.imwrite(fpath_aug, imdata, **writekw)
             stamp.renew()
-        fpath = os.fspath(fpath2)
+        fpath = os.fspath(fpath_aug)
 
     return fpath
 

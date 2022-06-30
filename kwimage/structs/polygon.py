@@ -1489,8 +1489,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             ax = plt.gca()
 
         if border is not None:
-            from kwimage._internal import schedule_deprecation3
-            schedule_deprecation3(
+            from kwimage._internal import schedule_deprecation
+            schedule_deprecation(
                 modname='kwimage', migration='use linewidth instead',
                 name='border', type='kwarg to Polygon.draw_on',
                 deprecate='0.8.7', error='1.0.0', remove='1.1.0',

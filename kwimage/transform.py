@@ -211,6 +211,16 @@ class Matrix(Transform):
             return np.asarray(self)[index]
         return self.matrix[index]
 
+    def isclose_identity(self, rtol=1e-05, atol=1e-08):
+        """
+        Returns true if the matrix is nearly the identity.
+        """
+        if self.matrix is None:
+            return True
+        else:
+            eye = np.eye(*self.matrix.shape)
+            return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
+
 
 class Linear(Matrix):
     pass
@@ -490,7 +500,7 @@ class Affine(Projective):
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
             else:
-                known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear'}
+                known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
                 params = {key: data[key] for key in known_params if key in data}
                 if len(known_params & keys):
                     params.pop('type', None)

@@ -7,7 +7,7 @@ KWIMAGE_DISABLE_TORCHVISION_NMS: Incomplete
 KWIMAGE_DISABLE_C_EXTENSIONS: Incomplete
 
 
-def schedule_deprecation3(modname,
+def schedule_deprecation(modname,
                           migration: str = ...,
                           name: str = ...,
                           type: str = ...,

@@ -506,8 +506,8 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
-                 band_indices=None):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False,
+                 nodata_method=None, band_indices=None, nodata=None):
     """
     gdal imread backend
 
@@ -519,7 +519,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
             if True and the image has a color table, return its indexes
             instead of the colored image.
 
-        nodata (None | str):
+        nodata_method (None | str):
             if None, any nodata attributes are ignored. Otherwise specifies how
             nodata values should be handled. If "ma", returns a masked array
             instead of a normal ndarray. If "float", always returns a float
@@ -637,22 +637,33 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
     except ImportError:
         import gdal
     try:
-
         if nodata is not None:
-            if isinstance(nodata, str):
-                if nodata not in {'ma', 'float'}:
-                    raise KeyError('nodata={} must be ma, float, or None'.format(nodata))
+            from kwimage._internal import schedule_deprecation
+            schedule_deprecation(
+                modname='kwimage', name='nodata', type='argument to imread',
+                migration='use nodata_method instead',
+                deprecate='0.9.1', error='0.10.0', remove='0.11.0')
+            nodata_method = nodata
+
+        if nodata_method is not None:
+            if isinstance(nodata_method, str):
+                if nodata_method not in {'ma', 'float'}:
+                    raise KeyError('nodata_method={} must be ma, float, or None'.format(nodata_method))
             else:
-                raise TypeError(type(nodata))
+                raise TypeError(type(nodata_method))
 
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
         gdalkw = {}  # xoff, yoff, win_xsize, win_ysize
-        image, num_channels = _gdal_read(gdal_dset, overview, nodata,
-                                         ignore_color_table, band_indices,
-                                         gdalkw)
+        image, num_channels = _gdal_read(
+            gdal_dset, overview=overview,
+            ignore_color_table=ignore_color_table,
+            band_indices=band_indices, gdalkw=gdalkw,
+            nodata_method=nodata_method,
+            nodata_value=None,
+        )
 
         # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
@@ -673,8 +684,11 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
     return image, src_space, auto_dst_space
 
 
-def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
-               band_indices, gdalkw):
+def _gdal_read(gdal_dset, overview, ignore_color_table, band_indices,
+               nodata_method, nodata_value, gdalkw):
+    """
+    Backend for reading data from an open gdal dataset
+    """
     # TODO:
     # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
     # https://gdal.org/drivers/raster/gtiff.html#subdatasets
@@ -754,7 +768,7 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
             idx_to_color = np.array(idx_to_color, dtype=dtype)
             image = idx_to_color[buf]
 
-        if nodata is not None:
+        if nodata_method is not None:
             # TODO: not sure if this works right for
             # color table images
             band_nodata = band.GetNoDataValue()
@@ -772,7 +786,7 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
         shape = (ysize, xsize, num_channels)
         # Preallocate and populate image
         image = np.empty(shape, dtype=dtype)
-        if nodata is not None:
+        if nodata_method is not None:
             mask = np.empty(shape, dtype=bool)
         for idx, band in enumerate(bands):
             # load with less memory by specifing buf_obj
@@ -786,21 +800,21 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
                     from {!r}
                     '''.format(idx, band, gdal_dset.GetDescription())))
             # image[:, :, idx] = buf
-            if nodata is not None:
+            if nodata_method is not None:
                 band_nodata = band.GetNoDataValue()
                 mask_buf = mask[:, :, idx]
                 np.equal(buf, band_nodata, out=mask_buf)
                 # mask[:, :, idx] = (buf == band_nodata)
 
-    if nodata is not None:
-        if nodata == 'ma':
+    if nodata_method is not None:
+        if nodata_method == 'ma':
             image = np.ma.array(image, mask=mask)
-        elif nodata == 'float':
+        elif nodata_method == 'float':
             promote_dtype = np.result_type(image.dtype, np.float32)
             image = image.astype(promote_dtype)
             image[mask] = np.nan
         else:
-            raise KeyError('nodata={}'.format(nodata))
+            raise KeyError('nodata_method={}'.format(nodata_method))
 
     return image, num_channels
 
