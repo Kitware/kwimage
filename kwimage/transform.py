@@ -828,6 +828,9 @@ class Affine(Projective):
                 with timer:
                     math.atan2(a21, a11)
         """
+        if self.matrix is None:
+            return {'offset': (0., 0.), 'scale': (1., 1.), 'shearx': 0.,
+                    'theta': 0., }
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
 
         sx = math.sqrt(a11 * a11 + a21 * a21)
