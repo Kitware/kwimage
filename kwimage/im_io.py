@@ -640,7 +640,8 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
         if nodata is not None:
             from kwimage._internal import schedule_deprecation
             schedule_deprecation(
-                modname='kwimage', name='nodata', type='argument to imread',
+                modname='kwimage', name='nodata',
+                type='argument to _imread_gdal',
                 migration='use nodata_method instead',
                 deprecate='0.9.1', error='0.10.0', remove='0.11.0')
             nodata_method = nodata
@@ -684,11 +685,17 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
     return image, src_space, auto_dst_space
 
 
-def _gdal_read(gdal_dset, overview, ignore_color_table, band_indices,
-               nodata_method, nodata_value, gdalkw):
+def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
+               band_indices=None, gdalkw=None, nodata_method=None,
+               nodata_value=None):
     """
     Backend for reading data from an open gdal dataset
     """
+
+    if nodata is not None:
+        # backwards compat
+        nodata_method = nodata
+
     # TODO:
     # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
     # https://gdal.org/drivers/raster/gtiff.html#subdatasets

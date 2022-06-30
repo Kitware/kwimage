@@ -64,6 +64,9 @@ class Matrix(Transform):
     def __getitem__(self, index):
         ...
 
+    def isclose_identity(self, rtol: float = ..., atol: float = ...):
+        ...
+
 
 class Linear(Matrix):
     ...

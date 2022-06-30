@@ -62,11 +62,11 @@ def gaussian_blur(image: ndarray,
 
 
 def warp_affine(image: ndarray,
-                transform: Union[ndarray, kwimage.Affine],
+                transform: Union[ndarray, dict, kwimage.Affine],
                 dsize: Union[Tuple[int, int], None, str] = None,
                 antialias: bool = ...,
-                interpolation: str = 'linear',
-                border_mode: str = None,
+                interpolation: Union[str, int] = 'linear',
+                border_mode: Union[str, int] = None,
                 border_value: Union[int, float] = 0,
                 large_warp_dim: Union[int, None, str] = None,
                 return_info: bool = False) -> ndarray | Tuple[ndarray, Dict]:
