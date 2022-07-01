@@ -4,7 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.0 - Unreleased
+## Version 0.9.1 - Unreleased
+
+
+### Added:
+* `dsize` arg to `grab_test_image_fpath`
+
+### Fixed:
+* `kwimage.Affine.coerce` now correctly respects "about"
+
+### Changed:
+* The `kwimage.imread` gdal backend `nodata` argument is deprecated, and should
+  now be specified as `nodata_method` to indicate how to handle nodata.
+  Specific nodata values that are not embedded in image metadata should be
+  handled outside of this function.
+
+## Version 0.9.0 - Released 2022-06-21
 
 ### Added:
 * Working on QOI support

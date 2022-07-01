@@ -66,21 +66,21 @@ def imread(fpath, space='auto', backend='auto', **kw):
     Args:
         fpath (str): path to the file to be read
 
-        space (str, default='auto'):
+        space (str):
             The desired colorspace of the image. Can by any colorspace accepted
             by `convert_colorspace`, or it can be 'auto', in which case the
             colorspace of the image is unmodified (except in the case where a
             color image is read by opencv, in which case we convert BGR to RGB
             by default). If None, then no modification is made to whatever
-            backend is used to read the image.
+            backend is used to read the image. Defaults to 'auto'.
 
             New in version 0.7.10: when the backend does not resolve to "cv2"
             the "auto" space resolves to None, thus the image is read as-is.
 
-        backend (str, default='auto'): which backend reader to use. By default
+        backend (str): which backend reader to use. By default
             the file extension is used to determine this, but it can be
             manually overridden. Valid backends are 'gdal', 'skimage', 'itk',
-            'pil', and 'cv2'.
+            'pil', and 'cv2'. Defaults to 'auto'.
 
         **kw : backend-specific arguments
 
@@ -506,8 +506,8 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
-                 band_indices=None):
+def _imread_gdal(fpath, overview=None, ignore_color_table=False,
+                 nodata_method=None, band_indices=None, nodata=None):
     """
     gdal imread backend
 
@@ -519,7 +519,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
             if True and the image has a color table, return its indexes
             instead of the colored image.
 
-        nodata (None | str):
+        nodata_method (None | str):
             if None, any nodata attributes are ignored. Otherwise specifies how
             nodata values should be handled. If "ma", returns a masked array
             instead of a normal ndarray. If "float", always returns a float
@@ -637,22 +637,34 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
     except ImportError:
         import gdal
     try:
-
         if nodata is not None:
-            if isinstance(nodata, str):
-                if nodata not in {'ma', 'float'}:
-                    raise KeyError('nodata={} must be ma, float, or None'.format(nodata))
+            from kwimage._internal import schedule_deprecation
+            schedule_deprecation(
+                modname='kwimage', name='nodata',
+                type='argument to _imread_gdal',
+                migration='use nodata_method instead',
+                deprecate='0.9.1', error='0.10.0', remove='0.11.0')
+            nodata_method = nodata
+
+        if nodata_method is not None:
+            if isinstance(nodata_method, str):
+                if nodata_method not in {'ma', 'float'}:
+                    raise KeyError('nodata_method={} must be ma, float, or None'.format(nodata_method))
             else:
-                raise TypeError(type(nodata))
+                raise TypeError(type(nodata_method))
 
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
         gdalkw = {}  # xoff, yoff, win_xsize, win_ysize
-        image, num_channels = _gdal_read(gdal_dset, overview, nodata,
-                                         ignore_color_table, band_indices,
-                                         gdalkw)
+        image, num_channels = _gdal_read(
+            gdal_dset, overview=overview,
+            ignore_color_table=ignore_color_table,
+            band_indices=band_indices, gdalkw=gdalkw,
+            nodata_method=nodata_method,
+            nodata_value=None,
+        )
 
         # note this isn't a safe assumption, but it is an OK default heuristic
         if num_channels == 1:
@@ -673,8 +685,17 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False, nodata=None,
     return image, src_space, auto_dst_space
 
 
-def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
-               band_indices, gdalkw):
+def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
+               band_indices=None, gdalkw=None, nodata_method=None,
+               nodata_value=None):
+    """
+    Backend for reading data from an open gdal dataset
+    """
+
+    if nodata is not None:
+        # backwards compat
+        nodata_method = nodata
+
     # TODO:
     # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
     # https://gdal.org/drivers/raster/gtiff.html#subdatasets
@@ -754,7 +775,7 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
             idx_to_color = np.array(idx_to_color, dtype=dtype)
             image = idx_to_color[buf]
 
-        if nodata is not None:
+        if nodata_method is not None:
             # TODO: not sure if this works right for
             # color table images
             band_nodata = band.GetNoDataValue()
@@ -772,7 +793,7 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
         shape = (ysize, xsize, num_channels)
         # Preallocate and populate image
         image = np.empty(shape, dtype=dtype)
-        if nodata is not None:
+        if nodata_method is not None:
             mask = np.empty(shape, dtype=bool)
         for idx, band in enumerate(bands):
             # load with less memory by specifing buf_obj
@@ -786,21 +807,21 @@ def _gdal_read(gdal_dset, overview, nodata, ignore_color_table,
                     from {!r}
                     '''.format(idx, band, gdal_dset.GetDescription())))
             # image[:, :, idx] = buf
-            if nodata is not None:
+            if nodata_method is not None:
                 band_nodata = band.GetNoDataValue()
                 mask_buf = mask[:, :, idx]
                 np.equal(buf, band_nodata, out=mask_buf)
                 # mask[:, :, idx] = (buf == band_nodata)
 
-    if nodata is not None:
-        if nodata == 'ma':
+    if nodata_method is not None:
+        if nodata_method == 'ma':
             image = np.ma.array(image, mask=mask)
-        elif nodata == 'float':
+        elif nodata_method == 'float':
             promote_dtype = np.result_type(image.dtype, np.float32)
             image = image.astype(promote_dtype)
             image[mask] = np.nan
         else:
-            raise KeyError('nodata={}'.format(nodata))
+            raise KeyError('nodata_method={}'.format(nodata_method))
 
     return image, num_channels
 
@@ -814,7 +835,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
         image (ndarray): image data
 
-        space (str | None, default='auto'):
+        space (str | None):
             the colorspace of the image to save. Can by any colorspace accepted
             by `convert_colorspace`, or it can be 'auto', in which case we
             assume the input image is either RGB, RGBA or grayscale.  If None,
@@ -824,24 +845,22 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             New in version 0.7.10: when the backend does not resolve to "cv2",
             the "auto" space resolves to None, thus the image is saved as-is.
 
-        backend (str, default='auto'):
-            which backend writer to use. By default the file extension is used
+        backend (str):
+            Which backend writer to use. By default the file extension is used
             to determine this. Valid backends are 'gdal', 'skimage', 'itk', and
             'cv2'.
 
         **kwargs : args passed to the backend writer.
-
             When the backend is gdal, available options are:
-                compress (str): Common options are auto, DEFLATE, LZW, JPEG.
-                blocksize (int): size of tiled blocks (e.g. 256)
-                overviews (None | str | int | list): Number of overviews.
-                overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
-                options (List[str]): other gdal options.
-                nodata (int): denotes a integer value as nodata.
-                transform (kwimage.Affine): Transform into CRS
-                crs (str): The coordinate reference system for transform.
+            compress (str): Common options are auto, DEFLATE, LZW, JPEG.
+            blocksize (int): size of tiled blocks (e.g. 256)
+            overviews (None | str | int | list): Number of overviews.
+            overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
+            options (List[str]): other gdal options.
+            nodata (int): denotes a integer value as nodata.
+            transform (kwimage.Affine): Transform into CRS
+            crs (str): The coordinate reference system for transform.
             See :func:`_imwrite_cloud_optimized_geotiff` for more details each options.
-
             When the backend is itk, see :func:`itk.imwrite` for options
             When the backend is skimage, see :func:`skimage.io.imsave` for options
             When the backend is cv2 see :func:`cv2.imwrite` for options.
@@ -849,7 +868,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Returns:
         str: path to the written file
 
-    Notes:
+    Note:
         The image may be modified to preserve its colorspace depending on which
         backend is used to write the image.
 
@@ -1288,18 +1307,18 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         data (ndarray[ndim=3]): Raw HWC image data to save. Dimensions should
             be height, width, channels.
 
-        compress (bool, default='auto'): Can be JPEG (lossy) or LZW (lossless),
+        compress (bool): Can be JPEG (lossy) or LZW (lossless),
             or DEFLATE (lossless). Can also be 'auto', which will try to
             heuristically choose a sensible choice.
 
-        blocksize (int, default=256): size of tiled blocks
+        blocksize (int): size of tiled blocks
 
-        overviews (None | str | int | list, default=None):
+        overviews (None | str | int | list):
             If specified as a string, can be 'auto'.
             if specified as a list, then uses exactly those overviews. If
             specified as an integer a list is created using powers of two.
 
-        overview_resample (str, default='NEAREST'): resampling method for
+        overview_resample (str): resampling method for
             overview pyramid. Valid choices are: 'NEAREST', 'AVERAGE',
             'BILINEAR', 'CUBIC', 'CUBICSPLINE', 'LANCZOS'.
 
@@ -1330,7 +1349,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         .. [GDAL_GTiff_Options] https://gdal.org/drivers/raster/gtiff.html
         https://gdal.org/drivers/raster/cog.html
 
-    Notes:
+    Note:
         Need to fix `CXXABI_1.3.11 not found` with conda gdal sometimes
 
         CLI to reproduce:

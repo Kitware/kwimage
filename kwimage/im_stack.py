@@ -119,13 +119,14 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
     Args:
         images (Iterable[ndarray]):  image data
 
-        chunksize (int, default=None): number of rows per column or columns per
+        chunksize (int): number of rows per column or columns per
             row depending on the value of `axis`.
             If unspecified, computes this as `int(sqrt(len(images)))`.
 
-        axis (int, default=0):
+        axis (int):
             If 0, chunksize is columns per row.
             If 1, chunksize is rows per column.
+            Defaults to 0.
 
         overlap (int): number of pixels to overlap. Using a negative
             number results in a border.

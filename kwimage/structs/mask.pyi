@@ -5,9 +5,11 @@ from typing import Tuple
 from numbers import Number
 from numpy.random import RandomState
 import kwimage
+from typing import Any
 import ubelt as ub
 from . import _generic
 from _typeshed import Incomplete
+from typing import Any
 
 
 class _Mask_Backends:
@@ -185,7 +187,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         ...
 
     @classmethod
-    def coerce(Mask, data, dims: Tuple = None) -> Mask:
+    def coerce(Mask, data: Any, dims: Tuple = None) -> Mask:
         ...
 
     def to_coco(self, style: str = 'orig') -> dict:

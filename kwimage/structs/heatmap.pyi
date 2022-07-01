@@ -150,7 +150,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin, _HeatmapWarpMixin,
                nblips: int = ...,
                noise: float = ...,
                rng: Incomplete | None = ...,
-               ensure_background: bool = ...):
+               ensure_background: bool = ...) -> Heatmap:
         ...
 
     @property

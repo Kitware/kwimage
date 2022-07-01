@@ -93,10 +93,11 @@ class Matrix(Transform):
 
     def __array__(self):
         """
-        Allow this object to be passed to np.asarray
+        Allow this object to be passed to np.asarray. See [NumpyDispatch]_ for
+        details.
 
         References:
-            https://numpy.org/doc/stable/user/basics.dispatch.html
+            ..[NumpyDispatch] https://numpy.org/doc/stable/user/basics.dispatch.html
         """
         if self.matrix is None:
             return np.eye(*self.shape)
@@ -210,6 +211,16 @@ class Matrix(Transform):
             return np.asarray(self)[index]
         return self.matrix[index]
 
+    def isclose_identity(self, rtol=1e-05, atol=1e-08):
+        """
+        Returns true if the matrix is nearly the identity.
+        """
+        if self.matrix is None:
+            return True
+        else:
+            eye = np.eye(*self.matrix.shape)
+            return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
+
 
 class Linear(Matrix):
     pass
@@ -219,15 +230,17 @@ class Projective(Linear):
     """
     Currently just a stub class that may be used to implement projective /
     homography transforms in the future.
-
-    References:
-        https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
     """
+    # References:
+    #     .. [AffineDecompColab] https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
 
     @classmethod
     def fit(cls, pts1, pts2):
         """
-        Fit an projective transformation between a set of corresponding points
+        Fit an projective transformation between a set of corresponding points.
+
+        See [HomogEst]_ [SzeleskiBook]_ and [RansacDummies]_ for references on
+        the subject.
 
         Args:
             pts1 (ndarray): An Nx2 array of points in "space 1".
@@ -236,14 +249,14 @@ class Projective(Linear):
         Returns:
             Projective : a transform that warps from "space1" to "space2".
 
-        Notes:
+        Note:
             A projective matrix has 8 degrees of freedome, so at least 8 point
             pairs are needed.
 
         References:
-            http://dip.sun.ac.za/~stefan/TW793/attach/notes/homography_estimation.pdf
-            http://szeliski.org/Book/drafts/SzeliskiBook_20100903_draft.pdf Page 317
-            http://vision.ece.ucsb.edu/~zuliani/Research/RANSAC/docs/RANSAC4Dummies.pdf page 53
+            .. [HomogEst] http://dip.sun.ac.za/~stefan/TW793/attach/notes/homography_estimation.pdf
+            .. [SzeleskiBook] http://szeliski.org/Book/drafts/SzeliskiBook_20100903_draft.pdf Page 317
+            .. [RansacDummies] http://vision.ece.ucsb.edu/~zuliani/Research/RANSAC/docs/RANSAC4Dummies.pdf page 53
 
         Example:
             >>> # Create a set of points, warp them, then recover the warp
@@ -487,7 +500,7 @@ class Affine(Projective):
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
             else:
-                known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear'}
+                known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
                 params = {key: data[key] for key in known_params if key in data}
                 if len(known_params & keys):
                     params.pop('type', None)
@@ -815,6 +828,9 @@ class Affine(Projective):
                 with timer:
                     math.atan2(a21, a11)
         """
+        if self.matrix is None:
+            return {'offset': (0., 0.), 'scale': (1., 1.), 'shearx': 0.,
+                    'theta': 0., }
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
 
         sx = math.sqrt(a11 * a11 + a21 * a21)
@@ -945,7 +961,7 @@ class Affine(Projective):
             >>> aff = tr2_ @ aff0 @ tr1_
             >>> print('aff = {}'.format(ub.repr2(aff.tolist(), nl=1)))
 
-        Bench:
+        Ignore:
             import timerit
             ti = timerit.Timerit(10000, bestof=10, verbose=2)
             for timer in ti.reset('time'):
@@ -1016,7 +1032,7 @@ class Affine(Projective):
         Returns:
             Affine : a transform that warps from "space1" to "space2".
 
-        Notes:
+        Note:
             An affine matrix has 6 degrees of freedome, so at least 6
             point pairs are needed.
 

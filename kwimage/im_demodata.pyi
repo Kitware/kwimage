@@ -10,7 +10,9 @@ def grab_test_image(key: str = 'astro',
     ...
 
 
-def grab_test_image_fpath(key: str = 'astro') -> str:
+def grab_test_image_fpath(key: str = 'astro',
+                          dsize: Union[None, Tuple[int, int]] = None,
+                          overviews: Union[None, int] = None) -> str:
     ...
 
 

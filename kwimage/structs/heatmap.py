@@ -136,7 +136,7 @@ class _HeatmapDrawMixin(object):
                 code indicating how to visualize multiple classes.
                 Can be class_idx, class_probs, or class_energy.
 
-            imgspace (bool, default=False): colorize the image after
+            imgspace (bool): colorize the image after
                 warping into the image space.
 
         CommandLine:
@@ -427,7 +427,7 @@ class _HeatmapDrawMixin(object):
             channel (int | str): category index to visualize, or special key.
                 special keys are: class_idx, class_probs, class_idx
 
-            imgspace (bool, default=False): colorize the image after
+            imgspace (bool): colorize the image after
                 warping into the image space.
 
         TODO:
@@ -694,7 +694,7 @@ class _HeatmapWarpMixin(object):
             output_dims (tuple): size of the output heatmap
             interpolation (str): see `kwimage.warp_tensor`
             int_interpolation (str): interpolation used for interger types (should be nearest)
-            mat_is_xy (bool, default=True): set to false if the matrix
+            mat_is_xy (bool): set to false if the matrix
                 is in yx space instead of xy space
 
         Returns:
@@ -976,16 +976,17 @@ class _HeatmapAlgoMixin(object):
                 Alternatively, channel can be a custom probability map as long
                 as its dimension agree with the heatmap.
 
-            invert (bool, default=False): if True, inverts the probabilities in
+            invert (bool): if True, inverts the probabilities in
                 the chosen channel. (Useful if you have a background channel
                 but want to detect foreground objects).
 
-            min_score (float, default=0.1): probability threshold required
-                for a pixel to be converted into a detection.
+            min_score (float): probability threshold required
+                for a pixel to be converted into a detection. Defaults to 0.1
 
-            num_min (int, default=10):
+            num_min (int):
                 always return at least `nmin` of the highest scoring detections
-                even if they aren't above the `min_score` threshold.
+                even if they aren't above the `min_score` threshold. Defaults
+                to 10.
 
             max_dims (Tuple[int, int]): maximum height / width of detections
                 By default these are expected to be in image-space.
@@ -993,12 +994,12 @@ class _HeatmapAlgoMixin(object):
             min_dims (Tuple[int, int]): minimum height / width of detections
                 By default these are expected to be in image-space.
 
-            dim_thresh_space (str, default='image'):
+            dim_thresh_space (str):
                 When dim_thresh_space=='native', dimension thresholds (e.g.
                 min_dims and max_dims) are specified in the native heatmap
                 space (i.e.  usually a downsampled space). If
                 dim_thresh_space=='image', then dimension thresholds are
-                interpreted in the original image space.
+                interpreted in the original image space. Defaults to 'image'
 
         Returns:
             kwimage.Detections: raw detections.
@@ -1142,16 +1143,15 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
                 the image and heatmap are spatially aligned.
 
             classes (List[str] | ndsampler.CategoryTree):
-                information about which index in `data['class_probs']`
+                information about which index in ``data['class_probs']``
                 corresponds to which semantic class.
 
-        dims (Tuple): dimensions of the heatmap (See `image_dims) for the
+        dims (Tuple): dimensions of the heatmap (See ``image_dims``) for the
             original image dimensions.
 
         **kwargs: any key that is accepted by the `data` or `meta` dictionaries
             can be specified as a keyword argument to this class and it will
             be properly placed in the appropriate internal dictionary.
-
 
     CommandLine:
         xdoctest -m ~/code/kwimage/kwimage/structs/heatmap.py Heatmap --show
@@ -1292,6 +1292,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
 
             img_dims (Tuple): dimensions of the image the heatmap corresponds to
 
+        Returns:
+            Heatmap
+
         Example:
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random((128, 128), img_dims=(200, 200),
@@ -1330,7 +1333,6 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             >>> dets.draw()
             >>> dets.data['keypoints'].draw(radius=6)
             >>> dets.data['segmentations'].draw()
-
             >>> self.draw()
         """
         import kwimage
@@ -1501,7 +1503,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             H, W sizes for the bounding box at each pixel location.
             If passed as a tuple, then all boxes receive that diameter.
 
-        offset (Tuple | ArrayLike[2, H, W], default=0):
+        offset (Tuple | ArrayLike[2, H, W]):
            Y, X offsets from the pixel location to the bounding box center.
            If passed as a tuple, then all boxes receive that offset.
 
@@ -1513,12 +1515,14 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         keypoints (ArrayLike[2, K, H, W], optional):
             Keypoint predictions for all keypoint classes
 
-        min_score (float, default=0.1): probability threshold required
+        min_score (float): probability threshold required
             for a pixel to be converted into a detection.
+            Defaults to 0.1
 
-        num_min (int, default=10):
+        num_min (int):
             always return at least `nmin` of the highest scoring detections
-            even if they aren't above the `min_score` threshold.
+            even if they aren't above the `min_score` threshold.  Defaults to
+            10
 
     Returns:
         kwimage.Detections: raw detections. It is the users responsbility to
@@ -1702,7 +1706,7 @@ def smooth_prob(prob, k=3, inplace=False, eps=1e-9):
     """
     Smooths the probability map, but preserves the magnitude of the peaks.
 
-    Notes:
+    Note:
         even if inplace is true, we still need to make a copy of the input
         array, however, we do ensure that it is cleaned up before we leave the
         function scope.

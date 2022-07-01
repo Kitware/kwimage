@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    kwimage.algo
    kwimage.structs
@@ -13,6 +14,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    kwimage.im_alphablend
    kwimage.im_color
@@ -24,6 +26,7 @@ Submodules
    kwimage.im_io
    kwimage.im_runlen
    kwimage.im_stack
+   kwimage.transform
    kwimage.util_warp
 
 Module contents

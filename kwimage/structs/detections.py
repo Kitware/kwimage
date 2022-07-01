@@ -532,13 +532,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             boxes, confidence scores, and class indices. Details of the most
             common keys and types are as follows:
 
-                boxes (kwimage.Boxes[ArrayLike]): multiple bounding boxes
-                scores (ArrayLike): associated scores
-                class_idxs (ArrayLike): associated class indices
-                segmentations (ArrayLike): segmentations masks for each box,
-                    members can be :class:`Mask` or :class:`MultiPolygon`.
-                keypoints (ArrayLike): keypoints for each box. Members should
-                    be :class:`Points`.
+            boxes (kwimage.Boxes[ArrayLike]): multiple bounding boxes
+            scores (ArrayLike): associated scores
+            class_idxs (ArrayLike): associated class indices
+            segmentations (ArrayLike): segmentations masks for each box,
+            members can be :class:`Mask` or :class:`MultiPolygon`.
+            keypoints (ArrayLike): keypoints for each box. Members should
+            be :class:`Points`.
 
             Additional custom keys may be specified as long as (a) the values
             are array-like and the first axis corresponds to the standard data
@@ -607,7 +607,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             **kwargs:
                 specify any key for the data or meta dictionaries.
 
-        Notes:
+        Note:
             Custom data and metadata can be specified as long as you pass the
             names of these keys in the `datakeys` and/or `metakeys` kwargs.
 
@@ -969,7 +969,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
-        Notes:
+        Note:
             Not all aspects of the MS-COCO format can be accurately
             represented, so some liberties are taken. The MS-COCO standard
             defines that annotations should specifiy a category_id field, but

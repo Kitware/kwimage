@@ -61,8 +61,6 @@ class Color(ub.NiceRepr):
     This should only be used when handling small numbers of colors(e.g. 1),
     don't use this to represent an image.
 
-    move to colorutil?
-
     Args:
         space (str): colorspace of wrapped color.
             Assume RGB if not specified and it cannot be inferred
@@ -83,6 +81,15 @@ class Color(ub.NiceRepr):
         >>> print(Color([1, 1, 1], alpha=255, space='lab'))
     """
     def __init__(self, color, alpha=None, space=None):
+        """
+        Args:
+            color (Color | Iterable[int | float] | str):
+                something coercable into a color
+            alpha (float | None):
+                if psecified adds an alpha value
+            space (str):
+                The colorspace to interpret this color as. Defaults to rgb.
+        """
         try:
             # Hack for ipython reload
             is_color_cls = color.__class__.__name__ == 'Color'
@@ -132,7 +139,7 @@ class Color(ub.NiceRepr):
 
         Args:
             image (ndarray): image to return color for
-            space (str, default=rgb): colorspace of the input image.
+            space (str): colorspace of the input image. Defaults to 'rgb'
 
         Example:
             >>> img_f3 = np.zeros([8, 8, 3], dtype=np.float32)
@@ -162,19 +169,46 @@ class Color(ub.NiceRepr):
         return color
 
     def ashex(self, space=None):
+        """
+        Convert to hex values
+
+        Args:
+            space (None | str):
+                if specified convert to this colorspace before returning
+
+        Returns:
+            str: the hex representation
+        """
         c255 = self.as255(space)
         return '#' + ''.join(['{:02x}'.format(c) for c in c255])
 
     def as255(self, space=None):
+        """
+        Convert to byte values
+
+        Args:
+            space (None | str):
+                if specified convert to this colorspace before returning
+
+        Returns:
+            Tuple[int, int, int] | Tuple[int, int, int, int]:
+                The uint8 tuple of color values between 0 and 255.
+        """
         # TODO: be more efficient about not changing to 01 space
         color = tuple(int(c * 255) for c in self.as01(space))
         return color
 
     def as01(self, space=None):
         """
-        self = mplutil.Color('red')
-        mplutil.Color('green').as01('rgba')
+        Convert to float values
 
+        Args:
+            space (None | str):
+                if specified convert to this colorspace before returning
+
+        Returns:
+            Tuple[float, float, float] | Tuple[float, float, float, float]:
+                The float tuple of color values between 0 and 1
         """
         color = tuple(map(float, self.color01))
         if space is not None:
@@ -247,8 +281,9 @@ class Color(ub.NiceRepr):
     @classmethod
     def _string_to_01(Color, color):
         """
-        mplutil.Color._string_to_01('green')
-        mplutil.Color._string_to_01('red')
+        Ignore:
+            mplutil.Color._string_to_01('green')
+            mplutil.Color._string_to_01('red')
         """
         if color == 'random':
             import random
@@ -299,7 +334,10 @@ class Color(ub.NiceRepr):
         Make multiple distinct colors
 
         References:
-            https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
+            .. [HowToDistinct] https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
+
+        Returns:
+            List[Tuple]: list of distinct float color values
 
         Example:
             >>> # xdoctest: +REQUIRES(module:matplotlib)
@@ -317,7 +355,6 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(swatch1, pnum=(1, 2, 1), fnum=1)
             >>> kwplot.imshow(swatch2, pnum=(1, 2, 2), fnum=1)
             >>> kwplot.show_if_requested()
-
         """
         if legacy == 'auto':
             legacy = (existing is None)
@@ -373,13 +410,24 @@ class Color(ub.NiceRepr):
 
     @classmethod
     def random(Color, pool='named'):
+        """
+        Returns:
+            Color
+        """
         return Color('random')
 
     def distance(self, other, space='lab'):
         """
         Distance between self an another color
 
-        Example:
+        Args:
+            other (Color): the color to compare
+            space (str): the colorspace to comapre in
+
+        Returns:
+            float
+
+        Ignore:
             import kwimage
             self = kwimage.Color((0.16304347826086973, 0.0, 1.0))
             other = kwimage.Color('purple')
@@ -1605,16 +1653,16 @@ CSS4_COLORS = {
 
 # Kitware color brand guide:
 # https://drive.google.com/file/d/1mUzJw4QrDfxWqqCsPZ_C7QWcQbfR_IBb/view
-"""
-Ignore:
-    import kwimage
-    named_colors = kwimage.Color.named_colors()
-    color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
-    import kwplot
-    kwplot.autompl()
-    canvas = kwplot.make_legend_img(color_lut)
-    kwplot.imshow(canvas)
-"""
+# """
+# Ignore:
+#     import kwimage
+#     named_colors = kwimage.Color.named_colors()
+#     color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
+#     import kwplot
+#     kwplot.autompl()
+#     canvas = kwplot.make_legend_img(color_lut)
+#     kwplot.imshow(canvas)
+# """
 KITWARE_COLORS = {
     'kitware_green'     : '#3EAE2B',
     'kitware_blue'      : '#0068C7',

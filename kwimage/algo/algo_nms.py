@@ -386,7 +386,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         device_id (int): used if impl is gpu, device id to work on. If not
             specified `torch.cuda.current_device()` is used.
 
-    Notes:
+    Note:
         Using impl='cython_gpu' may result in an CUDA memory error that is not exposed
         to the python processes. In other words your program will hard crash if
         impl='cython_gpu', and you feed it too many bounding boxes. Ideally this will

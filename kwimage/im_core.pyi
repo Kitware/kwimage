@@ -56,9 +56,9 @@ def find_robust_normalizers(
 
 def normalize_intensity(imdata: ndarray,
                         return_info: bool = False,
-                        nodata: Incomplete | None = ...,
-                        axis: Incomplete | None = ...,
-                        dtype=...,
+                        nodata: Union[None, int] = None,
+                        axis: Union[None, int] = None,
+                        dtype: type = ...,
                         params: Union[str, dict] = 'auto',
-                        mask: Incomplete | None = ...) -> ndarray:
+                        mask: Union[ndarray, None] = None) -> ndarray:
     ...

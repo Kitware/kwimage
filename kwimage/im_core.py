@@ -499,7 +499,7 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     By default linearly stretches pixel intensities to minimum and maximum
     values.
 
-    Notes:
+    Note:
         DEPRECATED: this function has been MOVED to ``kwarray.normalize``
     """
     import kwarray
@@ -632,18 +632,25 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     Args:
         imdata (ndarray): raw intensity data
 
-        return_info (bool, default=False):
+        return_info (bool):
             if True, return information about the chosen normalization
             heuristic.
 
         params (str | dict):
             can contain keys, low, high, or center
 
-        nodata:
+        axis (None | int):
+            The axis to normalize over, if unspecified, normalize jointly
+
+        nodata (None | int):
             A value representing nodata to leave unchanged during
             normalization, for example 0
 
-        dtype : can be float32 or float64
+        dtype (type) : can be float32 or float64
+
+        mask (ndarray | None):
+            A mask indicating what pixels should be considered nodata.
+            Mutually exclusive with ``nodata`` argument.
 
     Returns:
         ndarray: a floating point array with values between 0 and 1.

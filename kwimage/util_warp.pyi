@@ -19,7 +19,7 @@ def warp_tensor(inputs: Tensor,
                 isinv: bool = False,
                 ishomog: bool = None,
                 align_corners: bool = False,
-                new_mode: bool = ...):
+                new_mode: bool = ...) -> Tensor:
     ...
 
 

@@ -192,6 +192,8 @@ def box_ious(ltrb1, ltrb2, bias=0, impl=None):
         ltrb1 (ndarray): (N, 4) ltrb format
         ltrb2 (ndarray): (K, 4) ltrb format
         bias (int): either 0 or 1, does tl=br have area of 0 or 1?
+        impl (str | None): Can be "auto", "torch", "py", or "c".
+            "c" requires :mod:`kwimage_ext`.
 
     Benchmark:
         See ~/code/kwarray/dev/bench_bbox.py
@@ -572,15 +574,30 @@ class _BoxConversionMixins(object):
         # ]
         return regions
 
-    to_shapley = to_shapely  # originally had incorrect spelling
+    def to_shapley(self):
+        """
+        DEPRECATED (misspelling). Use to_shapely
+
+        Returns:
+            List[shapely.geometry.Polygon]: list of shapely polygons
+        """
+        from kwimage._internal import schedule_deprecation
+        schedule_deprecation(
+            'kwimage', 'Boxes.to_shapley', 'method'
+            'is spelled incorrectly. Use to_shapely instead',
+            deprecate='0.9.0', error='0.10.0', remove='0.11.0')
+        return self.to_shapely()
 
     @classmethod
     def from_shapely(cls, geom):
         """
         Given a shapely polygon, return a Boxes object of its Bounds.
 
+        Args:
+            geom (shapely.geometry.Polygon): shapely geometry
+
         Returns:
-            Boxes
+            Boxes: bounding box of the geometry
         """
         from shapely.geometry import Polygon
         if isinstance(geom, Polygon):
@@ -592,6 +609,10 @@ class _BoxConversionMixins(object):
 
     @classmethod
     def coerce(Boxes, data):
+        """
+        Returns:
+            Boxes:
+        """
         from shapely.geometry import Polygon
         if isinstance(data, Boxes):
             self = data
@@ -627,7 +648,7 @@ class _BoxConversionMixins(object):
         """
         Creates a box from a 2D slice
 
-        Notes:
+        Note:
             The input slices and shape are y/x based because they are typically
             used with c-style arrays. However, the returned boxes use x/y
             ordering by default.
@@ -650,7 +671,7 @@ class _BoxConversionMixins(object):
                 bottom/right box coordinate. If False we subtract 1 such that
                 box coordinates lie on pixels specified by the slice.
 
-        Notes:
+        Note:
             * When using this function the user needs to carefully consider
               if clip should be True or False in their use case.
 
@@ -762,6 +783,8 @@ class _BoxConversionMixins(object):
 
     def to_slices(self, endpoint=True):
         """
+        Convert the boxes into slices
+
         Args:
             endpoint (bool):
                 Indicates if the box specifies the slice endpoint.
@@ -773,10 +796,15 @@ class _BoxConversionMixins(object):
                 we add 1 from the bot/right to get the slice stop point such
                 that the bot/right pixel will be included in the slice.
 
-                +--------------+
-                l              r <- box coords
-                s              t <- endpoint=True
-                s               t <- endpoint=False
+        Ascii:
+            +--------------+
+            l              r <- box coords
+            s              t <- endpoint=True
+            s               t <- endpoint=False
+
+        Returns:
+            List[Tuple[slice, slice]]:
+                a list of slices corresponding to each box.
         """
         slices_list = []
         for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
@@ -789,6 +817,11 @@ class _BoxConversionMixins(object):
 
     def to_coco(self, style='orig'):
         """
+        Convert to COCO format.
+
+        Yields:
+            List[float]: tl_x, tl_y, w, h
+
         Example:
             >>> orig = Boxes.random(5)
             >>> coco_boxes = list(orig.to_coco())
@@ -800,6 +833,9 @@ class _BoxConversionMixins(object):
     def to_polygons(self):
         """
         Convert each box to a polygon object
+
+        Returns:
+            kwimage.PolygonList
 
         Example:
             >>> import kwimage
@@ -832,7 +868,7 @@ class _BoxPropertyMixins(object):
         """
         Returns the xy coordinates of the box centers
 
-        Notes:
+        Note:
             the difference between this and `self.center` is that this returns
             a single ndarray[dim=2] whereas `self.center` returns two ndarrays.
         """
@@ -990,6 +1026,9 @@ class _BoxTransformMixins(object):
             inplace (bool):
                 if True, modifies data inplace
 
+        Returns:
+            Boxes
+
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from kwimage.structs.boxes import *  # NOQA
@@ -1019,7 +1058,7 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | imgaug.augmenters.Augmenter):
+            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | Any):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -1030,6 +1069,10 @@ class _BoxTransformMixins(object):
             output_dims (Tuple): unused in non-raster spatial structures
 
             inplace (bool): if True, modifies data inplace
+
+        Returns:
+            Boxes: warped boxes (really the bounding boxes of the resulting
+                warped polygons)
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1226,6 +1269,9 @@ class _BoxTransformMixins(object):
             inplace (bool):
                 if True works inplace if possible. Defaults to False
 
+        Returns:
+            Boxes: scaled boxes
+
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> Boxes(np.array([1, 1, 10, 10]), 'xywh').scale(2).data
@@ -1342,6 +1388,9 @@ class _BoxTransformMixins(object):
             factor (float | Tuple[float]):
                 transation amount as either a scalar or a (t_x, t_y) tuple.
             output_dims (Tuple): unused in non-raster spatial structures
+
+        Returns:
+            Boxes: translated boxes
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -1565,6 +1614,29 @@ class _BoxDrawMixins(object):
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
+        Args:
+            color (str | Any | List[Any]):
+                one color for all boxes or a list of colors for each box
+                Can be any type accepted by kwimage.Color.coerce.
+                Extended types: str | ColorLike | List[ColorLike]
+
+            alpha (float | List[float] | None):
+                A single transparency for all boxes, or a list of
+                transparencies for each box.
+
+            labels (List[str] | None): a text label for each box
+
+            centers (bool): if True, draw box centers.
+
+            lw (float): linewidth for the box edges
+
+            ax (Optional[matplotlib.axes.Axes]):
+                if specified, draws on this existing axes, otherwise defaults
+                to the current axes.
+
+            setlim (bool):
+                if True will set the limit of the axes to show the drawn boxes.
+
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.boxes import *  # NOQA
@@ -1632,6 +1704,9 @@ class _BoxDrawMixins(object):
 
             label_loc (str): indicates where labels (if specified) should be
                 drawn.
+
+        Returns:
+            ndarray: the image drawn onto.
 
         Example:
             >>> from kwimage.structs.boxes import *  # NOQA
@@ -1985,7 +2060,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> kwimage.Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
         <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
-    Notes:
+    Note:
         In the following examples we show cases where :class:`Boxes` can hold a
         single 1-dimensional box array. This is a holdover from an older
         codebase, and some functions may assume that the input is at least 2-D.
@@ -2091,9 +2166,17 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 self.format == other.format)
 
     def __len__(self):
+        """
+        Returns:
+            int: number of boxes
+        """
         return len(self.data)
 
     def __nice__(self):
+        """
+        Returns:
+            str:  the nice repr
+        """
         data_repr = repr(self.data)
         if '\n' in data_repr:
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
@@ -2118,6 +2201,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             anchor_std (float): magnitude of noise applied to anchor shapes
             tensor (bool): if True, returns boxes in tensor format
             rng (None | int | RandomState): initial random seed
+
+        Returns:
+            Boxes: random boxes
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -2195,6 +2281,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         return boxes
 
     def copy(self):
+        """
+        Returns:
+            Boxes: a copy of these boxes
+        """
         new_data = _copy(self.data)
         return Boxes(new_data, self.format, check=False)
 
@@ -2246,6 +2336,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             axis (int): you usually want this to be 0
             inplace (bool): if True, modifies this object
 
+        Returns:
+            Boxes: the boxes corresponding to where flags were true
+
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'ltrb')
             >>> self.compress([True])
@@ -2274,6 +2367,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             axis (int): you usually want this to be 0
             inplace (bool): if True, modifies this object
 
+        Returns:
+            Boxes: the boxes corresponding to the specified indices
+
         Example:
             >>> self = Boxes([[25, 30, 15, 10]], 'ltrb')
             >>> self.take([0])
@@ -2294,17 +2390,30 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         return new
 
     def is_tensor(self):
-        """ is the backend fueled by torch? """
+        """
+        is the backend fueled by torch?
+
+        Returns:
+            bool: True if the Boxes are torch tensors
+        """
         return torch is not None and torch.is_tensor(self.data)
 
     def is_numpy(self):
-        """ is the backend fueled by numpy? """
+        """
+        is the backend fueled by numpy?
+
+        Returns:
+            bool: True if the Boxes are numpy arrays
+        """
         return isinstance(self.data, np.ndarray)
 
     @ub.memoize_property
     def _impl(self):
         """
         returns the kwarray.ArrayAPI implementation for the data
+
+        Returns:
+            kwarray.ArrayAPI: the array API for the box backend
 
         Example:
             >>> assert Boxes.random().numpy()._impl.is_numpy
@@ -2327,8 +2436,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         Changes the type of the internal array used to represent the boxes
 
-        Notes:
+        Note:
             this operation is not inplace
+
+        Returns:
+            Boxes: the boxes with the chosen type
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -2364,8 +2476,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Args:
             inplace (bool): if True, modifies this object. Defaults to False.
 
+        Returns:
+            Boxes: the boxes with rounded coordinates
+
         SeeAlso:
-            :method:`Boxes.quantize`
+            :func:`Boxes.quantize`
 
         Example:
             >>> import kwimage
@@ -2397,8 +2512,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             inplace (bool): if True, modifies this object
             dtype (type): type to cast as
 
+        Returns:
+            Boxes: the boxes with quantized coordinates
+
         SeeAlso:
-            :method:`Boxes.round`
+            :func:`Boxes.round`
 
         Example:
             >>> import kwimage
@@ -2448,6 +2566,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         Converts tensors to numpy. Does not change memory if possible.
 
+        Returns:
+            Boxes: the boxes with a numpy backend
+
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Boxes.random(3).tensor()
@@ -2466,6 +2587,13 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     def tensor(self, device=ub.NoParam):
         """
         Converts numpy to tensors. Does not change memory if possible.
+
+        Args:
+            device (int | None | torch.device):
+                The torch device to put the backend tensors on
+
+        Returns:
+            Boxes: the boxes with a torch backend
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -2515,7 +2643,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 system the torch impl was fastest (when the data was on the
                 GPU). Defaults to 'auto'
 
-            mode : depricated, use impl
+            mode (str) : depricated, use impl
+
+        Returns:
+            ndarray: the ious
 
         SeeAlso:
             iooas - for a measure of coverage between boxes
@@ -2613,7 +2744,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             other_ltrb = other.to_ltrb(copy=False)
 
             if mode is not None:
-                warnings.warn('mode is depricated use impl', DeprecationWarning)
+                from kwimage._internal import schedule_deprecation
+                schedule_deprecation(
+                    'kwimage', 'mode', 'argument to Boxes.ious'
+                    'Use impl instead.', deprecate='0.9.0',
+                    error='0.10.0', remove='0.11.0')
                 impl = mode
 
             ious = box_ious(self_ltrb.data, other_ltrb.data, bias=bias,
@@ -2644,6 +2779,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             bias (int):
                 either 0 or 1, does TL=BR have area of 0 or 1? Defaults to 0.
 
+        Returns:
+            ndarray: the iooas
+
         Examples:
             >>> self = Boxes(np.array([[ 0,  0, 10, 10],
             >>>                        [10,  0, 20, 10],
@@ -2663,6 +2801,16 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     def isect_area(self, other, bias=0):
         """
         Intersection part of intersection over union computation
+
+        Args:
+            other (Boxes):
+                boxes to compare IoOA against
+
+            bias (int):
+                either 0 or 1, does TL=BR have area of 0 or 1? Defaults to 0.
+
+        Returns:
+            ndarray: the iooas
 
         Examples:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -2701,8 +2849,12 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         intersections of boxes are always boxes, so this works
 
+        Args:
+            other (Boxes): boxes to intersect with this object.
+                (must be of same length)
+
         Returns:
-            Boxes: intersected boxes
+            Boxes: the intersection geometry
 
         Examples:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -2739,6 +2891,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Componentwise hull union between two sets of Boxes
 
         NOTE: convert to polygon to do a real union.
+
+        Args:
+            other (Boxes): boxes to union with this object.
+                (must be of same length)
 
         Returns:
             Boxes: unioned boxes
@@ -2836,6 +2992,12 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     def view(self, *shape):
         """
         Passthrough method to view or reshape
+
+        Args:
+            *shape (Tuple[int, ...]): new shape
+
+        Returns:
+            Boxes: data with a different view
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)

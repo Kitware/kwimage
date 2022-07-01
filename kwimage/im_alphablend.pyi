@@ -21,5 +21,5 @@ def overlay_alpha_images(img1: ndarray,
 def ensure_alpha_channel(img: ndarray,
                          alpha: float = 1.0,
                          dtype: type = ...,
-                         copy: bool = False):
+                         copy: bool = False) -> ndarray:
     ...
