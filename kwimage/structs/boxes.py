@@ -644,7 +644,8 @@ class _BoxConversionMixins(object):
         return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
 
     @classmethod
-    def from_slice(Boxes, slices, shape=None, clip=True, endpoint=True):
+    def from_slice(Boxes, slices, shape=None, clip=True, endpoint=True,
+                   wrap=False):
         """
         Creates a box from a 2D slice
 
@@ -665,6 +666,11 @@ class _BoxConversionMixins(object):
             clip (bool):
                 if True, assume that the box should be positive.
                 Thus, we clip to 0 and the "shape" if specified.
+
+            wrap (bool):
+                if True, and shape is specified then negative coordinates are
+                interpreted as "wrapping around", i.e. relative to the lower
+                right side.
 
             endpoint (bool):
                 if True, the endpoint of this slice is included as the
@@ -701,17 +707,24 @@ class _BoxConversionMixins(object):
 
         Example:
             >>> import kwimage
-            >>> slices = (slice(-10, 10), slice(-11, 17))
-            >>> grid = ub.named_product({
+            >>> grid = list(ub.named_product({
+            >>>     'slices': [(slice(-10, 10), slice(-11, 17))],
             >>>     'clip': [True, False],
+            >>>     'wrap': [False,],
             >>>     'shape': [(5, 5), None],
-            >>> })
+            >>> }))
+            >>> grid += list(ub.named_product({
+            >>>     'slices': [(slice(-10, -2), slice(-11, -2))],
+            >>>     'wrap': [True,],
+            >>>     'clip': [True, False],
+            >>>     'shape': [(5, 5)],
+            >>> }))
             >>> results = {}
             >>> for kwargs in grid:
             >>>     key = ub.repr2(kwargs, compact=1)
-            >>>     box = kwimage.Boxes.from_slice(slices, **kwargs)
+            >>>     box = kwimage.Boxes.from_slice(**kwargs)
             >>>     results[key] = box
-            >>> print('results = {}'.format(ub.repr2(results, nl=1, align=':')))
+            >>> print('results = {}'.format(ub.repr2(results, nl=1, sort=0, align=':')))
         """
         # Rectify input slices to agree with a 2D canvas
         if slices is None:
@@ -733,10 +746,6 @@ class _BoxConversionMixins(object):
 
         if tl_y is None:
             tl_y = 0
-
-        if clip:
-            tl_y = max(tl_y, 0)
-            tl_x = max(tl_x, 0)
 
         if shape is not None:
             height, width = shape[0:2]
@@ -764,14 +773,36 @@ class _BoxConversionMixins(object):
         #             raise Exception('shape required for unbounded slices')
         #         rb_y = height + rb_y
 
+        if wrap:
+            if rb_x < 0:
+                if width is None:
+                    raise Exception('shape required to wrap unbounded slices')
+                rb_x = width + rb_x
+            if tl_x < 0:
+                if width is None:
+                    raise Exception('shape required to wrap unbounded slices')
+                tl_x = width + tl_x
+            if rb_y < 0:
+                if height is None:
+                    raise Exception('shape required to wrap unbounded slices')
+                rb_y = height + rb_y
+            if tl_y < 0:
+                if height is None:
+                    raise Exception('shape required to wrap unbounded slices')
+                tl_y = height + tl_y
+
+        if clip:
+            tl_y = max(tl_y, 0)
+            tl_x = max(tl_x, 0)
+
         if not endpoint:
             rb_x = rb_x - 1
             rb_y = rb_y - 1
 
-        if rb_x < tl_x:
-            raise ValueError('Invalid x slice {rb_x=} {tl_x=}')
-        if rb_y < tl_y:
-            raise ValueError('Invalid y slice {rb_y=} {tl_y=}')
+        if tl_x > rb_x:
+            raise ValueError(f'Invalid x slice tl_x={tl_x}, rb_x={rb_x}')
+        if tl_y > rb_y:
+            raise ValueError(f'Invalid y slice tl_y={tl_y}, rb_y={rb_y}')
 
         ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
         box = Boxes(ltrb, 'ltrb')

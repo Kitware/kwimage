@@ -4,7 +4,14 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.1 - Unreleased
+## Version 0.9.2 - Unreleased
+
+### Added
+* Add `wrap` kwarg to `Boxes.from_slice`
+
+
+
+## Version 0.9.1 - Released 2022-06-30
 
 
 ### Added:
