@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.2 - Unreleased
 
+### Added
+* Add `wrap` kwarg to `Boxes.from_slice`
+
+
 
 ## Version 0.9.1 - Released 2022-06-30
 
