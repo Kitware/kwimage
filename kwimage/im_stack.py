@@ -303,7 +303,11 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
     # Allocate new image for both
     imgB = np.zeros(newshape, dtype=img1.dtype)
     if bg_value is not None:
-        imgB[:, :] = bg_value
+        try:
+            imgB[:, :] = bg_value
+        except ValueError:
+            imgB = im_core.atleast_3channels(imgB)
+            imgB[:, :] = bg_value
 
     # Insert the images in the larger frame
 

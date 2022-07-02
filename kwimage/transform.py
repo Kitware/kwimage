@@ -44,8 +44,10 @@ class Matrix(Transform):
 
     def __nice__(self):
         prefix = '<{}('.format(self.__class__.__name__)
-        return np.array2string(self.matrix, separator=', ', prefix=prefix)
-        # return repr(self.matrix)
+        if isinstance(self.matrix, np.ndarray):
+            return np.array2string(self.matrix, separator=', ', prefix=prefix)
+        else:
+            return ub.repr2(self.matrix.tolist(), nl=1)
 
     def __repr__(self):
         return self.__str__()
@@ -157,7 +159,12 @@ class Matrix(Transform):
         if self.matrix is None:
             return self.__class__(None)
         else:
-            return self.__class__(np.linalg.inv(self.matrix))
+            try:
+                inv_mat = np.linalg.inv(self.matrix)
+            except np.core._exceptions.UFuncTypeError:
+                # handle object arrays (rationals)
+                inv_mat = self.matrix.inv()
+            return self.__class__(inv_mat)
 
     @property
     def T(self):
@@ -179,7 +186,12 @@ class Matrix(Transform):
         if self.matrix is None:
             return 1.
         else:
-            return np.linalg.det(self.matrix)
+            try:
+                det = np.linalg.det(self.matrix)
+            except np.core._exceptions.UFuncTypeError:
+                # handle object arrays (rationals)
+                det = self.matrix.det()
+            return det
 
     @classmethod
     def eye(cls, shape=None, rng=None):
@@ -211,6 +223,70 @@ class Matrix(Transform):
             return np.asarray(self)[index]
         return self.matrix[index]
 
+    def rationalize(self):
+        """
+        Convert the underlying matrix to a rational type to avoid floating
+        point errors. This does decrease efficiency.
+
+        Ignore:
+            from sympy import Rational
+            from fractions import Fraction
+            float_mat = np.random.rand(3, 3)
+            float_num = float_mat[0, 0]
+            frac_num = Fraction(float_num)
+            rat_num = Rational(float_num)
+
+            rat_mat_v1 = float_mat.astype(Rational, subok=False)
+            frac_mat_v1 = float_mat.astype(Fraction, subok=False)
+            rat_num_v1 = rat_mat_v1[0, 0]
+            frac_num_v1 = frac_mat_v1[0, 0]
+            print(f'{type(float_num)=}')
+            print(f'{type(rat_num)=}')
+            print(f'{type(frac_num)=}')
+            print(f'{type(rat_num_v1)=}')
+            print(f'{type(frac_num_v1)=}')
+
+            flat_rat = list(map(Rational, float_mat.ravel().tolist()))
+            from sympy import Matrix
+            rat_mat_v2 = Matrix(flat_rat).reshape(*float_mat.shape)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:sympy)
+            >>> import kwimage
+            >>> self = mat = kwimage.Matrix.random((3, 3)).rationalize()
+            >>> mat2 = kwimage.Matrix.random((3, 3))
+            >>> mat3 = mat @ mat2
+            >>> assert 'sympy' in mat3.matrix.__class__.__module__
+            >>> mat3 = mat2 @ mat
+            >>> assert 'sympy' in mat3.matrix.__class__.__module__
+            >>> assert not mat.isclose_identity()
+            >>> assert (mat @ mat.inv()).isclose_identity(rtol=0, atol=0)
+        """
+        if self.matrix is None:
+            new_mat = self.matrix
+        else:
+            import sympy
+            float_mat = self.matrix
+            flat_rat = list(map(sympy.Rational, float_mat.ravel().tolist()))
+            new_mat = sympy.Matrix(flat_rat).reshape(*float_mat.shape)
+        new = self.__class__(new_mat)
+        return new
+
+    def astype(self, dtype):
+        """
+        Convert the underlying matrix to a rational type to avoid floating
+        point errors. This does decrease efficiency.
+
+        Args:
+            dtype (type):
+        """
+        if self.matrix is None:
+            new_mat = self.matrix
+        else:
+            new_mat = self.matrix.astype(dtype)
+        new = self.__class__(new_mat)
+        return new
+
     def isclose_identity(self, rtol=1e-05, atol=1e-08):
         """
         Returns true if the matrix is nearly the identity.
@@ -219,7 +295,12 @@ class Matrix(Transform):
             return True
         else:
             eye = np.eye(*self.matrix.shape)
-            return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
+            try:
+                return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
+            except TypeError:
+                # For sympy
+                residual = np.array(self.matrix - eye).astype(float)
+                return np.allclose(residual, 0, rtol=rtol, atol=atol)
 
 
 class Linear(Matrix):
@@ -858,7 +939,8 @@ class Affine(Projective):
     @classmethod
     @profile
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
-               about=None, shearx=None, **kwargs):
+               about=None, shearx=None, array_cls=None, math_mod=None,
+               **kwargs):
         """
         Create an affine matrix from high-level parameters
 
@@ -986,6 +1068,12 @@ class Affine(Projective):
             shearx = shear
             shear = None
 
+        if array_cls is None:
+            array_cls = np.array
+
+        if math_mod is None:
+            math_mod = math
+
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
         xshear_ = 0 if shearx is None else shearx
@@ -995,8 +1083,8 @@ class Affine(Projective):
         tx, ty = _ensure_iterable2(offset_)
         x0, y0 = _ensure_iterable2(about_)
 
-        cos_theta = math.cos(theta_)
-        sin_theta = math.sin(theta_)
+        cos_theta = math_mod.cos(theta_)
+        sin_theta = math_mod.sin(theta_)
 
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta
@@ -1013,9 +1101,9 @@ class Affine(Projective):
         tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
         ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
 
-        mat = np.array([sx_cos_theta, a12, tx_,
-                        sx_sin_theta, a22, ty_,
-                                   0,   0,  1])
+        mat = array_cls([sx_cos_theta, a12, tx_,
+                         sx_sin_theta, a22, ty_,
+                                    0,   0,  1])
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
