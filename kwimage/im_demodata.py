@@ -17,6 +17,7 @@ _TEST_IMAGES = {
         'sha256': 'ef352b60f2577692ab3e9da19d09a49fa9da9937f892afc48094988a17c32dc3',
         'url': 'https://data.kitware.com/api/v1/file/611e9f4b2fa25629b9dc0ca2/download',
     },
+    # https://en.wikipedia.org/wiki/Eileen_Collins
     'astro': {
         'fname': 'astro.png',
         'sha256': '9f2b4671e868fd51451f03809a694006425eee64ad472f7065da04079be60c53',
