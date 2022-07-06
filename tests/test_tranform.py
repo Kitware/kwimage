@@ -4,6 +4,13 @@ def test_rational_affine():
     import ubelt as ub
     import numpy as np
     import kwarray
+    import pytest
+
+    try:
+        import sympy
+    except ImportError:
+        pytest.skip()
+
     rng = kwarray.ensure_rng(None)
     offset = [0, 0]
     about = [0, 0]
@@ -38,7 +45,6 @@ def test_rational_affine():
     theta = as_rational(theta)
     shearx = as_rational(shearx)
 
-    import sympy
     math_mod = sympy
     array_cls = sympy.Matrix
 
