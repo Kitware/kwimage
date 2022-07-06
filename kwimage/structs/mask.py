@@ -630,6 +630,12 @@ class _MaskTransformMixin(object):
         t_mask = torch.Tensor(c_mask)
         matrix = torch.Tensor(transform)
         output_dims = output_dims
+        if output_dims is not None:
+            if isinstance(output_dims, str):
+                if output_dims == 'same':
+                    output_dims = self.data.shape[0:2]
+                else:
+                    raise KeyError(output_dims)
         w_mask = kwimage.warp_tensor(t_mask, matrix, output_dims=output_dims,
                                      mode='nearest')
         new = self if inplace else Mask(self.data, self.format)
@@ -694,6 +700,8 @@ class _MaskTransformMixin(object):
                 new_self = Mask(new_data, self.format)
             else:
                 c_data = self.toformat(MaskFormat.C_MASK, copy=False).data
+                if c_data.dtype.kind == 'b':
+                    c_data = c_data.astype(np.uint8)
                 transform = kwimage.Affine.affine(offset=offset)
                 dsize = output_dims[::-1]
                 new_c_data = kwimage.warp_affine(
@@ -1600,6 +1608,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # Note: it is not necessarilly faster to to only exact the patch of
         # non-zero values
         temp_mask = self.to_c_mask(copy=False).data
+        if temp_mask.dtype.kind == 'b':
+            temp_mask = temp_mask.astype(np.uint8)
         # TODO: polygons and masks should keep track what "pixels_are"
         polys = _find_contours(temp_mask, pixels_are=pixels_are)
         poly_list = [Polygon(**data) for data in polys]
@@ -1853,6 +1863,7 @@ def _find_contours(binary_mask, pixels_are='points'):
         List[Dict]: list of polygon exteriors and interiors
     """
     if pixels_are == 'points':
+        # Note this mask needs to be uint8 not bool
         polys = _opencv_find_contours(binary_mask)
     elif pixels_are == 'areas':
         polys = _rasterio_find_contours(binary_mask)

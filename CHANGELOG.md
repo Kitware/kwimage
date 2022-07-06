@@ -7,12 +7,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.3 - Unreleased
 
 
+### Fixed
+* Issue where `Mask.to_multi_polygon` would break if the underlying data had
+  dtype bool.
+
+
 ## Version 0.9.2 - Released 2022-07-01
 
 ### Added
 * Add `wrap` kwarg to `Boxes.from_slice`
-
-
 
 ## Version 0.9.1 - Released 2022-06-30
 
