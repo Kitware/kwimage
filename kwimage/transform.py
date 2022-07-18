@@ -451,11 +451,93 @@ class Projective(Linear):
 
     @classmethod
     def projective(cls, scale=None, offset=None, shearx=None, theta=None,
-                   uv=None):
+                   uv=None, about=None):
         """
         Reconstruct from parameters
+
+        Sympy:
+            >>> # xdoctest: +SKIP
+            >>> import sympy
+            >>> # Shows the symbolic construction of the code
+            >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
+            >>> from sympy.abc import theta
+            >>> params = x0, y0, sx, sy, theta, shearx, tx, ty, u, v = sympy.symbols(
+            >>>     'x0, y0, sx, sy, theta, hx, tx, ty, u, v')
+            >>> # move the center to 0, 0
+            >>> tr1_ = sympy.Matrix([[1, 0,  -x0],
+            >>>                      [0, 1,  -y0],
+            >>>                      [0, 0,    1]])
+            >>> P = sympy.Matrix([  # projective part
+            >>>     [ 1,  0,  0],
+            >>>     [ 0,  1,  0],
+            >>>     [ u,  v,  1]])
+            >>> # Define core components of the affine transform
+            >>> S = sympy.Matrix([  # scale
+            >>>     [sx,  0, 0],
+            >>>     [ 0, sy, 0],
+            >>>     [ 0,  0, 1]])
+            >>> H = sympy.Matrix([  # x-shear
+            >>>     [1,  shearx, 0],
+            >>>     [0,  1, 0],
+            >>>     [0,  0, 1]])
+            >>> R = sympy.Matrix([  # rotation
+            >>>     [sympy.cos(theta), -sympy.sin(theta), 0],
+            >>>     [sympy.sin(theta),  sympy.cos(theta), 0],
+            >>>     [               0,                 0, 1]])
+            >>> T = sympy.Matrix([  # translation
+            >>>     [ 1,  0, tx],
+            >>>     [ 0,  1, ty],
+            >>>     [ 0,  0,  1]])
+            >>> # move 0, 0 back to the specified origin
+            >>> tr2_ = sympy.Matrix([[1, 0,  x0],
+            >>>                      [0, 1,  y0],
+            >>>                      [0, 0,   1]])
+            >>> # combine transformations
+            >>> with sympy.evaluate(False):
+            >>>     homog_ = sympy.MatMul(tr2_, T, R, H, S, P, tr1_)
+            >>>     sympy.pprint(homog_)
+            >>> homog = homog_.doit()
+            >>> sympy.pprint(homog)
+            >>> print('homog = {}'.format(ub.repr2(homog.tolist(), nl=1)))
+
+        Ignore:
+            M = kwimage.Projective.projective(uv=(0, 0.04), about=128)
+            img1 = kwimage.ensure_float01(kwimage.grab_test_image('astro', dsize=(228, 228)))
+            points = kwimage.Points(xy=kwimage.Coords(np.array([
+                (0, 0),
+                (1, 1),
+                (128, 1),
+                (144, 0),
+                (288, 288),
+                (97, 77),
+                (0, 288),
+                (128, 128),
+            ])))
+            img1_warp = cv2.warpPerspective(img1, M.matrix, dsize=img1.shape[0:2][::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+            warped = points.warp(M.matrix)
+
+            pic_copy = points.draw_on(img1.copy(), radius=10, color='kitware_green')
+            warp_copy = warped.draw_on(img1_warp.copy(), radius=10, color='kitware_green')
+            stacked, stack_tfs = kwimage.stack_images([pic_copy, warp_copy], return_info=True, axis=1)
+            stacked = kwimage.draw_line_segments_on_image(stacked, points.warp(stack_tfs[0]).xy, warped.warp(stack_tfs[1]).xy)
+
+            import kwplot
+            kwplot.autompl()
+            kwplot.imshow(stacked)
+            # M.matrix.dot(np.array([[0, 0, 1]]).T)
         """
         import kwimage
+        about_ = 0 if about is None else about
+        x0, y0 = _ensure_iterable2(about_)
+        # About needs to be wrt to this because the projective and affine parts
+        # will be inside it.
+        tr1_ = np.array([[1, 0,  -x0],
+                         [0, 1,  -y0],
+                         [0, 0,    1]])
+        tr2_ = np.array([[1, 0,  x0],
+                         [0, 1,  y0],
+                         [0, 0,   1]])
+        # TODO: add sympy optimization
         aff_part = kwimage.Affine.affine(
             scale=scale, offset=offset, shearx=shearx, theta=theta)
         u, v = uv
@@ -464,7 +546,7 @@ class Projective(Linear):
             [ 0,  1,  0],
             [ u,  v,  1],
         ])
-        self = kwimage.Projective(aff_part.matrix @ proj_part)
+        self = kwimage.Projective(tr2_ @ aff_part.matrix @ proj_part @ tr1_)
         return self
 
     @classmethod
@@ -571,6 +653,8 @@ class Projective(Linear):
             A @ P = H =
             A @ P @ A.inv() @ A
             A @ P @ A.inv()
+
+            kwimage.Projective.projective(
 
         Ignore:
             import kwimage
@@ -1202,8 +1286,8 @@ class Affine(Projective):
             >>> # Shows the symbolic construction of the code
             >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
             >>> from sympy.abc import theta
-            >>> params = x0, y0, sx, sy, theta, shear, shearx, tx, ty = sympy.symbols(
-            >>>     'x0, y0, sx, sy, theta, shear, shearx, tx, ty')
+            >>> params = x0, y0, sx, sy, theta, shearx, tx, ty = sympy.symbols(
+            >>>     'x0, y0, sx, sy, theta, shearx, tx, ty')
             >>> # move the center to 0, 0
             >>> tr1_ = np.array([[1, 0,  -x0],
             >>>                  [0, 1,  -y0],
@@ -1213,10 +1297,6 @@ class Affine(Projective):
             >>>     [sx,  0, 0],
             >>>     [ 0, sy, 0],
             >>>     [ 0,  0, 1]])
-            >>> #H = np.array([  # shear BROKEN
-            >>> #    [1, -sympy.sin(shear), 0],
-            >>> #    [0,  sympy.cos(shear), 0],
-            >>> #    [0,                 0, 1]])
             >>> H = np.array([  # x-shear
             >>>     [1,  shearx, 0],
             >>>     [0,  1, 0],
@@ -1244,23 +1324,24 @@ class Affine(Projective):
             ti = timerit.Timerit(10000, bestof=10, verbose=2)
             for timer in ti.reset('time'):
                 with timer:
-                    self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shear=np.random.rand())
+                    self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shearx=np.random.rand())
         """
         if shear is not None and shearx is None:
             # Hack so old data is readable (this should be ok as long as the
             # data wasnt reserialized)
             if not _internal.KWIMAGE_DISABLE_TRANSFORM_WARNINGS:
-                import warnings
-                warnings.warn(ub.paragraph(
-                    '''
-                    The `shear` parameter is deprecated and will be removed because
-                    of a serious bug. Use `shearx` instead. See Issue #8 on
-                    https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
-                    for more details. To ease the impact of this bug we will
-                    interpret `shear` as `shearx`, which should result in a correct
-                    reconstruction, as long as the data was never reserialized.
-                    '''
-                ))
+                ub.schedule_deprecation(
+                    modname='kwimage', name='shear', type='parameter',
+                    migration=ub.paragraph(
+                        '''
+                        The `shear` parameter is deprecated and will be removed because
+                        of a serious bug. Use `shearx` instead. See Issue #8 on
+                        https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
+                        for more details. To ease the impact of this bug we will
+                        interpret `shear` as `shearx`, which should result in a correct
+                        reconstruction, as long as the data was never reserialized.
+                        '''
+                    ), deprecate='0.9.0', error='0.10.0', remove='0.11.0', warncls=UserWarning)
             shearx = shear
             shear = None
 
