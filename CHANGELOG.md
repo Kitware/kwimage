@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Issue where `Mask.to_multi_polygon` would break if the underlying data had
   dtype bool.
 
+### Added
+* Support for decomposing projective transforms
+
 
 ## Version 0.9.2 - Released 2022-07-01
 

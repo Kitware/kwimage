@@ -449,6 +449,202 @@ class Projective(Linear):
             M /= M[2, 2]
             return Projective(M)
 
+    @classmethod
+    def projective(cls, scale=None, offset=None, shearx=None, theta=None,
+                   uv=None):
+        """
+        Reconstruct from parameters
+        """
+        import kwimage
+        aff_part = kwimage.Affine.affine(
+            scale=scale, offset=offset, shearx=shearx, theta=theta)
+        u, v = uv
+        proj_part = np.array([
+            [ 1,  0,  0],
+            [ 0,  1,  0],
+            [ u,  v,  1],
+        ])
+        self = kwimage.Projective(aff_part.matrix @ proj_part)
+        return self
+
+    @classmethod
+    def random(cls, shape=None, rng=None, **kw):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Projective.random()
+            >>> print(f'self={self}')
+            >>> params = self.decompose()
+            >>> aff_part = kwimage.Affine.affine(**ub.dict_diff(params, ['uv']))
+            >>> proj_part = kwimage.Projective.projective(uv=params['uv'])
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import cv2
+            >>> import kwplot
+            >>> dsize = (256, 256)
+            >>> kwplot.autompl()
+            >>> img1 = kwimage.grab_test_image(dsize=dsize)
+            >>> img1_affonly = cv2.warpPerspective(img1, aff_part.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img1_projonly = cv2.warpPerspective(img1, proj_part.matrix, dsize=img1.shape[0:2][::-1])
+            >>> ###
+            >>> img2 = kwimage.ensure_uint255(kwimage.atleast_3channels(kwimage.checkerboard(dsize=dsize)))
+            >>> img1_fullwarp = cv2.warpPerspective(img1, self.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img2_affonly = cv2.warpPerspective(img2, aff_part.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img2_projonly = cv2.warpPerspective(img2, proj_part.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img2_fullwarp = cv2.warpPerspective(img2, self.matrix, dsize=img2.shape[0:2][::-1])
+            >>> canvas1 = kwimage.stack_images([img1, img1_projonly, img1_affonly, img1_fullwarp], pad=10, axis=1, bg_value=(0.5, 0.9, 0.1))
+            >>> canvas2 = kwimage.stack_images([img2, img2_projonly, img2_affonly, img2_fullwarp], pad=10, axis=1, bg_value=(0.5, 0.9, 0.1))
+            >>> canvas = kwimage.stack_images([canvas1, canvas2], axis=0)
+            >>> kwplot.imshow(canvas)
+        """
+        import kwimage
+        rng = kwarray.ensure_rng(rng)
+        aff_part = kwimage.Affine.random(shape, rng=rng, **kw)
+        # Random projective part
+        u = 1 / rng.randint(0, 10000)
+        v = 1 / rng.randint(0, 10000)
+        proj_part = np.array([
+            [ 1,  0,  0],
+            [ 0,  1,  0],
+            [ u,  v,  1],
+        ])
+        self = Projective(aff_part.matrix @ proj_part)
+        return self
+
+    def decompose(self):
+        """
+        Based on the analysis done in [ME1319680]_.
+
+        Returns:
+            Dict:
+
+        References:
+            .. [ME1319680] https://math.stackexchange.com/questions/1319680
+
+        Example:
+            >>> # Create a set of points, warp them, then recover the warp
+            >>> import kwimage
+            >>> points = kwimage.Points.random(9).scale(64)
+            >>> A1 = kwimage.Affine.affine(scale=0.9, theta=-3.2, offset=(2, 3), about=(32, 32), skew=2.3)
+            >>> A2 = kwimage.Affine.affine(scale=0.8, theta=0.8, offset=(2, 0), about=(32, 32))
+            >>> A12_real = A2 @ A1.inv()
+            >>> points1 = points.warp(A1)
+            >>> points2 = points.warp(A2)
+            >>> # Make the correspondence non-affine
+            >>> points2.data['xy'].data[0, 0] += 3.5
+            >>> points2.data['xy'].data[3, 1] += 8.5
+            >>> # Recover the warp
+            >>> pts1, pts2 = points1.xy, points2.xy
+            >>> self = kwimage.Projective.random()
+            >>> self.decompose()
+
+        Ignore:
+            >>> from sympy.abc import theta
+            >>> import sympy
+            >>> h1, h2, h3, h4, h5, h6, h7, h8, h9 = sympy.symbols(
+            >>>     'h1, h2, h3, h4, h5, h6, h7, h8, h9')
+            >>> H = sympy.Matrix([[h1, h2, h3], [h4, h5, h6], [h7, h8, 1]])
+            >>> a1 = h1 - h3 * h7
+            >>> a2 = h2 - h3 * h8
+            >>> a3 = h3
+            >>> a4 = h4 - h6 * h7
+            >>> a5 = h5 - h6 * h8
+            >>> a6 = h6
+            >>> A = sympy.Matrix([[a1, a2, a3], [a4, a5, a6], [0, 0, 1]])
+            >>> P = sympy.Matrix([[1, 0, 0], [0, 1, 0], [h7, h8, 1]])
+            >>> assert np.all(np.ravel((A @ P - H).tolist()) == 0)
+
+            # TODO: Can we get a more concise ane nice sympy decomposition /
+            # recombination
+            sympy.printing.pretty_print(sympy.Eq(H, B @ Q))
+            bs = b1, b2, b3, b4, b5, b6, b7, b8, b9 = sympy.symbols(
+            'b1, b2, b3, b4, b5, b6, b7, b8, b9')
+            uvs = u, v = sympy.symbols('u, v')
+            B = sympy.Matrix([[b1, b2, b3], [b4, b5, b6], [0, 0, 1]])
+            Q = sympy.Matrix([[1, 0, 0], [0, 1, 0], [u, v, 1]])
+            # Q = sympy.Matrix([[1, 0, 0], [0, 1, 0], [u, v, 1 / (b3*u + b6*v + 1)]])
+            H2_unnorm = Q @ B
+            H2_norm = H2_unnorm / H2_unnorm.tolist()[-1][-1]
+            expr = sympy.Eq(H, Q @ B)
+            sympy.solve(expr, bs + uvs)
+            A @ P = H
+            A @ P = H =
+            A @ P @ A.inv() @ A
+            A @ P @ A.inv()
+
+        Ignore:
+            import kwimage
+            import kwplot
+            import sympy
+            plt = kwplot.autoplt()
+            from kwplot.cli import gifify
+            import cv2
+            check = kwimage.atleast_3channels(kwimage.checkerboard(dsize=(288, 288)))
+            pic = kwimage.grab_test_image('astro', dsize=check.shape[0:2][::-1])
+            img1 = np.maximum((1 - check) * kwimage.ensure_float01(pic), check)
+            ims = []
+            # v_coords = np.log(np.logspace(1, 2)) / np.log(10) - 1
+            v_coords = np.linspace(0, 1.0, 64) ** 6
+            for v in ub.ProgIter(v_coords):
+                u = 0
+                v = v
+                I = kwimage.Affine.eye()
+                T = kwimage.Affine.translate(-128)
+                # T = kwimage.Affine.translate(0)
+                H = kwimage.Projective(np.array([[1, 0, 0], [0, 1, 0], [u, v, 1]]).astype(np.float32))
+                H2 = (T.inv() @ H @ T)
+                C2 = (I @ I)
+                img1_warp = cv2.warpPerspective(img1, H2.matrix, dsize=img1.shape[0:2][::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT).clip(0, 1)
+                img1_pre = cv2.warpPerspective(img1, C2.matrix, dsize=img1.shape[0:2][::-1]).clip(0, 1)
+                canvas = kwimage.stack_images([img1_pre, img1_warp], pad=10, axis=1, bg_value=(0., 1., 0.))
+                canvas = kwimage.draw_text_on_image(
+                    canvas,
+                    'u={},{}v={}'.format(round(u, 8), chr(10) * 2, round(v, 8)),
+                    # org=tuple(img1.shape[0:2][::-1]),
+                    # valign='bottom', halign='right',
+                    org=(1, 1),
+                    valign='top', halign='left',
+                    fontScale=0.8,
+                    border=True,
+                    )
+                ims.append(canvas)
+            # Hinge animation
+            images = ims
+            dpath = ub.Path.appdir('kwcoco/demo').ensuredir()
+            output_fpath = dpath / 'hinge-v-t.gif'
+            gifify.ffmpeg_animate_images(ims, output_fpath, in_framerate=2)
+        """
+        import numpy as np
+        h1, h2, h3, h4, h5, h6, h7, h8, h9 = self.matrix.ravel()
+        assert h9 == 1
+
+        a1 = h1 - h3 * h7
+        a2 = h2 - h3 * h8
+        a3 = h3
+        a4 = h4 - h6 * h7
+        a5 = h5 - h6 * h8
+        a6 = h6
+
+        affine_part = Affine(np.array([
+            [a1, a2, a3],
+            [a4, a5, a6],
+            [0,   0,  1],
+        ]))
+        decomp = affine_part.decompose()
+        # The line u * x + v * y = 0 is fixed to iteself.
+        # I.e. y = -u/v * x + 0
+
+        # The line u * x + v * y = -1 is mapped to the point at infinity
+        # I.e. y = -u/v * x - 1/v
+        u, v = h7, h8
+        # This transform has to happen first when we re-compose
+        # TODO: I would love to find a more intuitive name or representation
+        # for this. Can I do something to call this a "hinge"? Is there a
+        # representation where I can look at this and get a sense of where the
+        # "hinge" is?
+        decomp['uv'] = (u, v)
+        return decomp
+
 
 class Affine(Projective):
     """
