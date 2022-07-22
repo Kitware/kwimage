@@ -15,6 +15,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Support for decomposing projective transforms
 
 
+### Changed
+* In `warp_affine` change behavior so `border_value` scalars are transformed to tuples instead of 
+  the current opencv  behavior where other channels are zeroed.
+
+
 ## Version 0.9.2 - Released 2022-07-01
 
 ### Added

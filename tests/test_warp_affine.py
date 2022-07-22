@@ -28,3 +28,66 @@ def test_warp_affine():
         kwplot.imshow(canvas1, pnum=pnum_(), title='antialias=True')
         kwplot.imshow(canvas2, pnum=pnum_(), title='antialias=False')
         kwplot.show_if_requested()
+
+
+def test_warp_affine_with_nan_border():
+    import kwimage
+    import numpy as np
+    img = kwimage.ensure_float01(kwimage.grab_test_image())
+    M = kwimage.Affine.affine(theta=np.pi / 8)
+
+    # TODO: ported to kwarray, use that later
+    def equal_with_nan(a1, a2):
+        """
+        Numpy has array_equal with ``equal_nan=True``, but this is elementwise
+
+        Args:
+            a1 (ArrayLike): input array
+            a2 (ArrayLike): input array
+        """
+        a1, a2 = np.asarray(a1), np.asarray(a2)
+        a1nan, a2nan = np.isnan(a1), np.isnan(a2)
+        nan_sameness = a1nan == a2nan
+        value_sameness = (a1 == a2)
+        # If they are actually the same, they should be value same xor nansame.
+        flags = value_sameness ^ nan_sameness
+        return flags
+
+    # Explicit tuple should be for each channel
+    border_value = (np.nan, 0, np.nan)
+    warped = kwimage.warp_affine(img, M, border_value=border_value)
+    nanned_pixels = warped[np.isnan(warped).any(axis=2)]
+    assert nanned_pixels.size
+    assert not warped[np.isnan(warped).any(axis=2)].all()
+    assert equal_with_nan(nanned_pixels, border_value).all(axis=1).any()
+
+    border_value = (np.nan, 0, 0)
+    warped = kwimage.warp_affine(img, M, border_value=border_value)
+    nanned_pixels = warped[np.isnan(warped).any(axis=2)]
+    assert nanned_pixels.size
+    assert not warped[np.isnan(warped).any(axis=2)].all()
+    assert equal_with_nan(nanned_pixels, border_value).all(axis=1).any()
+
+    border_value = np.nan
+    warped = kwimage.warp_affine(img, M, border_value=border_value)
+    nanned_pixels = warped[np.isnan(warped).any(axis=2)]
+    assert nanned_pixels.size
+    assert warped[np.isnan(warped).any(axis=2)].all()
+
+    # Case with a scalar and a 2D image.
+    border_value = np.nan
+    img0 = img[:, :, 0]
+    warped = kwimage.warp_affine(img0, M, border_value=border_value)
+    nanned_pixels = warped[np.isnan(warped)]
+    assert nanned_pixels.size
+
+
+def test_warp_affine_with_many_chans():
+    import kwimage
+    import numpy as np
+    img = np.random.rand(5, 5, 4)
+    M = kwimage.Affine.affine(theta=np.pi / 8)
+
+    img = np.random.rand(8, 8, 5)
+    M = kwimage.Affine.affine(theta=np.pi / 8)
+    warped = kwimage.warp_affine(img, M, border_value=(np.nan, np.nan, np.nan, np.nan, np.nan))
