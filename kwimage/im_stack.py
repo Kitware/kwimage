@@ -10,7 +10,8 @@ from . import im_cv2
 
 
 def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
-                 return_info=False, bg_value=None, pad=None):
+                 return_info=False, bg_value=None, pad=None,
+                 allow_casting=True):
     """
     Make a new image with the input images side-by-side
 
@@ -43,12 +44,19 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         bg_value (Number | ndarray):
             background value, if specified, uses this as a fill value.
 
+        allow_casting (bool):
+            if True, then if "uint255" and "float01" format images are given
+            they are converted to "float01".  Defaults to True.
+
     Returns:
         ndarray: an image of stacked images side by side
 
         Tuple[ndarray, List]: where the first item is the aformentioned stacked
             image and the second item is a list of transformations for each
             input image mapping it to its location in the returned image.
+
+    SeeAlso:
+        :func:`kwimage.im_stack.stack_images_grid`
 
     Example:
         >>> import kwimage
@@ -90,7 +98,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
                                                      resize=resize,
                                                      bg_value=bg_value,
                                                      interpolation=interpolation,
-                                                     overlap=overlap)
+                                                     overlap=overlap,
+                                                     allow_casting=allow_casting)
         if return_info:
             off1, off2 = offset_tup
             sf1, sf2 = sf_tup
@@ -111,7 +120,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
 
 
 def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
-                      return_info=False, bg_value=None):
+                      return_info=False, bg_value=None, allow_casting=True):
     """
     Stacks images in a grid. Optionally return transforms of original image
     positions in the output image.
@@ -140,12 +149,19 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
         bg_value (Number | ndarray) : background value, if specified,
             uses this as a fill value.
 
+        allow_casting (bool):
+            if True, then if "uint255" and "float01" format images are given
+            they are converted to "float01".  Defaults to True.
+
     Returns:
         ndarray: an image of stacked images in a grid pattern
 
         Tuple[ndarray, List]: where the first item is the aformentioned stacked
             image and the second item is a list of transformations for each
             input image mapping it to its location in the returned image.
+
+    SeeAlso:
+        :func:`kwimage.im_stack.stack_images`
     """
     import ubelt as ub
     if chunksize is None:
@@ -176,7 +192,7 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
 
 
 def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
-                      overlap=0, bg_value=None):
+                      overlap=0, bg_value=None, allow_casting=True):
     """
     Returns:
         Tuple[ndarray, Tuple, Tuple]: imgB, offset_tup, sf_tup
@@ -250,11 +266,18 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
     interpolation = im_cv2._coerce_interpolation(interpolation,
                                                  default=cv2.INTER_NEAREST)
 
+    if allow_casting:
+        if img1.dtype.kind == 'f' and img2.dtype.kind == 'u':
+            img2 = im_core.ensure_float01(img2)
+        elif img1.dtype.kind == 'u' and img2.dtype.kind == 'f':
+            img1 = im_core.ensure_float01(img1)
+
     img1, img2 = im_core.make_channels_comparable(img1, img2)
     nChannels = im_core.num_channels(img1)
 
-    assert img1.dtype == img2.dtype, (
-        'img1.dtype=%r, img2.dtype=%r' % (img1.dtype, img2.dtype))
+    if img1.dtype != img2.dtype:
+        raise TypeError(
+            'img1.dtype=%r, img2.dtype=%r' % (img1.dtype, img2.dtype))
 
     axis, h1, h2, w1, w2, wB, hB, xoff2, yoff2 = _rectify_axis(img1, img2, axis)
 
