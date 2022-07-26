@@ -1741,6 +1741,8 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         area = cxywh[..., 2] * cxywh[..., 2]
     else:
         area = []
+
+    # TODO: maybe take scores into account?
     sortx = np.argsort(area)[::-1]
     cxywh = cxywh[sortx]
     class_idxs = class_idxs[sortx]

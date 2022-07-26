@@ -44,8 +44,10 @@ class Matrix(Transform):
 
     def __nice__(self):
         prefix = '<{}('.format(self.__class__.__name__)
-        return np.array2string(self.matrix, separator=', ', prefix=prefix)
-        # return repr(self.matrix)
+        if isinstance(self.matrix, np.ndarray):
+            return np.array2string(self.matrix, separator=', ', prefix=prefix)
+        else:
+            return ub.repr2(self.matrix.tolist(), nl=1)
 
     def __repr__(self):
         return self.__str__()
@@ -157,7 +159,12 @@ class Matrix(Transform):
         if self.matrix is None:
             return self.__class__(None)
         else:
-            return self.__class__(np.linalg.inv(self.matrix))
+            try:
+                inv_mat = np.linalg.inv(self.matrix)
+            except np.core._exceptions.UFuncTypeError:
+                # handle object arrays (rationals)
+                inv_mat = self.matrix.inv()
+            return self.__class__(inv_mat)
 
     @property
     def T(self):
@@ -179,7 +186,12 @@ class Matrix(Transform):
         if self.matrix is None:
             return 1.
         else:
-            return np.linalg.det(self.matrix)
+            try:
+                det = np.linalg.det(self.matrix)
+            except np.core._exceptions.UFuncTypeError:
+                # handle object arrays (rationals)
+                det = self.matrix.det()
+            return det
 
     @classmethod
     def eye(cls, shape=None, rng=None):
@@ -211,6 +223,70 @@ class Matrix(Transform):
             return np.asarray(self)[index]
         return self.matrix[index]
 
+    def rationalize(self):
+        """
+        Convert the underlying matrix to a rational type to avoid floating
+        point errors. This does decrease efficiency.
+
+        Ignore:
+            from sympy import Rational
+            from fractions import Fraction
+            float_mat = np.random.rand(3, 3)
+            float_num = float_mat[0, 0]
+            frac_num = Fraction(float_num)
+            rat_num = Rational(float_num)
+
+            rat_mat_v1 = float_mat.astype(Rational, subok=False)
+            frac_mat_v1 = float_mat.astype(Fraction, subok=False)
+            rat_num_v1 = rat_mat_v1[0, 0]
+            frac_num_v1 = frac_mat_v1[0, 0]
+            print(f'{type(float_num)=}')
+            print(f'{type(rat_num)=}')
+            print(f'{type(frac_num)=}')
+            print(f'{type(rat_num_v1)=}')
+            print(f'{type(frac_num_v1)=}')
+
+            flat_rat = list(map(Rational, float_mat.ravel().tolist()))
+            from sympy import Matrix
+            rat_mat_v2 = Matrix(flat_rat).reshape(*float_mat.shape)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:sympy)
+            >>> import kwimage
+            >>> self = mat = kwimage.Matrix.random((3, 3)).rationalize()
+            >>> mat2 = kwimage.Matrix.random((3, 3))
+            >>> mat3 = mat @ mat2
+            >>> assert 'sympy' in mat3.matrix.__class__.__module__
+            >>> mat3 = mat2 @ mat
+            >>> assert 'sympy' in mat3.matrix.__class__.__module__
+            >>> assert not mat.isclose_identity()
+            >>> assert (mat @ mat.inv()).isclose_identity(rtol=0, atol=0)
+        """
+        if self.matrix is None:
+            new_mat = self.matrix
+        else:
+            import sympy
+            float_mat = self.matrix
+            flat_rat = list(map(sympy.Rational, float_mat.ravel().tolist()))
+            new_mat = sympy.Matrix(flat_rat).reshape(*float_mat.shape)
+        new = self.__class__(new_mat)
+        return new
+
+    def astype(self, dtype):
+        """
+        Convert the underlying matrix to a rational type to avoid floating
+        point errors. This does decrease efficiency.
+
+        Args:
+            dtype (type):
+        """
+        if self.matrix is None:
+            new_mat = self.matrix
+        else:
+            new_mat = self.matrix.astype(dtype)
+        new = self.__class__(new_mat)
+        return new
+
     def isclose_identity(self, rtol=1e-05, atol=1e-08):
         """
         Returns true if the matrix is nearly the identity.
@@ -219,7 +295,12 @@ class Matrix(Transform):
             return True
         else:
             eye = np.eye(*self.matrix.shape)
-            return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
+            try:
+                return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
+            except TypeError:
+                # For sympy
+                residual = np.array(self.matrix - eye).astype(float)
+                return np.allclose(residual, 0, rtol=rtol, atol=atol)
 
 
 class Linear(Matrix):
@@ -367,6 +448,286 @@ class Projective(Linear):
             # homographies that only differ by a scale factor are equivalent
             M /= M[2, 2]
             return Projective(M)
+
+    @classmethod
+    def projective(cls, scale=None, offset=None, shearx=None, theta=None,
+                   uv=None, about=None):
+        """
+        Reconstruct from parameters
+
+        Sympy:
+            >>> # xdoctest: +SKIP
+            >>> import sympy
+            >>> # Shows the symbolic construction of the code
+            >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
+            >>> from sympy.abc import theta
+            >>> params = x0, y0, sx, sy, theta, shearx, tx, ty, u, v = sympy.symbols(
+            >>>     'x0, y0, sx, sy, theta, hx, tx, ty, u, v')
+            >>> # move the center to 0, 0
+            >>> tr1_ = sympy.Matrix([[1, 0,  -x0],
+            >>>                      [0, 1,  -y0],
+            >>>                      [0, 0,    1]])
+            >>> P = sympy.Matrix([  # projective part
+            >>>     [ 1,  0,  0],
+            >>>     [ 0,  1,  0],
+            >>>     [ u,  v,  1]])
+            >>> # Define core components of the affine transform
+            >>> S = sympy.Matrix([  # scale
+            >>>     [sx,  0, 0],
+            >>>     [ 0, sy, 0],
+            >>>     [ 0,  0, 1]])
+            >>> H = sympy.Matrix([  # x-shear
+            >>>     [1,  shearx, 0],
+            >>>     [0,  1, 0],
+            >>>     [0,  0, 1]])
+            >>> R = sympy.Matrix([  # rotation
+            >>>     [sympy.cos(theta), -sympy.sin(theta), 0],
+            >>>     [sympy.sin(theta),  sympy.cos(theta), 0],
+            >>>     [               0,                 0, 1]])
+            >>> T = sympy.Matrix([  # translation
+            >>>     [ 1,  0, tx],
+            >>>     [ 0,  1, ty],
+            >>>     [ 0,  0,  1]])
+            >>> # move 0, 0 back to the specified origin
+            >>> tr2_ = sympy.Matrix([[1, 0,  x0],
+            >>>                      [0, 1,  y0],
+            >>>                      [0, 0,   1]])
+            >>> # combine transformations
+            >>> with sympy.evaluate(False):
+            >>>     homog_ = sympy.MatMul(tr2_, T, R, H, S, P, tr1_)
+            >>>     sympy.pprint(homog_)
+            >>> homog = homog_.doit()
+            >>> sympy.pprint(homog)
+            >>> print('homog = {}'.format(ub.repr2(homog.tolist(), nl=1)))
+
+        Ignore:
+            M = kwimage.Projective.projective(uv=(0, 0.04), about=128)
+            img1 = kwimage.ensure_float01(kwimage.grab_test_image('astro', dsize=(228, 228)))
+            points = kwimage.Points(xy=kwimage.Coords(np.array([
+                (0, 0),
+                (1, 1),
+                (128, 1),
+                (144, 0),
+                (288, 288),
+                (97, 77),
+                (0, 288),
+                (128, 128),
+            ])))
+            img1_warp = cv2.warpPerspective(img1, M.matrix, dsize=img1.shape[0:2][::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+            warped = points.warp(M.matrix)
+
+            pic_copy = points.draw_on(img1.copy(), radius=10, color='kitware_green')
+            warp_copy = warped.draw_on(img1_warp.copy(), radius=10, color='kitware_green')
+            stacked, stack_tfs = kwimage.stack_images([pic_copy, warp_copy], return_info=True, axis=1)
+            stacked = kwimage.draw_line_segments_on_image(stacked, points.warp(stack_tfs[0]).xy, warped.warp(stack_tfs[1]).xy)
+
+            import kwplot
+            kwplot.autompl()
+            kwplot.imshow(stacked)
+            # M.matrix.dot(np.array([[0, 0, 1]]).T)
+        """
+        import kwimage
+        about_ = 0 if about is None else about
+        x0, y0 = _ensure_iterable2(about_)
+        # About needs to be wrt to this because the projective and affine parts
+        # will be inside it.
+        tr1_ = np.array([[1, 0,  -x0],
+                         [0, 1,  -y0],
+                         [0, 0,    1]])
+        tr2_ = np.array([[1, 0,  x0],
+                         [0, 1,  y0],
+                         [0, 0,   1]])
+        # TODO: add sympy optimization
+        aff_part = kwimage.Affine.affine(
+            scale=scale, offset=offset, shearx=shearx, theta=theta)
+        u, v = uv
+        proj_part = np.array([
+            [ 1,  0,  0],
+            [ 0,  1,  0],
+            [ u,  v,  1],
+        ])
+        self = kwimage.Projective(tr2_ @ aff_part.matrix @ proj_part @ tr1_)
+        return self
+
+    @classmethod
+    def random(cls, shape=None, rng=None, **kw):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Projective.random()
+            >>> print(f'self={self}')
+            >>> params = self.decompose()
+            >>> aff_part = kwimage.Affine.affine(**ub.dict_diff(params, ['uv']))
+            >>> proj_part = kwimage.Projective.projective(uv=params['uv'])
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import cv2
+            >>> import kwplot
+            >>> dsize = (256, 256)
+            >>> kwplot.autompl()
+            >>> img1 = kwimage.grab_test_image(dsize=dsize)
+            >>> img1_affonly = cv2.warpPerspective(img1, aff_part.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img1_projonly = cv2.warpPerspective(img1, proj_part.matrix, dsize=img1.shape[0:2][::-1])
+            >>> ###
+            >>> img2 = kwimage.ensure_uint255(kwimage.atleast_3channels(kwimage.checkerboard(dsize=dsize)))
+            >>> img1_fullwarp = cv2.warpPerspective(img1, self.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img2_affonly = cv2.warpPerspective(img2, aff_part.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img2_projonly = cv2.warpPerspective(img2, proj_part.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img2_fullwarp = cv2.warpPerspective(img2, self.matrix, dsize=img2.shape[0:2][::-1])
+            >>> canvas1 = kwimage.stack_images([img1, img1_projonly, img1_affonly, img1_fullwarp], pad=10, axis=1, bg_value=(0.5, 0.9, 0.1))
+            >>> canvas2 = kwimage.stack_images([img2, img2_projonly, img2_affonly, img2_fullwarp], pad=10, axis=1, bg_value=(0.5, 0.9, 0.1))
+            >>> canvas = kwimage.stack_images([canvas1, canvas2], axis=0)
+            >>> kwplot.imshow(canvas)
+        """
+        import kwimage
+        rng = kwarray.ensure_rng(rng)
+        aff_part = kwimage.Affine.random(shape, rng=rng, **kw)
+        # Random projective part
+        u = 1 / rng.randint(0, 10000)
+        v = 1 / rng.randint(0, 10000)
+        proj_part = np.array([
+            [ 1,  0,  0],
+            [ 0,  1,  0],
+            [ u,  v,  1],
+        ])
+        self = Projective(aff_part.matrix @ proj_part)
+        return self
+
+    def decompose(self):
+        """
+        Based on the analysis done in [ME1319680]_.
+
+        Returns:
+            Dict:
+
+        References:
+            .. [ME1319680] https://math.stackexchange.com/questions/1319680
+
+        Example:
+            >>> # Create a set of points, warp them, then recover the warp
+            >>> import kwimage
+            >>> points = kwimage.Points.random(9).scale(64)
+            >>> A1 = kwimage.Affine.affine(scale=0.9, theta=-3.2, offset=(2, 3), about=(32, 32), skew=2.3)
+            >>> A2 = kwimage.Affine.affine(scale=0.8, theta=0.8, offset=(2, 0), about=(32, 32))
+            >>> A12_real = A2 @ A1.inv()
+            >>> points1 = points.warp(A1)
+            >>> points2 = points.warp(A2)
+            >>> # Make the correspondence non-affine
+            >>> points2.data['xy'].data[0, 0] += 3.5
+            >>> points2.data['xy'].data[3, 1] += 8.5
+            >>> # Recover the warp
+            >>> pts1, pts2 = points1.xy, points2.xy
+            >>> self = kwimage.Projective.random()
+            >>> self.decompose()
+
+        Ignore:
+            >>> from sympy.abc import theta
+            >>> import sympy
+            >>> h1, h2, h3, h4, h5, h6, h7, h8, h9 = sympy.symbols(
+            >>>     'h1, h2, h3, h4, h5, h6, h7, h8, h9')
+            >>> H = sympy.Matrix([[h1, h2, h3], [h4, h5, h6], [h7, h8, 1]])
+            >>> a1 = h1 - h3 * h7
+            >>> a2 = h2 - h3 * h8
+            >>> a3 = h3
+            >>> a4 = h4 - h6 * h7
+            >>> a5 = h5 - h6 * h8
+            >>> a6 = h6
+            >>> A = sympy.Matrix([[a1, a2, a3], [a4, a5, a6], [0, 0, 1]])
+            >>> P = sympy.Matrix([[1, 0, 0], [0, 1, 0], [h7, h8, 1]])
+            >>> assert np.all(np.ravel((A @ P - H).tolist()) == 0)
+
+            # TODO: Can we get a more concise ane nice sympy decomposition /
+            # recombination
+            sympy.printing.pretty_print(sympy.Eq(H, B @ Q))
+            bs = b1, b2, b3, b4, b5, b6, b7, b8, b9 = sympy.symbols(
+            'b1, b2, b3, b4, b5, b6, b7, b8, b9')
+            uvs = u, v = sympy.symbols('u, v')
+            B = sympy.Matrix([[b1, b2, b3], [b4, b5, b6], [0, 0, 1]])
+            Q = sympy.Matrix([[1, 0, 0], [0, 1, 0], [u, v, 1]])
+            # Q = sympy.Matrix([[1, 0, 0], [0, 1, 0], [u, v, 1 / (b3*u + b6*v + 1)]])
+            H2_unnorm = Q @ B
+            H2_norm = H2_unnorm / H2_unnorm.tolist()[-1][-1]
+            expr = sympy.Eq(H, Q @ B)
+            sympy.solve(expr, bs + uvs)
+            A @ P = H
+            A @ P = H =
+            A @ P @ A.inv() @ A
+            A @ P @ A.inv()
+
+            kwimage.Projective.projective(
+
+        Ignore:
+            import kwimage
+            import kwplot
+            import sympy
+            plt = kwplot.autoplt()
+            from kwplot.cli import gifify
+            import cv2
+            check = kwimage.atleast_3channels(kwimage.checkerboard(dsize=(288, 288)))
+            pic = kwimage.grab_test_image('astro', dsize=check.shape[0:2][::-1])
+            img1 = np.maximum((1 - check) * kwimage.ensure_float01(pic), check)
+            ims = []
+            # v_coords = np.log(np.logspace(1, 2)) / np.log(10) - 1
+            v_coords = np.linspace(0, 1.0, 64) ** 6
+            for v in ub.ProgIter(v_coords):
+                u = 0
+                v = v
+                I = kwimage.Affine.eye()
+                T = kwimage.Affine.translate(-128)
+                # T = kwimage.Affine.translate(0)
+                H = kwimage.Projective(np.array([[1, 0, 0], [0, 1, 0], [u, v, 1]]).astype(np.float32))
+                H2 = (T.inv() @ H @ T)
+                C2 = (I @ I)
+                img1_warp = cv2.warpPerspective(img1, H2.matrix, dsize=img1.shape[0:2][::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT).clip(0, 1)
+                img1_pre = cv2.warpPerspective(img1, C2.matrix, dsize=img1.shape[0:2][::-1]).clip(0, 1)
+                canvas = kwimage.stack_images([img1_pre, img1_warp], pad=10, axis=1, bg_value=(0., 1., 0.))
+                canvas = kwimage.draw_text_on_image(
+                    canvas,
+                    'u={},{}v={}'.format(round(u, 8), chr(10) * 2, round(v, 8)),
+                    # org=tuple(img1.shape[0:2][::-1]),
+                    # valign='bottom', halign='right',
+                    org=(1, 1),
+                    valign='top', halign='left',
+                    fontScale=0.8,
+                    border=True,
+                    )
+                ims.append(canvas)
+            # Hinge animation
+            images = ims
+            dpath = ub.Path.appdir('kwcoco/demo').ensuredir()
+            output_fpath = dpath / 'hinge-v-t.gif'
+            gifify.ffmpeg_animate_images(ims, output_fpath, in_framerate=2)
+        """
+        import numpy as np
+        h1, h2, h3, h4, h5, h6, h7, h8, h9 = self.matrix.ravel()
+        assert h9 == 1
+
+        a1 = h1 - h3 * h7
+        a2 = h2 - h3 * h8
+        a3 = h3
+        a4 = h4 - h6 * h7
+        a5 = h5 - h6 * h8
+        a6 = h6
+
+        affine_part = Affine(np.array([
+            [a1, a2, a3],
+            [a4, a5, a6],
+            [0,   0,  1],
+        ]))
+        decomp = affine_part.decompose()
+        # The line u * x + v * y = 0 is fixed to iteself.
+        # I.e. y = -u/v * x + 0
+
+        # The line u * x + v * y = -1 is mapped to the point at infinity
+        # I.e. y = -u/v * x - 1/v
+        u, v = h7, h8
+        # This transform has to happen first when we re-compose
+        # TODO: I would love to find a more intuitive name or representation
+        # for this. Can I do something to call this a "hinge"? Is there a
+        # representation where I can look at this and get a sense of where the
+        # "hinge" is?
+        decomp['uv'] = (u, v)
+        return decomp
 
 
 class Affine(Projective):
@@ -858,7 +1219,8 @@ class Affine(Projective):
     @classmethod
     @profile
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
-               about=None, shearx=None, **kwargs):
+               about=None, shearx=None, array_cls=None, math_mod=None,
+               **kwargs):
         """
         Create an affine matrix from high-level parameters
 
@@ -924,8 +1286,8 @@ class Affine(Projective):
             >>> # Shows the symbolic construction of the code
             >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
             >>> from sympy.abc import theta
-            >>> params = x0, y0, sx, sy, theta, shear, shearx, tx, ty = sympy.symbols(
-            >>>     'x0, y0, sx, sy, theta, shear, shearx, tx, ty')
+            >>> params = x0, y0, sx, sy, theta, shearx, tx, ty = sympy.symbols(
+            >>>     'x0, y0, sx, sy, theta, shearx, tx, ty')
             >>> # move the center to 0, 0
             >>> tr1_ = np.array([[1, 0,  -x0],
             >>>                  [0, 1,  -y0],
@@ -935,10 +1297,6 @@ class Affine(Projective):
             >>>     [sx,  0, 0],
             >>>     [ 0, sy, 0],
             >>>     [ 0,  0, 1]])
-            >>> #H = np.array([  # shear BROKEN
-            >>> #    [1, -sympy.sin(shear), 0],
-            >>> #    [0,  sympy.cos(shear), 0],
-            >>> #    [0,                 0, 1]])
             >>> H = np.array([  # x-shear
             >>>     [1,  shearx, 0],
             >>>     [0,  1, 0],
@@ -966,25 +1324,32 @@ class Affine(Projective):
             ti = timerit.Timerit(10000, bestof=10, verbose=2)
             for timer in ti.reset('time'):
                 with timer:
-                    self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shear=np.random.rand())
+                    self = kwimage.Affine.affine(scale=3, offset=2, theta=np.random.rand(), shearx=np.random.rand())
         """
         if shear is not None and shearx is None:
             # Hack so old data is readable (this should be ok as long as the
             # data wasnt reserialized)
             if not _internal.KWIMAGE_DISABLE_TRANSFORM_WARNINGS:
-                import warnings
-                warnings.warn(ub.paragraph(
-                    '''
-                    The `shear` parameter is deprecated and will be removed because
-                    of a serious bug. Use `shearx` instead. See Issue #8 on
-                    https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
-                    for more details. To ease the impact of this bug we will
-                    interpret `shear` as `shearx`, which should result in a correct
-                    reconstruction, as long as the data was never reserialized.
-                    '''
-                ))
+                ub.schedule_deprecation(
+                    modname='kwimage', name='shear', type='parameter',
+                    migration=ub.paragraph(
+                        '''
+                        The `shear` parameter is deprecated and will be removed because
+                        of a serious bug. Use `shearx` instead. See Issue #8 on
+                        https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
+                        for more details. To ease the impact of this bug we will
+                        interpret `shear` as `shearx`, which should result in a correct
+                        reconstruction, as long as the data was never reserialized.
+                        '''
+                    ), deprecate='0.9.0', error='0.10.0', remove='0.11.0', warncls=UserWarning)
             shearx = shear
             shear = None
+
+        if array_cls is None:
+            array_cls = np.array
+
+        if math_mod is None:
+            math_mod = math
 
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
@@ -995,8 +1360,8 @@ class Affine(Projective):
         tx, ty = _ensure_iterable2(offset_)
         x0, y0 = _ensure_iterable2(about_)
 
-        cos_theta = math.cos(theta_)
-        sin_theta = math.sin(theta_)
+        cos_theta = math_mod.cos(theta_)
+        sin_theta = math_mod.sin(theta_)
 
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta
@@ -1013,9 +1378,9 @@ class Affine(Projective):
         tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
         ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
 
-        mat = np.array([sx_cos_theta, a12, tx_,
-                        sx_sin_theta, a22, ty_,
-                                   0,   0,  1])
+        mat = array_cls([sx_cos_theta, a12, tx_,
+                         sx_sin_theta, a22, ty_,
+                                    0,   0,  1])
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self

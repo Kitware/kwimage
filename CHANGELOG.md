@@ -4,12 +4,28 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.2 - Unreleased
+## Version 0.9.3 - Unreleased
+
+
+### Fixed
+* Issue where `Mask.to_multi_polygon` would break if the underlying data had
+  dtype bool.
+* Minor issues in heatmap (other than the giant issue that is that class)
+
+### Added
+* Support for decomposing projective transforms
+* Stack images now can do automatic casting between uint255 and float01
+
+
+### Changed
+* In `warp_affine` change behavior so `border_value` scalars are transformed to tuples instead of 
+  the current opencv  behavior where other channels are zeroed.
+
+
+## Version 0.9.2 - Released 2022-07-01
 
 ### Added
 * Add `wrap` kwarg to `Boxes.from_slice`
-
-
 
 ## Version 0.9.1 - Released 2022-06-30
 

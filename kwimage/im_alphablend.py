@@ -254,9 +254,16 @@ def ensure_alpha_channel(img, alpha=1.0, dtype=np.float32, copy=False):
     Args:
         img (ndarray):
             an image with shape [H, W], [H, W, 1], [H, W, 3], or [H, W, 4].
-        alpha (float): default value for missing alpha channel
-        dtype (type): a numpy floating type
-        copy (bool): always copy if True, else copy if needed.
+
+        alpha (float | ndarray):
+            default scalar value for missing alpha channel, or
+            an ndarray with the same height / width to use explicitly.
+
+        dtype (type):
+            The final output dtype. Should be numpy.float32 or numpy.float64.
+
+        copy (bool):
+            always copy if True, else copy if needed.
 
     Returns:
         ndarray: an image with specified dtype with shape [H, W, 4].
@@ -264,6 +271,39 @@ def ensure_alpha_channel(img, alpha=1.0, dtype=np.float32, copy=False):
     Raises:
         ValueError - if the input image does not have 1, 3, or 4 input channels
             or if the image cannot be converted into a float01 representation
+
+    Example:
+        >>> # Demo with a scalar default alpha value
+        >>> import kwimage
+        >>> data0 = np.zeros((5, 5))
+        >>> data1 = np.zeros((5, 5, 1))
+        >>> data2 = np.zeros((5, 5, 3))
+        >>> data3 = np.zeros((5, 5, 4))
+        >>> ensured0 = kwimage.ensure_alpha_channel(data0, alpha=0.5)
+        >>> ensured1 = kwimage.ensure_alpha_channel(data1, alpha=0.5)
+        >>> ensured2 = kwimage.ensure_alpha_channel(data2, alpha=0.5)
+        >>> ensured3 = kwimage.ensure_alpha_channel(data3, alpha=0.5)
+        >>> assert np.all(ensured0[..., 3] == 0.5), 'should have been populated'
+        >>> assert np.all(ensured1[..., 3] == 0.5), 'should have been populated'
+        >>> assert np.all(ensured2[..., 3] == 0.5), 'should have been populated'
+        >>> assert np.all(ensured3[..., 3] == 0.0), 'last image already had alpha'
+
+    Example:
+        >>> import kwimage
+        >>> # Demo with a explicit alpha channel
+        >>> alpha = np.random.rand(5, 5)
+        >>> data0 = np.zeros((5, 5))
+        >>> data1 = np.zeros((5, 5, 1))
+        >>> data2 = np.zeros((5, 5, 3))
+        >>> data3 = np.zeros((5, 5, 4))
+        >>> ensured0 = kwimage.ensure_alpha_channel(data0, alpha=alpha)
+        >>> ensured1 = kwimage.ensure_alpha_channel(data1, alpha=alpha)
+        >>> ensured2 = kwimage.ensure_alpha_channel(data2, alpha=alpha)
+        >>> ensured3 = kwimage.ensure_alpha_channel(data3, alpha=alpha)
+        >>> assert np.all(ensured0[..., 3] == alpha), 'should have been populated'
+        >>> assert np.all(ensured1[..., 3] == alpha), 'should have been populated'
+        >>> assert np.all(ensured2[..., 3] == alpha), 'should have been populated'
+        >>> assert np.all(ensured3[..., 3] == 0.0), 'last image already had alpha'
     """
     img = im_core.ensure_float01(img, dtype=dtype, copy=copy)
     c = im_core.num_channels(img)

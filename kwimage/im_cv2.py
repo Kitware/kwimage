@@ -164,7 +164,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
         type='function',
         migration='Use imresize instead.',
         deprecate=None,
-        error='0.9.2',
+        error='0.9.3',
         remove='1.0.0',
     )
 
@@ -1043,9 +1043,14 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Border code or cv2 integer. Border codes are constant (default)
             replicate, reflect, wrap, reflect101, and transparent.
 
-        border_value (int | float):
+        border_value (int | float | Iterable[int | float]):
             Used as the fill value if border_mode is constant. Otherwise this
-            is ignored.
+            is ignored. Defaults to 0, but can also be defaulted to nan.
+            if border_value is a scalar and there are multiple channels, the
+            value is applied to all channels. More than 4 unique border values
+            for individual channels will cause an error. See OpenCV #22283 for
+            details.  In the future we may accept np.ma and return a masked
+            array, but for now that is not implemented.
 
         large_warp_dim (int | None | str):
             If specified, perform the warp piecewise in chunks of the specified
@@ -1190,19 +1195,28 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> import kwimage
         >>> image = kwimage.grab_test_image('pm5644')
         >>> image = kwimage.ensure_float01(image)
-        >>> image[100:200, 400:700] = np.nan
+        >>> image[100:300, 400:700] = np.nan
         >>> transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
-        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
-        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear', border_value=0)
+        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0, border_value=np.nan)
+        >>> assert np.isnan(warped1).any()
+        >>> assert np.isnan(warped2).any()
+        >>> assert warped1[np.isnan(warped1).any(axis=2)].all()
+        >>> assert warped2[np.isnan(warped2).any(axis=2)].all()
         >>> print('warped1.shape = {!r}'.format(warped1.shape))
         >>> print('warped2.shape = {!r}'.format(warped2.shape))
         >>> assert warped2.shape == warped1.shape
+        >>> warped2[np.isnan(warped2).any(axis=2)]
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> pnum_ = kwplot.PlotNums(nRows=1, nCols=2)
-        >>> kwplot.imshow(warped1, pnum=pnum_(), title='antialias=True')
-        >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
+        >>> pnum_ = kwplot.PlotNums(nRows=1, nCols=3)
+        >>> image_canvas = kwimage.fill_nans_with_checkers(image)
+        >>> warped1_canvas = kwimage.fill_nans_with_checkers(warped1)
+        >>> warped2_canvas = kwimage.fill_nans_with_checkers(warped2)
+        >>> kwplot.imshow(image_canvas, pnum=pnum_(), title='original')
+        >>> kwplot.imshow(warped1_canvas, pnum=pnum_(), title='antialias=True, border=0')
+        >>> kwplot.imshow(warped2_canvas, pnum=pnum_(), title='antialias=False, border=nan')
         >>> kwplot.show_if_requested()
 
     Example:
@@ -1262,6 +1276,19 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     borderValue = border_value
 
     h, w = image.shape[0:2]
+
+    if not ub.iterable(borderValue):
+        # convert scalar border value to a tuple to ensure the user always
+        # fully defines the output. (and to have conciseness)
+        num_chan = im_core.num_channels(image)
+        # More than 4 channels will start to wrap around, so this is fine.
+        borderValue = (borderValue,) * min(4, num_chan)
+
+    if len(borderValue) > 4:
+        # FIXME; opencv bug
+        # https://github.com/opencv/opencv/issues/22283
+        raise ValueError('borderValue cannot have more than 4 components. '
+                         'OpenCV #22283 describes why')
 
     if isinstance(dsize, str) or large_warp_dim is not None:
         # calculate dimensions needed for auto/max/try_large_warp

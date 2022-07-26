@@ -649,8 +649,10 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         dtype (type) : can be float32 or float64
 
         mask (ndarray | None):
-            A mask indicating what pixels should be considered nodata.
-            Mutually exclusive with ``nodata`` argument.
+            A mask indicating what pixels are valid and what pixels should be
+            considered nodata.  Mutually exclusive with ``nodata`` argument.
+            A mask value of 1 indicates a VALID pixel. A mask value of 0
+            indicates an INVALID pixel.
 
     Returns:
         ndarray: a floating point array with values between 0 and 1.

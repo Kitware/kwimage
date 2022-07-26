@@ -514,7 +514,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             return new
         elif isinstance(transform, _generic.ARRAY_TYPES):
             matrix = transform
-        elif isinstance(transform, kwimage.Affine):
+        elif isinstance(transform, kwimage.Linear):
             matrix = np.asarray(transform)
         elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
             matrix = transform.params
@@ -557,6 +557,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
             raise TypeError(type(transform))
         if impl.numel(new.data) > 0:
+            # Handles projective coordinates correctly
             new.data = kwimage.warp_points(matrix, new.data)
         return new
 

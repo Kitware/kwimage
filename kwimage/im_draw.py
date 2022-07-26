@@ -19,7 +19,8 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         org (Tuple[int, int]):
             The x, y location of the text string "anchor" in the image as
             specified by halign and valign.  For instance, If valign='bottom',
-            halign='left', this is the bottom left corner.
+            halign='left', this where the bottom left corner of the text will
+            be placed.
 
         return_info (bool):
             if True, also returns information about the positions the text
