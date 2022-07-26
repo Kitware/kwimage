@@ -272,6 +272,12 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         elif img1.dtype.kind == 'u' and img2.dtype.kind == 'f':
             img1 = im_core.ensure_float01(img1)
 
+        if img1.dtype != img2.dtype:
+            if img1.dtype.kind == 'f' and img2.dtype.kind == 'f':
+                common_dtype = np.promote_types(img1.dtype, img2.dtype)
+                img1 = img1.astype(common_dtype)
+                img2 = img2.astype(common_dtype)
+
     img1, img2 = im_core.make_channels_comparable(img1, img2)
     nChannels = im_core.num_channels(img1)
 
