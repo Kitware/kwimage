@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * Issue where `Mask.to_multi_polygon` would break if the underlying data had
   dtype bool.
+* Minor issues in heatmap (other than the giant issue that is that class)
 
 ### Added
 * Support for decomposing projective transforms

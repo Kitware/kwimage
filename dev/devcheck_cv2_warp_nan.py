@@ -4,7 +4,7 @@ import cv2
 flags = cv2.INTER_LINEAR
 borderMode = cv2.BORDER_CONSTANT
 borderValue = np.nan
-# borderValue = (np.nan, np.nan, np.nan)
+borderValue = [np.nan, np.nan, np.nan, np.nan]
 
 img = np.random.rand(32, 32, 10)
 M = np.array([[ 0.92387953, -0.38268343,  0.        ],

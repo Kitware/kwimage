@@ -258,6 +258,9 @@ class _HeatmapDrawMixin(object):
             import kwimage
             colormask = self._colorize_class_idx()
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
+            if imgspace:
+                chw = torch.Tensor(colormask.transpose(2, 0, 1))
+                colormask = self._warp_imgspace(chw, interpolation=interpolation).transpose(1, 2, 0)
             return colormask
 
         if isinstance(channel, str):
@@ -404,6 +407,7 @@ class _HeatmapDrawMixin(object):
         """
         # If draw doesnt exist use draw_on
         import numpy as np
+        import kwplot
         if image is None:
             if imgspace:
                 dims = self.img_dims
@@ -413,7 +417,6 @@ class _HeatmapDrawMixin(object):
             image = np.zeros(shape, dtype=np.float32)
         image = self.draw_on(image, channel=channel, imgspace=imgspace,
                              **kwargs)
-        import kwplot
         kwplot.imshow(image)
 
     def draw_on(self, image=None, channel=None, invert=False, with_alpha=1.0,
@@ -500,7 +503,10 @@ class _HeatmapDrawMixin(object):
         import kwimage
 
         if image is None:
-            image = np.zeros(self.img_dims)
+            if imgspace:
+                image = np.zeros(self.img_dims)
+            else:
+                image = np.zeros((*self.shape[1:], 3))
 
         if channel is None:
             if 'class_idx' in self.data:
@@ -666,6 +672,13 @@ class _HeatmapWarpMixin(object):
     def upscale(self, channel=None, interpolation='linear'):
         """
         Warp the heatmap with the image dimensions
+
+        Args:
+            channel (ndarray | None):
+                if None, use class probs, else chw data.
+
+        TODO:
+            - [ ] Needs refactor
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -1283,14 +1296,29 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     @classmethod
     def random(cls, dims=(10, 10), classes=3, diameter=True, offset=True,
                keypoints=False, img_dims=None, dets=None, nblips=10, noise=0.0,
-               rng=None, ensure_background=True):
+               smooth_k=3, rng=None, ensure_background=True):
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
         Args:
-            dims (Tuple): dimensions of the heatmap
+            dims (Tuple[int, int]): dimensions of the heatmap
 
-            img_dims (Tuple): dimensions of the image the heatmap corresponds to
+            classes (int | List[str] | kwcoco.CategoryTree):
+                foreground classes
+
+            diameter (bool): if True, include a "diameter" heatmap
+
+            offset (bool): if True, include an "offset" heatmap
+
+            keypoints (bool):
+
+            smooth_k (int): kernel size for gaussian blur to smooth out
+                the heatmaps.
+
+            img_dims (Tuple):
+                dimensions of an upscaled image the heatmap corresponds to.
+                (This should be removed and simply handled with a transform
+                 in the future).
 
         Returns:
             Heatmap
@@ -1405,7 +1433,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         class_probs += noise
         np.clip(class_probs, 0, None, out=class_probs)
         # class_probs = class_probs / class_probs.sum(axis=0)
-        class_probs = np.array([smooth_prob(p) for p in class_probs])
+        class_probs = np.array([smooth_prob(p, k=smooth_k) for p in class_probs])
         class_probs = class_probs / np.maximum(class_probs.sum(axis=0), 1e-9)
 
         if not offset:
