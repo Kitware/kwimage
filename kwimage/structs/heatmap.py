@@ -437,6 +437,9 @@ class _HeatmapDrawMixin(object):
             - [ ] Find a way to visualize offset, diameter, and class_probs
                   either individually or all at the same time
 
+          CommandLine:
+              xdoctest -m /home/joncrall/code/kwimage/kwimage/structs/heatmap.py
+
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwarray
@@ -506,7 +509,7 @@ class _HeatmapDrawMixin(object):
             if imgspace:
                 image = np.zeros(self.img_dims)
             else:
-                image = np.zeros((*self.shape[1:], 3))
+                image = np.zeros((*self.shape[-2:], 3))
 
         if channel is None:
             if 'class_idx' in self.data:

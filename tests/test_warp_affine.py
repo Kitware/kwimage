@@ -90,4 +90,4 @@ def test_warp_affine_with_many_chans():
 
     img = np.random.rand(8, 8, 5)
     M = kwimage.Affine.affine(theta=np.pi / 8)
-    warped = kwimage.warp_affine(img, M, border_value=(np.nan, np.nan, np.nan, np.nan, np.nan))
+    warped = kwimage.warp_affine(img, M, border_value=np.nan)
