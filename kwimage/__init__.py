@@ -41,7 +41,7 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.9.3'
+__version__ = '0.9.4'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
