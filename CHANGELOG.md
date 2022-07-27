@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Support for decomposing projective transforms
 * Stack images now can do automatic casting between uint255 and float01
+* Added "resize" option to `stack_images_grid`
 
 
 ### Changed
