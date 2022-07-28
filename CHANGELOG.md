@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * The `Coords` object now implements `__array__`.
 * The `about` parameter for `Polygon` transformations has been
   expanded to include codes: "top,left", "top,right", etc...
+* A from_text method for masks.
 
 
 ### Fixed

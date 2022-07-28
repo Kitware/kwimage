@@ -987,14 +987,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             ................................
             ''')
         self = cls.from_text(text, zero_chr='.')
-        lines = text.split('\n')
-        data = [[0 if c == '.' else 1 for c in line] for line in lines]
-        data = np.array(data).astype(np.uint8)
-        self = cls(data, format=MaskFormat.C_MASK)
         return self
 
     @classmethod
-    def from_text(cls, text, zero_chr='.', has_border=False):
+    def from_text(cls, text, zero_chr='.', shape=None, has_border=False):
         """
         Construct a mask from a text art representation
 
@@ -1005,26 +1001,78 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             zero_chr (str):
                 the character that represents a zero
 
+            shape (None | Tuple[int, int]):
+                if specified force a specific height / width, otherwise
+                the character extent determines this.
+
             has_border (bool):
                 if True, assume the characters at the edge
                 are representing a border and remove them.
 
         Example:
-            text = ub.codeblock(
-                '''
-                +------------+
-                |            |
-                |    ooo     |
-                |    ooo     |
-                |    ooooo   |
-                |        o   |
-                |            |
-                +------------+
-                ''')
+            >>> import kwimage
+            >>> import ubelt as ub
+            >>> text = ub.indent(ub.codeblock(
+            >>>     '''
+            >>>     ooo
+            >>>     ooo
+            >>>     ooooo
+            >>>         o
+            >>>     '''))
+            >>> mask = kwimage.Mask.from_text(text, zero_chr=' ')
+            >>> print(mask.data)
+            [[0 0 0 0 1 1 1 0 0]
+             [0 0 0 0 1 1 1 0 0]
+             [0 0 0 0 1 1 1 1 1]
+             [0 0 0 0 0 0 0 0 1]]
+
+        Example:
+            >>> import kwimage
+            >>> import ubelt as ub
+            >>> text = ub.codeblock(
+            >>>     '''
+            >>>     +------------+
+            >>>     |            |
+            >>>     |    ooo     |
+            >>>     |    ooo     |
+            >>>     |    ooooo   |
+            >>>     |        o   |
+            >>>     |            |
+            >>>     +------------+
+            >>>     ''')
+            >>> mask = kwimage.Mask.from_text(text, has_border=True, zero_chr=' ')
+            >>> print(mask.data)
+            [[0 0 0 0 0 0 0 0 0 0 0 0]
+             [0 0 0 0 1 1 1 0 0 0 0 0]
+             [0 0 0 0 1 1 1 0 0 0 0 0]
+             [0 0 0 0 1 1 1 1 1 0 0 0]
+             [0 0 0 0 0 0 0 0 1 0 0 0]
+             [0 0 0 0 0 0 0 0 0 0 0 0]]
         """
         lines = text.split('\n')
         data = [[0 if c == zero_chr else 1 for c in line] for line in lines]
+        max_width = max(len(row) for row in data)
+        max_height = len(data)
+        if shape is not None:
+            max_height, max_width = shape
+
+        # Pad out (or shrink) the width of each row
+        data = [
+            row[0:max_width] if len(row) >= max_width else
+            row + [0] * (max_width - len(row))
+            for row in data
+        ]
+
+        # Pad out (or shrink) the height of the columns
+        extra_rows = max_height - len(data)
+        if extra_rows > 0:
+            data = [[0] * max_width for _ in range(extra_rows)]
+        else:
+            data = data[0:max_height]
+
         data = np.array(data).astype(np.uint8)
+        if has_border:
+            data = data[1:-1, 1:-1]
         self = cls(data, format=MaskFormat.C_MASK)
         return self
 
