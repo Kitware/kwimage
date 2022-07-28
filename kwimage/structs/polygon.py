@@ -323,45 +323,66 @@ class _PolyWarpMixin:
                     * "origin" - maps to (0, 0)
                     * "centroid" - maps to the polygon centroid
                     * "center" - alias of centroid
-                    * "top,left-bound" - the top-left of the polygon bounding box
-                    * "top,right-bound" - the top-right of the polygon bounding box
-                    * "bottom,left-bound" - the bottom-right of the polygon bounding box
-                    * "bottom,right-bound" - the bottom-left of the polygon bounding box
-                    * A comma separated code illustrated in the TextArt adapted
-                    from [SO67822179]_.
+                    * "ymin,xmin-bound" - the top-left (img coords) of the polygon bounding box
+                    * "ymin,xmax-bound" - the top-right (img coords) of the polygon bounding box
+                    * "ymax,xmin-bound" - the bottom-right (img coords) of the polygon bounding box
+                    * "ymax,xmax-bound" - the bottom-left (img coords) of the polygon bounding box
+                    * A comma separated code illustrated in the TextArt adapted from [SO67822179]_.
 
-        TextArt:
-                top,left ─────────►xxxxxxxxxx◄──────── top,right
-                                xxxx         xx
-                left,top ────►xxx             xx
-                              x                xx◄──── right,top
-                              x                 x
-             left,bottom ────►xx                x
-                               xx              xx◄──── right,bottom
-                                x             xx
-             bottom,left ──────►xxxxxxxxxxxxxxx◄────── bottom,right
+        Returns:
+            Tuple[int, int] - the x, y about position
 
         References:
             .. [SO67822179] https://stackoverflow.com/questions/67822179/poly-topleft-points
 
+        TextArt:
+
+            (0, 0)
+            + ---------> +x
+            |
+            |    ymin,left ─────────►xxxxxxxxxx◄──────── ymin,xmax
+            |                     xxxx         xx
+            V    xmin,ymin ────►xxx             xx
+            y+                  x                xx◄──── xmax,ymin
+                                x                 x
+                 xmin,ymax ────►xx                x
+                                 xx              xx◄──── xmax,ymax
+                                  x             xx
+                 ymax,left ──────►xxxxxxxxxxxxxxx◄────── ymax,xmax
+
         Example:
-            import kwimage
-            kwimage.Mask
+            >>> import kwimage
+            >>> mask = kwimage.Mask.from_text(ub.codeblock(
+            >>>     '''
+            >>>           xxxxxxxxxx
+            >>>        xxxx         xx
+            >>>      xxx             xx
+            >>>      x                xx
+            >>>      x                 x
+            >>>      xx                x
+            >>>       xx              xx
+            >>>        x             xx
+            >>>        xxxxxxxxxxxxxxx
+            >>>    '''), zero_chr=' ')
+            >>> poly = mask.to_multi_polygon().data[0]
+            >>> print(poly._rectify_about('ymin,xmin'))
+            [5 0]
+            >>> print(poly._rectify_about('xmin,ymin'))
+            [0 2]
+            >>> print(poly._rectify_about('xmin,ymax'))
+            [0 5]
+            >>> print(poly._rectify_about('ymax,xmin'))
+            [2 8]
+            >>> print(poly._rectify_about('ymin,xmax'))
+            [14  0]
+            >>> print(poly._rectify_about('xmax,ymin'))
+            [18  3]
+            >>> print(poly._rectify_about('xmax,ymax'))
+            [18  6]
+            >>> print(poly._rectify_about('ymax,xmax'))
+            [16  8]
 
-            ub.codeblock(
-            '''
-                  xxxxxxxxxx
-               xxxx         xx
-             xxx             xx
-             x                xx
-             x                 x
-             xx                x
-              xx              xx
-               x             xx
-               xxxxxxxxxxxxxxx
-           ''')
-
-
+        Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).scale(10).round().astype(np.int32)
             >>> print(self._rectify_about('center'))
@@ -417,29 +438,25 @@ class _PolyWarpMixin:
                         multiplied by this factor will be the desired extreme:
                             1 for min and -1 for max.
                         """
-                        if dir_ == 'top':
-                            axis = 1
-                            extremuf = -1
-                        elif dir_ in {'bot', 'bottom'}:
-                            axis = 1
-                            extremuf = 1
-                        elif dir_ in 'left':
-                            axis = 0
-                            extremuf = 1
-                        elif dir_ in 'right':
-                            axis = 0
-                            extremuf = -1
+                        if dir_ == 'ymax':
+                            axis, extremf = 1, -1
+                        elif dir_ == 'ymin':
+                            axis, extremf = 1, +1
+                        elif dir_ == 'xmin':
+                            axis, extremf = 0, +1
+                        elif dir_ == 'xmax':
+                            axis, extremf = 0, -1
                         else:
                             raise KeyError
-                        return axis, extremuf
+                        return axis, extremf
 
                     try:
-                        axis1, extremuf1 = dir_to_axis_and_extremum(dir1)
+                        axis1, extremf1 = dir_to_axis_and_extremum(dir1)
                     except KeyError:
                         raise KeyError(
                             'Unknown dir1={} in about={}'.format(dir1, about))
                     try:
-                        axis2, extremuf2 = dir_to_axis_and_extremum(dir2)
+                        axis2, extremf2 = dir_to_axis_and_extremum(dir2)
                     except KeyError:
                         raise KeyError(
                             'Unknown dir1={} in about={}'.format(dir1, about))
@@ -449,7 +466,7 @@ class _PolyWarpMixin:
                             'Specified directions in about={} '
                             'cannot be on the same axis').format(about))
 
-                    extremuf_ = np.array([[extremuf1, extremuf2]])
+                    extremuf_ = np.array([[extremf1, extremf2]])
 
                     pt = min((points[:, [axis1, axis2]] * extremuf_).tolist())
                     about_ = (np.array(pt) * extremuf_[0])[[axis1, axis2]]
