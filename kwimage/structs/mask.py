@@ -986,8 +986,44 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             ................................
             ................................
             ''')
+        self = cls.from_text(text, zero_chr='.')
         lines = text.split('\n')
         data = [[0 if c == '.' else 1 for c in line] for line in lines]
+        data = np.array(data).astype(np.uint8)
+        self = cls(data, format=MaskFormat.C_MASK)
+        return self
+
+    @classmethod
+    def from_text(cls, text, zero_chr='.', has_border=False):
+        """
+        Construct a mask from a text art representation
+
+        Args:
+            text (str):
+                the text representing a mask
+
+            zero_chr (str):
+                the character that represents a zero
+
+            has_border (bool):
+                if True, assume the characters at the edge
+                are representing a border and remove them.
+
+        Example:
+            text = ub.codeblock(
+                '''
+                +------------+
+                |            |
+                |    ooo     |
+                |    ooo     |
+                |    ooooo   |
+                |        o   |
+                |            |
+                +------------+
+                ''')
+        """
+        lines = text.split('\n')
+        data = [[0 if c == zero_chr else 1 for c in line] for line in lines]
         data = np.array(data).astype(np.uint8)
         self = cls(data, format=MaskFormat.C_MASK)
         return self
