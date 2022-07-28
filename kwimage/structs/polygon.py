@@ -217,14 +217,17 @@ class _PolyWarpMixin:
         Args:
             factor (float | Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+
             about (Tuple | None):
                 if unspecified scales about the origin (0, 0), otherwise the
                 scaling is about this point. Can be "centroid" and will use
-                centroid of polygon Using "top,left" will be the
-                topmost,leftmost point on the polygon. Using "top,left-bound"
-                will be the top-left point on the polygon bounding box. See
-                :func:`_PolyWarpMixin._rectify_about` for details bout codes.
+                centroid of polygon Using "ymin,xmin" will be the
+                topmost,leftmost point on the polygon (wrt image coords).
+                See :func:`_PolyWarpMixin._rectify_about` for details bout
+                codes.
+
             output_dims (Tuple): unused in non-raster spatial structures
+
             inplace (bool): if True, modifies data inplace
 
         Example:
@@ -385,11 +388,11 @@ class _PolyWarpMixin:
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).scale(10).round().astype(np.int32)
-            >>> print(self._rectify_about('center'))
-            >>> print(self._rectify_about('top,left'))
-            >>> print(self._rectify_about('left,top'))
-            >>> print(self._rectify_about('top,left-bounds'))
-            >>> print(self._rectify_about('left,top-bounds'))
+            >>> print(self._rectify_about('centroid'))
+            >>> print(self._rectify_about('ymax,xmin'))
+            >>> print(self._rectify_about('xmin,ymax'))
+            >>> print(self._rectify_about('ymax,xmin-bounds'))
+            >>> print(self._rectify_about('xmin,ymax-bounds'))
             (4.325, 3.9)
             [5 8]
             [1 6]
