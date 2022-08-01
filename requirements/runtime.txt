@@ -38,3 +38,4 @@ ubelt>=1.1.2
 kwarray>=0.6.0
 
 distinctipy>=1.2.1
+parse>=1.14.0

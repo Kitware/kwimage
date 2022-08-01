@@ -63,8 +63,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> img1 = kwimage.grab_test_image('carl', space='rgb')
         >>> img2 = kwimage.grab_test_image('astro', space='rgb')
         >>> images = [img1, img2]
-        >>> imgB, transforms = stack_images(images, axis=0, resize='larger',
-        >>>                                 overlap=-10, return_info=True)
+        >>> imgB, transforms = kwimage.stack_images(
+        >>>     images, axis=0, resize='larger', pad=10, return_info=True)
         >>> print('imgB.shape = {}'.format(imgB.shape))
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
@@ -120,7 +120,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
 
 
 def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
-                      return_info=False, bg_value=None, allow_casting=True):
+                      return_info=False, bg_value=None, resize=None,
+                      allow_casting=True):
     """
     Stacks images in a grid. Optionally return transforms of original image
     positions in the output image.
@@ -146,6 +147,10 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
         return_info (bool): if True, returns transforms (scales and
             translations) to map from original image to its new location.
 
+        resize (int | str | None):
+            if None image sizes are not modified, otherwise can be set to
+            "larger" or "smaller" to resize the images in each stack direction.
+
         bg_value (Number | ndarray) : background value, if specified,
             uses this as a fill value.
 
@@ -162,6 +167,26 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
 
     SeeAlso:
         :func:`kwimage.im_stack.stack_images`
+
+    Example:
+        >>> import kwimage
+        >>> img1 = kwimage.grab_test_image('carl')
+        >>> img2 = kwimage.grab_test_image('astro')
+        >>> img3 = kwimage.grab_test_image('airport')
+        >>> img4 = kwimage.grab_test_image('paraview')[..., 0:3]
+        >>> img5 = kwimage.grab_test_image('pm5644')
+        >>> images = [img1, img2, img3, img4, img5]
+        >>> bg_color = list(kwimage.Color('kitware_blue').as255())
+        >>> canvas, transforms = kwimage.stack_images_grid(
+        ...     images, chunksize=3, axis=0, pad=10, bg_value=bg_color,
+        ...     return_info=True, resize='larger')
+        >>> print('canvas.shape = {}'.format(canvas.shape))
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> import kwimage
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(canvas)
+        >>> kwplot.show_if_requested()
     """
     import ubelt as ub
     if chunksize is None:
@@ -174,7 +199,7 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
     for batch in ub.chunks(images, chunksize, bordermode='none'):
         stack1, tfs1 = stack_images(batch, overlap=overlap, return_info=True,
                                     bg_value=bg_value,
-                                    resize=None, axis=1 - axis)
+                                    resize=resize, axis=1 - axis)
         tfs1_list.append(tfs1)
         stack1_list.append(stack1)
 

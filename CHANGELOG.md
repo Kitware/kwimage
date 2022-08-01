@@ -4,7 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.3 - Unreleased
+## Version 0.9.4 - Unreleased
+
+
+### Added
+* Added "resize" option to `stack_images_grid`
+* The `Coords` object now implements `__array__`.
+* The `about` parameter for `Polygon` transformations has been
+  expanded to include codes: "top,left", "top,right", etc...
+* A from_text method for masks.
+
+
+### Fixed
+* Fixed issue in copy methods of polygon and coords
+
+
+## Version 0.9.3 - Released 2022-07-26
 
 
 ### Fixed

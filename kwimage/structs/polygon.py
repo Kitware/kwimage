@@ -217,11 +217,17 @@ class _PolyWarpMixin:
         Args:
             factor (float | Tuple[float, float]):
                 scale factor as either a scalar or a (sf_x, sf_y) tuple.
+
             about (Tuple | None):
                 if unspecified scales about the origin (0, 0), otherwise the
-                scaling is about this point. Can be "center" and will use
-                centroid of polygon
+                scaling is about this point. Can be "centroid" and will use
+                centroid of polygon Using "ymin,xmin" will be the
+                topmost,leftmost point on the polygon (wrt image coords).
+                See :func:`_PolyWarpMixin._rectify_about` for details bout
+                codes.
+
             output_dims (Tuple): unused in non-raster spatial structures
+
             inplace (bool): if True, modifies data inplace
 
         Example:
@@ -232,7 +238,7 @@ class _PolyWarpMixin:
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).translate((0.5))
-            >>> new = self.scale(1.5, about='center')
+            >>> new = self.scale(1.5, about='centroid')
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -314,10 +320,84 @@ class _PolyWarpMixin:
         Ensures that about returns a specified point. Allows for special keys
         like center to be used.
 
+        Args:
+            about (str | Tuple): either a numeric coordinate or a
+                string code that specifies one. Valid string codes are
+                    * "origin" - maps to (0, 0)
+                    * "centroid" - maps to the polygon centroid
+                    * "center" - alias of centroid
+                    * "ymin,xmin-bound" - the top-left (img coords) of the polygon bounding box
+                    * "ymin,xmax-bound" - the top-right (img coords) of the polygon bounding box
+                    * "ymax,xmin-bound" - the bottom-right (img coords) of the polygon bounding box
+                    * "ymax,xmax-bound" - the bottom-left (img coords) of the polygon bounding box
+                    * A comma separated code illustrated in the TextArt adapted from [SO67822179]_.
+
+        Returns:
+            Tuple[int, int] - the x, y about position
+
+        References:
+            .. [SO67822179] https://stackoverflow.com/questions/67822179/poly-topleft-points
+
+        TextArt:
+
+            (0, 0)
+            + ---------> +x
+            |
+            |    ymin,left ─────────►xxxxxxxxxx◄──────── ymin,xmax
+            |                     xxxx         xx
+            V    xmin,ymin ────►xxx             xx
+            y+                  x                xx◄──── xmax,ymin
+                                x                 x
+                 xmin,ymax ────►xx                x
+                                 xx              xx◄──── xmax,ymax
+                                  x             xx
+                 ymax,left ──────►xxxxxxxxxxxxxxx◄────── ymax,xmax
+
+        Example:
+            >>> import kwimage
+            >>> mask = kwimage.Mask.from_text(ub.codeblock(
+            >>>     '''
+            >>>           xxxxxxxxxx
+            >>>        xxxx         xx
+            >>>      xxx             xx
+            >>>      x                xx
+            >>>      x                 x
+            >>>      xx                x
+            >>>       xx              xx
+            >>>        x             xx
+            >>>        xxxxxxxxxxxxxxx
+            >>>    '''), zero_chr=' ')
+            >>> poly = mask.to_multi_polygon().data[0]
+            >>> print(poly._rectify_about('ymin,xmin'))
+            [5 0]
+            >>> print(poly._rectify_about('xmin,ymin'))
+            [0 2]
+            >>> print(poly._rectify_about('xmin,ymax'))
+            [0 5]
+            >>> print(poly._rectify_about('ymax,xmin'))
+            [2 8]
+            >>> print(poly._rectify_about('ymin,xmax'))
+            [14  0]
+            >>> print(poly._rectify_about('xmax,ymin'))
+            [18  3]
+            >>> print(poly._rectify_about('xmax,ymax'))
+            [18  6]
+            >>> print(poly._rectify_about('ymax,xmax'))
+            [16  8]
+
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random(10, rng=0)
-            >>> self._rectify_about('center')
+            >>> self = Polygon.random(10, rng=0).scale(10).round().astype(np.int32)
+            >>> print(self._rectify_about('centroid'))
+            >>> print(self._rectify_about('ymax,xmin'))
+            >>> print(self._rectify_about('xmin,ymax'))
+            >>> print(self._rectify_about('ymax,xmin-bounds'))
+            >>> print(self._rectify_about('xmin,ymax-bounds'))
+            (4.325, 3.9)
+            [5 8]
+            [1 6]
+            [1 8]
+            [1 8]
         """
         if about is None:
             about_ = None
@@ -325,14 +405,139 @@ class _PolyWarpMixin:
             if isinstance(about, str):
                 if about == 'origin':
                     about_ = (0., 0.)
-                elif about == 'center':
+                elif about in {'center', 'centroid'}:
                     centroid = self.to_shapely().centroid
                     about_ = (centroid.x, centroid.y)
                 else:
-                    raise KeyError(about)
+                    # NOTE: We may want to generalize this to keypoints /
+                    # coordinates as well (or at least keypoints, not sure
+                    # about coordinates, i.e. the notion of a top-left doesnt
+                    # make sense for general ND-points), but punting on this
+                    # for now and just putting it where it is immediately
+                    # needed.
+                    import parse
+                    pattern1 = parse.Parser('{dir1},{dir2}-{qualifier}')
+                    pattern2 = parse.Parser('{dir1},{dir2}')
+                    found = pattern1.parse(about) or pattern2.parse(about)
+                    if found is None:
+                        raise KeyError('Unknown code about={}'.format(about))
+                    parts = found.named
+                    dir1 = parts.get('dir1')
+                    dir2 = parts.get('dir2')
+
+                    qualifier = parts.get('qualifier', 'poly')
+                    if qualifier == 'bounds':
+                        points = self.to_boxes().to_polygons()[0].exterior.data
+                    elif qualifier == 'poly':
+                        points = self.exterior.data
+                    else:
+                        raise KeyError(
+                            'Unknown qualifier={} in about={}'.format(
+                                qualifier, about))
+
+                    def dir_to_axis_and_extremum(dir_):
+                        """
+                        extremuf is a factor where the minimum of the data
+                        multiplied by this factor will be the desired extreme:
+                            1 for min and -1 for max.
+                        """
+                        if dir_ == 'ymax':
+                            axis, extremf = 1, -1
+                        elif dir_ == 'ymin':
+                            axis, extremf = 1, +1
+                        elif dir_ == 'xmin':
+                            axis, extremf = 0, +1
+                        elif dir_ == 'xmax':
+                            axis, extremf = 0, -1
+                        else:
+                            raise KeyError
+                        return axis, extremf
+
+                    try:
+                        axis1, extremf1 = dir_to_axis_and_extremum(dir1)
+                    except KeyError:
+                        raise KeyError(
+                            'Unknown dir1={} in about={}'.format(dir1, about))
+                    try:
+                        axis2, extremf2 = dir_to_axis_and_extremum(dir2)
+                    except KeyError:
+                        raise KeyError(
+                            'Unknown dir1={} in about={}'.format(dir1, about))
+
+                    if axis2 == axis1:
+                        raise ValueError((
+                            'Specified directions in about={} '
+                            'cannot be on the same axis').format(about))
+
+                    extremuf_ = np.array([[extremf1, extremf2]])
+
+                    pt = min((points[:, [axis1, axis2]] * extremuf_).tolist())
+                    about_ = (np.array(pt) * extremuf_[0])[[axis1, axis2]]
             else:
                 about_ = about if ub.iterable(about) else [about] * 2
         return about_
+
+    def round(self, decimals=0, inplace=False):
+        """
+        Rounds data to the specified decimal place.
+        This may make the polygon invalid.
+
+        Args:
+            inplace (bool): if True, modifies this object
+            decimals (int): number of decimal places to round to
+
+        Returns:
+            Polygon: modified polygon
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(3).scale(10)
+            >>> new = self.round()
+            >>> assert np.any(self.exterior.data != new.exterior.data)
+            >>> assert np.all(self.exterior.data.round() == new.exterior.data)
+            >>> # demo a case that makes the polygon invalid
+            >>> self = kwimage.Polygon.random(6).scale(0.1)
+            >>> new = self.round()
+            >>> assert np.any(self.exterior.data != new.exterior.data)
+            >>> assert np.all(self.exterior.data.round() == new.exterior.data)
+        """
+        new = self if inplace else self.copy()
+        # new.data['exterior'].round(decimals=decimals, inplace=True)
+        # for hole in new.data['interiors']:
+        #     hole.round(decimals=decimals, inplace=True)
+        # print(f'inplace={inplace}')
+        new.data['exterior'] = new.data['exterior'].round(decimals=decimals, inplace=inplace)
+        new.data['interiors'][:] = [
+            hole.round(decimals=decimals, inplace=inplace)
+            for hole in new.data['interiors']
+        ]
+        return new
+
+    def astype(self, dtype, inplace=False):
+        """
+        Changes the data type
+
+        Args:
+            dtype : new type
+            inplace (bool): if True, modifies this object
+
+        Returns:
+            Polygon: modified polygon
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(3, rng=0).scale(10)
+            >>> new = self.astype(np.int32)
+            >>> assert np.any(self.exterior.data != new.exterior.data)
+            >>> assert np.all(self.exterior.data.astype(np.int32) == new.exterior.data)
+        """
+        new = self if inplace else self.copy()
+        new.data['exterior'] = new.data['exterior'].astype(dtype, inplace=inplace)
+        new.data['interiors'][:] = [
+            hole.astype(dtype, inplace=inplace)
+            for hole in new.data['interiors']
+        ]
+        return new
 
     def swap_axes(self, inplace=False):
         """
@@ -344,7 +549,7 @@ class _PolyWarpMixin:
         Returns:
             Polygon: modified polygon
         """
-        new = self if inplace else self.__class__(self.data.copy())
+        new = self if inplace else self.copy()
         new.data['exterior'] = new.data['exterior'].reorder_axes(
             (1, 0), inplace=inplace)
         new.data['interiors'] = [
@@ -903,7 +1108,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         # TODO: better method for checking nest depth
         coords = data_geojson['coordinates']
         def check_leftmost_depth(data):
-            # quick check leftmost depth of a nested struct
+            # quick check_leftmost_depth of a nested struct
             item = data
             depth = 0
             while isinstance(item, (list, tuple)):
@@ -1133,7 +1338,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         Returns:
             Polygon: a copy
         """
-        self2 = Polygon(self.data, self.meta)
+        self2 = self.__class__(self.data.copy(), self.meta.copy())
         self2.data['exterior'] = self2.data['exterior'].copy()
         self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
         return self2

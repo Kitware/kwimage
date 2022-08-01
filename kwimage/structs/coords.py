@@ -105,6 +105,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self.data = data
         self.meta = meta
 
+    def __array__(self):
+        return np.asarray(self.data)
+
     def __nice__(self):
         data_repr = repr(self.data)
         if '\n' in data_repr:
@@ -167,8 +170,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             Coords: filtered coords
 
         Example:
-            >>> from kwimage.structs.coords import *  # NOQA
-            >>> self = Coords.random(10, rng=0)
+            >>> import kwimage
+            >>> self = kwimage.Coords.random(10, rng=0)
             >>> self.compress([True] * len(self))
             >>> self.compress([False] * len(self))
             <Coords(data=array([], shape=(0, 2), dtype=float64))>
@@ -196,7 +199,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             Coords: filtered coords
 
         Example:
-            >>> self = Coords(np.array([[25, 30, 15, 10]]))
+            >>> import kwimage
+            >>> self = kwimage.Coords(np.array([[25, 30, 15, 10]]))
             >>> self.take([0])
             <Coords(data=array([[25, 30, 15, 10]]))>
             >>> self.take([])
@@ -221,20 +225,24 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.astype(new.data, dtype, copy=not inplace)
         return new
 
-    def round(self, inplace=False):
+    def round(self, decimals=0, inplace=False):
         """
-        Rounds data to the nearest integer
+        Rounds data to the specified decimal place
 
         Args:
             inplace (bool): if True, modifies this object
+            decimals (int): number of decimal places to round to
+
+        Returns:
+            Coords: modified coordinates
 
         Example:
             >>> import kwimage
             >>> self = kwimage.Coords.random(3).scale(10)
             >>> self.round()
         """
-        new = self if inplace else self.__class__(self.data, self.meta)
-        new.data = self._impl.round(new.data)
+        new = self if inplace else self.copy()
+        new.data = self._impl.round(new.data, decimals=decimals)
         return new
 
     def view(self, *shape):
@@ -653,11 +661,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
-            >>> from kwimage.structs.coords import *  # NOQA
-            >>> self = Coords.random(10)
+            >>> import kwimage
+            >>> import numpy as np
+            >>> self = kwimage.Coords.random(10)
             >>> input_dims = (10, 10)
             >>> kpoi = self.to_imgaug(input_dims)
-            >>> new = Coords.from_imgaug(kpoi)
+            >>> new = kwimage.Coords.from_imgaug(kpoi)
             >>> assert np.allclose(new.data, self.data)
         """
         import imgaug
@@ -679,6 +688,30 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             kps = [imgaug.Keypoint(x, y) for x, y in self.data]
             kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi
+
+    # Err... not sure abou this function. Punting.
+    # def to_shapely(self):
+    #     """
+    #     A shapely representation of these coordinates.
+
+    #     Note:
+    #         This does not return shapely.coords.CoordinateSequence which is
+    #         something more fundamental than what we are doing here.  Our
+    #         interpretation of coordinates is still geometric.  Unfortunately
+    #         there isn't a perfect correspondence, but LineString is close.
+
+    #     Returns:
+    #         shapely.geometry.MultiLineString
+
+    #     Example:
+    #         >>> import kwimage
+    #         >>> self = kwimage.Coords.random(10)
+    #         >>> geom = self.to_shapely()
+    #         >>>
+    #     """
+    #     from shapely import geometry
+    #     new = geometry.LineString(self.data)
+    #     return new
 
     @classmethod
     def from_imgaug(cls, kpoi):
