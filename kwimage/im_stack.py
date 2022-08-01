@@ -180,7 +180,7 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
         >>> canvas, transforms = kwimage.stack_images_grid(
         ...     images, chunksize=3, axis=0, pad=10, bg_value=bg_color,
         ...     return_info=True, resize='larger')
-        >>> print('imgB.shape = {}'.format(imgB.shape))
+        >>> print('canvas.shape = {}'.format(canvas.shape))
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> import kwimage
