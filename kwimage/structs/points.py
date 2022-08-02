@@ -5,6 +5,7 @@ import numpy as np
 import ubelt as ub
 import skimage
 import kwarray
+import numbers
 import warnings
 from kwimage.structs import _generic
 
@@ -354,6 +355,26 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     def draw_on(self, image=None, color='white', radius=None, copy=False):
         """
+
+        Args:
+            image (ndarray): image to draw points on.
+
+            color (str | Any | List[Any]):
+                one color for all boxes or a list of colors for each box
+                Can be any type accepted by kwimage.Color.coerce.
+                Extended types: str | ColorLike | List[ColorLike]
+
+            radius (None | int):
+                if an integer, an circle is drawn at each xy point with this
+                radius.
+                if None, attempts to fill a single point with subpixel accuracy,
+                which generally means 4 pixels will be given some weight.
+                Note: color can only be a single value for all points in this
+                case.
+
+            copy (bool): if True, force a copy of the image, otherwise
+                try to draw inplace (may not work depending on dtype).
+
         CommandLine:
             xdoctest -m ~/code/kwimage/kwimage/structs/points.py Points.draw_on --show
 
@@ -427,25 +448,77 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # Test cases where single and multiple colors are given
+            >>> # with radius=None and radius=scalar
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> self = Points.random(10).scale(32)
+            >>> image1 = self.draw_on(radius=2, color='blue')
+            >>> image2 = self.draw_on(radius=None, color='blue')
+            >>> image3 = self.draw_on(radius=2, color='distinct')
+            >>> image4 = self.draw_on(radius=None, color='distinct')
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> canvas = kwimage.stack_images_grid(
+            >>>     [image1, image2, image3, image4],
+            >>>     pad=3, bg_value=(1, 1, 1))
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(canvas)
+            >>> kwplot.show_if_requested()
         """
         import kwimage
         if image is None:
             maxx, maxy = self.xy.max(axis=0)
-            maxx = int(np.ceil(maxx * 1.1))
-            maxy = int(np.ceil(maxy * 1.1))
+            maxx = int(np.ceil(maxx) + 1)
+            maxy = int(np.ceil(maxy) + 1)
+            image = np.zeros((maxy, maxx, 3), dtype=np.float32)
+        elif isinstance(image, tuple):
+            # I forgot what the standard is that we use here...
+            maxy, maxx = image
             image = np.zeros((maxx, maxy, 3), dtype=np.float32)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
+        single_color = False
+
+        if color == 'distinct':
+            colors = [kwimage.Color(c) for c in kwimage.Color.distinct(len(self))]
+        elif color == 'classes':
+            # TODO: read colors from categories if they exist
+            class_idxs = self.data['class_idxs']
+            _keys, _vals = kwarray.group_indices(class_idxs)
+            cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
+            colors = list(ub.take(cls_colors, class_idxs))
+            colors = [kwimage.Color(c) for c in colors]
+        else:
+            num = len(self)
+            if isinstance(color, list) and not isinstance(color, numbers.Number):
+                # Passed list of color for each point
+                colors = [kwimage.Color(c) for c in color]
+            else:
+                # Passed a single color
+                single_color = True
+                colors = [kwimage.Color(color)] * num
+
         if radius is None:
-            if color == 'distinct':
-                raise NotImplementedError
             image = kwimage.atleast_3channels(image)
             image = kwimage.ensure_float01(image, copy=copy)
             # value = kwimage.Color(color).as01()
-            value = kwimage.Color(color)._forimage(image)
-            image = self.data['xy'].fill(
-                image, value, coord_axes=[1, 0], interp='bilinear')
+            if single_color:
+                color_value = np.array(colors[0]._forimage(image))
+                image = self.data['xy'].fill(
+                    image, color_value, coord_axes=[1, 0], interp='bilinear')
+            else:
+                # Need to loop when thare are multiple colors
+                color_values = [np.array(kwimage.Color(c)._forimage(image))
+                                for c in colors]
+                xy_pts = self.data['xy'].data.reshape(-1, 2)
+                for xy, color_ in zip(xy_pts, color_values):
+                    image = kwimage.subpixel_setvalue(
+                        image, xy[None, :], color_, coord_axes=[1, 0],
+                        interp='bilinear')
         else:
             import cv2
             image = kwimage.atleast_3channels(image, copy=copy)
@@ -454,26 +527,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             image = np.ascontiguousarray(image)
 
             xy_pts = self.data['xy'].data.reshape(-1, 2)
+            color_values = [kwimage.Color(c)._forimage(image) for c in colors]
 
-            if color == 'distinct':
-                colors = kwimage.Color.distinct(len(xy_pts))
-            elif color == 'classes':
-                # TODO: read colors from categories if they exist
-                class_idxs = self.data['class_idxs']
-                _keys, _vals = kwarray.group_indices(class_idxs)
-                cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
-                colors = list(ub.take(cls_colors, class_idxs))
-                colors = [kwimage.Color(c)._forimage(image) for c in colors]
-                # if image.dtype.kind == 'f':
-                #     colors = [kwimage.Color(c).as01() for c in colors]
-                # else:
-                #     colors = [kwimage.Color(c).as255() for c in colors]
-            else:
-                value = kwimage.Color(color)._forimage(image)
-                colors = [value] * len(xy_pts)
-                # image = kwimage.ensure_float01(image)
-
-            for xy, color_ in zip(xy_pts, colors):
+            for xy, color_ in zip(xy_pts, color_values):
                 # center = tuple(map(int, xy.tolist()))
                 center = tuple(xy.tolist())
                 axes = (radius / 2, radius / 2)

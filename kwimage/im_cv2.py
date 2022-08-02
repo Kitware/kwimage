@@ -1732,11 +1732,10 @@ _CV2_MORPH_MODES = {
 
 
 @lru_cache(128)
-def _morph_kernel_core(h, w, element):
+def _morph_kernel_core(w, h, element):
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
     element = cv2.getStructuringElement(struct_shape, (h, w))
     return element
-    # return np.ones((h, w), np.uint8)
 
 
 def _morph_kernel(size, element='rect'):
@@ -1758,13 +1757,8 @@ def _morph_kernel(size, element='rect'):
         >>> kwplot.show_if_requested()
 
     """
-    if isinstance(size, int):
-        h = size
-        w = size
-    else:
-        h, w = size
-        # raise NotImplementedError
-    return _morph_kernel_core(h, w, element)
+    w = h = size if isinstance(size, int) else size
+    return _morph_kernel_core(w, h, element)
 
 
 def morphology(data, mode, kernel=5, element='rect', iterations=1):
@@ -1779,7 +1773,8 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
             dilate, ellipse, open, close, gradient, tophat, blackhat, or
             hitmiss
 
-        kernel (int | Tuple[int, int]): size of the morphology kernel
+        kernel (int | Tuple[int, int]):
+            size of the morphology kernel (w, h).
 
         element (str):
             structural element, can be rect, cross, or ellipse.
@@ -1835,3 +1830,130 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
     new = cv2.morphologyEx(
         data, op=morph_mode, kernel=kernel, iterations=iterations)
     return new
+
+
+def connected_components(image, connectivity=8, ltype=np.int32,
+                         with_stats=True, algo='default'):
+    """
+    Find connected components in a binary image.
+
+    Wrapper around :func:`cv2.connectedComponentsWithStats`.
+
+    Args:
+        image (ndarray): a binary uint8 image. Zeros denote the background, and
+            non-zeros numbers are foreground regions that will be partitioned
+            into connected components.
+
+        connectivity (int): either 4 or 8
+
+        ltype (dtype | str | int):
+            The dtype for the output label array.
+            Can be either 'int32' or 'uint16', and this can be specified as a
+            cv2 code or a numpy dtype.
+
+        algo (str):
+            The underlying algorithm to use. See [Cv2CCAlgos]_ for details.
+            Options are spaghetti, sauf, bbdt. (default is spaghetti)
+
+    Returns:
+        Tuple[ndarray, dict]:
+            The label array and an information dictionary
+
+    TODO:
+        Document the details of which type of coordinates we are using.
+        I.e. are pixels points or areas? (I think this uses the points
+        convention?)
+
+    Note:
+        opencv 4.5.5 will segfault if connectivity=4
+        See: https://github.com/opencv/opencv/issues/21366
+
+    References:
+        .. [SO35854197] https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connectedcomponentswithstats-in-python
+        .. [Cv2CCAlgos] https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#ga5ed7784614678adccb699c70fb841075
+
+    CommandLine:
+        xdoctest -m kwimage.im_cv2 connected_components:0 --show
+
+    Example:
+        >>> import kwimage
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> mask = kwimage.Mask.demo()
+        >>> image = mask.data
+        >>> labels, info = connected_components(image)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> canvas0 = kwimage.atleast_3channels(mask.data * 255)
+        >>> canvas2 = canvas0.copy()
+        >>> canvas3 = canvas0.copy()
+        >>> boxes = info['label_boxes']
+        >>> centroids = info['label_centroids']
+        >>> label_colors = kwimage.Color.distinct(info['num_labels'])
+        >>> index_to_color = np.array([kwimage.Color('black').as01()] + label_colors)
+        >>> canvas2 = centroids.draw_on(canvas2, color=label_colors, radius=None)
+        >>> boxes.draw_on(canvas3, color=label_colors, thickness=1)
+        >>> legend = kwplot.make_legend_img(ub.dzip(range(len(index_to_color)), index_to_color))
+        >>> colored_label_img = index_to_color[labels]
+        >>> canvas1 = kwimage.stack_images([colored_label_img, legend], axis=1, resize='smaller')
+        >>> kwplot.imshow(canvas0, pnum=(1, 4, 1), title='input image')
+        >>> kwplot.imshow(canvas1, pnum=(1, 4, 2), title='label image (colored w legend)')
+        >>> kwplot.imshow(canvas2, pnum=(1, 4, 3), title='component centroids')
+        >>> kwplot.imshow(canvas3, pnum=(1, 4, 4), title='component bounding boxes')
+    """
+
+    if isinstance(ltype, str):
+        if ltype in {'int32', 'CV2_32S'}:
+            ltype = np.int32
+        elif ltype in {'uint16', 'CV_16U'}:
+            ltype = np.uint16
+    if ltype is np.int32:
+        ltype = cv2.CV_32S
+    elif ltype is np.int16:
+        ltype = cv2.CV_16U
+    if not isinstance(ltype, int):
+        raise TypeError('type(ltype) = {}'.format(type(ltype)))
+
+    # It seems very easy for a segfault to happen here.
+    image = np.ascontiguousarray(image)
+    if image.dtype.kind != 'u' or image.dtype.itemsize != 1:
+        raise ValueError('input image must be a uint8')
+
+    if algo != 'default':
+        if algo in {'spaghetti', 'bolelli'}:
+            ccltype = cv2.CCL_SPAGHETTI
+        elif algo in {'sauf', 'wu'}:
+            ccltype = cv2.CCL_SAUF
+        elif algo in {'bbdt', 'grana'}:
+            ccltype = cv2.CCL_BBDT
+        else:
+            raise KeyError(algo)
+
+        if with_stats:
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStatsWithAlgorithm(
+                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype)
+        else:
+            num_labels, labels = cv2.connectedComponentsWithAlgorithm(
+                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype)
+    else:
+        if with_stats:
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+                image, connectivity=connectivity, ltype=ltype)
+        else:
+            num_labels, labels = cv2.connectedComponents(
+                image, connectivity=connectivity, ltype=ltype)
+
+    info = {
+        'num_labels': num_labels,
+    }
+
+    if with_stats:
+        # Transform stats into a kwimage boxes object for each label
+        import kwimage
+        info['label_boxes'] = kwimage.Boxes(stats[:, [
+            cv2.CC_STAT_LEFT, cv2.CC_STAT_TOP,
+            cv2.CC_STAT_WIDTH, cv2.CC_STAT_HEIGHT]], 'ltwh')
+        info['label_areas'] = stats[:, cv2.CC_STAT_AREA]
+        info['label_centroids'] = kwimage.Points(xy=centroids)
+
+    return labels, info

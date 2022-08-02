@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.5 - Unreleased
 
+### Added
+* `kwimage.connected_components`
+
+### Fixed
+* Passing single and multiple colors now works correctly for `Points.draw_on`.
+
 
 ## Version 0.9.4 - Released 2022-08-01
 

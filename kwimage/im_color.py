@@ -3,6 +3,8 @@ import ubelt as ub
 from collections import OrderedDict
 from . import im_core
 
+__all__ = ['Color']
+
 
 def _lookup_colorspace_object(space):
     from colormath import color_objects
