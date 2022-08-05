@@ -6,6 +6,13 @@ sphinx-autoapi >= 1.8.4
 Pygments >= 2.9.0
 myst_parser >= 0.18.0
 sphinx-reredirects >= 0.0.1
-ubelt >= 1.2.0
+
+
+## FOR FIGURES
+# ubelt >= 1.2.0
 xdoctest >= 0.15.6
 kwplot 
+six
+-r headless.txt
+-r optional.txt
+-r runtime.txt
