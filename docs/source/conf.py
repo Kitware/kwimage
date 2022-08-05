@@ -657,7 +657,12 @@ def create_doctest_figure(app, obj, name, lines):
                 # print('-- SHOW TEST---')
                 # print(doctest.format_src())
                 # kwplot.close_figures()
-                from xdoctest.exceptions import Skipped
+                try:
+                    from xdoctest.exceptions import Skipped
+                except ImportError:  # nocover
+                    # Define dummy skipped exception if pytest is not available
+                    class Skipped(Exception):
+                        pass
                 try:
                     doctest.run(on_error='return')
                     ...

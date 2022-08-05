@@ -1083,18 +1083,21 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
         >>> orig_img = kwimage.ensure_float01(kwimage.grab_test_image())
-        >>> poly1 = kwimage.Polygon.random().scale(orig_img.shape[0] // 2)
-        >>> poly2 = kwimage.Polygon.random().scale(orig_img.shape[0])
+        >>> poly1 = kwimage.Polygon.random(rng=1).scale(orig_img.shape[0] // 2)
+        >>> poly2 = kwimage.Polygon.random(rng=3).scale(orig_img.shape[0])
+        >>> poly3 = kwimage.Polygon.random(rng=4).scale(orig_img.shape[0] // 2)
+        >>> poly3 = poly3.translate((0, 200))
         >>> img = orig_img.copy()
         >>> img = poly1.fill(img, np.nan)
+        >>> img = poly3.fill(img, 0)
         >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
         >>> canvas = img.copy()
         >>> canvas = fill_nans_with_checkers(canvas)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img, pnum=(1, 2, 1))
-        >>> kwplot.imshow(canvas, pnum=(1, 2, 2))
+        >>> kwplot.imshow(img, pnum=(1, 2, 1), title='matplotlib treats nans as zero or transparent')
+        >>> kwplot.imshow(canvas, pnum=(1, 2, 2), title='nan checker make it clear where real nans are')
 
     Example:
         >>> # Test grayscale
