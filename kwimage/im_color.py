@@ -333,7 +333,10 @@ class Color(ub.NiceRepr):
     def distinct(Color, num, existing=None, space='rgb', legacy='auto',
                  exclude_black=True, exclude_white=True):
         """
-        Make multiple distinct colors
+        Make multiple distinct colors.
+
+        The legacy variant is based on a stack overflow post [HowToDistinct]_,
+        but the modern variant is based on the :mod:`distinctipy` package.
 
         References:
             .. [HowToDistinct] https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors

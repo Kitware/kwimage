@@ -57,6 +57,10 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         The image is modified inplace. If the image is non-contiguous then this
         returns a UMat instead of a ndarray, so be carefull with that.
 
+    Related:
+        The logic in this function is related to the following stack overflow
+        posts [SO27647424]_ [SO51285616]_
+
     References:
         .. [SO27647424] https://stackoverflow.com/questions/27647424/
         .. [SO51285616] https://stackoverflow.com/questions/51285616/opencvs-gettextsize-and-puttext-return-wrong-size-and-chop-letters-with-low

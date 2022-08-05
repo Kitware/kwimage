@@ -2,13 +2,14 @@
 Data structure for Binary Masks
 
 Structure for efficient encoding of per-annotation segmentation masks
-Based on efficient cython/C code in the cocoapi [1].
+Based on efficient cython/C code in the cocoapi [CocoStuffPyx]_ [CocoStuffC]_
+[CocoStuffH]_ [CocoStuffPy]_.
 
 References:
-    .. [1] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/_mask.pyx
-    .. [2] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.c
-    .. [3] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.h
-    .. [4] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/mask.py
+    .. [CocoStuffPyx] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/_mask.pyx
+    .. [CocoStuffC] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.c
+    .. [CocoStuffH] https://github.com/nightrome/cocostuffapi/blob/master/common/maskApi.h
+    .. [CocoStuffPy] https://github.com/nightrome/cocostuffapi/blob/master/PythonAPI/pycocotools/mask.py
 
 Goals:
     The goal of this file is to create a datastructure that lets the developer

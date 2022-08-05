@@ -771,7 +771,10 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
     Args:
         shape (Tuple[int, int]): patch height and width
-        sigma (float | Tuple[float, float]): Gaussian standard deviation
+
+        sigma (float | Tuple[float, float] | None):
+            Gaussian standard deviation. If unspecified, it is derived using
+            the formulation described in [Cv2GaussKern]_.
 
     Returns:
         ndarray
@@ -1865,12 +1868,15 @@ def connected_components(image, connectivity=8, ltype=np.int32,
         convention?)
 
     Note:
-        opencv 4.5.5 will segfault if connectivity=4
-        See: https://github.com/opencv/opencv/issues/21366
+        opencv 4.5.5 will segfault if connectivity=4 See: [CvIssue21366]_.
+
+    Note:
+        Based on information in [SO35854197]_.
 
     References:
         .. [SO35854197] https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connectedcomponentswithstats-in-python
         .. [Cv2CCAlgos] https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#ga5ed7784614678adccb699c70fb841075
+        .. [CvIssue21366] https://github.com/opencv/opencv/issues/21366
 
     CommandLine:
         xdoctest -m kwimage.im_cv2 connected_components:0 --show
