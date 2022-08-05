@@ -1,2 +1,2 @@
 #!/bin/bash
-xdoctest kwimage --style=google all
+xdoctest kwimage --style=google all "$@"
