@@ -1176,7 +1176,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> from kwimage.structs.heatmap import *  # NOQA
         >>> import kwimage
-        >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ] / 255.0
+        >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ..., 0] / 255.0
         >>> img_dims = (220, 220)
         >>> tf_data_to_img = skimage.transform.AffineTransform(translation=(-18, -18), scale=(8, 8))
         >>> self = Heatmap(class_probs=class_probs, img_dims=img_dims,

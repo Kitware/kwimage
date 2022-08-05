@@ -1426,10 +1426,12 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> kwimage.imwrite(fpath, data, compress='LZW', interleave='PIXEL', blocksize=64, options=['NUM_THREADS=ALL_CPUS'])
         >>> _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>> loaded = kwimage.imread(fpath)
-
         >>> assert np.all(loaded.ravel() == data.ravel())
         >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
+        >>> kwplot.autompl()
+        >>> dinfo = np.iinfo(np.uint16)
         >>> kwplot.imshow(loaded / dinfo.max)
         >>> kwplot.show_if_requested()
 

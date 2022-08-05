@@ -1292,7 +1292,7 @@ class _BoxTransformMixins(object):
                 Origin of the scaling operation, Can be a single point, an
                 array of points for each box, or a special string:
                     'origin': all boxes are scaled about (0, 0)
-                    'center': all boxes are scaled about their own center.
+                    'centroid' or 'center': all boxes are scaled about their own center.
                 Defaults to 'origin'
 
             output_dims (Tuple): unused in non-raster spatial structures
@@ -1369,7 +1369,7 @@ class _BoxTransformMixins(object):
             if isinstance(about, str):
                 if about == 'origin':
                     about = None
-                elif about == 'center':
+                elif about in {'center', 'centroid'}:
                     about = self.xy_center
                 else:
                     raise KeyError(about)

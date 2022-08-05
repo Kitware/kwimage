@@ -67,6 +67,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>>     images, axis=0, resize='larger', pad=10, return_info=True)
         >>> print('imgB.shape = {}'.format(imgB.shape))
         >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> import kwimage
         >>> kwplot.autompl()

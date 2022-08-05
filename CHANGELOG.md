@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * `kwimage.connected_components`
 * `kwimage.Boxes.resize` for setting the width/height of a box.
+* `kwimage.Polygon.circle` can now be constructed as an ellipse by specifying radii as a tuple
 
 ### Fixed
 * Passing single and multiple colors now works correctly for `Points.draw_on`.

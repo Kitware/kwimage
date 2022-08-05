@@ -1420,6 +1420,8 @@ class Affine(Projective):
             >>> A_recovered = kwimage.Affine.fit(pts1, pts2)
             >>> assert np.all(np.isclose(A_recovered.matrix, A12_real.matrix))
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
             >>> base1 = np.zeros((96, 96, 3))
             >>> base1[32:-32, 5:-5] = 0.5
             >>> base2 = np.zeros((96, 96, 3))

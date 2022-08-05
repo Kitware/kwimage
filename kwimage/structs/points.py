@@ -405,7 +405,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
-            >>> self.draw(radius=3, alpha=.5, color='classes')
+            >>> #self.draw(radius=3, alpha=.5, color='classes')
             >>> kwplot.show_if_requested()
 
         Example:
