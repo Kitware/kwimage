@@ -387,6 +387,15 @@ def process_docstring(app, what_: str, name: str, obj: Any, options: Any,
 
     ignore_tags = tuple(['Ignore'])
 
+    def register_google_section(tag, alias=None):
+        """
+        Add a definition of a customized goole docstring
+        """
+        import ubelt as ub
+        if alias is None:
+            alias = []
+        alias = [alias] if not ub.iterable(alias) else alias
+
     mode = None
     # buffer = None
     new_lines = []

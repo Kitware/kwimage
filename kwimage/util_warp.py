@@ -649,7 +649,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
         index (Tuple[slice]): subpixel slice into dst that corresponds with src
         interp_axes (tuple): specify which axes should be spatially interpolated
 
-    Ascii:
+    TextArt:
         Inputs:
             +---+---+---+---+---+  dst.shape = (5,)
                   +---+---+        src.shape = (2,)

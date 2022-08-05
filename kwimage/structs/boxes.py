@@ -827,7 +827,7 @@ class _BoxConversionMixins(object):
                 we add 1 from the bot/right to get the slice stop point such
                 that the bot/right pixel will be included in the slice.
 
-        Ascii:
+        TextArt:
             +--------------+
             l              r <- box coords
             s              t <- endpoint=True
