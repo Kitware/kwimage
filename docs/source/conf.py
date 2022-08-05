@@ -349,6 +349,23 @@ class GoogleStyleDocstringProcessor:
             new_lines.extend(lines[1:])
             return new_lines
 
+        @self.register_section(tag='SpecialExample', alias=['Benchmark', 'Sympy', 'Doctest'])
+        def benchmark(lines):
+            import textwrap
+            new_lines = []
+            tag = lines[0].replace(':', '').strip()
+            # new_lines.append(lines[0])  # TODO: it would be nice to change the tagline.
+            # new_lines.append('')
+            new_lines.append('.. rubric:: {}'.format(tag))
+            new_lines.append('')
+            new_text = textwrap.dedent('\n'.join(lines[1:]))
+            redone = new_text.split('\n')
+            new_lines.extend(redone)
+            # import ubelt as ub
+            # print('new_lines = {}'.format(ub.repr2(new_lines, nl=1)))
+            # new_lines.append('')
+            return new_lines
+
         @self.register_section(tag='TextArt', alias=['Ascii'])
         def text_art(lines):
             new_lines = []
@@ -405,7 +422,9 @@ class GoogleStyleDocstringProcessor:
             else:
                 # Process this section with the given function
                 regitem = self.registry[curr_mode]
-                new_lines.extend(regitem['func'](accum))
+                func = regitem['func']
+                fixed = func(accum)
+                new_lines.extend(fixed)
             # Reset the accumulator for the next section
             accum[:] = []
 
@@ -437,6 +456,7 @@ class GoogleStyleDocstringProcessor:
         # make sure there is a blank line at the end
         if lines and lines[-1]:
             lines.append('')
+
         return lines
 
     def process_docstring_callback(self, app, what_: str, name: str, obj: Any,
@@ -468,13 +488,79 @@ class GoogleStyleDocstringProcessor:
             https://www.sphinx-doc.org/en/1.5.1/_modules/sphinx/ext/autodoc.html
             https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
         """
+        print(f'name={name}')
+        # print('BEFORE:')
+        # import ubelt as ub
+        # print('lines = {}'.format(ub.repr2(lines, nl=1)))
+
         self.process(lines)
+
+        # docstr = '\n'.join(lines)
+        # if 'Convert the Mask' in docstr:
+        #     import xdev
+        #     xdev.embed()
+
+        # if 'keys in this dictionary ' in docstr:
+        #     import xdev
+        #     xdev.embed()
+
         if 1:
             # DEVELOPING
             if any('REQUIRES(--show)' in line for line in lines):
                 # import xdev
                 # xdev.embed()
                 create_doctest_figure(app, obj, name, lines)
+
+        # FORMAT THE RETURNS SECTION A BIT NICER
+        import ubelt as ub
+
+        # Split by sphinx types
+        import re
+        tag_pat = re.compile(r'^:(\w*):')
+        directive_pat = re.compile(r'^.. (\w*)::\s*(\w*)')
+        sphinx_parts = []
+        for idx, line in enumerate(lines):
+            tag_match = tag_pat.search(line)
+            directive_match = directive_pat.search(line)
+            if tag_match:
+                tag = tag_match.groups()[0]
+                sphinx_parts.append({
+                    'tag': tag, 'start_offset': idx,
+                    'type': 'tag',
+                })
+            elif directive_match:
+                tag = directive_match.groups()[0]
+                sphinx_parts.append({
+                    'tag': tag, 'start_offset': idx,
+                    'type': 'directive',
+                })
+
+        prev_offset = len(lines)
+        for part in sphinx_parts[::-1]:
+            part['end_offset'] = prev_offset
+            prev_offset = part['start_offset']
+
+        for part in sphinx_parts[::-1]:
+            if part['tag'] == 'returns':
+                edit_slice = slice(part['start_offset'] + 2, part['end_offset'])
+                return_section = lines[edit_slice]
+                text = '\n'.join(return_section)
+
+                new_lines = []
+                for paragraph in text.split('\n\n'):
+                    indent = paragraph[:len(paragraph) - len(paragraph.lstrip())]
+                    new_paragraph = indent + ub.paragraph(paragraph)
+                    new_lines.append(new_paragraph)
+                    new_lines.append('')
+                new_lines = new_lines[:-1]
+                lines[edit_slice] = new_lines
+
+        # print('AFTER:')
+        # print('lines = {}'.format(ub.repr2(lines, nl=1)))
+
+        # if name == 'kwimage.Affine.translate':
+        #     import sys
+        #     sys.exit(1)
 
 
 def create_doctest_figure(app, obj, name, lines):
