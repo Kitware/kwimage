@@ -299,6 +299,182 @@ class PatchedPythonDomain(PythonDomain):
         return return_value
 
 
+class GoogleStyleDocstringProcessor:
+    """
+    A small extension that runs after napoleon and reformats erotemic-flavored
+    google-style docstrings for sphinx.
+    """
+
+    def __init__(self, autobuild=1):
+        self.registry = {}
+        if autobuild:
+            self._register_builtins()
+
+    def register_section(self, tag, alias=None):
+        """
+        Decorator that adds a custom processing function for a non-standard
+        google style tag. The decorated function should accept a list of
+        docstring lines, where the first one will be the google-style tag that
+        likely needs to be replaced, and then return the appropriate sphinx
+        format (TODO what is the name? Is it just RST?).
+        """
+        alias = [] if alias is None else alias
+        alias = [alias] if not isinstance(alias, (list, tuple, set)) else alias
+        alias.append(tag)
+        alias = tuple(alias)
+        # TODO: better tag patterns
+        def _wrap(func):
+            self.registry[tag] = {
+                'tag': tag,
+                'alias': alias,
+                'func': func,
+            }
+            return func
+        return _wrap
+
+    def _register_builtins(self):
+        """
+        Adds definitions I like of CommandLine, TextArt, and Ignore
+        """
+
+        @self.register_section(tag='CommandLine')
+        def commandline(lines):
+            new_lines = []
+            new_lines.append('.. rubric:: CommandLine')
+            new_lines.append('')
+            new_lines.append('.. code-block:: bash')
+            new_lines.append('')
+            new_lines.extend(lines[1:])
+            return new_lines
+
+        @self.register_section(tag='TextArt', alias=['Ascii'])
+        def text_art(lines):
+            new_lines = []
+            new_lines.append('.. rubric:: TextArt')
+            new_lines.append('')
+            new_lines.append('.. code-block:: bash')
+            new_lines.append('')
+            new_lines.extend(lines[1:])
+            return new_lines
+
+        @self.register_section(tag='Ignore')
+        def ignore(lines):
+            return []
+
+    def process(self, lines):
+        """
+        Example:
+            >>> self = GoogleStyleDocstringProcessor()
+            >>> lines = ub.codeblock(
+            ...     '''
+            ...     Hello world
+            ...
+            ...     CommandLine:
+            ...         hi
+            ...
+            ...     CommandLine:
+            ...
+            ...         bye
+            ...
+            ...     TextArt:
+            ...
+            ...         1
+            ...         2
+            ...
+            ...         345
+            ...
+            ...     Foobar:
+            ...
+            ...     TextArt:
+            ...     ''').split(chr(10))
+            >>> new_lines = self.process(lines[:])
+            >>> print(chr(10).join(new_lines))
+        """
+        orig_lines = lines[:]
+        new_lines = []
+        curr_mode = '__doc__'
+        accum = []
+
+        def accept():
+            """ called when we finish reading a section """
+            if curr_mode == '__doc__':
+                # Keep the lines as-is
+                new_lines.extend(accum)
+            else:
+                # Process this section with the given function
+                regitem = self.registry[curr_mode]
+                new_lines.extend(regitem['func'](accum))
+            # Reset the accumulator for the next section
+            accum[:] = []
+
+        for line in orig_lines:
+
+            found = None
+            for regitem in self.registry.values():
+                if line.startswith(regitem['alias']):
+                    found = regitem['tag']
+                    break
+            if not found and line and not line.startswith(' '):
+                # if the line startswith anything but a space, we are no longer
+                # in the previous nested scope. NOTE: This assumption may not
+                # be general, but it works for my code.
+                found = '__doc__'
+
+            if found:
+                # New section is found, accept the previous one and start
+                # accumulating the new one.
+                accept()
+                curr_mode = found
+
+            accum.append(line)
+
+        # Finialize the last section
+        accept()
+
+        lines[:] = new_lines
+        # make sure there is a blank line at the end
+        if lines and lines[-1]:
+            lines.append('')
+        return lines
+
+    def process_docstring_callback(self, app, what_: str, name: str, obj: Any,
+                                   options: Any, lines: List[str]) -> None:
+        """
+        Callback to be registered to autodoc-process-docstring
+
+        Custom process to transform docstring lines Remove "Ignore" blocks
+
+        Args:
+            app (sphinx.application.Sphinx): the Sphinx application object
+
+            what (str):
+                the type of the object which the docstring belongs to (one of
+                "module", "class", "exception", "function", "method", "attribute")
+
+            name (str): the fully qualified name of the object
+
+            obj: the object itself
+
+            options: the options given to the directive: an object with
+                attributes inherited_members, undoc_members, show_inheritance
+                and noindex that are true if the flag option of same name was
+                given to the auto directive
+
+            lines (List[str]): the lines of the docstring, see above
+
+        References:
+            https://www.sphinx-doc.org/en/1.5.1/_modules/sphinx/ext/autodoc.html
+            https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
+        """
+        self.process(lines)
+        if 0:
+            # DEVELOPING
+            if any('REQUIRES(--show)' in line for line in lines):
+                # import xdev
+                # xdev.embed()
+                create_figure(app, obj, name, lines)
+
+
 def create_figure(app, obj, name, lines):
     """
     The idea is that each doctest that produces a figure should generate that
@@ -349,115 +525,16 @@ def create_figure(app, obj, name, lines):
         kwplot.close_figures(figures)
 
 
-def process_docstring(app, what_: str, name: str, obj: Any, options: Any,
-                      lines: List[str]) -> None:
-    """
-    Custom process to transform docstring lines Remove "Ignore" blocks
-
-    Args:
-        app (sphinx.application.Sphinx): the Sphinx application object
-
-        what (str):
-            the type of the object which the docstring belongs to (one of
-            "module", "class", "exception", "function", "method", "attribute")
-
-        name (str): the fully qualified name of the object
-
-        obj: the object itself
-
-        options: the options given to the directive: an object with
-            attributes inherited_members, undoc_members, show_inheritance
-            and noindex that are true if the flag option of same name was
-            given to the auto directive
-
-        lines (List[str]): the lines of the docstring, see above
-
-    References:
-        https://www.sphinx-doc.org/en/1.5.1/_modules/sphinx/ext/autodoc.html
-        https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
-    """
-    # if what and what_ not in what:
-    #     return
-    orig_lines = lines[:]
-
-    # text = '\n'.join(lines)
-    # if 'Example' in text and 'CommandLine' in text:
-    #     import xdev
-    #     xdev.embed()
-
-    ignore_tags = tuple(['Ignore'])
-
-    def register_google_section(tag, alias=None):
-        """
-        Add a definition of a customized goole docstring
-        """
-        import ubelt as ub
-        if alias is None:
-            alias = []
-        alias = [alias] if not ub.iterable(alias) else alias
-
-    mode = None
-    # buffer = None
-    new_lines = []
-    for i, line in enumerate(orig_lines):
-
-        # See if the line triggers a mode change
-        if line.startswith(ignore_tags):
-            mode = 'ignore'
-        elif line.startswith('CommandLine'):
-            mode = 'cmdline'
-        elif line.startswith('Ascii'):
-            mode = 'ascii'
-        elif line and not line.startswith(' '):
-            # if the line startswith anything but a space, we are no
-            # longer in the previous nested scope
-            mode = None
-
-        if mode is None:
-            new_lines.append(line)
-        elif mode == 'ignore':
-            # print('IGNORE line = {!r}'.format(line))
-            pass
-        elif mode == 'ascii':
-            if line.startswith('Ascii'):
-                new_lines.append('.. rubric:: Ascii')
-                new_lines.append('')
-                new_lines.append('.. code-block::')
-                new_lines.append('')
-            else:
-                # new_lines.append(line.strip())
-                new_lines.append(line)
-        elif mode == 'cmdline':
-            if line.startswith('CommandLine'):
-                new_lines.append('.. rubric:: CommandLine')
-                new_lines.append('')
-                new_lines.append('.. code-block:: bash')
-                new_lines.append('')
-            else:
-                # new_lines.append(line.strip())
-                new_lines.append(line)
-        else:
-            raise KeyError(mode)
-
-    lines[:] = new_lines
-    # make sure there is a blank line at the end
-    if lines and lines[-1]:
-        lines.append('')
-
-    if 1:
-        # DEVELOPING
-        if any('REQUIRES(--show)' in line for line in lines):
-            # import xdev
-            # xdev.embed()
-            create_figure(app, obj, name, lines)
-
-
 def setup(app):
+    import sphinx
+    app : sphinx.application.Sphinx = app
+    # sphinx.application.Sphinx
     app.add_domain(PatchedPythonDomain, override=True)
+    docstring_processor = GoogleStyleDocstringProcessor()
     if 1:
         # New Way
         # what = None
-        app.connect('autodoc-process-docstring', process_docstring)
+        app.connect('autodoc-process-docstring', docstring_processor.process_docstring_callback)
     else:
         # OLD WAY
         # https://stackoverflow.com/questions/26534184/can-sphinx-ignore-certain-tags-in-python-docstrings
