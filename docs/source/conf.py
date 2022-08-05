@@ -512,8 +512,6 @@ class GoogleStyleDocstringProcessor:
                 create_doctest_figure(app, obj, name, lines)
 
         # FORMAT THE RETURNS SECTION A BIT NICER
-        import ubelt as ub
-
         # Split by sphinx types
         import re
         tag_pat = re.compile(r'^:(\w*):')
@@ -547,9 +545,9 @@ class GoogleStyleDocstringProcessor:
                 text = '\n'.join(return_section)
 
                 new_lines = []
-                for paragraph in text.split('\n\n'):
-                    indent = paragraph[:len(paragraph) - len(paragraph.lstrip())]
-                    new_paragraph = indent + ub.paragraph(paragraph)
+                for para in text.split('\n\n'):
+                    indent = para[:len(para) - len(para.lstrip())]
+                    new_paragraph = indent + paragraph(para)
                     new_lines.append(new_paragraph)
                     new_lines.append('')
                 new_lines = new_lines[:-1]
@@ -561,6 +559,24 @@ class GoogleStyleDocstringProcessor:
         # if name == 'kwimage.Affine.translate':
         #     import sys
         #     sys.exit(1)
+
+
+def paragraph(text):
+    r"""
+    Wraps multi-line strings and restructures the text to remove all newlines,
+    heading, trailing, and double spaces.
+
+    Useful for writing log messages
+
+    Args:
+        text (str): typically a multiline string
+
+    Returns:
+        str: the reduced text block
+    """
+    import re
+    out = re.sub(r'\s\s*', ' ', text).strip()
+    return out
 
 
 def create_doctest_figure(app, obj, name, lines):
@@ -582,15 +598,16 @@ def create_doctest_figure(app, obj, name, lines):
     modpath = module.__file__
 
     # print(doctest.format_src())
-    import ubelt as ub
-    doc_outdir = ub.Path(app.outdir)
-    # fig_dpath = (doc_outdir / 'autofigs' / name).ensuredir()
-    fig_dpath = (doc_outdir / 'autofigs').ensuredir()
+    import pathlib
+    doc_outdir = pathlib.Path(app.outdir)
+    # fig_dpath = (doc_outdir / 'autofigs' / name).mkdir(exist_ok=True)
+    fig_dpath = (doc_outdir / 'autofigs').mkdir(exist_ok=True)
 
     fig_num = 1
 
     import kwplot
     kwplot.autompl(force='agg')
+    plt = kwplot.autoplt()
 
     docstr = '\n'.join(lines)
 
@@ -640,13 +657,12 @@ def create_doctest_figure(app, obj, name, lines):
                 # print('-- SHOW TEST---')
                 # print(doctest.format_src())
                 # kwplot.close_figures()
-                from _pytest.outcomes import Skipped
+                from xdoctest.exceptions import Skipped
                 try:
                     doctest.run(on_error='return')
                     ...
                 except Skipped:
-                    print('skip doctest = {}'.format(ub.repr2(doctest, nl=1)))
-                    pass
+                    print(f'Skip doctest={doctest}')
 
                 offsets = doctest_line_offsets(doctest)
                 doctest_line_end = curr_line_offset + offsets['stop']
@@ -664,7 +680,10 @@ def create_doctest_figure(app, obj, name, lines):
                         'insert_line_index': insert_line_index,
                         'fpath': fig_fpath,
                     })
-                kwplot.close_figures(figures)
+
+                for fig in figures:
+                    plt.close(fig)
+                # kwplot.close_figures(figures)
 
         curr_line_offset += (num_lines)
 
