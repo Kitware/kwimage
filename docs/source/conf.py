@@ -469,15 +469,15 @@ class GoogleStyleDocstringProcessor:
             https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
         """
         self.process(lines)
-        if 0:
+        if 1:
             # DEVELOPING
             if any('REQUIRES(--show)' in line for line in lines):
                 # import xdev
                 # xdev.embed()
-                create_figure(app, obj, name, lines)
+                create_doctest_figure(app, obj, name, lines)
 
 
-def create_figure(app, obj, name, lines):
+def create_doctest_figure(app, obj, name, lines):
     """
     The idea is that each doctest that produces a figure should generate that
     and then that figure should be part of the docs.
@@ -489,17 +489,11 @@ def create_figure(app, obj, name, lines):
         module = obj
     else:
         module = sys.modules[obj.__module__]
-    sys.argv.append('--show')
-    sys.argv.append('--nointeract')
+    if '--show' not in sys.argv:
+        sys.argv.append('--show')
+    if '--nointeract' not in sys.argv:
+        sys.argv.append('--nointeract')
     modpath = module.__file__
-
-    import kwplot
-    kwplot.autompl(force='agg')
-
-    docstr = '\n'.join(lines)
-
-    doctests = list(xdoctest.core.parse_docstr_examples(
-        docstr, modpath=modpath, callname=name))
 
     # print(doctest.format_src())
     import ubelt as ub
@@ -508,23 +502,110 @@ def create_figure(app, obj, name, lines):
     fig_dpath = (doc_outdir / 'autofigs').ensuredir()
 
     fig_num = 1
-    for doctest in doctests:
-        ...
-        from _pytest.outcomes import Skipped
-        try:
-            doctest.run(on_error='return')
-        except Skipped:
-            pass
 
-        figures = kwplot.all_figures()
-        for fig in figures:
-            fig_num += 1
-            # path_name = path_sanatize(name)
-            path_name = (name).replace('.', '_')
-            fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.jpg'
-            fig.savefig(fig_fpath)
-            print(f'Wrote figure: {fig_fpath}')
-        kwplot.close_figures(figures)
+    import kwplot
+    kwplot.autompl(force='agg')
+
+    docstr = '\n'.join(lines)
+
+    # TODO: The freeform parser does not work correctly here.
+    # We need to parse out the sphinx (epdoc)? individual examples
+    # so we can get different figures. But we can hack it for now.
+
+    import re
+    split_parts = re.split('({}\\s*\n)'.format(re.escape('.. rubric:: Example')), docstr)
+    # split_parts = docstr.split('.. rubric:: Example')
+
+    # import xdev
+    # xdev.embed()
+
+    to_insert_fpaths = []
+
+    def doctest_line_offsets(doctest):
+        # Where the doctests starts and ends relative to the file
+        start_line_offset = doctest.lineno - 1
+        last_part = doctest._parts[-1]
+        last_line_offset = start_line_offset + last_part.line_offset + last_part.n_lines - 1
+        offsets = {
+            'start': start_line_offset,
+            'end': last_line_offset,
+            'stop': last_line_offset + 1,
+        }
+        return offsets
+
+    # from xdoctest import utils
+    # part_lines = utils.add_line_numbers(docstr.split('\n'), n_digits=3, start=0)
+    # print('\n'.join(part_lines))
+
+    curr_line_offset = 0
+    for part in split_parts:
+        num_lines = part.count('\n')
+
+        doctests = list(xdoctest.core.parse_docstr_examples(
+            part, modpath=modpath, callname=name))
+        # print(doctests)
+
+        # doctests = list(xdoctest.core.parse_docstr_examples(
+        #     docstr, modpath=modpath, callname=name))
+
+        for doctest in doctests:
+            if '--show' in part:
+                ...
+                # print('-- SHOW TEST---')
+                # print(doctest.format_src())
+                # kwplot.close_figures()
+                from _pytest.outcomes import Skipped
+                try:
+                    doctest.run(on_error='return')
+                    ...
+                except Skipped:
+                    print('skip doctest = {}'.format(ub.repr2(doctest, nl=1)))
+                    pass
+
+                offsets = doctest_line_offsets(doctest)
+                doctest_line_end = curr_line_offset + offsets['stop']
+                insert_line_index = doctest_line_end
+
+                figures = kwplot.all_figures()
+                for fig in figures:
+                    fig_num += 1
+                    # path_name = path_sanatize(name)
+                    path_name = (name).replace('.', '_')
+                    fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.jpg'
+                    fig.savefig(fig_fpath)
+                    print(f'Wrote figure: {fig_fpath}')
+                    to_insert_fpaths.append({
+                        'insert_line_index': insert_line_index,
+                        'fpath': fig_fpath,
+                    })
+                kwplot.close_figures(figures)
+
+        curr_line_offset += (num_lines)
+
+    # if len(doctests) > 1:
+    #     doctests
+    #     import xdev
+    #     xdev.embed()
+
+    INSERT_AT = 'end'
+    INSERT_AT = 'inline'
+
+    end_index = len(lines)
+    # Reverse order for inserts
+    for info in to_insert_fpaths[::-1]:
+        rel_fpath = info['fpath'].relative_to(doc_outdir)
+
+        if INSERT_AT == 'inline':
+            # Try to insert after test
+            insert_index = info['insert_line_index']
+        elif INSERT_AT == 'end':
+            insert_index = end_index
+        else:
+            raise KeyError(INSERT_AT)
+        lines.insert(insert_index, '.. image:: {}'.format(rel_fpath))
+        lines.insert(insert_index, '')
+
+    print('final lines = {}'.format(ub.repr2(lines, nl=1)))
 
 
 def setup(app):
