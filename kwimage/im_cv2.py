@@ -1838,6 +1838,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
         >>> #image = kwimage.grab_test_image(dsize=(380, 380))
         >>> image = kwimage.Mask.demo().data * 255
         >>> basis = {
