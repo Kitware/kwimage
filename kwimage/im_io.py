@@ -643,7 +643,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
                 modname='kwimage', name='nodata',
                 type='argument to _imread_gdal',
                 migration='use nodata_method instead',
-                deprecate='0.9.5', error='0.10.0', remove='0.11.0')
+                deprecate='0.9.6', error='0.10.0', remove='0.11.0')
             nodata_method = nodata
 
         if nodata_method is not None:
