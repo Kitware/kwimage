@@ -412,8 +412,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> import kwimage
             >>> s = 32
             >>> self = kwimage.Points.random(10).scale(s)
-            >>> color = 'blue'
-            >>> # Test drawong on all channel + dtype combinations
+            >>> color = 'kitware_green'
+            >>> # Test drawing on all channel + dtype combinations
             >>> im3 = np.zeros((s, s, 3), dtype=np.float32)
             >>> im_chans = {
             >>>     'im3': im3,
@@ -431,11 +431,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2, doclf=True)
-            >>> kwplot.autompl()
-            >>> pnum_ = kwplot.PlotNums(nCols=2, nRows=len(inputs))
+            >>> plt = kwplot.autoplt()
+            >>> pnum_ = kwplot.PlotNums(nRows=2, nSubplots=len(inputs))
             >>> for k in inputs.keys():
-            >>>     kwplot.imshow(inputs[k][0], fnum=2, pnum=pnum_(), title=k)
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
+            >>> plt.gcf().suptitle('Test draw points on channel + dtype combos')
             >>> kwplot.show_if_requested()
 
         Example:

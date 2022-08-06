@@ -687,7 +687,7 @@ def create_doctest_figure(app, obj, name, lines):
                     fig_num += 1
                     # path_name = path_sanatize(name)
                     path_name = (name).replace('.', '_')
-                    fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.jpg'
+                    fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.png'
                     fig.savefig(fig_fpath)
                     print(f'Wrote figure: {fig_fpath}')
                     to_insert_fpaths.append({

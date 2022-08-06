@@ -1194,10 +1194,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10)
             >>> # xdoc: +REQUIRES(--show)
-            >>> self.draw(radius=3.0, setlim=True)
             >>> import kwplot
-            >>> kwplot.autompl()
-            >>> self.draw(radius=3.0)
+            >>> plt = kwplot.autoplt()
+            >>> self.draw(radius=0.05, alpha=0.8)
+            >>> plt.gca().set_xlim(0, 1)
+            >>> plt.gca().set_ylim(0, 1)
+            >>> plt.gca().set_aspect('equal')
         """
         import matplotlib as mpl
         import kwimage
@@ -1235,8 +1237,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             ax.add_collection(col)
 
         if setlim:
-            x1, y1 = self.data.min(axis=0)
-            x2, y2 = self.data.max(axis=0)
+            x1, y1 = self.data.min(axis=0) - radius
+            x2, y2 = self.data.max(axis=0) + radius
 
             if setlim == 'grow':
                 # only allow growth

@@ -1418,7 +1418,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
             ]
         """
-        warnings.warn('depricated use to_multi_polygon', DeprecationWarning)
+        ub.schedule_deprecation(
+            'kwimage', 'Mask.get_polygon', 'method',
+            migration='use Mask.to_multi_polygon instead',
+            deprecate='0.9.5', error='1.0.0', remove='1.1.0',
+        )
         p = 2
 
         if 0:
