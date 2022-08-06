@@ -454,7 +454,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> # Test cases where single and multiple colors are given
             >>> # with radius=None and radius=scalar
             >>> from kwimage.structs.points import *  # NOQA
-            >>> self = Points.random(10).scale(32)
+            >>> import kwimage
+            >>> self = kwimage.Points.random(10).scale(32)
             >>> image1 = self.draw_on(radius=2, color='blue')
             >>> image2 = self.draw_on(radius=None, color='blue')
             >>> image3 = self.draw_on(radius=2, color='distinct')

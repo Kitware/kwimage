@@ -81,7 +81,6 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> kwplot.draw_boxes(kwimage.Boxes([xywh1], 'xywh'), color=(1.0, 0, 0))
         >>> kwplot.draw_boxes(kwimage.Boxes([xywh2], 'xywh'), color=(1.0, 0, 0))
         >>> kwplot.show_if_requested()
-        ((662, 512, 3), (0.0, 0.0), (0, 150))
     """
     imgiter = iter(images)
     img1 = next(imgiter)

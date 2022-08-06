@@ -1532,7 +1532,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
-            >>> kwplot.imshow(image, fnum=1)
+            >>> kwplot.imshow(image_out, fnum=1)
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)

@@ -610,17 +610,19 @@ class _HeatmapWarpMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
             >>> other2 = self._align_other(other)
             >>> assert self.shape != other.shape
             >>> assert self.shape == other2.shape
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
             >>> kwplot.autompl()
-            >>> kwplot.imshow(self.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 1))
-            >>> kwplot.imshow(self.colorize(1, imgspace=False), fnum=1, pnum=(3, 2, 2))
-            >>> kwplot.imshow(other.colorize(0, imgspace=False), fnum=1, pnum=(3, 2, 3))
-            >>> kwplot.imshow(other.colorize(1, imgspace=False), fnum=1, pnum=(3, 2, 4))
+            >>> kwplot.imshow(self.colorize(0, imgspace=False), fnum=1, pnum=(2, 2, 1))
+            >>> kwplot.imshow(self.colorize(1, imgspace=False), fnum=1, pnum=(2, 2, 2))
+            >>> kwplot.imshow(other.colorize(0, imgspace=False), fnum=1, pnum=(2, 2, 3))
+            >>> kwplot.imshow(other.colorize(1, imgspace=False), fnum=1, pnum=(2, 2, 4))
         """
         if self is other:
             return other
