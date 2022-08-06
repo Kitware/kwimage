@@ -357,7 +357,11 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         newshape = (hB, wB)
     # Allocate new image for both
     imgB = np.zeros(newshape, dtype=img1.dtype)
+
     if bg_value is not None:
+        if isinstance(bg_value, str):
+            import kwimage
+            bg_value = kwimage.Color(bg_value)._forimage(imgB)
         try:
             imgB[:, :] = bg_value
         except ValueError:

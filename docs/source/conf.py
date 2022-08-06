@@ -669,10 +669,14 @@ def create_doctest_figure(app, obj, name, lines):
                     class Skipped(Exception):
                         pass
                 try:
-                    doctest.run(on_error='return')
+                    doctest.mode = 'native'
+                    doctest.run(on_error='raise')
                     ...
                 except Skipped:
                     print(f'Skip doctest={doctest}')
+                except Exception as ex:
+                    print(f'ex={ex}')
+                    print(f'Error in doctest={doctest}')
 
                 offsets = doctest_line_offsets(doctest)
                 doctest_line_end = curr_line_offset + offsets['stop']

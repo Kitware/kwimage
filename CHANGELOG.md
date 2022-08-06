@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Passing single and multiple colors now works correctly for `Points.draw_on`.
+* Fixed morphology when kernel was 0
 
 
 ## Version 0.9.4 - Released 2022-08-01

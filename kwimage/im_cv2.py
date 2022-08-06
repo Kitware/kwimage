@@ -106,31 +106,35 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation, type(interpolation)))
 
 
-def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
+def _coerce_border_mode(border_mode, default=cv2.BORDER_CONSTANT):
     """
     Converts border_mode into flags suitable cv2 functions
 
     Args:
-        border_mode (int or str): string or cv2-style interpolation type
+        border_mode (int | str | None):
+            string or cv2-style interpolation type
+
+        default (int):
+            the value to use if the previous argument is None
 
     Returns:
         int: flag specifying borderMode type that can be passed to
            functions like cv2.warpAffine, etc...
 
     Example:
-        >>> flag = _coerce_border('constant')
+        >>> flag = _coerce_border_mode('constant')
         >>> assert flag == cv2.BORDER_CONSTANT
-        >>> flag = _coerce_border(cv2.BORDER_CONSTANT)
+        >>> flag = _coerce_border_mode(cv2.BORDER_CONSTANT)
         >>> assert flag == cv2.BORDER_CONSTANT
-        >>> flag = _coerce_border(None, default='reflect')
+        >>> flag = _coerce_border_mode(None, default='reflect')
         >>> assert flag == cv2.BORDER_REFLECT
         >>> # xdoctest: +REQUIRES(module:pytest)
         >>> import pytest
         >>> with pytest.raises(TypeError):
-        >>>     _coerce_border(3.4)
+        >>>     _coerce_border_mode(3.4)
         >>> import pytest
         >>> with pytest.raises(KeyError):
-        >>>     _coerce_border('foobar')
+        >>>     _coerce_border_mode('foobar')
     """
     if border_mode is None:
         border_mode = default
@@ -151,6 +155,45 @@ def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
             'Invalid border_mode value={!r}. '
             'Type must be int or string but got {!r}'.format(
                 border_mode, type(border_mode)))
+
+
+def _coerce_border_value(border_value, default=0, image=None):
+    """
+    Handles cv2 border values
+
+    Args:
+        border_value (int | float | Iterable[int | float]):
+            Used as the fill value if border_mode is constant. Otherwise this
+            is ignored. Defaults to 0, but can also be defaulted to nan.
+            if border_value is a scalar and there are multiple channels, the
+            value is applied to all channels. More than 4 unique border values
+            for individual channels will cause an error. See OpenCV #22283 for
+            details.  In the future we may accept np.ma and return a masked
+            array, but for now that is not implemented.
+
+        default (int):
+            the value to use if the previous argument is None
+
+        image (None | ndarray):
+            The image image the operation will be applied to.
+    """
+    borderValue = border_value
+    if borderValue is None:
+        borderValue = default
+
+    if not ub.iterable(borderValue):
+        # convert scalar border value to a tuple to ensure the user always
+        # fully defines the output. (and to have conciseness)
+        num_chan = im_core.num_channels(image)
+        # More than 4 channels will start to wrap around, so this is fine.
+        borderValue = (borderValue,) * min(4, num_chan)
+
+    if len(borderValue) > 4:
+        # FIXME; opencv bug
+        # https://github.com/opencv/opencv/issues/22283
+        raise ValueError('borderValue cannot have more than 4 components. '
+                         'OpenCV #22283 describes why')
+    return borderValue
 
 
 def imscale(img, scale, interpolation=None, return_scale=False):
@@ -994,7 +1037,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         # When 0 computed via cv2 from sigma
         k_x, k_y = 0, 0
 
-    borderType = _coerce_border(border_mode)
+    borderType = _coerce_border_mode(border_mode)
     image = _cv2_imputation(image)
     blurred = cv2.GaussianBlur(
         image, (k_x, k_y), sigmaX=sigma_x, sigmaY=sigma_y,
@@ -1275,23 +1318,10 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
-    borderMode = _coerce_border(border_mode)
-    borderValue = border_value
+    borderMode = _coerce_border_mode(border_mode)
+    borderValue = _coerce_border_value(border_value, image=image)
 
     h, w = image.shape[0:2]
-
-    if not ub.iterable(borderValue):
-        # convert scalar border value to a tuple to ensure the user always
-        # fully defines the output. (and to have conciseness)
-        num_chan = im_core.num_channels(image)
-        # More than 4 channels will start to wrap around, so this is fine.
-        borderValue = (borderValue,) * min(4, num_chan)
-
-    if len(borderValue) > 4:
-        # FIXME; opencv bug
-        # https://github.com/opencv/opencv/issues/22283
-        raise ValueError('borderValue cannot have more than 4 components. '
-                         'OpenCV #22283 describes why')
 
     if isinstance(dsize, str) or large_warp_dim is not None:
         # calculate dimensions needed for auto/max/try_large_warp
@@ -1736,15 +1766,18 @@ _CV2_MORPH_MODES = {
 
 @lru_cache(128)
 def _morph_kernel_core(w, h, element):
+    if w == 0 or h == 0:
+        return np.empty((0, 0), dtype=np.uint8)
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
     element = cv2.getStructuringElement(struct_shape, (h, w))
     return element
 
 
-def _morph_kernel(size, element='rect'):
+def _morph_kernel(kernel, element='rect'):
     """
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
+        >>> from kwimage.im_cv2 import _morph_kernel
         >>> from kwimage.im_cv2 import _CV2_MORPH_MODES  # NOQA
         >>> from kwimage.im_cv2 import _CV2_STRUCT_ELEMENTS  # NOQA
         >>> kernel = 20
@@ -1756,15 +1789,22 @@ def _morph_kernel(size, element='rect'):
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
         >>> for k, result in results.items():
-        >>>     kwplot.imshow(result, pnum=pnum_(), title=k)
+        >>>     kwplot.imshow(result.astype(np.float32), pnum=pnum_(), title=k)
         >>> kwplot.show_if_requested()
-
     """
-    w = h = size if isinstance(size, int) else size
-    return _morph_kernel_core(w, h, element)
+    if isinstance(kernel, np.ndarray) and len(kernel.shape) == 2:
+        # Kernel is a custom element
+        return kernel
+    else:
+        if isinstance(kernel, int):
+            w = h = kernel
+        else:
+            w, h = kernel
+        return _morph_kernel_core(w, h, element)
 
 
-def morphology(data, mode, kernel=5, element='rect', iterations=1):
+def morphology(data, mode, kernel=5, element='rect', iterations=1,
+               border_mode='constant', border_value=0):
     """
     Executes a morphological operation.
 
@@ -1772,22 +1812,66 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
         input (ndarray[dtype=uint8 | float64]): data
             (note if mode is hitmiss data must be uint8)
 
-        mode (str) : morphology mode, can be one of: erode, rect, cross,
-            dilate, ellipse, open, close, gradient, tophat, blackhat, or
-            hitmiss
+        mode (str) : morphology mode, can be one of:
+            'erode', 'dilate', 'open', 'close', 'gradient', 'tophat',
+            'blackhat', or 'hitmiss'.
 
-        kernel (int | Tuple[int, int]):
-            size of the morphology kernel (w, h).
+        kernel (ndarray | int | Tuple[int, int]):
+            size of the morphology kernel (w, h) to be constructed according to
+            "element".  If the kernel size is 0, this function returns a copy
+            of the data.  Can also be a 2D array which is a custom structuring
+            element.  In this case "element" is ignored.
 
         element (str):
-            structural element, can be rect, cross, or ellipse.
+            structural element, can be 'rect', 'cross', or 'ellipse'.
 
         iterations (int):
             numer of times to repeat the operation
 
-    TODO:
-        borderType
-        borderValue
+        border_mode (str | int):
+            Border code or cv2 integer. Border codes are constant (default)
+            replicate, reflect, wrap, reflect101, and transparent.
+
+        border_value (int | float | Iterable[int | float]):
+            Used as the fill value if border_mode is constant.
+            Otherwise this is ignored.
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> #image = kwimage.grab_test_image(dsize=(380, 380))
+        >>> image = kwimage.Mask.demo().data * 255
+        >>> basis = {
+        >>>     'mode': ['dilate'],
+        >>>     'kernel': [5, (3, 7)],
+        >>>     'element': ['rect', 'cross', 'ellipse'],
+        >>>     #'mode': ['dilate', 'erode'],
+        >>> }
+        >>> grid = list(ub.named_product(basis))
+        >>> grid += [{'mode': 'dilate', 'kernel': 0, 'element': 'rect', }]
+        >>> grid += [{'mode': 'dilate', 'kernel': 'random', 'element': 'custom'}]
+        >>> results = {}
+        >>> for params in grid:
+        ...     key = ub.repr2(params, compact=1, si=0, nl=1)
+        ...     if params['kernel'] == 'random':
+        ...         params['kernel'] = np.random.rand(5, 5)
+        ...     results[key] = morphology(image, **params)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> to_stack = []
+        >>> canvas = image
+        >>> canvas = kwimage.imresize(canvas, dsize=(380, 380), interpolation='nearest')
+        >>> canvas = kwimage.draw_header_text(canvas, 'input', color='kitware_green')
+        >>> to_stack.append(canvas)
+        >>> for key, result in results.items():
+        >>>     canvas = result
+        >>>     canvas = kwimage.imresize(canvas, dsize=(380, 380), interpolation='nearest')
+        >>>     canvas = kwimage.draw_header_text(canvas, key, color='kitware_green')
+        >>>     to_stack.append(canvas)
+        >>> canvas = kwimage.stack_images_grid(to_stack, pad=10, bg_value='kitware_blue')
+        >>> canvas = kwimage.draw_header_text(canvas, '--- kwimage.morphology demo ---', color='kitware_green')
+        >>> kwplot.imshow(canvas)
+        >>> kwplot.show_if_requested()
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -1819,9 +1903,15 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
 
     """
     import cv2
+    kernel = _morph_kernel(kernel, element)
+    if kernel.size == 0:
+        return data.copy()
+
     if data.dtype.kind == 'b':
         data = data.astype(np.uint8)
-    kernel = _morph_kernel(kernel, element=element)
+
+    borderMode = _coerce_border_mode(border_mode)
+    borderValue = _coerce_border_value(border_value, image=data)
     if isinstance(mode, str):
         morph_mode = _CV2_MORPH_MODES[mode]
     elif isinstance(mode, int):
@@ -1831,7 +1921,9 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
 
     data = _cv2_imputation(data)
     new = cv2.morphologyEx(
-        data, op=morph_mode, kernel=kernel, iterations=iterations)
+        data, op=morph_mode, kernel=kernel, iterations=iterations,
+        borderValue=borderValue, borderType=borderMode
+    )
     return new
 
 
