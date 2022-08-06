@@ -504,14 +504,14 @@ class GoogleStyleDocstringProcessor:
         #     import xdev
         #     xdev.embed()
 
-        if 0:
+        if 1:
             # DEVELOPING
             if any('REQUIRES(--show)' in line for line in lines):
                 # import xdev
                 # xdev.embed()
                 create_doctest_figure(app, obj, name, lines)
 
-        REFORMAT_RETURNS = 1
+        REFORMAT_RETURNS = 0
         if REFORMAT_RETURNS:
             # FORMAT THE RETURNS SECTION A BIT NICER
             # Split by sphinx types
