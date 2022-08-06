@@ -488,7 +488,7 @@ class GoogleStyleDocstringProcessor:
             https://www.sphinx-doc.org/en/1.5.1/_modules/sphinx/ext/autodoc.html
             https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
         """
-        print(f'name={name}')
+        # print(f'name={name}')
         # print('BEFORE:')
         # import ubelt as ub
         # print('lines = {}'.format(ub.repr2(lines, nl=1)))
@@ -601,7 +601,7 @@ def create_doctest_figure(app, obj, name, lines):
     import pathlib
     doc_outdir = pathlib.Path(app.outdir)
     # fig_dpath = (doc_outdir / 'autofigs' / name).mkdir(exist_ok=True)
-    fig_dpath = (doc_outdir / '_static/autofigs')
+    fig_dpath = (doc_outdir / '_static/images')
     fig_dpath.mkdir(exist_ok=True, parents=True)
 
     fig_num = 1
@@ -655,8 +655,7 @@ def create_doctest_figure(app, obj, name, lines):
         for doctest in doctests:
             if '--show' in part:
                 ...
-                # print('-- SHOW TEST---')
-                # print(doctest.format_src())
+                # print('-- SHOW TEST---')/)
                 # kwplot.close_figures()
                 try:
                     import pytest  # NOQA
@@ -670,7 +669,7 @@ def create_doctest_figure(app, obj, name, lines):
                         pass
                 try:
                     doctest.mode = 'native'
-                    doctest.run(on_error='raise')
+                    doctest.run(verbose=0, on_error='raise')
                     ...
                 except Skipped:
                     print(f'Skip doctest={doctest}')
@@ -687,7 +686,7 @@ def create_doctest_figure(app, obj, name, lines):
                     fig_num += 1
                     # path_name = path_sanatize(name)
                     path_name = (name).replace('.', '_')
-                    fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.png'
+                    fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.jpeg'
                     fig.savefig(fig_fpath)
                     print(f'Wrote figure: {fig_fpath}')
                     to_insert_fpaths.append({
