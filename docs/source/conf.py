@@ -726,13 +726,17 @@ def create_doctest_figure(app, obj, name, lines):
 
         rel_to_root_fpath = src_abs_fpath.relative_to(doc_srcdir)
 
-        dst_abs_fpath = doc_outdir / rel_to_root_fpath
-        dst_abs_fpath.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(src_abs_fpath, dst_abs_fpath)
+        dst_abs_fpath1 = doc_outdir / rel_to_root_fpath
+        dst_abs_fpath1.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src_abs_fpath, dst_abs_fpath1)
 
         dst_abs_fpath2 = doc_outdir / rel_to_static_fpath
         dst_abs_fpath2.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(src_abs_fpath, dst_abs_fpath)
+        shutil.copy(src_abs_fpath, dst_abs_fpath2)
+
+        dst_abs_fpath3 = doc_srcdir / rel_to_static_fpath
+        dst_abs_fpath3.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src_abs_fpath, dst_abs_fpath3)
 
         if INSERT_AT == 'inline':
             # Try to insert after test
