@@ -13,7 +13,10 @@ sphinx-reredirects >= 0.0.1
 # xdoctest >= 0.15.6
 kwplot 
 six
+
 -r tests.txt
 -r headless.txt
 -r optional.txt
 -r runtime.txt
+
+sympy
