@@ -1,0 +1,25 @@
+kwimage.structs package
+=======================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   kwimage.structs.boxes
+   kwimage.structs.coords
+   kwimage.structs.detections
+   kwimage.structs.heatmap
+   kwimage.structs.mask
+   kwimage.structs.points
+   kwimage.structs.polygon
+   kwimage.structs.segmentation
+
+Module contents
+---------------
+
+.. automodule:: kwimage.structs
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -511,47 +511,49 @@ class GoogleStyleDocstringProcessor:
                 # xdev.embed()
                 create_doctest_figure(app, obj, name, lines)
 
-        # FORMAT THE RETURNS SECTION A BIT NICER
-        # Split by sphinx types
-        import re
-        tag_pat = re.compile(r'^:(\w*):')
-        directive_pat = re.compile(r'^.. (\w*)::\s*(\w*)')
-        sphinx_parts = []
-        for idx, line in enumerate(lines):
-            tag_match = tag_pat.search(line)
-            directive_match = directive_pat.search(line)
-            if tag_match:
-                tag = tag_match.groups()[0]
-                sphinx_parts.append({
-                    'tag': tag, 'start_offset': idx,
-                    'type': 'tag',
-                })
-            elif directive_match:
-                tag = directive_match.groups()[0]
-                sphinx_parts.append({
-                    'tag': tag, 'start_offset': idx,
-                    'type': 'directive',
-                })
+        REFORMAT_RETURNS = 0
+        if REFORMAT_RETURNS:
+            # FORMAT THE RETURNS SECTION A BIT NICER
+            # Split by sphinx types
+            import re
+            tag_pat = re.compile(r'^:(\w*):')
+            directive_pat = re.compile(r'^.. (\w*)::\s*(\w*)')
+            sphinx_parts = []
+            for idx, line in enumerate(lines):
+                tag_match = tag_pat.search(line)
+                directive_match = directive_pat.search(line)
+                if tag_match:
+                    tag = tag_match.groups()[0]
+                    sphinx_parts.append({
+                        'tag': tag, 'start_offset': idx,
+                        'type': 'tag',
+                    })
+                elif directive_match:
+                    tag = directive_match.groups()[0]
+                    sphinx_parts.append({
+                        'tag': tag, 'start_offset': idx,
+                        'type': 'directive',
+                    })
 
-        prev_offset = len(lines)
-        for part in sphinx_parts[::-1]:
-            part['end_offset'] = prev_offset
-            prev_offset = part['start_offset']
+            prev_offset = len(lines)
+            for part in sphinx_parts[::-1]:
+                part['end_offset'] = prev_offset
+                prev_offset = part['start_offset']
 
-        for part in sphinx_parts[::-1]:
-            if part['tag'] == 'returns':
-                edit_slice = slice(part['start_offset'] + 2, part['end_offset'])
-                return_section = lines[edit_slice]
-                text = '\n'.join(return_section)
+            for part in sphinx_parts[::-1]:
+                if part['tag'] == 'returns':
+                    edit_slice = slice(part['start_offset'] + 2, part['end_offset'])
+                    return_section = lines[edit_slice]
+                    text = '\n'.join(return_section)
 
-                new_lines = []
-                for para in text.split('\n\n'):
-                    indent = para[:len(para) - len(para.lstrip())]
-                    new_paragraph = indent + paragraph(para)
-                    new_lines.append(new_paragraph)
-                    new_lines.append('')
-                new_lines = new_lines[:-1]
-                lines[edit_slice] = new_lines
+                    new_lines = []
+                    for para in text.split('\n\n'):
+                        indent = para[:len(para) - len(para.lstrip())]
+                        new_paragraph = indent + paragraph(para)
+                        new_lines.append(new_paragraph)
+                        new_lines.append('')
+                    new_lines = new_lines[:-1]
+                    lines[edit_slice] = new_lines
 
         # print('AFTER:')
         # print('lines = {}'.format(ub.repr2(lines, nl=1)))
