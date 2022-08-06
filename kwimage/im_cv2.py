@@ -206,7 +206,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
         name='imscale',
         type='function',
         migration='Use imresize instead.',
-        deprecate=None,
+        deprecate='0.9.0',
         error='0.9.5',
         remove='1.0.0',
     )
