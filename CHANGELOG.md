@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.5 - Unreleased
 
 ### Added
+* `kwimage.warp_projective`
 * `kwimage.connected_components`
 * `kwimage.Boxes.resize` for setting the width/height of a box.
 * `kwimage.Polygon.circle` can now be constructed as an ellipse by specifying radii as a tuple

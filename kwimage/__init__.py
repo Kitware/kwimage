@@ -53,7 +53,7 @@ from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
                       padded_slice,)
 from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
                      gaussian_patch, imcrop, imresize, imscale, morphology,
-                     warp_affine,)
+                     warp_affine, warp_projective,)
 from .im_demodata import (checkerboard, grab_test_image,
                           grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
@@ -99,4 +99,5 @@ __all__ = ['Affine', 'Boxes', 'Color', 'Coords', 'Detections', 'Heatmap',
            'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
            'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
            'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_affine', 'warp_image', 'warp_points', 'warp_tensor']
+           'warp_affine', 'warp_image', 'warp_points', 'warp_projective',
+           'warp_tensor']
