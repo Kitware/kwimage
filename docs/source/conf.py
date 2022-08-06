@@ -716,6 +716,7 @@ def create_doctest_figure(app, obj, name, lines):
 
     end_index = len(lines)
     # Reverse order for inserts
+    import shutil
     for info in to_insert_fpaths[::-1]:
         src_abs_fpath = info['fpath']
 
@@ -724,10 +725,13 @@ def create_doctest_figure(app, obj, name, lines):
         # dst_abs_fpath.parent.mkdir(parents=True, exist_ok=True)
 
         rel_to_root_fpath = src_abs_fpath.relative_to(doc_srcdir)
+
         dst_abs_fpath = doc_outdir / rel_to_root_fpath
         dst_abs_fpath.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src_abs_fpath, dst_abs_fpath)
 
-        import shutil
+        dst_abs_fpath2 = doc_outdir / rel_to_static_fpath
+        dst_abs_fpath2.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(src_abs_fpath, dst_abs_fpath)
 
         if INSERT_AT == 'inline':
