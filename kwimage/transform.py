@@ -840,7 +840,7 @@ class Projective(Linear):
 
 class Affine(Projective):
     """
-    A thin wraper around a 3x3 matrix that represent a projective transform
+    A thin wraper around a 3x3 matrix that represents an affine transform
 
     Implements methods for:
         * creating random affine transforms
