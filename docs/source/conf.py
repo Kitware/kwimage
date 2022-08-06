@@ -751,7 +751,6 @@ def create_doctest_figure(app, obj, name, lines):
         # lines.insert(insert_index, '.. image:: {}'.format(rel_to_static_fpath))
         lines.insert(insert_index, '')
 
-    # print('final lines = {}'.format(ub.repr2(lines, nl=1)))
 
 
 def setup(app):
