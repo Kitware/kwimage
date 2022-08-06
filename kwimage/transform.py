@@ -309,8 +309,13 @@ class Linear(Matrix):
 
 class Projective(Linear):
     """
-    Currently just a stub class that may be used to implement projective /
-    homography transforms in the future.
+    A thin wraper around a 3x3 matrix that represent a projective transform
+
+    Implements methods for:
+        * creating random projective transforms
+        * decomposing the matrix
+        * finding a best-fit transform between corresponding points
+        * TODO: - [ ] fully rational transform
 
     Example:
         >>> import kwimage
@@ -341,7 +346,6 @@ class Projective(Linear):
         ...     warp_stack.append(warp)
         >>> warp_canvas = kwimage.stack_images_grid(warp_stack, chunksize=4, pad=10, bg_value='kitware_gray')
         >>> # xdoctest: +REQUIRES(module:sympy)
-        >>> # xdoctest: +SKIP
         >>> import sympy
         >>> # Shows the symbolic construction of the code
         >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
@@ -836,7 +840,13 @@ class Projective(Linear):
 
 class Affine(Projective):
     """
-    Helper for making affine transform matrices.
+    A thin wraper around a 3x3 matrix that represent a projective transform
+
+    Implements methods for:
+        * creating random affine transforms
+        * decomposing the matrix
+        * finding a best-fit transform between corresponding points
+        * TODO: - [ ] fully rational transform
 
     Example:
         >>> import kwimage
