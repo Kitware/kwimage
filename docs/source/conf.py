@@ -602,7 +602,7 @@ def create_doctest_figure(app, obj, name, lines):
     doc_outdir = pathlib.Path(app.outdir)
     # fig_dpath = (doc_outdir / 'autofigs' / name).mkdir(exist_ok=True)
     fig_dpath = (doc_outdir / '_static/autofigs')
-    fig_dpath.mkdir(exist_ok=True)
+    fig_dpath.mkdir(exist_ok=True, parents=True)
 
     fig_num = 1
 
