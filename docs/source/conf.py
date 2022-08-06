@@ -511,7 +511,7 @@ class GoogleStyleDocstringProcessor:
                 # xdev.embed()
                 create_doctest_figure(app, obj, name, lines)
 
-        REFORMAT_RETURNS = 0
+        REFORMAT_RETURNS = 1
         if REFORMAT_RETURNS:
             # FORMAT THE RETURNS SECTION A BIT NICER
             # Split by sphinx types
