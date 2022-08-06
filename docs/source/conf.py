@@ -599,10 +599,17 @@ def create_doctest_figure(app, obj, name, lines):
 
     # print(doctest.format_src())
     import pathlib
+    # HACK: write to the srcdir
     doc_outdir = pathlib.Path(app.outdir)
+    doc_srcdir = pathlib.Path(app.srcdir)
+    doc_static_outdir = doc_outdir / '_static'
+    doc_static_srcdir = doc_srcdir / '_static'
+    src_fig_dpath = (doc_static_srcdir / 'images')
+    src_fig_dpath.mkdir(exist_ok=True, parents=True)
+    out_fig_dpath = (doc_static_outdir / 'images')
+    out_fig_dpath.mkdir(exist_ok=True, parents=True)
+
     # fig_dpath = (doc_outdir / 'autofigs' / name).mkdir(exist_ok=True)
-    fig_dpath = (doc_outdir / '_static/images')
-    fig_dpath.mkdir(exist_ok=True, parents=True)
 
     fig_num = 1
 
@@ -623,8 +630,6 @@ def create_doctest_figure(app, obj, name, lines):
     # import xdev
     # xdev.embed()
 
-    to_insert_fpaths = []
-
     def doctest_line_offsets(doctest):
         # Where the doctests starts and ends relative to the file
         start_line_offset = doctest.lineno - 1
@@ -641,6 +646,7 @@ def create_doctest_figure(app, obj, name, lines):
     # part_lines = utils.add_line_numbers(docstr.split('\n'), n_digits=3, start=0)
     # print('\n'.join(part_lines))
 
+    to_insert_fpaths = []
     curr_line_offset = 0
     for part in split_parts:
         num_lines = part.count('\n')
@@ -686,7 +692,7 @@ def create_doctest_figure(app, obj, name, lines):
                     fig_num += 1
                     # path_name = path_sanatize(name)
                     path_name = (name).replace('.', '_')
-                    fig_fpath = fig_dpath / f'fig_{path_name}_{fig_num:03d}.jpeg'
+                    fig_fpath = src_fig_dpath / f'fig_{path_name}_{fig_num:03d}.jpeg'
                     fig.savefig(fig_fpath)
                     print(f'Wrote figure: {fig_fpath}')
                     to_insert_fpaths.append({
@@ -711,7 +717,13 @@ def create_doctest_figure(app, obj, name, lines):
     end_index = len(lines)
     # Reverse order for inserts
     for info in to_insert_fpaths[::-1]:
-        rel_fpath = info['fpath'].relative_to(doc_outdir)
+        src_abs_fpath = info['fpath']
+        rel_to_static_fpath = src_abs_fpath.relative_to(doc_static_srcdir)
+        dst_abs_fpath = doc_static_outdir / rel_to_static_fpath
+        dst_abs_fpath.parent.mkdir(parents=True, exist_ok=True)
+
+        import shutil
+        shutil.copy(src_abs_fpath, dst_abs_fpath)
 
         if INSERT_AT == 'inline':
             # Try to insert after test
@@ -720,7 +732,7 @@ def create_doctest_figure(app, obj, name, lines):
             insert_index = end_index
         else:
             raise KeyError(INSERT_AT)
-        lines.insert(insert_index, '.. image:: {}'.format(rel_fpath))
+        lines.insert(insert_index, '.. image:: {}'.format(rel_to_static_fpath))
         lines.insert(insert_index, '')
 
     # print('final lines = {}'.format(ub.repr2(lines, nl=1)))
