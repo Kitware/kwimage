@@ -106,31 +106,35 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation, type(interpolation)))
 
 
-def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
+def _coerce_border_mode(border_mode, default=cv2.BORDER_CONSTANT):
     """
     Converts border_mode into flags suitable cv2 functions
 
     Args:
-        border_mode (int or str): string or cv2-style interpolation type
+        border_mode (int | str | None):
+            string or cv2-style interpolation type
+
+        default (int):
+            the value to use if the previous argument is None
 
     Returns:
         int: flag specifying borderMode type that can be passed to
            functions like cv2.warpAffine, etc...
 
     Example:
-        >>> flag = _coerce_border('constant')
+        >>> flag = _coerce_border_mode('constant')
         >>> assert flag == cv2.BORDER_CONSTANT
-        >>> flag = _coerce_border(cv2.BORDER_CONSTANT)
+        >>> flag = _coerce_border_mode(cv2.BORDER_CONSTANT)
         >>> assert flag == cv2.BORDER_CONSTANT
-        >>> flag = _coerce_border(None, default='reflect')
+        >>> flag = _coerce_border_mode(None, default='reflect')
         >>> assert flag == cv2.BORDER_REFLECT
         >>> # xdoctest: +REQUIRES(module:pytest)
         >>> import pytest
         >>> with pytest.raises(TypeError):
-        >>>     _coerce_border(3.4)
+        >>>     _coerce_border_mode(3.4)
         >>> import pytest
         >>> with pytest.raises(KeyError):
-        >>>     _coerce_border('foobar')
+        >>>     _coerce_border_mode('foobar')
     """
     if border_mode is None:
         border_mode = default
@@ -153,6 +157,45 @@ def _coerce_border(border_mode, default=cv2.BORDER_CONSTANT):
                 border_mode, type(border_mode)))
 
 
+def _coerce_border_value(border_value, default=0, image=None):
+    """
+    Handles cv2 border values
+
+    Args:
+        border_value (int | float | Iterable[int | float]):
+            Used as the fill value if border_mode is constant. Otherwise this
+            is ignored. Defaults to 0, but can also be defaulted to nan.
+            if border_value is a scalar and there are multiple channels, the
+            value is applied to all channels. More than 4 unique border values
+            for individual channels will cause an error. See OpenCV #22283 for
+            details.  In the future we may accept np.ma and return a masked
+            array, but for now that is not implemented.
+
+        default (int):
+            the value to use if the previous argument is None
+
+        image (None | ndarray):
+            The image image the operation will be applied to.
+    """
+    borderValue = border_value
+    if borderValue is None:
+        borderValue = default
+
+    if not ub.iterable(borderValue):
+        # convert scalar border value to a tuple to ensure the user always
+        # fully defines the output. (and to have conciseness)
+        num_chan = im_core.num_channels(image)
+        # More than 4 channels will start to wrap around, so this is fine.
+        borderValue = (borderValue,) * min(4, num_chan)
+
+    if len(borderValue) > 4:
+        # FIXME; opencv bug
+        # https://github.com/opencv/opencv/issues/22283
+        raise ValueError('borderValue cannot have more than 4 components. '
+                         'OpenCV #22283 describes why')
+    return borderValue
+
+
 def imscale(img, scale, interpolation=None, return_scale=False):
     """
     DEPRECATED and removed: use imresize instead
@@ -164,7 +207,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
         type='function',
         migration='Use imresize instead.',
         deprecate=None,
-        error='0.9.4',
+        error='0.9.5',
         remove='1.0.0',
     )
 
@@ -771,7 +814,10 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
     Args:
         shape (Tuple[int, int]): patch height and width
-        sigma (float | Tuple[float, float]): Gaussian standard deviation
+
+        sigma (float | Tuple[float, float] | None):
+            Gaussian standard deviation. If unspecified, it is derived using
+            the formulation described in [Cv2GaussKern]_.
 
     Returns:
         ndarray
@@ -991,7 +1037,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         # When 0 computed via cv2 from sigma
         k_x, k_y = 0, 0
 
-    borderType = _coerce_border(border_mode)
+    borderType = _coerce_border_mode(border_mode)
     image = _cv2_imputation(image)
     blurred = cv2.GaussianBlur(
         image, (k_x, k_y), sigmaX=sigma_x, sigmaY=sigma_y,
@@ -1272,23 +1318,10 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
-    borderMode = _coerce_border(border_mode)
-    borderValue = border_value
+    borderMode = _coerce_border_mode(border_mode)
+    borderValue = _coerce_border_value(border_value, image=image)
 
     h, w = image.shape[0:2]
-
-    if not ub.iterable(borderValue):
-        # convert scalar border value to a tuple to ensure the user always
-        # fully defines the output. (and to have conciseness)
-        num_chan = im_core.num_channels(image)
-        # More than 4 channels will start to wrap around, so this is fine.
-        borderValue = (borderValue,) * min(4, num_chan)
-
-    if len(borderValue) > 4:
-        # FIXME; opencv bug
-        # https://github.com/opencv/opencv/issues/22283
-        raise ValueError('borderValue cannot have more than 4 components. '
-                         'OpenCV #22283 describes why')
 
     if isinstance(dsize, str) or large_warp_dim is not None:
         # calculate dimensions needed for auto/max/try_large_warp
@@ -1335,9 +1368,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             result_mask = np.full(
                 shape=output_shape, fill_value=False, dtype=mask.dtype)
     elif not antialias:
-        result = _try_warp(image, transform_, *_try_warp_tail_args)
+        result = _try_warp_affine(image, transform_, *_try_warp_tail_args)
         if is_masked:
-            result_mask = _try_warp(mask, transform_, *_try_warp_tail_args)
+            result_mask = _try_warp_affine(mask, transform_, *_try_warp_tail_args)
     else:
         # Decompose the affine matrix into its 6 core parameters
         params = transform_.decompose()
@@ -1345,9 +1378,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            result = _try_warp(image, transform_, *_try_warp_tail_args)
+            result = _try_warp_affine(image, transform_, *_try_warp_tail_args)
             if is_masked:
-                result_mask = _try_warp(mask, transform_, *_try_warp_tail_args)
+                result_mask = _try_warp_affine(mask, transform_, *_try_warp_tail_args)
         else:
             # At least one dimension is downsampled
             """
@@ -1374,11 +1407,11 @@ def warp_affine(image, transform, dsize=None, antialias=False,
                 'rest_warp': rest_warp,
             }
 
-            result = _try_warp(downscaled, rest_warp, *_try_warp_tail_args)
+            result = _try_warp_affine(downscaled, rest_warp, *_try_warp_tail_args)
 
             if is_masked:
                 downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
-                result_mask = _try_warp(downscaled_mask, rest_warp, *_try_warp_tail_args)
+                result_mask = _try_warp_affine(downscaled_mask, rest_warp, *_try_warp_tail_args)
 
     if is_masked:
         result_mask = result_mask.astype(orig_mask_dtype)
@@ -1390,7 +1423,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         return result
 
 
-def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
+def _try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
               flags, borderMode, borderValue):
     """
     Helper for warp_affine
@@ -1424,9 +1457,9 @@ def _try_warp(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
     else:
         # make these pieces as large as possible for efficiency
         pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
-        return _large_warp(image, transform_, dsize, max_dsize,
-                           new_origin, flags, borderMode,
-                           borderValue, pieces_per_dim)
+        return _large_warp_affine(image, transform_, dsize, max_dsize,
+                                  new_origin, flags, borderMode, borderValue,
+                                  pieces_per_dim)
 
 
 def _cv2_imputation(image):
@@ -1435,7 +1468,7 @@ def _cv2_imputation(image):
     return image
 
 
-def _large_warp(image,
+def _large_warp_affine(image,
                 transform_,
                 dsize,
                 max_dsize,
@@ -1484,7 +1517,7 @@ def _large_warp(image,
         >>> new_origin = np.array((0, 0))
         >>> max_dsize = (1015, 745)
         >>> dsize = max_dsize
-        >>> res2 = _large_warp(image, transform, dsize, max_dsize, new_origin,
+        >>> res2 = _large_warp_affine(image, transform, dsize, max_dsize, new_origin,
         >>>                   flags=cv2.INTER_LINEAR, borderMode=None,
         >>>                   borderValue=None, pieces_per_dim=2)
         >>> # xdoctest: +REQUIRES(--show)
@@ -1732,17 +1765,19 @@ _CV2_MORPH_MODES = {
 
 
 @lru_cache(128)
-def _morph_kernel_core(h, w, element):
+def _morph_kernel_core(w, h, element):
+    if w == 0 or h == 0:
+        return np.empty((0, 0), dtype=np.uint8)
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
     element = cv2.getStructuringElement(struct_shape, (h, w))
     return element
-    # return np.ones((h, w), np.uint8)
 
 
-def _morph_kernel(size, element='rect'):
+def _morph_kernel(kernel, element='rect'):
     """
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
+        >>> from kwimage.im_cv2 import _morph_kernel
         >>> from kwimage.im_cv2 import _CV2_MORPH_MODES  # NOQA
         >>> from kwimage.im_cv2 import _CV2_STRUCT_ELEMENTS  # NOQA
         >>> kernel = 20
@@ -1754,20 +1789,22 @@ def _morph_kernel(size, element='rect'):
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
         >>> for k, result in results.items():
-        >>>     kwplot.imshow(result, pnum=pnum_(), title=k)
+        >>>     kwplot.imshow(result.astype(np.float32), pnum=pnum_(), title=k)
         >>> kwplot.show_if_requested()
-
     """
-    if isinstance(size, int):
-        h = size
-        w = size
+    if isinstance(kernel, np.ndarray) and len(kernel.shape) == 2:
+        # Kernel is a custom element
+        return kernel
     else:
-        h, w = size
-        # raise NotImplementedError
-    return _morph_kernel_core(h, w, element)
+        if isinstance(kernel, int):
+            w = h = kernel
+        else:
+            w, h = kernel
+        return _morph_kernel_core(w, h, element)
 
 
-def morphology(data, mode, kernel=5, element='rect', iterations=1):
+def morphology(data, mode, kernel=5, element='rect', iterations=1,
+               border_mode='constant', border_value=0):
     """
     Executes a morphological operation.
 
@@ -1775,21 +1812,67 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
         input (ndarray[dtype=uint8 | float64]): data
             (note if mode is hitmiss data must be uint8)
 
-        mode (str) : morphology mode, can be one of: erode, rect, cross,
-            dilate, ellipse, open, close, gradient, tophat, blackhat, or
-            hitmiss
+        mode (str) : morphology mode, can be one of:
+            'erode', 'dilate', 'open', 'close', 'gradient', 'tophat',
+            'blackhat', or 'hitmiss'.
 
-        kernel (int | Tuple[int, int]): size of the morphology kernel
+        kernel (ndarray | int | Tuple[int, int]):
+            size of the morphology kernel (w, h) to be constructed according to
+            "element".  If the kernel size is 0, this function returns a copy
+            of the data.  Can also be a 2D array which is a custom structuring
+            element.  In this case "element" is ignored.
 
         element (str):
-            structural element, can be rect, cross, or ellipse.
+            structural element, can be 'rect', 'cross', or 'ellipse'.
 
         iterations (int):
             numer of times to repeat the operation
 
-    TODO:
-        borderType
-        borderValue
+        border_mode (str | int):
+            Border code or cv2 integer. Border codes are constant (default)
+            replicate, reflect, wrap, reflect101, and transparent.
+
+        border_value (int | float | Iterable[int | float]):
+            Used as the fill value if border_mode is constant.
+            Otherwise this is ignored.
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> #image = kwimage.grab_test_image(dsize=(380, 380))
+        >>> image = kwimage.Mask.demo().data * 255
+        >>> basis = {
+        >>>     'mode': ['dilate'],
+        >>>     'kernel': [5, (3, 7)],
+        >>>     'element': ['rect', 'cross', 'ellipse'],
+        >>>     #'mode': ['dilate', 'erode'],
+        >>> }
+        >>> grid = list(ub.named_product(basis))
+        >>> grid += [{'mode': 'dilate', 'kernel': 0, 'element': 'rect', }]
+        >>> grid += [{'mode': 'dilate', 'kernel': 'random', 'element': 'custom'}]
+        >>> results = {}
+        >>> for params in grid:
+        ...     key = ub.repr2(params, compact=1, si=0, nl=1)
+        ...     if params['kernel'] == 'random':
+        ...         params['kernel'] = np.random.rand(5, 5)
+        ...     results[key] = morphology(image, **params)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> to_stack = []
+        >>> canvas = image
+        >>> canvas = kwimage.imresize(canvas, dsize=(380, 380), interpolation='nearest')
+        >>> canvas = kwimage.draw_header_text(canvas, 'input', color='kitware_green')
+        >>> to_stack.append(canvas)
+        >>> for key, result in results.items():
+        >>>     canvas = result
+        >>>     canvas = kwimage.imresize(canvas, dsize=(380, 380), interpolation='nearest')
+        >>>     canvas = kwimage.draw_header_text(canvas, key, color='kitware_green')
+        >>>     to_stack.append(canvas)
+        >>> canvas = kwimage.stack_images_grid(to_stack, pad=10, bg_value='kitware_blue')
+        >>> canvas = kwimage.draw_header_text(canvas, '--- kwimage.morphology demo ---', color='kitware_green')
+        >>> kwplot.imshow(canvas)
+        >>> kwplot.show_if_requested()
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -1821,9 +1904,15 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
 
     """
     import cv2
+    kernel = _morph_kernel(kernel, element)
+    if kernel.size == 0:
+        return data.copy()
+
     if data.dtype.kind == 'b':
         data = data.astype(np.uint8)
-    kernel = _morph_kernel(kernel, element=element)
+
+    borderMode = _coerce_border_mode(border_mode)
+    borderValue = _coerce_border_value(border_value, image=data)
     if isinstance(mode, str):
         morph_mode = _CV2_MORPH_MODES[mode]
     elif isinstance(mode, int):
@@ -1833,5 +1922,369 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1):
 
     data = _cv2_imputation(data)
     new = cv2.morphologyEx(
-        data, op=morph_mode, kernel=kernel, iterations=iterations)
+        data, op=morph_mode, kernel=kernel, iterations=iterations,
+        borderValue=borderValue, borderType=borderMode
+    )
     return new
+
+
+def connected_components(image, connectivity=8, ltype=np.int32,
+                         with_stats=True, algo='default'):
+    """
+    Find connected components in a binary image.
+
+    Wrapper around :func:`cv2.connectedComponentsWithStats`.
+
+    Args:
+        image (ndarray): a binary uint8 image. Zeros denote the background, and
+            non-zeros numbers are foreground regions that will be partitioned
+            into connected components.
+
+        connectivity (int): either 4 or 8
+
+        ltype (dtype | str | int):
+            The dtype for the output label array.
+            Can be either 'int32' or 'uint16', and this can be specified as a
+            cv2 code or a numpy dtype.
+
+        algo (str):
+            The underlying algorithm to use. See [Cv2CCAlgos]_ for details.
+            Options are spaghetti, sauf, bbdt. (default is spaghetti)
+
+    Returns:
+        Tuple[ndarray, dict]:
+            The label array and an information dictionary
+
+    TODO:
+        Document the details of which type of coordinates we are using.
+        I.e. are pixels points or areas? (I think this uses the points
+        convention?)
+
+    Note:
+        opencv 4.5.5 will segfault if connectivity=4 See: [CvIssue21366]_.
+
+    Note:
+        Based on information in [SO35854197]_.
+
+    References:
+        .. [SO35854197] https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connectedcomponentswithstats-in-python
+        .. [Cv2CCAlgos] https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#ga5ed7784614678adccb699c70fb841075
+        .. [CvIssue21366] https://github.com/opencv/opencv/issues/21366
+
+    CommandLine:
+        xdoctest -m kwimage.im_cv2 connected_components:0 --show
+
+    Example:
+        >>> import kwimage
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> mask = kwimage.Mask.demo()
+        >>> image = mask.data
+        >>> labels, info = connected_components(image)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> canvas0 = kwimage.atleast_3channels(mask.data * 255)
+        >>> canvas2 = canvas0.copy()
+        >>> canvas3 = canvas0.copy()
+        >>> boxes = info['label_boxes']
+        >>> centroids = info['label_centroids']
+        >>> label_colors = kwimage.Color.distinct(info['num_labels'])
+        >>> index_to_color = np.array([kwimage.Color('black').as01()] + label_colors)
+        >>> canvas2 = centroids.draw_on(canvas2, color=label_colors, radius=None)
+        >>> boxes.draw_on(canvas3, color=label_colors, thickness=1)
+        >>> legend = kwplot.make_legend_img(ub.dzip(range(len(index_to_color)), index_to_color))
+        >>> colored_label_img = index_to_color[labels]
+        >>> canvas1 = kwimage.stack_images([colored_label_img, legend], axis=1, resize='smaller')
+        >>> kwplot.imshow(canvas0, pnum=(1, 4, 1), title='input image')
+        >>> kwplot.imshow(canvas1, pnum=(1, 4, 2), title='label image (colored w legend)')
+        >>> kwplot.imshow(canvas2, pnum=(1, 4, 3), title='component centroids')
+        >>> kwplot.imshow(canvas3, pnum=(1, 4, 4), title='component bounding boxes')
+    """
+
+    if isinstance(ltype, str):
+        if ltype in {'int32', 'CV2_32S'}:
+            ltype = np.int32
+        elif ltype in {'uint16', 'CV_16U'}:
+            ltype = np.uint16
+    if ltype is np.int32:
+        ltype = cv2.CV_32S
+    elif ltype is np.int16:
+        ltype = cv2.CV_16U
+    if not isinstance(ltype, int):
+        raise TypeError('type(ltype) = {}'.format(type(ltype)))
+
+    # It seems very easy for a segfault to happen here.
+    image = np.ascontiguousarray(image)
+    if image.dtype.kind != 'u' or image.dtype.itemsize != 1:
+        raise ValueError('input image must be a uint8')
+
+    if algo != 'default':
+        if algo in {'spaghetti', 'bolelli'}:
+            ccltype = cv2.CCL_SPAGHETTI
+        elif algo in {'sauf', 'wu'}:
+            ccltype = cv2.CCL_SAUF
+        elif algo in {'bbdt', 'grana'}:
+            ccltype = cv2.CCL_BBDT
+        else:
+            raise KeyError(algo)
+
+        if with_stats:
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStatsWithAlgorithm(
+                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype)
+        else:
+            num_labels, labels = cv2.connectedComponentsWithAlgorithm(
+                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype)
+    else:
+        if with_stats:
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+                image, connectivity=connectivity, ltype=ltype)
+        else:
+            num_labels, labels = cv2.connectedComponents(
+                image, connectivity=connectivity, ltype=ltype)
+
+    info = {
+        'num_labels': num_labels,
+    }
+
+    if with_stats:
+        # Transform stats into a kwimage boxes object for each label
+        import kwimage
+        info['label_boxes'] = kwimage.Boxes(stats[:, [
+            cv2.CC_STAT_LEFT, cv2.CC_STAT_TOP,
+            cv2.CC_STAT_WIDTH, cv2.CC_STAT_HEIGHT]], 'ltwh')
+        info['label_areas'] = stats[:, cv2.CC_STAT_AREA]
+        info['label_centroids'] = kwimage.Points(xy=centroids)
+
+    return labels, info
+
+
+def warp_projective(image, transform, dsize=None, antialias=False,
+                    interpolation='linear', border_mode=None, border_value=0,
+                    large_warp_dim=None, return_info=False):
+    """
+    Applies an projective transformation to an image with optional antialiasing.
+
+    Args:
+        image (ndarray): the input image as a numpy array.
+            Note: this is passed directly to cv2, so it is best to ensure that
+            it is contiguous and using a dtype that cv2 can handle.
+
+        transform (ndarray | dict | kwimage.Affine): a coercable projective matrix.
+            See :class:`kwimage.Affine` for details on what can be coerced.
+
+        dsize (Tuple[int, int] | None | str):
+            A integer width and height tuple of the resulting "canvas" image.
+            If None, then the input image size is used.
+
+            If specified as a string, dsize is computed based on the given
+            heuristic.
+
+            If 'positive' (or 'auto'), dsize is computed such that the positive
+            coordinates of the warped image will fit in the new canvas. In this
+            case, any pixel that maps to a negative coordinate will be clipped.
+            This has the property that the input transformation is not
+            modified.
+
+            If 'content' (or 'max'), the transform is modified with an extra
+            translation such that both the positive and negative coordinates of
+            the warped image will fit in the new canvas.
+
+        antialias (bool)
+            if True determines if the transform is downsampling and applies
+            antialiasing via gaussian a blur. Defaults to False
+
+        interpolation (str | int):
+            interpolation code or cv2 integer. Interpolation codes are linear,
+            nearest, cubic, lancsoz, and area. Defaults to "linear".
+
+        border_mode (str | int):
+            Border code or cv2 integer. Border codes are constant (default)
+            replicate, reflect, wrap, reflect101, and transparent.
+
+        border_value (int | float | Iterable[int | float]):
+            Used as the fill value if border_mode is constant. Otherwise this
+            is ignored. Defaults to 0, but can also be defaulted to nan.
+            if border_value is a scalar and there are multiple channels, the
+            value is applied to all channels. More than 4 unique border values
+            for individual channels will cause an error. See OpenCV #22283 for
+            details.  In the future we may accept np.ma and return a masked
+            array, but for now that is not implemented.
+
+        large_warp_dim (int | None | str):
+            If specified, perform the warp piecewise in chunks of the specified
+            size. If "auto", it is set to the maximum "short" value in numpy.
+            This works around a limitation of cv2.warpAffine, which must have
+            image dimensions < SHRT_MAX (=32767 in version 4.5.3)
+
+        return_info (bool):
+            if True, returns information about the operation. In the case
+            where dsize="content", this includes the modified transformation.
+
+    Returns:
+        ndarray | Tuple[ndarray, Dict]:
+            the warped image, or if return info is True, the warped image and
+            the info dictionary.
+
+    """
+    from kwimage.transform import Affine
+    import kwimage
+
+    if isinstance(image, np.ma.MaskedArray):
+        mask = image.mask
+        orig_mask_dtype = mask.dtype
+        mask = mask.astype(np.uint8)
+    else:
+        mask = None
+
+    is_masked = mask is not None
+
+    transform = kwimage.Projective.coerce(transform)
+    flags = _coerce_interpolation(interpolation)
+    borderMode = _coerce_border_mode(border_mode)
+    borderValue = _coerce_border_value(border_value, image=image)
+
+    h, w = image.shape[0:2]
+
+    if isinstance(dsize, str) or large_warp_dim is not None:
+        # calculate dimensions needed for auto/max/try_large_warp
+        box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
+        warped_box = box.warp(transform)
+        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
+        new_origin = warped_box.to_ltrb().data[0, 0:2]
+    else:
+        max_dsize = None
+        new_origin = None
+
+    transform_ = transform
+
+    if dsize is None:
+        # If unspecified, leave the canvas size unchanged
+        dsize = (w, h)
+    elif isinstance(dsize, str):
+        # Handle special "auto-compute" dsize keys
+        if dsize in {'positive', 'auto'}:
+            dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
+        elif dsize in {'content', 'max'}:
+            dsize = max_dsize
+            transform_ = Affine.translate(-new_origin) @ transform
+            new_origin = np.array([0, 0])
+        else:
+            raise KeyError('Unknown dsize={}'.format(dsize))
+
+    info = {
+        'transform': transform_,
+        'dsize': dsize,
+        'antialias_info': None,
+    }
+
+    _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
+                           borderMode, borderValue)
+
+    if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
+        # Handle case where the input image has no size or the destination
+        # canvas has no size. In either case we just return empty data
+        output_shape = (dsize[1], dsize[0]) + image.shape[2:]
+        result = np.full(
+            shape=output_shape, fill_value=borderValue, dtype=image.dtype)
+        if is_masked:
+            result_mask = np.full(
+                shape=output_shape, fill_value=False, dtype=mask.dtype)
+    elif not antialias:
+        result = _try_warp_projective(image, transform_, *_try_warp_tail_args)
+        if is_masked:
+            result_mask = _try_warp_projective(mask, transform_, *_try_warp_tail_args)
+    else:
+        # TODO: Fix cases
+
+        # Decompose the projective matrix into its 6 core parameters
+        params = transform_.decompose()
+        sx, sy = params['scale']
+
+        if sx > 1 and sy > 1:
+            # No downsampling detected, no need to antialias
+            result = _try_warp_projective(image, transform_, *_try_warp_tail_args)
+            if is_masked:
+                result_mask = _try_warp_projective(mask, transform_, *_try_warp_tail_args)
+        else:
+            # At least one dimension is downsampled
+            """
+            Variations that could change in the future:
+
+                * In _gauss_params I'm not sure if we want to compute integer or
+                    fractional "number of downsamples".
+
+                * The fudge factor bothers me, but seems necessary
+            """
+
+            # Compute the transform with all scaling removed
+            noscale_warp = kwimage.Projective.projective(**ub.dict_diff(params, {'scale'}))
+
+            # Execute part of the downscale with iterative pyramid downs
+            downscaled, residual_sx, residual_sy = _prepare_downscale(
+                image, sx, sy)
+
+            # Compute the transform from the downsampled image to the destination
+            rest_warp = noscale_warp @ kwimage.Projective.scale((residual_sx, residual_sy))
+
+            info['antialias_info'] = {
+                'noscale_warp': noscale_warp,
+                'rest_warp': rest_warp,
+            }
+
+            result = _try_warp_projective(downscaled, rest_warp, *_try_warp_tail_args)
+
+            if is_masked:
+                downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
+                result_mask = _try_warp_projective(downscaled_mask, rest_warp, *_try_warp_tail_args)
+
+    if is_masked:
+        result_mask = result_mask.astype(orig_mask_dtype)
+        result = np.ma.array(result, mask=result_mask)
+
+    if return_info:
+        return result, info
+    else:
+        return result
+
+
+def _try_warp_projective(image, transform_, large_warp_dim, dsize, max_dsize,
+                         new_origin, flags, borderMode, borderValue):
+    """
+    Helper for warp_projective
+    """
+    image = _cv2_imputation(image)
+
+    if large_warp_dim == 'auto':
+        # this is as close as we can get to actually discovering SHRT_MAX since
+        # it's not introspectable through cv2.  numpy and cv2 could be pointing
+        # to a different limits.h, but otherwise this is correct
+        # https://stackoverflow.com/a/44123354
+        SHRT_MAX = np.iinfo(np.short).max
+        large_warp_dim = SHRT_MAX
+
+    max_dim = max(image.shape[0:2])
+    if large_warp_dim is None or max_dim < large_warp_dim:
+        try:
+            M = np.asarray(transform_)
+            return cv2.warpPerspective(image, M, dsize=dsize, flags=flags,
+                                       borderMode=borderMode,
+                                       borderValue=borderValue)
+        except cv2.error as e:
+            if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
+                print(
+                    'Image too large for warp_projective. Bypass this error by setting '
+                    'kwimage.warp_projective(large_warp_dim="auto")')
+                raise e
+            else:
+                raise
+
+    else:
+        raise NotImplementedError
+        # # make these pieces as large as possible for efficiency
+        # pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
+        # return _large_warp_projective(image, transform_, dsize, max_dsize,
+        #                    new_origin, flags, borderMode,
+        #                    borderValue, pieces_per_dim)
+
+
+# TODO: warp_image where it detects affine versus projective

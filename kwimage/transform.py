@@ -309,8 +309,113 @@ class Linear(Matrix):
 
 class Projective(Linear):
     """
-    Currently just a stub class that may be used to implement projective /
-    homography transforms in the future.
+    A thin wraper around a 3x3 matrix that represent a projective transform
+
+    Implements methods for:
+        * creating random projective transforms
+        * decomposing the matrix
+        * finding a best-fit transform between corresponding points
+        * TODO: - [ ] fully rational transform
+
+    Example:
+        >>> import kwimage
+        >>> import math
+        >>> image = kwimage.grab_test_image()
+        >>> theta = 0.123 * math.tau
+        >>> components = {
+        >>>     'rotate': kwimage.Projective.projective(theta=theta),
+        >>>     'scale': kwimage.Projective.projective(scale=0.5),
+        >>>     'shear': kwimage.Projective.projective(shearx=0.2),
+        >>>     'translation': kwimage.Projective.projective(offset=(100, 200)),
+        >>>     'rotate+translate': kwimage.Projective.projective(theta=0.123 * math.tau, about=(256, 256)),
+        >>>     'perspective': kwimage.Projective.projective(uv=(0.0003, 0.0007)),
+        >>>     'random-composed': kwimage.Projective.random(scale=(0.5, 1.5), translate=(-20, 20), theta=(-theta, theta), shearx=(0, .4), rng=900558176210808600),
+        >>> }
+        >>> warp_stack = []
+        >>> for key, mat in components.items():
+        ...     warp = kwimage.warp_projective(image, mat)
+        ...     warp = kwimage.draw_text_on_image(
+        ...        warp,
+        ...        ub.repr2(mat.matrix, nl=1, nobr=1, precision=4, si=1, sv=1, with_dtype=0),
+        ...        org=(1, 1),
+        ...        valign='top', halign='left',
+        ...        fontScale=0.8, color='kw_green',
+        ...        border={'thickness': 3},
+        ...        )
+        ...     warp = kwimage.draw_header_text(warp, key, color='kw_blue')
+        ...     warp_stack.append(warp)
+        >>> warp_canvas = kwimage.stack_images_grid(warp_stack, chunksize=4, pad=10, bg_value='kitware_gray')
+        >>> # xdoctest: +REQUIRES(module:sympy)
+        >>> import sympy
+        >>> # Shows the symbolic construction of the code
+        >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
+        >>> from sympy.abc import theta
+        >>> params = x0, y0, sx, sy, theta, shearx, tx, ty, u, v = sympy.symbols(
+        >>>     'x0, y0, sx, sy, theta, ex, tx, ty, u, v')
+        >>> # move the center to 0, 0
+        >>> tr1_ = sympy.Matrix([[1, 0,  -x0],
+        >>>                      [0, 1,  -y0],
+        >>>                      [0, 0,    1]])
+        >>> P = sympy.Matrix([  # projective part
+        >>>     [ 1,  0,  0],
+        >>>     [ 0,  1,  0],
+        >>>     [ u,  v,  1]])
+        >>> # Define core components of the affine transform
+        >>> S = sympy.Matrix([  # scale
+        >>>     [sx,  0, 0],
+        >>>     [ 0, sy, 0],
+        >>>     [ 0,  0, 1]])
+        >>> E = sympy.Matrix([  # x-shear
+        >>>     [1,  shearx, 0],
+        >>>     [0,  1, 0],
+        >>>     [0,  0, 1]])
+        >>> R = sympy.Matrix([  # rotation
+        >>>     [sympy.cos(theta), -sympy.sin(theta), 0],
+        >>>     [sympy.sin(theta),  sympy.cos(theta), 0],
+        >>>     [               0,                 0, 1]])
+        >>> T = sympy.Matrix([  # translation
+        >>>     [ 1,  0, tx],
+        >>>     [ 0,  1, ty],
+        >>>     [ 0,  0,  1]])
+        >>> # move 0, 0 back to the specified origin
+        >>> tr2_ = sympy.Matrix([[1, 0,  x0],
+        >>>                      [0, 1,  y0],
+        >>>                      [0, 0,   1]])
+        >>> # combine transformations
+        >>> homog_ = sympy.MatMul(tr2_, T, R, E, S, P, tr1_)
+        >>> #with sympy.evaluate(False):
+        >>> #    homog_ = sympy.MatMul(tr2_, T, R, E, S, P, tr1_)
+        >>> #    sympy.pprint(homog_)
+        >>> homog = homog_.doit()
+        >>> #sympy.pprint(homog)
+        >>> print('homog = {}'.format(ub.repr2(homog.tolist(), nl=1)))
+        >>> # This could be prettier
+        >>> texts = {
+        >>>     'Translation': sympy.pretty(R, use_unicode=0),
+        >>>     'Rotation': sympy.pretty(R, use_unicode=0),
+        >>>     'shEar-X': sympy.pretty(E, use_unicode=0),
+        >>>     'Scale': sympy.pretty(S, use_unicode=0),
+        >>>     'Perspective': sympy.pretty(P, use_unicode=0),
+        >>> }
+        >>> print(ub.repr2(texts, nl=2, sv=1))
+        >>> equation_stack = []
+        >>> for text, m in texts.items():
+        >>>     render_canvas = kwimage.draw_text_on_image(None, m, color='kw_green', fontScale=1.0)
+        >>>     render_canvas = kwimage.draw_header_text(render_canvas, text, color='kw_blue')
+        >>>     render_canvas = kwimage.imresize(render_canvas, scale=1.3)
+        >>>     equation_stack.append(render_canvas)
+        >>> equation_canvas = kwimage.stack_images(equation_stack, pad=10, axis=1, bg_value='kitware_gray')
+        >>> render_canvas = kwimage.draw_text_on_image(None, sympy.pretty(homog, use_unicode=0), color='kw_green', fontScale=1.0)
+        >>> render_canvas = kwimage.draw_header_text(render_canvas, 'Full Equation With Pre-Shift', color='kw_blue')
+        >>> # xdoctest: -REQUIRES(module:sympy)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> plt = kwplot.autoplt()
+        >>> canvas = kwimage.stack_images([warp_canvas, equation_canvas, render_canvas], pad=20, axis=0, bg_value='kitware_gray', resize='larger')
+        >>> canvas = kwimage.draw_header_text(canvas, 'Projective matrixes can represent', color='kw_blue')
+        >>> kwplot.imshow(canvas)
+        >>> fig = plt.gcf()
+        >>> fig.set_size_inches(13, 13)
     """
     # References:
     #     .. [AffineDecompColab] https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
@@ -364,9 +469,10 @@ class Projective(Linear):
             >>> base2 = np.zeros((96, 96, 3))
             >>> img1 = points1.draw_on(base1, radius=3, color='blue')
             >>> img2 = points2.draw_on(base2, radius=3, color='green')
-            >>> img1_warp = cv2.warpPerspective(img1, A_recovered.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img1_warp = kwimage.warp_projective(img1, A_recovered.matrix, dsize=img1.shape[0:2][::-1])
             >>> canvas = kwimage.stack_images([img1, img2, img1_warp], pad=10, axis=1, bg_value=(1., 1., 1.))
             >>> kwplot.imshow(canvas)
+
         """
         if 0:
             import cv2
@@ -462,7 +568,7 @@ class Projective(Linear):
             >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
             >>> from sympy.abc import theta
             >>> params = x0, y0, sx, sy, theta, shearx, tx, ty, u, v = sympy.symbols(
-            >>>     'x0, y0, sx, sy, theta, hx, tx, ty, u, v')
+            >>>     'x0, y0, sx, sy, theta, ex, tx, ty, u, v')
             >>> # move the center to 0, 0
             >>> tr1_ = sympy.Matrix([[1, 0,  -x0],
             >>>                      [0, 1,  -y0],
@@ -476,7 +582,7 @@ class Projective(Linear):
             >>>     [sx,  0, 0],
             >>>     [ 0, sy, 0],
             >>>     [ 0,  0, 1]])
-            >>> H = sympy.Matrix([  # x-shear
+            >>> E = sympy.Matrix([  # x-shear
             >>>     [1,  shearx, 0],
             >>>     [0,  1, 0],
             >>>     [0,  0, 1]])
@@ -494,7 +600,7 @@ class Projective(Linear):
             >>>                      [0, 0,   1]])
             >>> # combine transformations
             >>> with sympy.evaluate(False):
-            >>>     homog_ = sympy.MatMul(tr2_, T, R, H, S, P, tr1_)
+            >>>     homog_ = sympy.MatMul(tr2_, T, R, E, S, P, tr1_)
             >>>     sympy.pprint(homog_)
             >>> homog = homog_.doit()
             >>> sympy.pprint(homog)
@@ -513,7 +619,7 @@ class Projective(Linear):
                 (0, 288),
                 (128, 128),
             ])))
-            img1_warp = cv2.warpPerspective(img1, M.matrix, dsize=img1.shape[0:2][::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+            img1_warp = kwimage.warp_projective(img1, M.matrix, interpolation='linear')
             warped = points.warp(M.matrix)
 
             pic_copy = points.draw_on(img1.copy(), radius=10, color='kitware_green')
@@ -528,6 +634,8 @@ class Projective(Linear):
         """
         import kwimage
         about_ = 0 if about is None else about
+        if uv is None:
+            uv = 0, 0
         x0, y0 = _ensure_iterable2(about_)
         # About needs to be wrt to this because the projective and affine parts
         # will be inside it.
@@ -552,7 +660,7 @@ class Projective(Linear):
     @classmethod
     def random(cls, shape=None, rng=None, **kw):
         """
-        Example:
+        Example/
             >>> import kwimage
             >>> self = kwimage.Projective.random()
             >>> print(f'self={self}')
@@ -566,14 +674,14 @@ class Projective(Linear):
             >>> dsize = (256, 256)
             >>> kwplot.autompl()
             >>> img1 = kwimage.grab_test_image(dsize=dsize)
-            >>> img1_affonly = cv2.warpPerspective(img1, aff_part.matrix, dsize=img1.shape[0:2][::-1])
-            >>> img1_projonly = cv2.warpPerspective(img1, proj_part.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img1_affonly = kwimage.warp_projective(img1, aff_part.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img1_projonly = kwimage.warp_projective(img1, proj_part.matrix, dsize=img1.shape[0:2][::-1])
             >>> ###
             >>> img2 = kwimage.ensure_uint255(kwimage.atleast_3channels(kwimage.checkerboard(dsize=dsize)))
-            >>> img1_fullwarp = cv2.warpPerspective(img1, self.matrix, dsize=img1.shape[0:2][::-1])
-            >>> img2_affonly = cv2.warpPerspective(img2, aff_part.matrix, dsize=img2.shape[0:2][::-1])
-            >>> img2_projonly = cv2.warpPerspective(img2, proj_part.matrix, dsize=img2.shape[0:2][::-1])
-            >>> img2_fullwarp = cv2.warpPerspective(img2, self.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img1_fullwarp = kwimage.warp_projective(img1, self.matrix, dsize=img1.shape[0:2][::-1])
+            >>> img2_affonly = kwimage.warp_projective(img2, aff_part.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img2_projonly = kwimage.warp_projective(img2, proj_part.matrix, dsize=img2.shape[0:2][::-1])
+            >>> img2_fullwarp = kwimage.warp_projective(img2, self.matrix, dsize=img2.shape[0:2][::-1])
             >>> canvas1 = kwimage.stack_images([img1, img1_projonly, img1_affonly, img1_fullwarp], pad=10, axis=1, bg_value=(0.5, 0.9, 0.1))
             >>> canvas2 = kwimage.stack_images([img2, img2_projonly, img2_affonly, img2_fullwarp], pad=10, axis=1, bg_value=(0.5, 0.9, 0.1))
             >>> canvas = kwimage.stack_images([canvas1, canvas2], axis=0)
@@ -678,8 +786,8 @@ class Projective(Linear):
                 H = kwimage.Projective(np.array([[1, 0, 0], [0, 1, 0], [u, v, 1]]).astype(np.float32))
                 H2 = (T.inv() @ H @ T)
                 C2 = (I @ I)
-                img1_warp = cv2.warpPerspective(img1, H2.matrix, dsize=img1.shape[0:2][::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT).clip(0, 1)
-                img1_pre = cv2.warpPerspective(img1, C2.matrix, dsize=img1.shape[0:2][::-1]).clip(0, 1)
+                img1_warp = kwimage.warp_projective(img1, H2.matrix, dsize=img1.shape[0:2][::-1]).clip(0, 1)
+                img1_pre = kwimage.warp_projective(img1, C2.matrix, dsize=img1.shape[0:2][::-1]).clip(0, 1)
                 canvas = kwimage.stack_images([img1_pre, img1_warp], pad=10, axis=1, bg_value=(0., 1., 0.))
                 canvas = kwimage.draw_text_on_image(
                     canvas,
@@ -732,10 +840,109 @@ class Projective(Linear):
 
 class Affine(Projective):
     """
-    Helper for making affine transform matrices.
+    A thin wraper around a 3x3 matrix that represents an affine transform
+
+    Implements methods for:
+        * creating random affine transforms
+        * decomposing the matrix
+        * finding a best-fit transform between corresponding points
+        * TODO: - [ ] fully rational transform
 
     Example:
-        >>> self = Affine(np.eye(3))
+        >>> import kwimage
+        >>> import math
+        >>> image = kwimage.grab_test_image()
+        >>> theta = 0.123 * math.tau
+        >>> components = {
+        >>>     'rotate': kwimage.Affine.affine(theta=theta),
+        >>>     'scale': kwimage.Affine.affine(scale=0.5),
+        >>>     'shear': kwimage.Affine.affine(shearx=0.2),
+        >>>     'translation': kwimage.Affine.affine(offset=(100, 200)),
+        >>>     'rotate+translate': kwimage.Affine.affine(theta=0.123 * math.tau, about=(256, 256)),
+        >>>     'random composed': kwimage.Affine.random(scale=(0.5, 1.5), translate=(-20, 20), theta=(-theta, theta), shearx=(0, .4), rng=900558176210808600),
+        >>> }
+        >>> warp_stack = []
+        >>> for key, aff in components.items():
+        ...     warp = kwimage.warp_affine(image, aff)
+        ...     warp = kwimage.draw_text_on_image(
+        ...        warp,
+        ...        ub.repr2(aff.matrix, nl=1, nobr=1, precision=2, si=1, sv=1, with_dtype=0),
+        ...        org=(1, 1),
+        ...        valign='top', halign='left',
+        ...        fontScale=0.8, color='kw_blue',
+        ...        border={'thickness': 3},
+        ...        )
+        ...     warp = kwimage.draw_header_text(warp, key, color='kw_green')
+        ...     warp_stack.append(warp)
+        >>> warp_canvas = kwimage.stack_images_grid(warp_stack, chunksize=3, pad=10, bg_value='kitware_gray')
+        >>> # xdoctest: +REQUIRES(module:sympy)
+        >>> import sympy
+        >>> # Shows the symbolic construction of the code
+        >>> # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
+        >>> from sympy.abc import theta
+        >>> params = x0, y0, sx, sy, theta, shearx, tx, ty = sympy.symbols(
+        >>>     'x0, y0, sx, sy, theta, shearx, tx, ty')
+        >>> theta = sympy.symbols('theta')
+        >>> # move the center to 0, 0
+        >>> tr1_ = np.array([[1, 0,  -x0],
+        >>>                  [0, 1,  -y0],
+        >>>                  [0, 0,    1]])
+        >>> # Define core components of the affine transform
+        >>> S = np.array([  # scale
+        >>>     [sx,  0, 0],
+        >>>     [ 0, sy, 0],
+        >>>     [ 0,  0, 1]])
+        >>> E = np.array([  # x-shear
+        >>>     [1,  shearx, 0],
+        >>>     [0,  1, 0],
+        >>>     [0,  0, 1]])
+        >>> R = np.array([  # rotation
+        >>>     [sympy.cos(theta), -sympy.sin(theta), 0],
+        >>>     [sympy.sin(theta),  sympy.cos(theta), 0],
+        >>>     [               0,                 0, 1]])
+        >>> T = np.array([  # translation
+        >>>     [ 1,  0, tx],
+        >>>     [ 0,  1, ty],
+        >>>     [ 0,  0,  1]])
+        >>> # Contruct the affine 3x3 about the origin
+        >>> aff0 = np.array(sympy.simplify(T @ R @ E @ S))
+        >>> # move 0, 0 back to the specified origin
+        >>> tr2_ = np.array([[1, 0,  x0],
+        >>>                  [0, 1,  y0],
+        >>>                  [0, 0,   1]])
+        >>> # combine transformations
+        >>> aff = tr2_ @ aff0 @ tr1_
+        >>> print('aff = {}'.format(ub.repr2(aff.tolist(), nl=1)))
+        >>> # This could be prettier
+        >>> texts = {
+        >>>     'Translation': sympy.pretty(R),
+        >>>     'Rotation': sympy.pretty(R),
+        >>>     'shEar-X': sympy.pretty(E),
+        >>>     'Scale': sympy.pretty(S),
+        >>> }
+        >>> print(ub.repr2(texts, nl=2, sv=1))
+        >>> equation_stack = []
+        >>> for text, m in texts.items():
+        >>>     render_canvas = kwimage.draw_text_on_image(None, m, color='kw_blue', fontScale=1.0)
+        >>>     render_canvas = kwimage.draw_header_text(render_canvas, text, color='kw_green')
+        >>>     render_canvas = kwimage.imresize(render_canvas, scale=1.3)
+        >>>     equation_stack.append(render_canvas)
+        >>> equation_canvas = kwimage.stack_images(equation_stack, pad=10, axis=1, bg_value='kitware_gray')
+        >>> render_canvas = kwimage.draw_text_on_image(None, sympy.pretty(aff), color='kw_blue', fontScale=1.0)
+        >>> render_canvas = kwimage.draw_header_text(render_canvas, 'Full Equation With Pre-Shift', color='kw_green')
+        >>> # xdoctest: -REQUIRES(module:sympy)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> plt = kwplot.autoplt()
+        >>> canvas = kwimage.stack_images([warp_canvas, equation_canvas, render_canvas], pad=20, axis=0, bg_value='kitware_gray', resize='larger')
+        >>> canvas = kwimage.draw_header_text(canvas, 'Affine matrixes can represent', color='kw_green')
+        >>> kwplot.imshow(canvas)
+        >>> fig = plt.gcf()
+        >>> fig.set_size_inches(13, 13)
+
+    Example:
+        >>> import kwimage
+        >>> self = kwimage.Affine(np.eye(3))
         >>> m1 = np.eye(3) @ self
         >>> m2 = self @ np.eye(3)
 
@@ -1027,9 +1234,10 @@ class Affine(Projective):
             return dist
 
         if 'scale' in kw:
-            if ub.iterable(kw['scale']):
+            if ub.iterable(kw['scale']) and (not isinstance(kw['scale'], tuple) and len(kw['scale']) == 2):
                 raise NotImplementedError
             else:
+                print(kw['scale'])
                 xscale_dist = _coerce_distri(kw['scale'])
                 yscale_dist = xscale_dist
         else:
@@ -1268,10 +1476,10 @@ class Affine(Projective):
             >>> S = Affine.affine(scale=scale)
             >>> T = Affine.affine(offset=offset)
             >>> R = Affine.affine(theta=theta)
-            >>> H = Affine.affine(shearx=shearx)
+            >>> E = Affine.affine(shearx=shearx)
             >>> O = Affine.affine(offset=about)
             >>> # combine (note shear must be on the RHS of rotation)
-            >>> alt  = O @ T @ R @ H @ S @ O.inv()
+            >>> alt  = O @ T @ R @ E @ S @ O.inv()
             >>> print('F    = {}'.format(ub.repr2(F.matrix.tolist(), nl=1)))
             >>> print('alt  = {}'.format(ub.repr2(alt.matrix.tolist(), nl=1)))
             >>> assert np.all(np.isclose(alt.matrix, F.matrix))
@@ -1297,7 +1505,7 @@ class Affine(Projective):
             >>>     [sx,  0, 0],
             >>>     [ 0, sy, 0],
             >>>     [ 0,  0, 1]])
-            >>> H = np.array([  # x-shear
+            >>> E = np.array([  # x-shear
             >>>     [1,  shearx, 0],
             >>>     [0,  1, 0],
             >>>     [0,  0, 1]])
@@ -1310,7 +1518,7 @@ class Affine(Projective):
             >>>     [ 0,  1, ty],
             >>>     [ 0,  0,  1]])
             >>> # Contruct the affine 3x3 about the origin
-            >>> aff0 = np.array(sympy.simplify(T @ R @ H @ S))
+            >>> aff0 = np.array(sympy.simplify(T @ R @ E @ S))
             >>> # move 0, 0 back to the specified origin
             >>> tr2_ = np.array([[1, 0,  x0],
             >>>                  [0, 1,  y0],
@@ -1420,6 +1628,8 @@ class Affine(Projective):
             >>> A_recovered = kwimage.Affine.fit(pts1, pts2)
             >>> assert np.all(np.isclose(A_recovered.matrix, A12_real.matrix))
             >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
             >>> base1 = np.zeros((96, 96, 3))
             >>> base1[32:-32, 5:-5] = 0.5
             >>> base2 = np.zeros((96, 96, 3))

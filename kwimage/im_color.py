@@ -3,6 +3,8 @@ import ubelt as ub
 from collections import OrderedDict
 from . import im_core
 
+__all__ = ['Color']
+
 
 def _lookup_colorspace_object(space):
     from colormath import color_objects
@@ -320,6 +322,8 @@ class Color(ub.NiceRepr):
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
+            >>> # This is a very big table if we let it be, reduce it
+            >>> color_lut =dict(list(color_lut.items())[0:10])
             >>> canvas = kwplot.make_legend_img(color_lut)
             >>> kwplot.imshow(canvas)
         """
@@ -331,7 +335,10 @@ class Color(ub.NiceRepr):
     def distinct(Color, num, existing=None, space='rgb', legacy='auto',
                  exclude_black=True, exclude_white=True):
         """
-        Make multiple distinct colors
+        Make multiple distinct colors.
+
+        The legacy variant is based on a stack overflow post [HowToDistinct]_,
+        but the modern variant is based on the :mod:`distinctipy` package.
 
         References:
             .. [HowToDistinct] https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
@@ -1675,3 +1682,11 @@ KITWARE_COLORS = {
     'kitware_orange'    : '#EF7724',
     'kitware_yellow'    : '#FEBD64',
 }
+
+KITWARE_COLORS.update({
+    k.replace('kitware', 'kw'): v for k, v in KITWARE_COLORS.items()})
+# KITWARE_COLORS = ub.udict(KITWARE_COLORS) | {
+#     k.replace('kitware', 'kw'): v for k, v in KITWARE_COLORS.items()}
+# wait for ubelt 1.2.1
+# KITWARE_COLORS |= {
+#     k.replace('kitware', 'kw'): v for k, v in KITWARE_COLORS.items()}

@@ -643,7 +643,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
                 modname='kwimage', name='nodata',
                 type='argument to _imread_gdal',
                 migration='use nodata_method instead',
-                deprecate='0.9.4', error='0.10.0', remove='0.11.0')
+                deprecate='0.9.5', error='0.10.0', remove='0.11.0')
             nodata_method = nodata
 
         if nodata_method is not None:
@@ -1426,10 +1426,12 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> kwimage.imwrite(fpath, data, compress='LZW', interleave='PIXEL', blocksize=64, options=['NUM_THREADS=ALL_CPUS'])
         >>> _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>> loaded = kwimage.imread(fpath)
-
         >>> assert np.all(loaded.ravel() == data.ravel())
         >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
+        >>> kwplot.autompl()
+        >>> dinfo = np.iinfo(np.uint16)
         >>> kwplot.imshow(loaded / dinfo.max)
         >>> kwplot.show_if_requested()
 

@@ -67,6 +67,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>>     images, axis=0, resize='larger', pad=10, return_info=True)
         >>> print('imgB.shape = {}'.format(imgB.shape))
         >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> import kwimage
         >>> kwplot.autompl()
@@ -80,7 +81,6 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> kwplot.draw_boxes(kwimage.Boxes([xywh1], 'xywh'), color=(1.0, 0, 0))
         >>> kwplot.draw_boxes(kwimage.Boxes([xywh2], 'xywh'), color=(1.0, 0, 0))
         >>> kwplot.show_if_requested()
-        ((662, 512, 3), (0.0, 0.0), (0, 150))
     """
     imgiter = iter(images)
     img1 = next(imgiter)
@@ -356,7 +356,11 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         newshape = (hB, wB)
     # Allocate new image for both
     imgB = np.zeros(newshape, dtype=img1.dtype)
+
     if bg_value is not None:
+        if isinstance(bg_value, str):
+            import kwimage
+            bg_value = kwimage.Color(bg_value)._forimage(imgB)
         try:
             imgB[:, :] = bg_value
         except ValueError:

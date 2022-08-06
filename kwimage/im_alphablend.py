@@ -1,3 +1,12 @@
+"""
+Numpy implementation of alpha blending based on information in [SO25182421]_
+and [WikiAlphaBlend]_.
+
+References:
+    .. [SO25182421] http://stackoverflow.com/questions/25182421/overlay-numpy-alpha
+    .. [WikiAlphaBlend] https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
+"""
+
 import numpy as np
 from . import im_core
 
@@ -14,10 +23,6 @@ def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
 
     Returns:
         ndarray: raster: the blended images
-
-    References:
-        http://stackoverflow.com/questions/25182421/overlay-numpy-alpha
-        https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
 
     Example:
         >>> import kwimage
@@ -65,10 +70,6 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
     TODO:
         - [ ] Make fast C++ version of this function
 
-    References:
-        http://stackoverflow.com/questions/25182421/overlay-numpy-alpha
-        https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
-
     Example:
         >>> import kwimage
         >>> img1 = kwimage.grab_test_image('astro', dsize=(100, 100))
@@ -103,8 +104,6 @@ def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
         kwplot.autompl()
         kwplot.imshow(raster)
         kwplot.show_if_requested()
-
-
     """
     rgb1, alpha1 = _prep_rgb_alpha(img1, dtype=dtype)
     rgb2, alpha2 = _prep_rgb_alpha(img2, dtype=dtype)

@@ -705,11 +705,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
     @classmethod
     def circle(cls, xy, r, resolution=64):
         """
-        Create a circular polygon
+        Create a circular or elliptical polygon.
+
+        Might rename to ellipse later?
 
         Args:
             xy (Iterable[Number]): x and y center coordinate
-            r (Number): radius
+            r (Number | Tuple[Number, Number]):
+                circular radius or major and minor elliptical radius
             resolution (int): number of sides
 
         Returns:
@@ -719,22 +722,79 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> import kwimage
             >>> xy = (0.5, 0.5)
             >>> r = .3
-            >>> poly = kwimage.Polygon.circle(xy, r)
+            >>> # Demo with circle
+            >>> circle = kwimage.Polygon.circle(xy, r, resolution=6)
+            >>> # Demo with ellipse
+            >>> xy = (0.5, 0.5)
+            >>> r = (.4, .7)
+            >>> ellipse1 = kwimage.Polygon.circle(xy, r, resolution=12)
+            >>> ellipse2 = kwimage.Polygon.circle(xy, (.7, .4), resolution=12)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> plt = kwplot.autoplt()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> circle.draw(setlim=True, border=1, fill=0, color='kitware_orange')
+            >>> ellipse1.draw(setlim=True, border=1, fill=0, color='kitware_blue')
+            >>> ellipse2.draw(setlim=True, border=1, fill=0, color='kitware_green')
+            >>> plt.gca().set_xlim(-0.5, 1.5)
+            >>> plt.gca().set_ylim(-0.5, 1.5)
+            >>> plt.gca().set_aspect('equal')
         """
         tau = 2 * np.pi
-        theta = np.linspace(0, tau, resolution)
-        y_offset = np.sin(theta) * r
-        x_offset = np.cos(theta) * r
+
+        if ub.iterable(r):
+            a, b = r
+            is_circle = (a == b)
+            if is_circle:
+                r = a
+        else:
+            is_circle = True
+
+        if is_circle:
+            theta = np.linspace(0, tau, resolution)
+            y_offset = np.sin(theta) * r
+            x_offset = np.cos(theta) * r
+        else:
+            # If we have an ellipse (i.e. different radius in each direction),
+            # then the problem gets a lot harder, but we can do it! WE JUST
+            # GOTTA BELIEVE IN OURSELVES!
+            import scipy.optimize
+            import scipy
+            need_swap = a > b
+            if need_swap:
+                a, b = b, a
+
+            def angles_in_ellipse(num, a, b):
+                """
+                References:
+                    https://stackoverflow.com/questions/6972331/how-can-i-generate-a-set-of-points-evenly-distributed-along-the-perimeter-of-an
+                """
+                assert num > 0
+                assert a < b
+                angles = 2 * np.pi * np.arange(num) / num
+                if a != b:
+                    e2 = (1.0 - a ** 2.0 / b ** 2.0)
+                    tot_size = scipy.special.ellipeinc(2.0 * np.pi, e2)
+                    arc_size = tot_size / num
+                    arcs = np.arange(num) * arc_size
+                    res = scipy.optimize.root(
+                        lambda x: (scipy.special.ellipeinc(x, e2) - arcs), angles,
+                        # options={'maxiter': 5}
+                    )
+                    angles = res.x
+                return angles
+
+            # Sample theta such that the arclengths between points are nearly
+            # the same.
+            theta = angles_in_ellipse(resolution, a, b)
+            x_offset, y_offset = np.array((a * np.cos(theta), b * np.sin(theta)))
+            if need_swap:
+                x_offset, y_offset = y_offset, x_offset
 
         center = np.array(xy)
         xcoords = center[0] + x_offset
         ycoords = center[1] + y_offset
-
-        exterior = np.hstack([
-            xcoords.ravel()[:, None],
-            ycoords.ravel()[:, None],
-        ])
-
+        exterior = np.stack([xcoords.ravel(), ycoords.ravel()], axis=1)
         self = cls(exterior=exterior)
         return self
 
@@ -763,8 +823,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> self = Polygon.random(n=n, rng=rng, n_holes=n_holes, convex=1)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
-            >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
             >>> self.draw()
 
         References:
@@ -939,7 +999,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
-    def to_relative_mask(self):
+    def to_relative_mask(self, return_offset=False):
         """
         Returns a translated mask such the mask dimensions are minimal.
 
@@ -963,7 +1023,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         """
         x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        return mask
+        if return_offset:
+            offset = (x, y)
+            return mask, offset
+        else:
+            return mask
 
     def _to_cv_countours(self):
         """
@@ -1468,7 +1532,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
-            >>> kwplot.imshow(image, fnum=1)
+            >>> kwplot.imshow(image_out, fnum=1)
 
         Example:
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -1727,6 +1791,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> # xdoc: +REQUIRES(--show)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1, rng=33202)
+            >>> import textwrap
             >>> # Test over a range of parameters
             >>> basis = {
             >>>     'linewidth': [0, 4],
@@ -2034,12 +2099,11 @@ class MultiPolygon(_generic.ObjectList):
             >>> self = MultiPolygon.random(rng=0).scale(s)
             >>> dims = (s, s)
             >>> mask = self.to_mask(dims)
-
             >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
             >>> import kwplot
-            >>> kwplot.autompl()
+            >>> plt = kwplot.autoplt()
             >>> kwplot.figure(fnum=1, doclf=True)
-            >>> from matplotlib import pyplot as pl
             >>> ax = plt.gca()
             >>> ax.set_xlim(0, s)
             >>> ax.set_ylim(0, s)
@@ -2056,7 +2120,7 @@ class MultiPolygon(_generic.ObjectList):
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
-    def to_relative_mask(self):
+    def to_relative_mask(self, return_offset=False):
         """
         Returns a translated mask such the mask dimensions are minimal.
 
@@ -2066,9 +2130,17 @@ class MultiPolygon(_generic.ObjectList):
         Returns:
             kwimage.Mask
         """
+        # dims (Tuple[int, int] | None):
+        #     if you know *exactly* how big the polygon is you can specify
+        #     this, otherwise it will be computed.
+        # if dims is not None:
         x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        return mask
+        if return_offset:
+            offset = (x, y)
+            return mask, offset
+        else:
+            return mask
 
     @classmethod
     def coerce(cls, data, dims=None):

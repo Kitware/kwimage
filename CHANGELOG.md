@@ -4,7 +4,20 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.4 - Unreleased
+## Version 0.9.5 - Unreleased
+
+### Added
+* `kwimage.warp_projective`
+* `kwimage.connected_components`
+* `kwimage.Boxes.resize` for setting the width/height of a box.
+* `kwimage.Polygon.circle` can now be constructed as an ellipse by specifying radii as a tuple
+
+### Fixed
+* Passing single and multiple colors now works correctly for `Points.draw_on`.
+* Fixed morphology when kernel was 0
+
+
+## Version 0.9.4 - Released 2022-08-01
 
 
 ### Added

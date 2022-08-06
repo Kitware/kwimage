@@ -638,6 +638,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
 
         params (str | dict):
             can contain keys, low, high, or center
+            e.g. {'low': 0.1, 'center': 0.8, 'high': 0.9}
 
         axis (None | int):
             The axis to normalize over, if unspecified, normalize jointly

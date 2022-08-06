@@ -13,7 +13,7 @@ The ``kwimage`` module handles low-level image operations at a high level.
 
 The core ``kwimage`` is a functional library with image-related helper
 functions that are either unimplemented in or more have a more general
-interface then their opencv counterparts. 
+interface then their opencv counterparts.
 
 The ``kwimage`` module builds on ``kwarray`` and provides tools commonly needed
 when addressing computer vision problems. This includes functions for reading
@@ -45,14 +45,16 @@ The top-level API is:
                           find_robust_normalizers, make_channels_comparable,
                           normalize, normalize_intensity, num_channels,
                           padded_slice,)
-    from .im_cv2 import (convert_colorspace, gaussian_blur, gaussian_patch, imcrop,
-                         imresize, imscale, morphology, warp_affine,)
+    from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
+                         gaussian_patch, imcrop, imresize, imscale, morphology,
+                         warp_affine,)
     from .im_demodata import (checkerboard, grab_test_image,
                               grab_test_image_fpath,)
     from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
                           draw_line_segments_on_image, draw_text_on_image,
                           draw_vector_field, fill_nans_with_checkers,
-                          make_heatmask, make_orimask, make_vector_field,)
+                          make_heatmask, make_orimask, make_vector_field,
+                          nodata_checkerboard,)
     from .im_filter import (fourier_mask, radial_fourier_mask,)
     from .im_io import (imread, imwrite, load_image_shape,)
     from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
@@ -69,7 +71,7 @@ The top-level API is:
                             warp_points, warp_tensor,)
 
 
-NOTE: THE KWIMAGE STRUCTS WILL EVENTUALLY MOVE TO THE KWANNOT REPO
+NOTE: THE KWIMAGE STRUCTS MAY? EVENTUALLY MOVE TO THE KWANNOT REPO
 (But this transition might take awhile)
 
 
@@ -149,19 +151,13 @@ with one of the following "extra install" tags:
     pip install kwimage[graphics]
 
 
-On linux, pip install commands will download precompiled manylinux wheels. On
-other operating systems, or if you are installing from source, you may need to
-compile C-extension modules. However, there are equivalent python-only
-implementations of almost every c-extension.  You can disable compilation or
-loading of c-extensions at compile or runtime by setting the environment
-variable: `KWIMAGE_DISABLE_C_EXTENSIONS=1`.
+Some features also require the ``kwimage_ext`` package to be installed, which
+contains binary extensions that used to be distributed with this package in
+older versions. These extension can be obtained by explicitly 
+``pip install kwimage_ext`` or via ``pip install kwimage[optional]`` (which also
+brings in other optional libraries). You can disable loading of c-extensions at
+runtime by setting the environment variable: `KWIMAGE_DISABLE_C_EXTENSIONS=1`.
 
-
-Also note, that when building from source, the build may fail if you not in a
-fresh state (related to
-`skbuild-386 <https://github.com/scikit-build/scikit-build/issues/386>`_. You
-can mitigate this by running ``python setup.py clean`` to remove build
-artifacts. Building from a clean environment should work.
 
 A Note on GDAL
 --------------

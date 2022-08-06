@@ -108,4 +108,4 @@ _skbuild
 wheelhouse
 mb_work
 
-docs/source/kwimage.*.rst
+#docs/source/kwimage.*.rst

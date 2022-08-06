@@ -827,7 +827,7 @@ class _BoxConversionMixins(object):
                 we add 1 from the bot/right to get the slice stop point such
                 that the bot/right pixel will be included in the slice.
 
-        Ascii:
+        TextArt:
             +--------------+
             l              r <- box coords
             s              t <- endpoint=True
@@ -1292,7 +1292,7 @@ class _BoxTransformMixins(object):
                 Origin of the scaling operation, Can be a single point, an
                 array of points for each box, or a special string:
                     'origin': all boxes are scaled about (0, 0)
-                    'center': all boxes are scaled about their own center.
+                    'centroid' or 'center': all boxes are scaled about their own center.
                 Defaults to 'origin'
 
             output_dims (Tuple): unused in non-raster spatial structures
@@ -1369,7 +1369,7 @@ class _BoxTransformMixins(object):
             if isinstance(about, str):
                 if about == 'origin':
                     about = None
-                elif about == 'center':
+                elif about in {'center', 'centroid'}:
                     about = self.xy_center
                 else:
                     raise KeyError(about)
@@ -1465,8 +1465,6 @@ class _BoxTransformMixins(object):
             tx = amount[..., 0]
             ty = amount[..., 1]
 
-        kwarray.ArrayAPI.impl(self.data)
-
         if inplace:
             new = self
             new_data = self.data
@@ -1497,8 +1495,9 @@ class _BoxTransformMixins(object):
 
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
-        Clip boxes to image boundaries. If box is in ltrb format, inplace
-        operation is an option.
+        Clip boxes to image boundaries.
+
+        If box is in ltrb format, inplace operation is an option.
 
         Args:
             x_min (int): minimum x-coordinate
@@ -1556,13 +1555,101 @@ class _BoxTransformMixins(object):
                 np.clip(y2, y_min, y_max, out=y2)
         return new
 
+    def resize(self, width=None, height=None, inplace=False):
+        """
+        Set the widths and/or heights of each box, while leaving the minimum
+        x/y point constant.
+
+        Args:
+            width (Number | ndarray | None):
+                if specified and a number, sets the width of each box to this
+                value. If this is a broadcastable ndarray, the width of each
+                box can be set individually.
+
+            height (Number | ndarray | None):
+                same as width, except this modifies height components.
+
+            inplace (bool):
+                if True and possible, perform operation inplace.
+                Defaults to False.
+
+        TODO:
+            - [ ] It would be nice to specify in which direction the box
+                  shrinks or is expanded, but that might not play nice with
+                  quantized coordinates.
+
+        Returns:
+            Boxes : modified boxes
+
+        SeeAlso:
+            :func:`Boxes.warp` and :func:`Boxes.scale` for size rescaling based
+            on a factor rather than a fixed width/height.
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes([[1, 1, 4, 4]] * 5, 'ltrb')
+            >>> # Test setting only the width to a scalar
+            >>> new1 = self.resize(width=10)
+            >>> assert np.all(new1.width == 10)
+            >>> assert np.all(new1.height == 3)
+            >>> # Test setting only the height to a scalar
+            >>> new2 = self.resize(height=10)
+            >>> assert np.all(new2.width == 3)
+            >>> assert np.all(new2.height == 10)
+            >>> # Test setting width and height per-box values
+            >>> new3 = self.resize(
+            >>>     width=np.arange(0, 5),
+            >>>     height=np.arange(4, 13, 2))
+            >>> assert np.all(new3.width.ravel() == [0, 1, 2, 3, 4])
+            >>> assert np.all(new3.height.ravel() == [4, 6, 8, 10, 12])
+
+        Example:
+            >>> # Test setting width and height per-box values
+            >>> # for a multidimensional setting
+            >>> import kwimage
+            >>> self = kwimage.Boxes([[1, 1, 4, 4]] * 8, 'ltrb').view(2, 2, 2, -1)
+            >>> new = self.resize(
+            >>>     width=np.arange(0, 8).reshape(2, 2, 2),
+            >>>     height=np.arange(10, 18).reshape(2, 2, 2))
+            >>> assert np.all(new.width.ravel() == np.arange(0, 8))
+            >>> assert np.all(new.height.ravel() == np.arange(10, 18))
+        """
+        if inplace:
+            if self.format != BoxFormat.XYWH:
+                raise ValueError('Must be in xywh format to operate inplace')
+            new = self
+        else:
+            new = self.to_xywh(copy=True)
+        if width is not None:
+            new.data[..., 2] = width
+        if height is not None:
+            new.data[..., 3] = height
+        new = new.toformat(self.format, copy=False)
+        return new
+
+    def _set_axis(self, new_width):
+        pass
+
     def pad(self, x_left, y_top, x_right, y_bot, inplace=False):
         """
         Adds extra width/height to the left, top, right, and bottom
         of each bounding box.
 
+        Args:
+            x_left (int | float): xmin pad
+            y_top (int | float): ymin pad
+            x_right (int | float): xmax pad
+            y_bot (int | float): ymax pad
+
+        Returns:
+            Boxes : padded boxes
+
+        Note:
+            The argument names to this function are assuming up is negative and
+            down is positive. We may change them in the future to be agnostic
+            to image vs blackboard coordinates.
         """
-        impl = kwarray.ArrayAPI.impl(self.data)
+        impl = self._impl
 
         if inplace:
             new = self
@@ -2537,7 +2624,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Converts the box to integer coordinates.
 
         This operation takes the floor of the left side and the ceil of the
-        right side. Thus the area of the box will never decreases.
+        right side. Thus the area of the box will never decreases. But this
+        will often increase the width / height of the box by a pixel.
 
         Args:
             inplace (bool): if True, modifies this object
@@ -2548,6 +2636,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         SeeAlso:
             :func:`Boxes.round`
+            :func:`Boxes.resize` if you need to ensure the size does not change
 
         Example:
             >>> import kwimage
@@ -2563,6 +2652,20 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 array([[5, 5, 2, 3],
                        [4, 6, 1, 3],
                        [7, 3, 3, 3]], dtype=int32))>
+
+        Example:
+            >>> import kwimage
+            >>> # Be careful if it is important to preserve the width/height
+            >>> self = kwimage.Boxes([[0, 0, 10, 10]], 'xywh')
+            >>> aff = kwimage.Affine.coerce(offset=(0.5, 0.0))
+            >>> warped = self.warp(aff)
+            >>> new = warped.quantize(dtype=int)
+            >>> print('self   = {!r}'.format(self))
+            >>> print('warped = {!r}'.format(warped))
+            >>> print('new    = {!r}'.format(new))
+            self   = <Boxes(xywh, array([[ 0,  0, 10, 10]]))>
+            warped = <Boxes(xywh, array([[ 0.5,  0. , 10. , 10. ]]))>
+            new    = <Boxes(xywh, array([[ 0,  0, 11, 10]]))>
 
         Example:
             >>> import kwimage

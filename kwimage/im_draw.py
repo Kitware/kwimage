@@ -57,6 +57,10 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         The image is modified inplace. If the image is non-contiguous then this
         returns a UMat instead of a ndarray, so be carefull with that.
 
+    Related:
+        The logic in this function is related to the following stack overflow
+        posts [SO27647424]_ [SO51285616]_
+
     References:
         .. [SO27647424] https://stackoverflow.com/questions/27647424/
         .. [SO51285616] https://stackoverflow.com/questions/51285616/opencvs-gettextsize-and-puttext-return-wrong-size-and-chop-letters-with-low
@@ -100,7 +104,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     Example:
         >>> # Test dictionary border
         >>> import kwimage
-        >>> img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(100, 100), valign='top', halign='center', border={'color': 'green', 'thickness': 9})
+        >>> img = kwimage.draw_text_on_image(None, 'Battery\nFraction', org=(100, 100), valign='top', halign='center', border={'color': 'green', 'thickness': 9})
         >>> #img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(0, 0), valign='top')
         >>> #img = kwimage.draw_text_on_image(None, 'hello', org=(0, 60), valign='top', halign='center', border=0)
         >>> # xdoc: +REQUIRES(--show)
@@ -112,7 +116,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     Example:
         >>> # Test dictionary image
         >>> import kwimage
-        >>> img = kwimage.draw_text_on_image({'width': 300}, 'good\nPropogate', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
+        >>> img = kwimage.draw_text_on_image({'width': 300}, 'Unscrew\nGetting', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
         >>> print('img.shape = {!r}'.format(img.shape))
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
@@ -755,8 +759,11 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
         >>> kwplot.imshow(img)
         >>> kwplot.show_if_requested()
     """
-    import warnings
-    warnings.warn('Deprecated, use draw_vector_field instead', DeprecationWarning)
+    # import warnings
+    import ubelt as ub
+    ub.schedule_deprecation('kwimage', 'make_vector_field', 'method',
+                            migration='use draw_vector_field instead',
+                            deprecate='0.9.1', error='1.0.0', remove='1.1.0')
     import cv2
     import kwimage
     color = kwimage.Color(color).as255('rgb')
@@ -1079,11 +1086,33 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
         >>> orig_img = kwimage.ensure_float01(kwimage.grab_test_image())
+        >>> poly1 = kwimage.Polygon.random(rng=1).scale(orig_img.shape[0] // 2)
+        >>> poly2 = kwimage.Polygon.random(rng=3).scale(orig_img.shape[0])
+        >>> poly3 = kwimage.Polygon.random(rng=4).scale(orig_img.shape[0] // 2)
+        >>> poly3 = poly3.translate((0, 200))
+        >>> img = orig_img.copy()
+        >>> img = poly1.fill(img, np.nan)
+        >>> img = poly3.fill(img, 0)
+        >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
+        >>> canvas = img.copy()
+        >>> canvas = fill_nans_with_checkers(canvas)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img, pnum=(1, 2, 1), title='matplotlib treats nans as zero or transparent')
+        >>> kwplot.imshow(canvas, pnum=(1, 2, 2), title='nan checker make it clear where real nans are')
+
+    Example:
+        >>> # Test grayscale
+        >>> from kwimage.im_draw import *  # NOQA
+        >>> import kwimage
+        >>> orig_img = kwimage.ensure_float01(kwimage.grab_test_image())
         >>> poly1 = kwimage.Polygon.random().scale(orig_img.shape[0] // 2)
         >>> poly2 = kwimage.Polygon.random().scale(orig_img.shape[0])
         >>> img = orig_img.copy()
         >>> img = poly1.fill(img, np.nan)
         >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
+        >>> img = kwimage.convert_colorspace(img, 'rgb', 'gray')
         >>> canvas = img.copy()
         >>> canvas = fill_nans_with_checkers(canvas)
         >>> # xdoc: +REQUIRES(--show)
@@ -1100,6 +1129,7 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape):
     import kwimage
     import kwarray
     canvas = kwarray.atleast_nd(canvas, 3)
+    invalid_mask = kwarray.atleast_nd(invalid_mask, 3)
     allchan_invalid_mask = invalid_mask.all(axis=2, keepdims=1)
     anychan_invalid_mask = invalid_mask.any(axis=2, keepdims=1)
 

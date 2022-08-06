@@ -1,5 +1,5 @@
 coverage >= 5.3.1
-xdoctest >= 0.15.6
+xdoctest >= 1.0.1
 pytest >= 6.2.4
 timerit >= 0.3.0
 

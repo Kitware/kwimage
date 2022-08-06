@@ -154,6 +154,8 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
             rotation or shear are non-zero. I'm not sure what the cause is.
             It may just be floating point issues, but Im' not sure.
 
+        See issues in [TorchAffineTransform]_ and [TorchIssue15386]_.
+
     TODO:
         - [ ] FIXME: see example in Mask.scale where this algo breaks when the matrix is `2x3`
         - [ ] Make this algo work when matrix ix 2x2
@@ -649,7 +651,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
         index (Tuple[slice]): subpixel slice into dst that corresponds with src
         interp_axes (tuple): specify which axes should be spatially interpolated
 
-    Ascii:
+    TextArt:
         Inputs:
             +---+---+---+---+---+  dst.shape = (5,)
                   +---+---+        src.shape = (2,)
