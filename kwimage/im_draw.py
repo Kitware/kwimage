@@ -104,7 +104,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     Example:
         >>> # Test dictionary border
         >>> import kwimage
-        >>> img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(100, 100), valign='top', halign='center', border={'color': 'green', 'thickness': 9})
+        >>> img = kwimage.draw_text_on_image(None, 'Battery\nFraction', org=(100, 100), valign='top', halign='center', border={'color': 'green', 'thickness': 9})
         >>> #img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(0, 0), valign='top')
         >>> #img = kwimage.draw_text_on_image(None, 'hello', org=(0, 60), valign='top', halign='center', border=0)
         >>> # xdoc: +REQUIRES(--show)
@@ -116,7 +116,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     Example:
         >>> # Test dictionary image
         >>> import kwimage
-        >>> img = kwimage.draw_text_on_image({'width': 300}, 'good\nPropogate', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
+        >>> img = kwimage.draw_text_on_image({'width': 300}, 'Unscrew\nGetting', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
         >>> print('img.shape = {!r}'.format(img.shape))
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
@@ -759,8 +759,11 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
         >>> kwplot.imshow(img)
         >>> kwplot.show_if_requested()
     """
-    import warnings
-    warnings.warn('Deprecated, use draw_vector_field instead', DeprecationWarning)
+    # import warnings
+    import ubelt as ub
+    ub.schedule_deprecation('kwimage', 'make_vector_field', 'method',
+                            migration='use draw_vector_field instead',
+                            deprecate='0.9.1', error='1.0.0', remove='1.1.0')
     import cv2
     import kwimage
     color = kwimage.Color(color).as255('rgb')

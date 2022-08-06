@@ -1,6 +1,6 @@
 """
 Notes:
-    Based on template code in: ~/code/kwimage/docs/source/conf.py
+    Based on template code in: ~/code/xcookie/docs/source/conf.py
 
     http://docs.readthedocs.io/en/latest/getting_started.html
 
@@ -112,11 +112,11 @@ version = '.'.join(release.split('.')[0:2])
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
     'sphinx.ext.autosummary',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
     # 'myst_parser',  # TODO
 ]
 

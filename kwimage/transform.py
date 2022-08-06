@@ -735,7 +735,30 @@ class Affine(Projective):
     Helper for making affine transform matrices.
 
     Example:
-        >>> self = Affine(np.eye(3))
+        >>> import kwimage
+        >>> import math
+        >>> image = kwimage.grab_test_image()
+        >>> components = {
+        >>>     'rotate': kwimage.Affine.affine(theta=math.tau / 4),
+        >>>     'scale': kwimage.Affine.affine(scale=0.5),
+        >>>     'shear': kwimage.Affine.affine(shearx=0.5)
+        >>>     'translation': kwimage.Affine.affine(offset=(-100, 100))
+        >>> }
+        >>> stack = []
+        >>> for key, aff in components.items():
+        ...     warp = kwimage.warp_affine(image, aff)
+        ...     warp = kwimage.draw_header_text(key, warp)
+        ...     stack.append(warp)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> canvas = kwimage.stack_images_grid(stack, bg_value='kw_blue')
+        >>> canvas = kwimage.draw_header_text(canvas, 'Affine matrixes can represent')
+        >>> kwplot.imshow(canvas)
+
+    Example:
+        >>> import kwimage
+        >>> self = kwimage.Affine(np.eye(3))
         >>> m1 = np.eye(3) @ self
         >>> m2 = self @ np.eye(3)
 
