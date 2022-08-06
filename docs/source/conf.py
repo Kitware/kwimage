@@ -719,7 +719,7 @@ def create_doctest_figure(app, obj, name, lines):
     for info in to_insert_fpaths[::-1]:
         src_abs_fpath = info['fpath']
 
-        # rel_to_static_fpath = src_abs_fpath.relative_to(doc_static_srcdir)
+        rel_to_static_fpath = src_abs_fpath.relative_to(doc_static_srcdir)
         # dst_abs_fpath = doc_static_outdir / rel_to_static_fpath
         # dst_abs_fpath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -737,7 +737,8 @@ def create_doctest_figure(app, obj, name, lines):
             insert_index = end_index
         else:
             raise KeyError(INSERT_AT)
-        lines.insert(insert_index, '.. image:: {}'.format(rel_to_root_fpath))
+        # lines.insert(insert_index, '.. image:: {}'.format(rel_to_root_fpath))
+        lines.insert(insert_index, '.. image:: {}'.format(rel_to_static_fpath))
         lines.insert(insert_index, '')
 
     # print('final lines = {}'.format(ub.repr2(lines, nl=1)))
