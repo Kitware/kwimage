@@ -1421,7 +1421,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         ub.schedule_deprecation(
             'kwimage', 'Mask.get_polygon', 'method',
             migration='use Mask.to_multi_polygon instead',
-            deprecate='0.9.6', error='1.0.0', remove='1.1.0',
+            deprecate='0.9.5', error='1.0.0', remove='1.1.0',
         )
         p = 2
 
