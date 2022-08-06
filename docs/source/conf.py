@@ -504,7 +504,7 @@ class GoogleStyleDocstringProcessor:
         #     import xdev
         #     xdev.embed()
 
-        if 1:
+        if 0:
             # DEVELOPING
             if any('REQUIRES(--show)' in line for line in lines):
                 # import xdev
@@ -758,7 +758,7 @@ def setup(app):
     # sphinx.application.Sphinx
     app.add_domain(PatchedPythonDomain, override=True)
     docstring_processor = GoogleStyleDocstringProcessor()
-    if 0:
+    if 1:
         # New Way
         # what = None
         app.connect('autodoc-process-docstring', docstring_processor.process_docstring_callback)
