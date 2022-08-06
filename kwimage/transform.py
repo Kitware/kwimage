@@ -339,10 +339,10 @@ class Projective(Linear):
         ...        ub.repr2(mat.matrix, nl=1, nobr=1, precision=4, si=1, sv=1, with_dtype=0),
         ...        org=(1, 1),
         ...        valign='top', halign='left',
-        ...        fontScale=0.8, color='kw_blue',
+        ...        fontScale=0.8, color='kw_green',
         ...        border={'thickness': 3},
         ...        )
-        ...     warp = kwimage.draw_header_text(warp, key, color='kw_green')
+        ...     warp = kwimage.draw_header_text(warp, key, color='kw_blue')
         ...     warp_stack.append(warp)
         >>> warp_canvas = kwimage.stack_images_grid(warp_stack, chunksize=4, pad=10, bg_value='kitware_gray')
         >>> # xdoctest: +REQUIRES(module:sympy)
@@ -400,19 +400,19 @@ class Projective(Linear):
         >>> print(ub.repr2(texts, nl=2, sv=1))
         >>> equation_stack = []
         >>> for text, m in texts.items():
-        >>>     render_canvas = kwimage.draw_text_on_image(None, m, color='kw_blue', fontScale=1.0)
-        >>>     render_canvas = kwimage.draw_header_text(render_canvas, text, color='kw_green')
+        >>>     render_canvas = kwimage.draw_text_on_image(None, m, color='kw_green', fontScale=1.0)
+        >>>     render_canvas = kwimage.draw_header_text(render_canvas, text, color='kw_blue')
         >>>     render_canvas = kwimage.imresize(render_canvas, scale=1.3)
         >>>     equation_stack.append(render_canvas)
         >>> equation_canvas = kwimage.stack_images(equation_stack, pad=10, axis=1, bg_value='kitware_gray')
-        >>> render_canvas = kwimage.draw_text_on_image(None, sympy.pretty(homog, use_unicode=0), color='kw_blue', fontScale=1.0)
-        >>> render_canvas = kwimage.draw_header_text(render_canvas, 'Full Equation With Pre-Shift', color='kw_green')
+        >>> render_canvas = kwimage.draw_text_on_image(None, sympy.pretty(homog, use_unicode=0), color='kw_green', fontScale=1.0)
+        >>> render_canvas = kwimage.draw_header_text(render_canvas, 'Full Equation With Pre-Shift', color='kw_blue')
         >>> # xdoctest: -REQUIRES(module:sympy)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> plt = kwplot.autoplt()
         >>> canvas = kwimage.stack_images([warp_canvas, equation_canvas, render_canvas], pad=20, axis=0, bg_value='kitware_gray', resize='larger')
-        >>> canvas = kwimage.draw_header_text(canvas, 'Projective matrixes can represent', color='kw_green')
+        >>> canvas = kwimage.draw_header_text(canvas, 'Projective matrixes can represent', color='kw_blue')
         >>> kwplot.imshow(canvas)
         >>> fig = plt.gcf()
         >>> fig.set_size_inches(13, 13)
