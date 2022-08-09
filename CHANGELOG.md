@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.6 - Unreleased
 
+### Fixed
+* Issue in Detections.draw where "cids" was not respected.
+
 
 ## Version 0.9.5 - Released 2022-08-06
 
