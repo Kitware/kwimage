@@ -27,6 +27,7 @@ def test_mask_with_bool_data():
     assert mask.area > 0
 
     mask.translate(3)
-    mask.warp(kwimage.Affine.eye(), output_dims='same')
-    mask.scale(2.3)
+    if ub.modname_to_modpath('torch'):
+        mask.warp(kwimage.Affine.eye(), output_dims='same')
+        mask.scale(2.3)
     mask.get_patch()
