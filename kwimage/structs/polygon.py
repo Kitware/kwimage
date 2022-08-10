@@ -1648,6 +1648,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             image = kwimage.ensure_float01(image)
             image = kwimage.ensure_alpha_channel(image)
 
+        from kwimage.im_cv2 import _cv2_imputation
+        image = _cv2_imputation(image)
+
         color = kwimage.Color(color, alpha=alpha)._forimage(image)
         # print('--- B')
         # print('image.dtype = {!r}'.format(image.dtype))

@@ -145,7 +145,7 @@ class BoxFormat:
     # Note: prefix row major format with an underscore.
     # Reason: Boxes prefers column-major formats
     _YYXX  = _register('_yyxx')   # (y1, y2, x1, x2)
-    _RCHW  = _register('_rchw')   # (y1, y2, x1, x2)
+    _RCHW  = _register('_rchw')   # (y1, y2, h, w)
 
     aliases = {
         # NOTE: Once a name enters here it is very difficult to remove

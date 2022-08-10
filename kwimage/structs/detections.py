@@ -342,7 +342,6 @@ class _DetDrawMixin:
                     else:
                         # Cant determine label for class
                         identifers = ['?' for _ in range(len(self))]
-                print(f'identifers={identifers}')
 
                 if labels in ['class']:
                     labels = identifers

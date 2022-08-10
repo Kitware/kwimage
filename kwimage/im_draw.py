@@ -953,7 +953,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
 
 
 def draw_header_text(image, text, fit=False, color='strawberry', halign='center',
-                     stack='auto'):
+                     stack='auto', bg_color='black'):
     """
     Places a black bar on top of an image and writes text in it
 
@@ -1029,16 +1029,18 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
             image = kwimage.imresize(image, min_dim=min_pixels)
         width = image.shape[1]
 
+    bginfo = {'color': bg_color}
+
     if fit:
         # TODO: allow a shrink-to-fit only option
         try:
             # needs new kwimage to work
             header = kwimage.draw_text_on_image(
-                None, text, org=None,
+                bginfo, text, org=None,
                 valign='top', halign=halign, color=color)
         except Exception:
             header = kwimage.draw_text_on_image(
-                None, text, org=(1, 1),
+                bginfo, text, org=(1, 1),
                 valign='top', halign='left', color=color)
 
         if fit == 'shrink':
@@ -1061,8 +1063,9 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
         else:
             raise KeyError(halign)
 
+        bginfo['width'] = width
         header = kwimage.draw_text_on_image(
-            {'width': width}, text, org=org,
+            bginfo, text, org=org,
             valign='top', halign=halign, color=color)
 
     if stack:

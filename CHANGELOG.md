@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.6 - Unreleased
 
+### Added
+* The `bg_color` arg to `draw_header_text`
+
 ### Fixed
 * Issue in Detections.draw where "cids" was not respected.
 
@@ -31,7 +34,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * The `Coords` object now implements `__array__`.
 * The `about` parameter for `Polygon` transformations has been
   expanded to include codes: "top,left", "top,right", etc...
-* A from_text method for masks.
+* A `from_text` method for masks.
 
 
 ### Fixed

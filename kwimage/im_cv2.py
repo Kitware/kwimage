@@ -181,7 +181,10 @@ def _coerce_border_value(border_value, default=0, image=None):
     if borderValue is None:
         borderValue = default
 
-    if not ub.iterable(borderValue):
+    if isinstance(borderValue, str):
+        from kwimage import im_color
+        borderValue = im_color.Color(borderValue)._forimage(image)
+    elif not ub.iterable(borderValue):
         # convert scalar border value to a tuple to ensure the user always
         # fully defines the output. (and to have conciseness)
         num_chan = im_core.num_channels(image)
@@ -400,7 +403,7 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
              interpolation=None, grow_interpolation=None, letterbox=False,
-             return_info=False, antialias=False):
+             return_info=False, antialias=False, border_value=0):
     """
     Resize an image based on a scale factor, final size, or size and aspect
     ratio.
@@ -448,7 +451,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         letterbox (bool):
             If used in conjunction with dsize, then the image is scaled and
             translated to fit in the center of the new image while maintaining
-            aspect ratio. Zero padding is added if necessary.  Defaults to
+            aspect ratio. Border padding is added if necessary.  Defaults to
             False.
 
         return_info (bool):
@@ -460,6 +463,9 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         antialias (bool):
             if True blurs to anti-alias before downsampling.
             Defaults to False.
+
+        border_value (int | float | Iterable[int | float]):
+            if letterbox is True, this is used as the constant fill value.
 
     Returns:
         ndarray | Tuple[ndarray, Dict] :
@@ -658,9 +664,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         embed_dsize = tuple(embed_size)
         embed_img = _patched_resize(img, scale, embed_dsize,
                                     interpolation=interpolation)
+
+        borderValue = _coerce_border_value(border_value, image=embed_img)
         new_img = cv2.copyMakeBorder(
             embed_img, top, bot, left, right, borderType=cv2.BORDER_CONSTANT,
-            value=0)
+            value=borderValue)
         if return_info:
             info = {
                 'offset': offset,
@@ -1468,15 +1476,8 @@ def _cv2_imputation(image):
     return image
 
 
-def _large_warp_affine(image,
-                transform_,
-                dsize,
-                max_dsize,
-                new_origin,
-                flags,
-                borderMode,
-                borderValue,
-                pieces_per_dim):
+def _large_warp_affine(image, transform_, dsize, max_dsize, new_origin, flags,
+                       borderMode, borderValue, pieces_per_dim):
     """
     Split an image into pieces smaller than cv2's limit, perform cv2.warpAffine on each piece,
     and stitch them back together with minimal artifacts.

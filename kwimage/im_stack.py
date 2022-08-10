@@ -1,6 +1,11 @@
 """
-Stack images
+Functions for stacking images (of potentially different sizes) together in a
+single image.
+
+Notes:
+    * We may change the "bg_value" argument to "bg_color" in the future.
 """
+
 import cv2
 import numpy as np
 import skimage
@@ -41,8 +46,8 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
             if True, returns transforms (scales and translations) to map from
             original image to its new location.
 
-        bg_value (Number | ndarray):
-            background value, if specified, uses this as a fill value.
+        bg_value (Number | ndarray | str):
+            background value or color, if specified, uses this as a fill value.
 
         allow_casting (bool):
             if True, then if "uint255" and "float01" format images are given
@@ -151,8 +156,8 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
             if None image sizes are not modified, otherwise can be set to
             "larger" or "smaller" to resize the images in each stack direction.
 
-        bg_value (Number | ndarray) : background value, if specified,
-            uses this as a fill value.
+        bg_value (Number | ndarray | str):
+            background value or color, if specified, uses this as a fill value.
 
         allow_casting (bool):
             if True, then if "uint255" and "float01" format images are given
@@ -176,9 +181,8 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
         >>> img4 = kwimage.grab_test_image('paraview')[..., 0:3]
         >>> img5 = kwimage.grab_test_image('pm5644')
         >>> images = [img1, img2, img3, img4, img5]
-        >>> bg_color = list(kwimage.Color('kitware_blue').as255())
         >>> canvas, transforms = kwimage.stack_images_grid(
-        ...     images, chunksize=3, axis=0, pad=10, bg_value=bg_color,
+        ...     images, chunksize=3, axis=0, pad=10, bg_value='kitware_blue',
         ...     return_info=True, resize='larger')
         >>> print('canvas.shape = {}'.format(canvas.shape))
         >>> # xdoctest: +REQUIRES(--show)
