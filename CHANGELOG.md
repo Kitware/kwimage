@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Issue in Detections.draw where "cids" was not respected.
+* `nodata_checkerboard` now works better with uint8 data.
 
 
 ## Version 0.9.5 - Released 2022-08-06

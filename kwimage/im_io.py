@@ -109,51 +109,53 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> fpath = ub.grabdata(
         >>>     'http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif',
         >>>     hasher='sha256', hash_prefix='64522acba6f0fb7060cd4c202ed32c5163c34e63d386afdada4190cce51ff4d4')
-        >>> img1 = imread(fpath)
+        >>> img1 = kwimage.imread(fpath)
         >>> # Check that write + read preserves data
         >>> tmp = tempfile.NamedTemporaryFile(suffix=splitext(fpath)[1])
-        >>> imwrite(tmp.name, img1)
-        >>> img2 = imread(tmp.name)
+        >>> kwimage.imwrite(tmp.name, img1)
+        >>> img2 = kwimage.imread(tmp.name)
         >>> assert np.all(img2 == img1)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img1, pnum=(1, 2, 1), fnum=1, norm=True)
-        >>> kwplot.imshow(img2, pnum=(1, 2, 2), fnum=1, norm=True)
+        >>> kwplot.imshow(img1, pnum=(1, 2, 1), fnum=1, norm=True, title='tif orig')
+        >>> kwplot.imshow(img2, pnum=(1, 2, 2), fnum=1, norm=True, title='tif io round-trip')
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> img1 = imread(ub.grabdata(
+        >>> import kwimage
+        >>> img1 = kwimage.imread(ub.grabdata(
         >>>     'http://i.imgur.com/iXNf4Me.png', fname='ada.png', hasher='sha256',
         >>>     hash_prefix='898cf2588c40baf64d6e09b6a93b4c8dcc0db26140639a365b57619e17dd1c77'))
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> imwrite(tmp_tif.name, img1)
-        >>> imwrite(tmp_png.name, img1)
-        >>> tif_im = imread(tmp_tif.name)
-        >>> png_im = imread(tmp_png.name)
+        >>> kwimage.imwrite(tmp_tif.name, img1)
+        >>> kwimage.imwrite(tmp_png.name, img1)
+        >>> tif_im = kwimage.imread(tmp_tif.name)
+        >>> png_im = kwimage.imread(tmp_png.name)
         >>> assert np.all(tif_im == png_im)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(png_im, pnum=(1, 2, 1), fnum=1)
-        >>> kwplot.imshow(tif_im, pnum=(1, 2, 2), fnum=1)
+        >>> kwplot.imshow(png_im, pnum=(1, 2, 1), fnum=1, title='tif io')
+        >>> kwplot.imshow(tif_im, pnum=(1, 2, 2), fnum=1, title='png io')
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
+        >>> import kwimage
         >>> tif_fpath = ub.grabdata(
         >>>     'https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff',
         >>>     fname='pepper.tif', hasher='sha256',
         >>>     hash_prefix='31ff3a1f416cb7281acfbcbb4b56ee8bb94e9f91489602ff2806e5a49abc03c0')
-        >>> img1 = imread(tif_fpath)
+        >>> img1 = kwimage.imread(tif_fpath)
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> imwrite(tmp_tif.name, img1)
-        >>> imwrite(tmp_png.name, img1)
-        >>> tif_im = imread(tmp_tif.name)
-        >>> png_im = imread(tmp_png.name)
+        >>> kwimage.imwrite(tmp_tif.name, img1)
+        >>> kwimage.imwrite(tmp_png.name, img1)
+        >>> tif_im = kwimage.imread(tmp_tif.name)
+        >>> png_im = kwimage.imread(tmp_png.name)
         >>> assert np.all(tif_im == png_im)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
@@ -182,7 +184,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]))
+        >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]),
+        >>>               title='kwimage.imread with a .mha file')
         >>> kwplot.show_if_requested()
 
     Benchmark:
@@ -243,10 +246,6 @@ def imread(fpath, space='auto', backend='auto', **kw):
             'imread-tif_lzw-gdal'    : 0.042459404008695856,
             'imread-png-cv2'         : 0.042891503995633684,
         }
-
-
-        >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['mean'], nl=2), ':')))
-
     """
     fpath = os.fspath(fpath)
     if backend == 'auto':
@@ -878,9 +877,11 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Raises:
         Exception : if the image cannot be written
 
-    Doctest:
+    Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> # This should be moved to a unit test
+        >>> from kwimage.im_io import _have_gdal  # NOQA
+        >>> import kwimage
         >>> import tempfile
         >>> test_image_paths = [
         >>>    ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif'),
@@ -890,20 +891,20 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> ]
         >>> for fpath in test_image_paths:
         >>>     for space in ['auto', 'rgb', 'bgr', 'gray', 'rgba']:
-        >>>         img1 = imread(fpath, space=space)
+        >>>         img1 = kwimage.imread(fpath, space=space)
         >>>         print('Test im-io consistency of fpath = {!r} in {} space, shape={}'.format(fpath, space, img1.shape))
         >>>         # Write the image in TIF and PNG format
         >>>         tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>>         tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>>         imwrite(tmp_tif.name, img1, space=space, backend='skimage')
-        >>>         imwrite(tmp_png.name, img1, space=space)
-        >>>         tif_im = imread(tmp_tif.name, space=space)
-        >>>         png_im = imread(tmp_png.name, space=space)
+        >>>         kwimage.imwrite(tmp_tif.name, img1, space=space, backend='skimage')
+        >>>         kwimage.imwrite(tmp_png.name, img1, space=space)
+        >>>         tif_im = kwimage.imread(tmp_tif.name, space=space)
+        >>>         png_im = kwimage.imread(tmp_png.name, space=space)
         >>>         assert np.all(tif_im == png_im), 'im-read/write inconsistency'
         >>>         if _have_gdal:
         >>>             tmp_tif2 = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>>             imwrite(tmp_tif2.name, img1, space=space, backend='gdal')
-        >>>             tif_im2 = imread(tmp_tif2.name, space=space)
+        >>>             kwimage.imwrite(tmp_tif2.name, img1, space=space, backend='gdal')
+        >>>             tif_im2 = kwimage.imread(tmp_tif2.name, space=space)
         >>>             assert np.all(tif_im == tif_im2), 'im-read/write inconsistency'
         >>>         if space == 'gray':
         >>>             assert tif_im.ndim == 2

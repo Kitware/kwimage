@@ -285,7 +285,8 @@ grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
 
-def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512)):
+def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
+                 dtype=float, on_value=1, off_value=0):
     """
     Creates a checkerboard image
 
@@ -298,6 +299,14 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512)):
             the height, width of each square in pixels.
 
         dsize (Tuple[int, int]): width and height
+
+        dtype (type): return data type
+
+        on_value (Number):
+            The value of one checker. Defaults to 1.
+
+        off_value (Number):
+            The value off the other checker. Defaults to 0.
 
     References:
         https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
@@ -352,8 +361,11 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512)):
     num_pairs_w = int(num_w // 2)
     num_pairs_h = int(num_h // 2)
     # img_size = 512
-    base = np.array([[1, 0] * num_pairs_w, [0, 1] * num_pairs_w] * num_pairs_h)
-    expansion = np.ones((h, w))
+    base = np.array([
+        [on_value, off_value] * num_pairs_w,
+        [off_value, on_value] * num_pairs_w
+    ] * num_pairs_h, dtype=dtype)
+    expansion = np.ones((h, w), dtype=dtype)
     img = np.kron(base, expansion)[0:want_h, 0:want_w]
     return img
 

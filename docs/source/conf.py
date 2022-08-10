@@ -597,6 +597,8 @@ def create_doctest_figure(app, obj, name, lines):
         sys.argv.append('--show')
     if '--nointeract' not in sys.argv:
         sys.argv.append('--nointeract')
+    if '--network' not in sys.argv:
+        sys.argv.append('--network')
     modpath = module.__file__
 
     # print(doctest.format_src())

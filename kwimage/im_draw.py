@@ -625,7 +625,9 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
         >>> heatmask = make_heatmask(probs, with_alpha=0.8, dsize=(100, 100))
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
-        >>> kwplot.imshow(heatmask, fnum=1, doclf=True, colorspace='rgb')
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(heatmask, fnum=1, doclf=True, colorspace='rgb',
+        >>>               title='make_heatmask')
         >>> kwplot.show_if_requested()
     """
     import kwimage
@@ -676,7 +678,9 @@ def make_orimask(radians, mag=None, alpha=1.0):
         >>> orimask = make_orimask(radians, mag)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
-        >>> kwplot.imshow(orimask, fnum=1, doclf=True, colorspace='rgb')
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(orimask, fnum=1, doclf=True,
+        >>>               colorspace='rgb', title='make_orimask')
         >>> kwplot.show_if_requested()
     """
     import matplotlib as mpl
@@ -878,7 +882,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img)
+        >>> kwplot.imshow(img, title='draw_vector_field')
         >>> kwplot.show_if_requested()
     """
     import cv2
@@ -1003,7 +1007,7 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> pnum_ = kwplot.PlotNums(nSubplots=len(canvases))
+        >>> pnum_ = kwplot.PlotNums(nCols=3, nSubplots=len(canvases))
         >>> for c in canvases:
         >>>     kwplot.imshow(c, pnum=pnum_())
         >>> kwplot.show_if_requested()
@@ -1083,7 +1087,10 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         canvas (np.ndarray): data replace nans in
 
     Returns:
-        np.ndarray: modified canvas
+        np.ndarray: the inplace modified canvas
+
+    SeeAlso:
+        :func:`nodata_checkerboard` - similar, but operates on nans or masked arrays.
 
     Example:
         >>> from kwimage.im_draw import *  # NOQA
@@ -1097,13 +1104,14 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> img = poly1.fill(img, np.nan)
         >>> img = poly3.fill(img, 0)
         >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
-        >>> canvas = img.copy()
-        >>> canvas = fill_nans_with_checkers(canvas)
+        >>> input_img = img.copy()
+        >>> canvas = fill_nans_with_checkers(input_img)
+        >>> assert input_img is canvas
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img, pnum=(1, 2, 1), title='matplotlib treats nans as zero or transparent')
-        >>> kwplot.imshow(canvas, pnum=(1, 2, 2), title='nan checker make it clear where real nans are')
+        >>> kwplot.imshow(img, pnum=(1, 2, 1), title='matplotlib treats nans as zeros')
+        >>> kwplot.imshow(canvas, pnum=(1, 2, 2), title='checkers highlight real nans')
 
     Example:
         >>> # Test grayscale
@@ -1140,9 +1148,16 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape):
     dsize = canvas.shape[0:2][::-1]
     checkers2d = None
 
+    if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
+        on_value = 255
+    else:
+        on_value = 1
+
     if np.any(allchan_invalid_mask):
         if checkers2d is None:
-            checkers2d = kwimage.checkerboard(square_shape=square_shape, dsize=dsize)
+            checkers2d = kwimage.checkerboard(square_shape=square_shape,
+                                              dsize=dsize, dtype=canvas.dtype,
+                                              on_value=on_value)
         # canvas = kwimage.ensure_alpha_channel(canvas, (1 - invalid_mask))
         # checkers = kwimage.ensure_alpha_channel(checkers, 1)
         locs = np.where(allchan_invalid_mask)
@@ -1150,7 +1165,9 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape):
 
     if np.any(some_invalid_mask):
         if checkers2d is None:
-            checkers2d = kwimage.checkerboard(square_shape=square_shape, dsize=dsize)
+            checkers2d = kwimage.checkerboard(
+                square_shape=square_shape, dsize=dsize, dtype=canvas.dtype,
+                on_value=on_value)
 
         locs = np.where(some_invalid_mask)
         canvas[locs] = checkers2d[locs[0:2]]
@@ -1159,8 +1176,23 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape):
 
 def nodata_checkerboard(canvas, square_shape=8):
     """
+    Fills nans or masked values with a checkerbord pattern.
+
+    Args:
+        canvas (ndarray): A 2D image with any number of channels.
+        square_shape (int): the pixel size of the checkers
+
+    Returns:
+        ndarray : an output array with imputed values.
+            if the input was a masked array, the mask will still exist.
+
+    SeeAlso:
+        :func:`fill_nans_with_checkers` - similar, but only operates on nan
+        values.
+
     Example:
         >>> import kwimage
+        >>> # Test a masked array WITH nan values
         >>> data = kwimage.grab_test_image(space='rgb')
         >>> na_circle = kwimage.Polygon.circle((256 - 96, 256), 128)
         >>> ma_circle = kwimage.Polygon.circle((256 + 96, 256), 128)
@@ -1172,23 +1204,39 @@ def nodata_checkerboard(canvas, square_shape=8):
         >>> data = kwimage.ensure_float01(data)
         >>> data[na_mask] = np.nan
         >>> canvas = np.ma.MaskedArray(data, ma_mask)
-        >>> import kwimage
         >>> kwimage.draw_text_on_image(canvas, 'masked values', (256 - 96, 256 - 128), halign='center', valign='bottom', border=2)
         >>> kwimage.draw_text_on_image(canvas, 'nan values',    (256 + 96, 256 + 128), halign='center', valign='top', border=2)
         >>> kwimage.draw_text_on_image(canvas, 'kwimage.nodata_checkerboard',    (256, 5), halign='center', valign='top', border=2)
         >>> kwimage.draw_text_on_image(canvas, '(pip install kwimage)', (512, 512 - 10), halign='right', valign='bottom', border=2, fontScale=0.8)
-        >>> from kwimage.im_draw import *  # NOQA
-        >>> result = nodata_checkerboard(canvas)
+        >>> result = kwimage.nodata_checkerboard(canvas)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(result)
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Simple test with a masked array
+        >>> import kwimage
+        >>> data = kwimage.grab_test_image(space='rgb', dsize=(64, 64))
+        >>> data = kwimage.ensure_uint255(data)
+        >>> circle = kwimage.Polygon.circle((32, 32), 16)
+        >>> mask = circle.fill(np.zeros(data.shape, dtype=np.uint8), value=1).astype(bool)
+        >>> img = np.ma.MaskedArray(data, mask)
+        >>> canvas = img.copy()
+        >>> result = kwimage.nodata_checkerboard(canvas)
+        >>> canvas.data is result.data
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(result, title='nodata_checkers with masked uint8')
         >>> kwplot.show_if_requested()
     """
     is_masked = isinstance(canvas, np.ma.MaskedArray)
     masks = []
     if is_masked:
         masks.append(canvas.mask)
+        canvas = canvas.data
     if canvas.dtype.kind == 'f':
         masks.append(np.isnan(canvas))
 
