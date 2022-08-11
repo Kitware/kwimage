@@ -736,6 +736,23 @@ class Projective(Linear):
         else:
             return np.all(self.matrix[2] == [0, 0, 1])
 
+    def to_skimage(self):
+        """
+        Returns:
+            skimage.transform.AffineTransform
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Projective.random()
+            >>> tf = self.to_skimage()
+            >>> # Transform points with kwimage and scikit-image
+            >>> kw_poly = kwimage.Polygon.random()
+            >>> kw_warp_xy = kw_poly.warp(self.matrix).exterior.data
+            >>> sk_warp_xy = tf(kw_poly.exterior.data)
+            >>> assert np.allclose(sk_warp_xy, sk_warp_xy)
+        """
+        return skimage.transform.ProjectiveTransform(matrix=np.asarray(self))
+
     @classmethod
     def random(cls, shape=None, rng=None, **kw):
         """
@@ -1162,9 +1179,17 @@ class Affine(Projective):
         """
         Eccentricity of the ellipse formed by this affine matrix
 
+        Returns:
+            float: large when there are big scale differences in principle
+                directions or skews.
+
         References:
             https://en.wikipedia.org/wiki/Conic_section
             https://github.com/rasterio/affine/blob/78c20a0cfbb5ec/affine/__init__.py#L368
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Affine.random(rng=432).eccentricity()
         """
         # Ignore the translation part
         M = self.matrix[0:2, 0:2]
@@ -1185,11 +1210,45 @@ class Affine(Projective):
     def to_shapely(self):
         """
         Returns a matrix suitable for shapely.affinity.affine_transform
+
+        Returns:
+            Tuple[float, float, float, float, float, float]
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Affine.random()
+            >>> sh_transform = self.to_shapely()
+            >>> # Transform points with kwimage and shapley
+            >>> import shapely
+            >>> from shapely.affinity import affine_transform
+            >>> kw_poly = kwimage.Polygon.random()
+            >>> kw_warp_poly = kw_poly.warp(self)
+            >>> sh_poly = kw_poly.to_shapely()
+            >>> sh_warp_poly = affine_transform(sh_poly, sh_transform)
+            >>> kw_warp_poly_recon = kwimage.Polygon.from_shapely(sh_warp_poly)
+            >>> assert np.allclose(kw_warp_poly_recon.exterior.data, kw_warp_poly_recon.exterior.data)
         """
         # from shapely.affinity import affine_transform
         a, b, x, d, e, y = self.matrix.ravel()[0:6]
         sh_transform = (a, b, d, e, x, y)
         return sh_transform
+
+    def to_skimage(self):
+        """
+        Returns:
+            skimage.transform.AffineTransform
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Affine.random()
+            >>> tf = self.to_skimage()
+            >>> # Transform points with kwimage and scikit-image
+            >>> kw_poly = kwimage.Polygon.random()
+            >>> kw_warp_xy = kw_poly.warp(self.matrix).exterior.data
+            >>> sk_warp_xy = tf(kw_poly.exterior.data)
+            >>> assert np.allclose(sk_warp_xy, sk_warp_xy)
+        """
+        return skimage.transform.AffineTransform(matrix=np.asarray(self))
 
     @classmethod
     def scale(cls, scale):
