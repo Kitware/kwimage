@@ -2126,6 +2126,7 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             the warped image, or if return info is True, the warped image and
             the info dictionary.
     """
+    # TODO: consolidate with warp_affine and warp_image logic
     from kwimage.transform import Affine
     import kwimage
 
