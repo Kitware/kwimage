@@ -637,6 +637,8 @@ class _MaskTransformMixin(object):
                     output_dims = self.data.shape[0:2]
                 else:
                     raise KeyError(output_dims)
+        # TODO: could use kwimage.warp_image here instead if torch is not
+        # available.
         w_mask = kwimage.warp_tensor(t_mask, matrix, output_dims=output_dims,
                                      mode='nearest')
         new = self if inplace else Mask(self.data, self.format)

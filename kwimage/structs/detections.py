@@ -320,6 +320,8 @@ class _DetDrawMixin:
                 parts = []
                 if self.data.get('class_idxs', None) is not None:
                     parts.append('class')
+                elif self.data.get('cids', None) is not None:
+                    parts.append('class')
                 # Choose sensible default
                 if self.data.get('scores', None) is not None:
                     parts.append('score')
@@ -327,10 +329,20 @@ class _DetDrawMixin:
 
             if isinstance(labels, str):
                 if labels in ['class', 'class+score']:
-                    if self.classes:
-                        identifers = list(ub.take(self.classes, self.class_idxs))
+                    if 'class_idxs' in self.data:
+                        if self.classes:
+                            identifers = list(ub.take(self.classes, self.class_idxs))
+                        else:
+                            identifers = ['cx={}'.format(cx) for cx in self.class_idxs]
+                    elif 'cids' in self.data:
+                        if self.classes and hasattr(self.classes, 'id_to_node'):
+                            identifers = list(ub.take(self.classes.id_to_node, self.data['cids']))
+                        else:
+                            identifers = ['cid={}'.format(cid) for cid in self.data['cids']]
                     else:
-                        identifers = self.class_idxs
+                        # Cant determine label for class
+                        identifers = ['?' for _ in range(len(self))]
+
                 if labels in ['class']:
                     labels = identifers
                 elif labels in ['score']:

@@ -6,6 +6,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.6 - Unreleased
 
+### Added
+* The `bg_color` arg to `draw_header_text`
+* Implemented `kwimage.warp_image`
+* The `kwimage.Color.forimage` function is now public
+
+### Fixed
+* Issue in Detections.draw where "cids" was not respected.
+* Minor fixes in warp projective.
+* `nodata_checkerboard` now works better with uint8 data.
+
+### Changed
+* Enhanced the checkerboard function, which can now take "on" and "off" string
+  colors and return different dtypes.
+
 
 ## Version 0.9.5 - Released 2022-08-06
 
@@ -28,7 +42,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * The `Coords` object now implements `__array__`.
 * The `about` parameter for `Polygon` transformations has been
   expanded to include codes: "top,left", "top,right", etc...
-* A from_text method for masks.
+* A `from_text` method for masks.
 
 
 ### Fixed

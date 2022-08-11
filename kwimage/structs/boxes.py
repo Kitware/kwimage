@@ -18,13 +18,13 @@ There are 3 main bounding box formats:
 Here is some example usage
 
 Example:
-    >>> from kwimage.structs.boxes import Boxes
+    >>> import kwimage
     >>> data = np.array([[ 0,  0, 10, 10],
     >>>                  [ 5,  5, 50, 50],
     >>>                  [10,  0, 20, 10],
     >>>                  [20,  0, 30, 10]])
     >>> # Note that the format of raw data is ambiguous, so you must specify
-    >>> boxes = Boxes(data, 'ltrb')
+    >>> boxes = kwimage.Boxes(data, 'ltrb')
     >>> print('boxes = {!r}'.format(boxes))
     boxes = <Boxes(ltrb,
         array([[ 0,  0, 10, 10],
@@ -50,6 +50,21 @@ Example:
               [0.01, 1.  , 0.02, 0.02],
               [0.  , 0.02, 1.  , 0.  ],
               [0.  , 0.02, 0.  , 1.  ]])
+    >>> # OpenCV and Matplotlib have first class visualization support
+    >>> # xdoc: +REQUIRES(--show)
+    >>> # xdoc: +REQUIRES(module:kwplot)
+    >>> import kwplot
+    >>> plt = kwplot.autoplt()
+    >>> # opencv "draw_on" method
+    >>> background = kwimage.checkerboard(dsize=(64, 64), dtype=np.uint8, on_value='kw_green', off_value='kw_blue')
+    >>> canvas = background.copy()
+    >>> boxes.draw_on(canvas, color='kw_red')
+    >>> kwplot.imshow(canvas, fnum=1, pnum=(1, 2, 1), doclf=1, title='[cv2] kwimage.Boxes.draw_on')
+    >>> # matplotlib "draw_on" method
+    >>> kwplot.imshow(background, fnum=1, pnum=(1, 2, 2), title='[mpl] kwimage.Boxes.draw')
+    >>> boxes.draw(color='kw_red')
+    >>> plt.gcf().suptitle('Matplotlib and OpenCV have first class visualization support')
+    >>> kwplot.show_if_requested()
 """
 import numpy as np
 import ubelt as ub
@@ -145,7 +160,7 @@ class BoxFormat:
     # Note: prefix row major format with an underscore.
     # Reason: Boxes prefers column-major formats
     _YYXX  = _register('_yyxx')   # (y1, y2, x1, x2)
-    _RCHW  = _register('_rchw')   # (y1, y2, x1, x2)
+    _RCHW  = _register('_rchw')   # (y1, y2, h, w)
 
     aliases = {
         # NOTE: Once a name enters here it is very difficult to remove
@@ -581,10 +596,9 @@ class _BoxConversionMixins(object):
         Returns:
             List[shapely.geometry.Polygon]: list of shapely polygons
         """
-        from kwimage._internal import schedule_deprecation
-        schedule_deprecation(
-            'kwimage', 'Boxes.to_shapley', 'method'
-            'is spelled incorrectly. Use to_shapely instead',
+        ub.schedule_deprecation(
+            'kwimage', 'Boxes.to_shapley', 'method',
+            migration='is spelled incorrectly. Use to_shapely instead',
             deprecate='0.9.0', error='0.10.0', remove='0.11.0')
         return self.to_shapely()
 
@@ -1182,6 +1196,9 @@ class _BoxTransformMixins(object):
                 matrix = transform
             elif isinstance(transform, kwimage.Affine):
                 matrix = transform.matrix
+            elif isinstance(transform, kwimage.Projective):
+                matrix = transform.matrix
+                raise NeedsWarpCorners
             else:
                 try:
                     import imgaug
@@ -1648,6 +1665,34 @@ class _BoxTransformMixins(object):
             The argument names to this function are assuming up is negative and
             down is positive. We may change them in the future to be agnostic
             to image vs blackboard coordinates.
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes([[0, 0, 10, 10]], 'xywh').to_ltrb().quantize()
+            >>> padded = self.pad(1, 2, 3, 4)
+            >>> print('padded = {}'.format(ub.repr2(padded, nl=1)))
+            >>> assert np.all(padded.data == [[-1, -2, 13, 14]])
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> plt = kwplot.autoplt()
+            >>> kwplot.figure(fnum=1, doclf=1)
+            >>> self.draw('kw_blue')
+            >>> padded.draw('kw_green', setlim=1.2)
+            >>> plt.gca().set_title('kwimage.Boxes.pad')
+            >>> kwplot.show_if_requested()
+
+        Example:
+            >>> import kwimage
+            >>> # test dtype promotion rules
+            >>> self = kwimage.Boxes.random().scale(100).to_ltrb().quantize().astype(np.int64)
+            >>> padded = self.pad(0, 0, 0, 0)
+            >>> assert padded.data.dtype == np.int64
+            >>> self = kwimage.Boxes.random().scale(100).to_ltrb().quantize().astype(np.int32)
+            >>> padded = self.pad(0, 0, 0, 0)
+            >>> assert padded.data.dtype == np.int32
+            >>> padded = self.pad(0, 0, 0, np.float64(0.))
+            >>> assert padded.data.dtype == np.float64
         """
         impl = self._impl
 
@@ -1655,7 +1700,8 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            new_data = impl.astype(self.data, float, copy=True)
+            dtype = impl.result_type(self.data, x_left, y_top, x_right, y_bot)
+            new_data = impl.astype(self.data, dtype, copy=True)
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:
@@ -2878,10 +2924,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             other_ltrb = other.to_ltrb(copy=False)
 
             if mode is not None:
-                from kwimage._internal import schedule_deprecation
-                schedule_deprecation(
-                    'kwimage', 'mode', 'argument to Boxes.ious'
-                    'Use impl instead.', deprecate='0.9.0',
+                ub.schedule_deprecation(
+                    'kwimage', 'mode', 'argument to Boxes.ious',
+                    migration='Use impl instead.', deprecate='0.9.0',
                     error='0.10.0', remove='0.11.0')
                 impl = mode
 

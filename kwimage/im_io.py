@@ -109,51 +109,53 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> fpath = ub.grabdata(
         >>>     'http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif',
         >>>     hasher='sha256', hash_prefix='64522acba6f0fb7060cd4c202ed32c5163c34e63d386afdada4190cce51ff4d4')
-        >>> img1 = imread(fpath)
+        >>> img1 = kwimage.imread(fpath)
         >>> # Check that write + read preserves data
         >>> tmp = tempfile.NamedTemporaryFile(suffix=splitext(fpath)[1])
-        >>> imwrite(tmp.name, img1)
-        >>> img2 = imread(tmp.name)
+        >>> kwimage.imwrite(tmp.name, img1)
+        >>> img2 = kwimage.imread(tmp.name)
         >>> assert np.all(img2 == img1)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(img1, pnum=(1, 2, 1), fnum=1, norm=True)
-        >>> kwplot.imshow(img2, pnum=(1, 2, 2), fnum=1, norm=True)
+        >>> kwplot.imshow(img1, pnum=(1, 2, 1), fnum=1, norm=True, title='tif orig')
+        >>> kwplot.imshow(img2, pnum=(1, 2, 2), fnum=1, norm=True, title='tif io round-trip')
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
-        >>> img1 = imread(ub.grabdata(
+        >>> import kwimage
+        >>> img1 = kwimage.imread(ub.grabdata(
         >>>     'http://i.imgur.com/iXNf4Me.png', fname='ada.png', hasher='sha256',
         >>>     hash_prefix='898cf2588c40baf64d6e09b6a93b4c8dcc0db26140639a365b57619e17dd1c77'))
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> imwrite(tmp_tif.name, img1)
-        >>> imwrite(tmp_png.name, img1)
-        >>> tif_im = imread(tmp_tif.name)
-        >>> png_im = imread(tmp_png.name)
+        >>> kwimage.imwrite(tmp_tif.name, img1)
+        >>> kwimage.imwrite(tmp_png.name, img1)
+        >>> tif_im = kwimage.imread(tmp_tif.name)
+        >>> png_im = kwimage.imread(tmp_png.name)
         >>> assert np.all(tif_im == png_im)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(png_im, pnum=(1, 2, 1), fnum=1)
-        >>> kwplot.imshow(tif_im, pnum=(1, 2, 2), fnum=1)
+        >>> kwplot.imshow(png_im, pnum=(1, 2, 1), fnum=1, title='tif io')
+        >>> kwplot.imshow(tif_im, pnum=(1, 2, 2), fnum=1, title='png io')
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
+        >>> import kwimage
         >>> tif_fpath = ub.grabdata(
         >>>     'https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff',
         >>>     fname='pepper.tif', hasher='sha256',
         >>>     hash_prefix='31ff3a1f416cb7281acfbcbb4b56ee8bb94e9f91489602ff2806e5a49abc03c0')
-        >>> img1 = imread(tif_fpath)
+        >>> img1 = kwimage.imread(tif_fpath)
         >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> imwrite(tmp_tif.name, img1)
-        >>> imwrite(tmp_png.name, img1)
-        >>> tif_im = imread(tmp_tif.name)
-        >>> png_im = imread(tmp_png.name)
+        >>> kwimage.imwrite(tmp_tif.name, img1)
+        >>> kwimage.imwrite(tmp_png.name, img1)
+        >>> tif_im = kwimage.imread(tmp_tif.name)
+        >>> png_im = kwimage.imread(tmp_png.name)
         >>> assert np.all(tif_im == png_im)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
@@ -182,7 +184,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]))
+        >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]),
+        >>>               title='kwimage.imread with a .mha file')
         >>> kwplot.show_if_requested()
 
     Benchmark:
@@ -243,10 +246,6 @@ def imread(fpath, space='auto', backend='auto', **kw):
             'imread-tif_lzw-gdal'    : 0.042459404008695856,
             'imread-png-cv2'         : 0.042891503995633684,
         }
-
-
-        >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['mean'], nl=2), ':')))
-
     """
     fpath = os.fspath(fpath)
     if backend == 'auto':
@@ -449,10 +448,13 @@ def _imread_pil(fpath):
     if pil_img.mode == 'RGB':
         src_space = 'rgb'
         auto_dst_space = 'rgb'
-    elif len(image.shape) == 2 or len(image.shape[2]) == 1:
+    elif pil_img.mode == 'RGBA':
+        src_space = 'rgba'
+        auto_dst_space = 'rgba'
+    elif len(image.shape) == 2 or image.shape[2] == 1:
         src_space = 'gray'
         auto_dst_space = 'gray'
-    if len(image.shape) == 3 or len(image.shape[2]) == 3:
+    elif len(image.shape) == 3 or image.shape[2] == 3:
         src_space = 'rgb'
         auto_dst_space = 'rgb'
     return image, src_space, auto_dst_space
@@ -878,9 +880,11 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Raises:
         Exception : if the image cannot be written
 
-    Doctest:
+    Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> # This should be moved to a unit test
+        >>> from kwimage.im_io import _have_gdal  # NOQA
+        >>> import kwimage
         >>> import tempfile
         >>> test_image_paths = [
         >>>    ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif'),
@@ -890,20 +894,20 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> ]
         >>> for fpath in test_image_paths:
         >>>     for space in ['auto', 'rgb', 'bgr', 'gray', 'rgba']:
-        >>>         img1 = imread(fpath, space=space)
+        >>>         img1 = kwimage.imread(fpath, space=space)
         >>>         print('Test im-io consistency of fpath = {!r} in {} space, shape={}'.format(fpath, space, img1.shape))
         >>>         # Write the image in TIF and PNG format
         >>>         tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
         >>>         tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>>         imwrite(tmp_tif.name, img1, space=space, backend='skimage')
-        >>>         imwrite(tmp_png.name, img1, space=space)
-        >>>         tif_im = imread(tmp_tif.name, space=space)
-        >>>         png_im = imread(tmp_png.name, space=space)
+        >>>         kwimage.imwrite(tmp_tif.name, img1, space=space, backend='skimage')
+        >>>         kwimage.imwrite(tmp_png.name, img1, space=space)
+        >>>         tif_im = kwimage.imread(tmp_tif.name, space=space)
+        >>>         png_im = kwimage.imread(tmp_png.name, space=space)
         >>>         assert np.all(tif_im == png_im), 'im-read/write inconsistency'
         >>>         if _have_gdal:
         >>>             tmp_tif2 = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>>             imwrite(tmp_tif2.name, img1, space=space, backend='gdal')
-        >>>             tif_im2 = imread(tmp_tif2.name, space=space)
+        >>>             kwimage.imwrite(tmp_tif2.name, img1, space=space, backend='gdal')
+        >>>             tif_im2 = kwimage.imread(tmp_tif2.name, space=space)
         >>>             assert np.all(tif_im == tif_im2), 'im-read/write inconsistency'
         >>>         if space == 'gray':
         >>>             assert tif_im.ndim == 2
@@ -1133,46 +1137,66 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     return fpath
 
 
-def load_image_shape(fpath):
+def load_image_shape(fpath, backend='auto'):
     """
     Determine the height/width/channels of an image without reading the entire
     file.
 
     Args:
         fpath (str): path to an image
+        backend (str): can be "auto", "pil", or "gdal".
 
     Returns:
-        Tuple - shape of the dataset.
+        Tuple[int, int, int] - shape of the image
             Recall this library uses the convention that "shape" is refers to
-            height,width,channels and "size" is width,height ordering.
+            height,width,channels array-style ordering and "size" is
+            width,height cv2-style ordering.
 
-    TODO:
-        - [ ] FIXME: has a bug
-
-    Ignore:
-        # demo bug
-        import kwimage
-        fpath = kwimage.grab_test_image_fpath('astro')
-        # These should be consistent
-        # THe problem is CV2_IMREAD_UNCHANGED reads the alpha band, but PIL
-        # does not seem to in either mode. Very strange
-        shapes = {}
-        shapes['pil_load_shape'] = kwimage.load_image_shape(fpath)
-        shapes['pil'] = kwimage.imread(fpath, backend='pil').shape
-        shapes['cv2'] = kwimage.imread(fpath, backend='cv2').shape
-        shapes['gdal'] = kwimage.imread(fpath, backend='gdal').shape
-        shapes['skimage'] = kwimage.imread(fpath, backend='skimage').shape
-        print('shapes = {}'.format(ub.repr2(shapes, nl=1, align=':')))
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test the loading the shape works the same as loading the image and
+        >>> # testing the shape
+        >>> import kwimage
+        >>> import tempfile
+        >>> temp_dir = tempfile.TemporaryDirectory()
+        >>> temp_dpath = ub.Path(temp_dir.name)
+        >>> data = kwimage.grab_test_image()
+        >>> datas = {
+        >>>     'rgb255': kwimage.ensure_uint255(data),
+        >>>     'rgb01': kwimage.ensure_float01(data),
+        >>>     'rgba01': kwimage.ensure_alpha_channel(data),
+        >>> }
+        >>> results = {}
+        >>> # These should be consistent
+        >>> # The was a problem where CV2_IMREAD_UNCHANGED read the alpha band,
+        >>> # but PIL did not, but maybe this is fixed now?
+        >>> for key, imdata in datas.items():
+        >>>     fpath = temp_dpath / f'{key}.png'
+        >>>     kwimage.imwrite(fpath, imdata)
+        >>>     shapes = {}
+        >>>     shapes['pil_load_shape'] = kwimage.load_image_shape(fpath, backend='pil')
+        >>>     shapes['gdal_load_shape'] = kwimage.load_image_shape(fpath, backend='gdal')
+        >>>     shapes['auto_load_shape'] = kwimage.load_image_shape(fpath, backend='auto')
+        >>>     shapes['pil'] = kwimage.imread(fpath, backend='pil').shape
+        >>>     shapes['cv2'] = kwimage.imread(fpath, backend='cv2').shape
+        >>>     shapes['gdal'] = kwimage.imread(fpath, backend='gdal').shape
+        >>>     shapes['skimage'] = kwimage.imread(fpath, backend='skimage').shape
+        >>>     results[key] = shapes
+        >>> print('results = {}'.format(ub.repr2(results, nl=2, align=':', sort=0)))
+        >>> for shapes in results.values():
+        >>>     assert ub.allsame(shapes.values())
 
     Benchmark:
         >>> # For large files, PIL is much faster
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> from osgeo import gdal
         >>> from PIL import Image
+        >>> import timerit
         >>> #
         >>> import kwimage
         >>> fpath = kwimage.grab_test_image_fpath()
         >>> #
-        >>> ti = ub.Timerit(100, bestof=10, verbose=2)
+        >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
         >>> for timer in ti.reset('gdal'):
         >>>     with timer:
         >>>         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
@@ -1200,31 +1224,34 @@ def load_image_shape(fpath):
         >>> shape = kwimage.load_image_shape(fpath)
         >>> assert shape == (64, 64, 3)
     """
-    from PIL import Image
-    pil_img = None
-    fpath = os.fspath(fpath)
-    try:
-        pil_img = Image.open(fpath)
-        width, height = pil_img.size
-        num_channels = len(pil_img.getbands())
-    except Exception as pil_ex:
-        if not _have_gdal():
-            raise
+    if backend == 'auto':
         try:
-            from osgeo import gdal
-            gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
-            if gdal_dset is None:
-                raise Exception(gdal.GetLastErrorMsg())
-            width = gdal_dset.RasterXSize
-            height = gdal_dset.RasterYSize
-            num_channels = gdal_dset.RasterCount
-            gdal_dset = None
-        except Exception:
-            raise pil_ex
-    finally:
-        if pil_img is not None:
-            pil_img.close()
-    shape = (height, width, num_channels)
+            shape = load_image_shape(fpath, backend='pil')
+        except Exception as pil_ex:
+            if not _have_gdal():
+                raise
+            try:
+                shape = load_image_shape(fpath, backend='gdal')
+            except Exception:
+                raise pil_ex
+    elif backend == 'pil':
+        from PIL import Image
+        fpath = os.fspath(fpath)
+        with Image.open(fpath) as pil_img:
+            width, height = pil_img.size
+            num_channels = len(pil_img.getbands())
+        shape = (height, width, num_channels)
+    elif backend == 'gdal':
+        from osgeo import gdal
+        fpath = os.fspath(fpath)
+        gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+        if gdal_dset is None:
+            raise Exception(gdal.GetLastErrorMsg())
+        width = gdal_dset.RasterXSize
+        height = gdal_dset.RasterYSize
+        num_channels = gdal_dset.RasterCount
+        gdal_dset = None
+        shape = (height, width, num_channels)
     return shape
 
 

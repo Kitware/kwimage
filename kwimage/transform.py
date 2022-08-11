@@ -658,6 +658,102 @@ class Projective(Linear):
         return self
 
     @classmethod
+    @profile
+    def coerce(cls, data=None, **kwargs):
+        """
+        Attempt to coerce the data into an Projective object
+
+        Args:
+            data : some data we attempt to coerce to an Projective matrix
+            **kwargs : some data we attempt to coerce to an Projective matrix,
+                mutually exclusive with `data`.
+
+        Returns:
+            Projective
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Projective.coerce({'type': 'affine', 'matrix': [[1, 0, 0], [0, 1, 0]]})
+            >>> kwimage.Projective.coerce({'type': 'affine', 'scale': 2})
+            >>> kwimage.Projective.coerce({'type': 'projective', 'scale': 2})
+            >>> kwimage.Projective.coerce({'scale': 2})
+            >>> kwimage.Projective.coerce({'offset': 3})
+            >>> kwimage.Projective.coerce(np.eye(3))
+            >>> kwimage.Projective.coerce(None)
+            >>> import skimage
+            >>> kwimage.Projective.coerce(skimage.transform.AffineTransform(scale=30))
+            >>> kwimage.Projective.coerce(skimage.transform.ProjectiveTransform(matrix=None))
+        """
+        if data is None and not kwargs:
+            return cls(matrix=None)
+        if data is None:
+            data = kwargs
+        if isinstance(data, np.ndarray):
+            self = cls(matrix=data)
+        elif isinstance(data, cls):
+            self = data
+        elif isinstance(data, (skimage.transform.AffineTransform, skimage.transform.ProjectiveTransform)):
+            self = cls(matrix=data.params)
+        elif data.__class__.__name__ == cls.__name__:
+            self = data
+        elif isinstance(data, dict):
+            keys = set(data.keys())
+            if 'matrix' in keys:
+                matrix = np.array(data['matrix'])
+                if matrix.shape[0] == 2:
+                    matrix = np.vstack([matrix, [[0, 0, 1.]]])
+                self = cls(matrix=matrix)
+            else:
+                known_params = {'uv', 'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
+                params = {key: data[key] for key in known_params if key in data}
+                if len(known_params & keys):
+                    type_ = params.pop('type', None)
+                    type_
+                    self = cls.projective(**params)
+                else:
+                    raise KeyError(', '.join(list(data.keys())))
+        else:
+            raise TypeError(type(data))
+        return self
+
+    def is_affine(self):
+        """
+        If the bottom row is [[0, 0, 1]], then this can be safely turned into
+        an affine matrix.
+
+        Returns:
+            bool
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Projective.coerce(scale=2, uv=[1, 1]).is_affine()
+            False
+            >>> kwimage.Projective.coerce(scale=2, uv=[0, 0]).is_affine()
+            True
+        """
+        if self.matrix is None:
+            return True
+        else:
+            return np.all(self.matrix[2] == [0, 0, 1])
+
+    def to_skimage(self):
+        """
+        Returns:
+            skimage.transform.AffineTransform
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Projective.random()
+            >>> tf = self.to_skimage()
+            >>> # Transform points with kwimage and scikit-image
+            >>> kw_poly = kwimage.Polygon.random()
+            >>> kw_warp_xy = kw_poly.warp(self.matrix).exterior.data
+            >>> sk_warp_xy = tf(kw_poly.exterior.data)
+            >>> assert np.allclose(sk_warp_xy, sk_warp_xy)
+        """
+        return skimage.transform.ProjectiveTransform(matrix=np.asarray(self))
+
+    @classmethod
     def random(cls, shape=None, rng=None, **kw):
         """
         Example/
@@ -666,7 +762,7 @@ class Projective(Linear):
             >>> print(f'self={self}')
             >>> params = self.decompose()
             >>> aff_part = kwimage.Affine.affine(**ub.dict_diff(params, ['uv']))
-            >>> proj_part = kwimage.Projective.projective(uv=params['uv'])
+            >>> proj_part = kwimage.Projective.coerce(uv=params['uv'])
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import cv2
@@ -1083,9 +1179,17 @@ class Affine(Projective):
         """
         Eccentricity of the ellipse formed by this affine matrix
 
+        Returns:
+            float: large when there are big scale differences in principle
+                directions or skews.
+
         References:
             https://en.wikipedia.org/wiki/Conic_section
             https://github.com/rasterio/affine/blob/78c20a0cfbb5ec/affine/__init__.py#L368
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Affine.random(rng=432).eccentricity()
         """
         # Ignore the translation part
         M = self.matrix[0:2, 0:2]
@@ -1106,11 +1210,45 @@ class Affine(Projective):
     def to_shapely(self):
         """
         Returns a matrix suitable for shapely.affinity.affine_transform
+
+        Returns:
+            Tuple[float, float, float, float, float, float]
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Affine.random()
+            >>> sh_transform = self.to_shapely()
+            >>> # Transform points with kwimage and shapley
+            >>> import shapely
+            >>> from shapely.affinity import affine_transform
+            >>> kw_poly = kwimage.Polygon.random()
+            >>> kw_warp_poly = kw_poly.warp(self)
+            >>> sh_poly = kw_poly.to_shapely()
+            >>> sh_warp_poly = affine_transform(sh_poly, sh_transform)
+            >>> kw_warp_poly_recon = kwimage.Polygon.from_shapely(sh_warp_poly)
+            >>> assert np.allclose(kw_warp_poly_recon.exterior.data, kw_warp_poly_recon.exterior.data)
         """
         # from shapely.affinity import affine_transform
         a, b, x, d, e, y = self.matrix.ravel()[0:6]
         sh_transform = (a, b, d, e, x, y)
         return sh_transform
+
+    def to_skimage(self):
+        """
+        Returns:
+            skimage.transform.AffineTransform
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Affine.random()
+            >>> tf = self.to_skimage()
+            >>> # Transform points with kwimage and scikit-image
+            >>> kw_poly = kwimage.Polygon.random()
+            >>> kw_warp_xy = kw_poly.warp(self.matrix).exterior.data
+            >>> sk_warp_xy = tf(kw_poly.exterior.data)
+            >>> assert np.allclose(sk_warp_xy, sk_warp_xy)
+        """
+        return skimage.transform.AffineTransform(matrix=np.asarray(self))
 
     @classmethod
     def scale(cls, scale):

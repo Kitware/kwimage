@@ -60,6 +60,8 @@ if __name__ == '__main__':
         python gen_api_for_docs.py
         python gen_api_for_docs.py --extra_modnames=bioharn,
 
+        ~/internal/dev/pkg_usage_stats_update.sh
+
         # Paste output into
         ~/code/kwimate/docs/source/index.rst
     """

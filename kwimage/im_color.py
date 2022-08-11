@@ -132,43 +132,70 @@ class Color(ub.NiceRepr):
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
         return self.space + ': ' + colorpart
 
-    def _forimage(self, image, space='rgb'):
+    def forimage(self, image, space='auto'):
         """
-        Experimental function.
+        Return a numeric value for this color that can be used
+        in the given image.
 
         Create a numeric color tuple that agrees with the format of the input
         image (i.e. float or int, with 3 or 4 channels).
 
         Args:
             image (ndarray): image to return color for
-            space (str): colorspace of the input image. Defaults to 'rgb'
+            space (str): colorspace of the input image.
+                Defaults to 'auto', which will choose rgb or rgba
+
+        Returns:
+            Tuple[Number, ...]: the color value
 
         Example:
+            >>> import kwimage
             >>> img_f3 = np.zeros([8, 8, 3], dtype=np.float32)
             >>> img_u3 = np.zeros([8, 8, 3], dtype=np.uint8)
             >>> img_f4 = np.zeros([8, 8, 4], dtype=np.float32)
             >>> img_u4 = np.zeros([8, 8, 4], dtype=np.uint8)
-            >>> Color('red')._forimage(img_f3)
+            >>> kwimage.Color('red').forimage(img_f3)
             (1.0, 0.0, 0.0)
-            >>> Color('red')._forimage(img_f4)
+            >>> kwimage.Color('red').forimage(img_f4)
             (1.0, 0.0, 0.0, 1.0)
-            >>> Color('red')._forimage(img_u3)
+            >>> kwimage.Color('red').forimage(img_u3)
             (255, 0, 0)
-            >>> Color('red')._forimage(img_u4)
+            >>> kwimage.Color('red').forimage(img_u4)
             (255, 0, 0, 255)
-            >>> Color('red', alpha=0.5)._forimage(img_f4)
+            >>> kwimage.Color('red', alpha=0.5).forimage(img_f4)
             (1.0, 0.0, 0.0, 0.5)
-            >>> Color('red', alpha=0.5)._forimage(img_u4)
+            >>> kwimage.Color('red', alpha=0.5).forimage(img_u4)
             (255, 0, 0, 127)
+            >>> kwimage.Color('red').forimage(np.uint8)
+            (255, 0, 0)
         """
-        if im_core.num_channels(image) == 4:
-            if not space.endswith('a'):
-                space = space + 'a'
-        if image.dtype.kind == 'f':
+        if space == 'auto':
+            space = 'rgb'
+        try:
+            kind = image.dtype.kind
+        except AttributeError:
+            kind = np.dtype(image).kind
+            if len(self.color01) == 4:
+                if not space.endswith('a'):
+                    space = space + 'a'
+        else:
+            if im_core.num_channels(image) == 4:
+                if not space.endswith('a'):
+                    space = space + 'a'
+
+        if kind == 'f':
             color = self.as01(space)
         else:
             color = self.as255(space)
         return color
+
+    def _forimage(self, image, space='rgb'):
+        """ backwards compat, deprecate """
+        ub.schedule_deprecation(
+            'kwimage', 'Color._forimage', 'method',
+            migration='Use forimage instead',
+            deprecate='0.10.0', error='1.0.0', remove='1.1.0')
+        return self.forimage(image, space)
 
     def ashex(self, space=None):
         """
