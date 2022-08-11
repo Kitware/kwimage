@@ -1651,6 +1651,21 @@ class _BoxTransformMixins(object):
             The argument names to this function are assuming up is negative and
             down is positive. We may change them in the future to be agnostic
             to image vs blackboard coordinates.
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes([[0, 0, 10, 10]], 'xywh').to_ltrb().quantize()
+            >>> padded = self.pad(1, 1, 1, 1)
+            >>> print(padded)
+            <Boxes(ltrb, array([[-1, -1, 11, 11]], dtype=int32))>
+            >>> self = kwimage.Boxes.random().scale(100).to_ltrb().quantize().astype(np.int64)
+            >>> padded = self.pad(0, 0, 0, 0)
+            >>> assert padded.data.dtype == np.int64
+            >>> self = kwimage.Boxes.random().scale(100).to_ltrb().quantize().astype(np.int32)
+            >>> padded = self.pad(0, 0, 0, 0)
+            >>> assert padded.data.dtype == np.int32
+            >>> padded = self.pad(0, 0, 0, np.float64(0.))
+            >>> assert padded.data.dtype == np.float64
         """
         impl = self._impl
 
@@ -1658,7 +1673,8 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
-            new_data = impl.astype(self.data, float, copy=True)
+            dtype = impl.result_type(self.data, x_left, y_top, x_right, y_bot)
+            new_data = impl.astype(self.data, dtype, copy=True)
             new = Boxes(new_data, self.format)
 
         if _numel(new_data) > 0:
