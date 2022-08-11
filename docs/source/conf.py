@@ -656,7 +656,9 @@ def create_doctest_figure(app, obj, name, lines):
         num_lines = part.count('\n')
 
         doctests = list(xdoctest.core.parse_docstr_examples(
-            part, modpath=modpath, callname=name, style='google'))
+            part, modpath=modpath, callname=name,
+            # style='google'
+        ))
         # print(doctests)
 
         # doctests = list(xdoctest.core.parse_docstr_examples(
