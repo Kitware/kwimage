@@ -47,7 +47,7 @@ The top-level API is:
                           padded_slice,)
     from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
                          gaussian_patch, imcrop, imresize, imscale, morphology,
-                         warp_affine,)
+                         warp_affine, warp_image, warp_projective,)
     from .im_demodata import (checkerboard, grab_test_image,
                               grab_test_image_fpath,)
     from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
@@ -67,8 +67,8 @@ The top-level API is:
     from .util_warp import (add_homog, remove_homog, subpixel_accum,
                             subpixel_align, subpixel_getvalue, subpixel_maximum,
                             subpixel_minimum, subpixel_set, subpixel_setvalue,
-                            subpixel_slice, subpixel_translate, warp_image,
-                            warp_points, warp_tensor,)
+                            subpixel_slice, subpixel_translate, warp_points,
+                            warp_tensor,)
 
 
 NOTE: THE KWIMAGE STRUCTS MAY? EVENTUALLY MOVE TO THE KWANNOT REPO
