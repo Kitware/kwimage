@@ -312,15 +312,33 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
 
     Example:
-        >>> from kwimage.im_demodata import *  # NOQA
-        >>> img = checkerboard()
-        >>> print(checkerboard(dsize=(16, 16)).shape)
-        >>> print(checkerboard(num_squares=4, dsize=(16, 16)).shape)
-        >>> print(checkerboard(square_shape=3, dsize=(23, 17)).shape)
-        >>> print(checkerboard(square_shape=3, dsize=(1451, 1163)).shape)
-        >>> print(checkerboard(square_shape=3, dsize=(1202, 956)).shape)
+        >>> import kwimage
+        >>> import numpy as np
+        >>> img = kwimage.checkerboard()
+        >>> print(kwimage.checkerboard(dsize=(16, 16)).shape)
+        >>> print(kwimage.checkerboard(num_squares=4, dsize=(16, 16)).shape)
+        >>> print(kwimage.checkerboard(square_shape=3, dsize=(23, 17)).shape)
+        >>> print(kwimage.checkerboard(square_shape=3, dsize=(1451, 1163)).shape)
+        >>> print(kwimage.checkerboard(square_shape=3, dsize=(1202, 956)).shape)
+        >>> print(kwimage.checkerboard(dsize=(4, 4), on_value=(255, 0, 0), off_value=(0, 0, 1), dtype=np.uint8))
+
+    Example:
+        >>> import kwimage
+        >>> img = kwimage.checkerboard(
+        >>>     dsize=(64, 64), on_value='kw_green', off_value='kw_blue')
+        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoc: +REQUIRES(module:kwplot)
+        >>> import kwplot
+        >>> kwplot.autoplt()
+        >>> kwplot.imshow(img)
+        >>> kwplot.show_if_requested()
+
+    Ignore:
+        import xdev
+        globals().update(xdev.get_func_kwargs(kwimage.checkerboard))
     """
     import numpy as np
+    import kwimage
     if num_squares == 'auto' and square_shape == 'auto':
         num_squares = 8
 
@@ -358,6 +376,12 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
     num_h, num_w = num_squares
 
+    if isinstance(on_value, str):
+        on_value = kwimage.Color(on_value).forimage(dtype)
+
+    if isinstance(off_value, str):
+        off_value = kwimage.Color(off_value).forimage(dtype)
+
     num_pairs_w = int(num_w // 2)
     num_pairs_h = int(num_h // 2)
     # img_size = 512
@@ -365,8 +389,13 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         [on_value, off_value] * num_pairs_w,
         [off_value, on_value] * num_pairs_w
     ] * num_pairs_h, dtype=dtype)
+
+    if len(base.shape) == 3:
+        base = base.transpose([2, 0, 1])
     expansion = np.ones((h, w), dtype=dtype)
     img = np.kron(base, expansion)[0:want_h, 0:want_w]
+    if len(base.shape) == 3:
+        img = img.transpose([1, 2, 0])
     return img
 
 
