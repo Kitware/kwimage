@@ -448,10 +448,13 @@ def _imread_pil(fpath):
     if pil_img.mode == 'RGB':
         src_space = 'rgb'
         auto_dst_space = 'rgb'
-    elif len(image.shape) == 2 or len(image.shape[2]) == 1:
+    elif pil_img.mode == 'RGBA':
+        src_space = 'rgba'
+        auto_dst_space = 'rgba'
+    elif len(image.shape) == 2 or image.shape[2] == 1:
         src_space = 'gray'
         auto_dst_space = 'gray'
-    if len(image.shape) == 3 or len(image.shape[2]) == 3:
+    elif len(image.shape) == 3 or image.shape[2] == 3:
         src_space = 'rgb'
         auto_dst_space = 'rgb'
     return image, src_space, auto_dst_space
@@ -1134,46 +1137,66 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     return fpath
 
 
-def load_image_shape(fpath):
+def load_image_shape(fpath, backend='auto'):
     """
     Determine the height/width/channels of an image without reading the entire
     file.
 
     Args:
         fpath (str): path to an image
+        backend (str): can be "auto", "pil", or "gdal".
 
     Returns:
-        Tuple - shape of the dataset.
+        Tuple[int, int, int] - shape of the image
             Recall this library uses the convention that "shape" is refers to
-            height,width,channels and "size" is width,height ordering.
+            height,width,channels array-style ordering and "size" is
+            width,height cv2-style ordering.
 
-    TODO:
-        - [ ] FIXME: has a bug
-
-    Ignore:
-        # demo bug
-        import kwimage
-        fpath = kwimage.grab_test_image_fpath('astro')
-        # These should be consistent
-        # THe problem is CV2_IMREAD_UNCHANGED reads the alpha band, but PIL
-        # does not seem to in either mode. Very strange
-        shapes = {}
-        shapes['pil_load_shape'] = kwimage.load_image_shape(fpath)
-        shapes['pil'] = kwimage.imread(fpath, backend='pil').shape
-        shapes['cv2'] = kwimage.imread(fpath, backend='cv2').shape
-        shapes['gdal'] = kwimage.imread(fpath, backend='gdal').shape
-        shapes['skimage'] = kwimage.imread(fpath, backend='skimage').shape
-        print('shapes = {}'.format(ub.repr2(shapes, nl=1, align=':')))
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test the loading the shape works the same as loading the image and
+        >>> # testing the shape
+        >>> import kwimage
+        >>> import tempfile
+        >>> temp_dir = tempfile.TemporaryDirectory()
+        >>> temp_dpath = ub.Path(temp_dir.name)
+        >>> data = kwimage.grab_test_image()
+        >>> datas = {
+        >>>     'rgb255': kwimage.ensure_uint255(data),
+        >>>     'rgb01': kwimage.ensure_float01(data),
+        >>>     'rgba01': kwimage.ensure_alpha_channel(data),
+        >>> }
+        >>> results = {}
+        >>> # These should be consistent
+        >>> # The was a problem where CV2_IMREAD_UNCHANGED read the alpha band,
+        >>> # but PIL did not, but maybe this is fixed now?
+        >>> for key, imdata in datas.items():
+        >>>     fpath = temp_dpath / f'{key}.png'
+        >>>     kwimage.imwrite(fpath, imdata)
+        >>>     shapes = {}
+        >>>     shapes['pil_load_shape'] = kwimage.load_image_shape(fpath, backend='pil')
+        >>>     shapes['gdal_load_shape'] = kwimage.load_image_shape(fpath, backend='gdal')
+        >>>     shapes['auto_load_shape'] = kwimage.load_image_shape(fpath, backend='auto')
+        >>>     shapes['pil'] = kwimage.imread(fpath, backend='pil').shape
+        >>>     shapes['cv2'] = kwimage.imread(fpath, backend='cv2').shape
+        >>>     shapes['gdal'] = kwimage.imread(fpath, backend='gdal').shape
+        >>>     shapes['skimage'] = kwimage.imread(fpath, backend='skimage').shape
+        >>>     results[key] = shapes
+        >>> print('results = {}'.format(ub.repr2(results, nl=2, align=':', sort=0)))
+        >>> for shapes in results.values():
+        >>>     assert ub.allsame(shapes.values())
 
     Benchmark:
         >>> # For large files, PIL is much faster
+        >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> from osgeo import gdal
         >>> from PIL import Image
+        >>> import timerit
         >>> #
         >>> import kwimage
         >>> fpath = kwimage.grab_test_image_fpath()
         >>> #
-        >>> ti = ub.Timerit(100, bestof=10, verbose=2)
+        >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
         >>> for timer in ti.reset('gdal'):
         >>>     with timer:
         >>>         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
@@ -1201,31 +1224,34 @@ def load_image_shape(fpath):
         >>> shape = kwimage.load_image_shape(fpath)
         >>> assert shape == (64, 64, 3)
     """
-    from PIL import Image
-    pil_img = None
-    fpath = os.fspath(fpath)
-    try:
-        pil_img = Image.open(fpath)
-        width, height = pil_img.size
-        num_channels = len(pil_img.getbands())
-    except Exception as pil_ex:
-        if not _have_gdal():
-            raise
+    if backend == 'auto':
         try:
-            from osgeo import gdal
-            gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
-            if gdal_dset is None:
-                raise Exception(gdal.GetLastErrorMsg())
-            width = gdal_dset.RasterXSize
-            height = gdal_dset.RasterYSize
-            num_channels = gdal_dset.RasterCount
-            gdal_dset = None
-        except Exception:
-            raise pil_ex
-    finally:
-        if pil_img is not None:
-            pil_img.close()
-    shape = (height, width, num_channels)
+            shape = load_image_shape(fpath, backend='pil')
+        except Exception as pil_ex:
+            if not _have_gdal():
+                raise
+            try:
+                shape = load_image_shape(fpath, backend='gdal')
+            except Exception:
+                raise pil_ex
+    elif backend == 'pil':
+        from PIL import Image
+        fpath = os.fspath(fpath)
+        with Image.open(fpath) as pil_img:
+            width, height = pil_img.size
+            num_channels = len(pil_img.getbands())
+        shape = (height, width, num_channels)
+    elif backend == 'gdal':
+        from osgeo import gdal
+        fpath = os.fspath(fpath)
+        gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+        if gdal_dset is None:
+            raise Exception(gdal.GetLastErrorMsg())
+        width = gdal_dset.RasterXSize
+        height = gdal_dset.RasterYSize
+        num_channels = gdal_dset.RasterCount
+        gdal_dset = None
+        shape = (height, width, num_channels)
     return shape
 
 

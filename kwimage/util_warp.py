@@ -87,15 +87,6 @@ def _coordinate_grid(dims, align_corners=False):
     return pixel_coords
 
 
-def warp_image(inputs, mat, **kw):
-    raise AssertionError('do not use')
-    # import kwarray
-    # _impl = kwarray.ArrayAPI.coerce(inputs)
-    # inputs = kwarray.atleast_nd(inputs, 3)
-    # tensor = inputs.transpose(2, 0, 1)
-    # return warp_tensor(tensor, mat, **kw)
-
-
 def warp_tensor(inputs, mat, output_dims, mode='bilinear',
                 padding_mode='zeros', isinv=False, ishomog=None,
                 align_corners=False, new_mode=False):

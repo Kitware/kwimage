@@ -1431,8 +1431,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         return result
 
 
-def _try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize, new_origin,
-              flags, borderMode, borderValue):
+def _try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
+                     new_origin, flags, borderMode, borderValue):
     """
     Helper for warp_affine
     """
@@ -2070,8 +2070,8 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             Note: this is passed directly to cv2, so it is best to ensure that
             it is contiguous and using a dtype that cv2 can handle.
 
-        transform (ndarray | dict | kwimage.Affine): a coercable projective matrix.
-            See :class:`kwimage.Affine` for details on what can be coerced.
+        transform (ndarray | dict | kwimage.Projective): a coercable projective matrix.
+            See :class:`kwimage.Projective` for details on what can be coerced.
 
         dsize (Tuple[int, int] | None | str):
             A integer width and height tuple of the resulting "canvas" image.
@@ -2125,7 +2125,6 @@ def warp_projective(image, transform, dsize=None, antialias=False,
         ndarray | Tuple[ndarray, Dict]:
             the warped image, or if return info is True, the warped image and
             the info dictionary.
-
     """
     from kwimage.transform import Affine
     import kwimage
@@ -2207,36 +2206,8 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             if is_masked:
                 result_mask = _try_warp_projective(mask, transform_, *_try_warp_tail_args)
         else:
-            # At least one dimension is downsampled
-            """
-            Variations that could change in the future:
-
-                * In _gauss_params I'm not sure if we want to compute integer or
-                    fractional "number of downsamples".
-
-                * The fudge factor bothers me, but seems necessary
-            """
-
-            # Compute the transform with all scaling removed
-            noscale_warp = kwimage.Projective.projective(**ub.dict_diff(params, {'scale'}))
-
-            # Execute part of the downscale with iterative pyramid downs
-            downscaled, residual_sx, residual_sy = _prepare_downscale(
-                image, sx, sy)
-
-            # Compute the transform from the downsampled image to the destination
-            rest_warp = noscale_warp @ kwimage.Projective.scale((residual_sx, residual_sy))
-
-            info['antialias_info'] = {
-                'noscale_warp': noscale_warp,
-                'rest_warp': rest_warp,
-            }
-
-            result = _try_warp_projective(downscaled, rest_warp, *_try_warp_tail_args)
-
-            if is_masked:
-                downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
-                result_mask = _try_warp_projective(downscaled_mask, rest_warp, *_try_warp_tail_args)
+            # We can't actually do this in the projective case
+            raise NotImplementedError('cannot antialias in projective case yet')
 
     if is_masked:
         result_mask = result_mask.astype(orig_mask_dtype)
@@ -2288,4 +2259,105 @@ def _try_warp_projective(image, transform_, large_warp_dim, dsize, max_dsize,
         #                    borderValue, pieces_per_dim)
 
 
-# TODO: warp_image where it detects affine versus projective
+def warp_image(image, transform, dsize=None, antialias=False,
+               interpolation='linear', border_mode=None, border_value=0,
+               large_warp_dim=None, return_info=False):
+    """
+    Applies an transformation to an image with optional antialiasing.
+
+    Args:
+        image (ndarray): the input image as a numpy array.
+            Note: this is passed directly to cv2, so it is best to ensure that
+            it is contiguous and using a dtype that cv2 can handle.
+
+        transform (ndarray | dict | kwimage.Matrix): a coercable affine or
+            projective matrix.  See :class:`kwimage.Affine` and
+            :class:`kwimage.Projective` for details on what can be coerced.
+
+        dsize (Tuple[int, int] | None | str):
+            A integer width and height tuple of the resulting "canvas" image.
+            If None, then the input image size is used.
+
+            If specified as a string, dsize is computed based on the given
+            heuristic.
+
+            If 'positive' (or 'auto'), dsize is computed such that the positive
+            coordinates of the warped image will fit in the new canvas. In this
+            case, any pixel that maps to a negative coordinate will be clipped.
+            This has the property that the input transformation is not
+            modified.
+
+            If 'content' (or 'max'), the transform is modified with an extra
+            translation such that both the positive and negative coordinates of
+            the warped image will fit in the new canvas.
+
+        antialias (bool)
+            if True determines if the transform is downsampling and applies
+            antialiasing via gaussian a blur. Defaults to False
+
+        interpolation (str | int):
+            interpolation code or cv2 integer. Interpolation codes are linear,
+            nearest, cubic, lancsoz, and area. Defaults to "linear".
+
+        border_mode (str | int):
+            Border code or cv2 integer. Border codes are constant (default)
+            replicate, reflect, wrap, reflect101, and transparent.
+
+        border_value (int | float | Iterable[int | float]):
+            Used as the fill value if border_mode is constant. Otherwise this
+            is ignored. Defaults to 0, but can also be defaulted to nan.
+            if border_value is a scalar and there are multiple channels, the
+            value is applied to all channels. More than 4 unique border values
+            for individual channels will cause an error. See OpenCV #22283 for
+            details.  In the future we may accept np.ma and return a masked
+            array, but for now that is not implemented.
+
+        large_warp_dim (int | None | str):
+            If specified, perform the warp piecewise in chunks of the specified
+            size. If "auto", it is set to the maximum "short" value in numpy.
+            This works around a limitation of cv2.warpAffine, which must have
+            image dimensions < SHRT_MAX (=32767 in version 4.5.3)
+
+        return_info (bool):
+            if True, returns information about the operation. In the case
+            where dsize="content", this includes the modified transformation.
+
+    Returns:
+        ndarray | Tuple[ndarray, Dict]:
+            the warped image, or if return info is True, the warped image and
+            the info dictionary.
+
+    SeeAlso:
+        :func:`kwimage.warp_tensor`
+        :func:`kwimage.warp_affine`
+        :func:`kwimage.warp_projective`
+
+    Example:
+        >>> from kwimage.im_cv2 import *  # NOQA
+        >>> import kwimage
+        >>> image = kwimage.grab_test_image('paraview')
+        >>> tf_homog = kwimage.Projective.random(rng=30342110) @ kwimage.Projective.coerce(uv=[0.001, 0.001])
+        >>> tf_aff = kwimage.Affine.coerce(ub.udict(tf_homog.decompose()) - {'uv'})
+        >>> tf_uv = kwimage.Projective.coerce(ub.udict(tf_homog.decompose()) & {'uv'})
+        >>> warped1 = kwimage.warp_image(image, tf_homog, dsize='positive')
+        >>> warped2 = kwimage.warp_image(image, tf_aff, dsize='positive')
+        >>> warped3 = kwimage.warp_image(image, tf_uv, dsize='positive')
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nRows=2, nCols=2)
+        >>> kwplot.imshow(warped1, pnum=pnum_(), title='projective warp')
+        >>> kwplot.imshow(warped2, pnum=pnum_(), title='affine warp')
+        >>> kwplot.imshow(warped3, pnum=pnum_(), title='projective part')
+        >>> kwplot.show_if_requested()
+    """
+    import kwimage
+    transform = kwimage.Projective.coerce(transform)
+    kwargs = dict(dsize=dsize, antialias=antialias,
+                  interpolation=interpolation, border_mode=border_mode,
+                  border_value=border_value, large_warp_dim=large_warp_dim,
+                  return_info=return_info)
+    if transform.is_affine():
+        return kwimage.warp_affine(image, transform, **kwargs)
+    else:
+        return kwimage.warp_projective(image, transform, **kwargs)

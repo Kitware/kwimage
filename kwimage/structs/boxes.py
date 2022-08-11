@@ -1182,6 +1182,9 @@ class _BoxTransformMixins(object):
                 matrix = transform
             elif isinstance(transform, kwimage.Affine):
                 matrix = transform.matrix
+            elif isinstance(transform, kwimage.Projective):
+                matrix = transform.matrix
+                raise NeedsWarpCorners
             else:
                 try:
                     import imgaug

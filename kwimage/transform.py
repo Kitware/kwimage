@@ -658,6 +658,85 @@ class Projective(Linear):
         return self
 
     @classmethod
+    @profile
+    def coerce(cls, data=None, **kwargs):
+        """
+        Attempt to coerce the data into an Projective object
+
+        Args:
+            data : some data we attempt to coerce to an Projective matrix
+            **kwargs : some data we attempt to coerce to an Projective matrix,
+                mutually exclusive with `data`.
+
+        Returns:
+            Projective
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Projective.coerce({'type': 'affine', 'matrix': [[1, 0, 0], [0, 1, 0]]})
+            >>> kwimage.Projective.coerce({'type': 'affine', 'scale': 2})
+            >>> kwimage.Projective.coerce({'type': 'projective', 'scale': 2})
+            >>> kwimage.Projective.coerce({'scale': 2})
+            >>> kwimage.Projective.coerce({'offset': 3})
+            >>> kwimage.Projective.coerce(np.eye(3))
+            >>> kwimage.Projective.coerce(None)
+            >>> import skimage
+            >>> kwimage.Projective.coerce(skimage.transform.AffineTransform(scale=30))
+            >>> kwimage.Projective.coerce(skimage.transform.ProjectiveTransform(matrix=None))
+        """
+        if data is None and not kwargs:
+            return cls(matrix=None)
+        if data is None:
+            data = kwargs
+        if isinstance(data, np.ndarray):
+            self = cls(matrix=data)
+        elif isinstance(data, cls):
+            self = data
+        elif isinstance(data, (skimage.transform.AffineTransform, skimage.transform.ProjectiveTransform)):
+            self = cls(matrix=data.params)
+        elif data.__class__.__name__ == cls.__name__:
+            self = data
+        elif isinstance(data, dict):
+            keys = set(data.keys())
+            if 'matrix' in keys:
+                matrix = np.array(data['matrix'])
+                if matrix.shape[0] == 2:
+                    matrix = np.vstack([matrix, [[0, 0, 1.]]])
+                self = cls(matrix=matrix)
+            else:
+                known_params = {'uv', 'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
+                params = {key: data[key] for key in known_params if key in data}
+                if len(known_params & keys):
+                    type_ = params.pop('type', None)
+                    type_
+                    self = cls.projective(**params)
+                else:
+                    raise KeyError(', '.join(list(data.keys())))
+        else:
+            raise TypeError(type(data))
+        return self
+
+    def is_affine(self):
+        """
+        If the bottom row is [[0, 0, 1]], then this can be safely turned into
+        an affine matrix.
+
+        Returns:
+            bool
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Projective.coerce(scale=2, uv=[1, 1]).is_affine()
+            False
+            >>> kwimage.Projective.coerce(scale=2, uv=[0, 0]).is_affine()
+            True
+        """
+        if self.matrix is None:
+            return True
+        else:
+            return np.all(self.matrix[2] == [0, 0, 1])
+
+    @classmethod
     def random(cls, shape=None, rng=None, **kw):
         """
         Example/
@@ -666,7 +745,7 @@ class Projective(Linear):
             >>> print(f'self={self}')
             >>> params = self.decompose()
             >>> aff_part = kwimage.Affine.affine(**ub.dict_diff(params, ['uv']))
-            >>> proj_part = kwimage.Projective.projective(uv=params['uv'])
+            >>> proj_part = kwimage.Projective.coerce(uv=params['uv'])
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import cv2

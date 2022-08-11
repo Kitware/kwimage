@@ -8,9 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * The `bg_color` arg to `draw_header_text`
+* Implemented `kwimage.warp_image`
 
 ### Fixed
 * Issue in Detections.draw where "cids" was not respected.
+* Minor fixes in warp projective.
 * `nodata_checkerboard` now works better with uint8 data.
 
 
