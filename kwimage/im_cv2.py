@@ -825,7 +825,8 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
         sigma (float | Tuple[float, float] | None):
             Gaussian standard deviation. If unspecified, it is derived using
-            the formulation described in [Cv2GaussKern]_.
+            the formula ``0.3 * ((s - 1) * 0.5 - 1) + 0.8`` as described in
+            [Cv2GaussKern]_.
 
     Returns:
         ndarray

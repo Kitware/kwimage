@@ -95,6 +95,9 @@ def imread(fpath, space='auto', backend='auto', **kw):
         Some backends will respect EXIF orientation (skimage) and others will
         not (gdal, cv2).
 
+        The scikit-image backend is itself another multi-backend plugin-based
+        image reader/writer.
+
     Raises:
         IOError - If the image cannot be read
         ImportError - If trying to read a nitf without gdal
@@ -701,6 +704,7 @@ def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
     # TODO:
     # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
     # https://gdal.org/drivers/raster/gtiff.html#subdatasets
+    # See ../tests/test_io.py for experiments that trigger this
     if len(gdal_dset.GetSubDatasets()):
         raise NotImplementedError('subdatasets are not handled correctly')
         # INTERLEAVE = gdal_dset.GetMetadata('IMAGE_STRUCTURE').get('INTERLEAVE', '')
@@ -876,6 +880,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
 
         When saving as a jpeg or png, the image must be encoded with the uint8
         data type. When saving as a tiff, any data type is allowed.
+
+        The scikit-image backend is itself another multi-backend plugin-based
+        image reader/writer.
 
     Raises:
         Exception : if the image cannot be written

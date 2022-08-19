@@ -352,3 +352,40 @@ def _isinstance2(obj, cls):
     except Exception:
         return False
     return False
+
+
+def _setlim(xmin, ymin, xmax, ymax, setlim=False, ax=None):
+    """
+    Helper for setlim argument for draw function
+    """
+    if ax is None:
+        from matplotlib import pyplot as plt
+        ax = plt.gca()
+
+    if isinstance(setlim, str):
+        if setlim == 'grow':
+            # only allow growth
+            x1_, x2_ = ax.get_xlim()
+            xmin = min(x1_, xmin)
+            xmax = max(x2_, xmax)
+
+            y1_, y2_ = ax.get_ylim()
+            ymin = min(y1_, ymin)
+            ymax = max(y2_, ymax)
+        else:
+            raise KeyError(setlim)
+
+    if isinstance(setlim, float):
+        w = abs(xmax - xmin)
+        h = abs(ymax - ymin)
+        xpad = ((w * setlim) - w) / 2
+        ypad = ((h * setlim) - h) / 2
+
+        xmin = xmin - xpad
+        ymin = ymin - ypad
+
+        xmax = xmax + xpad
+        ymax = ymax + ypad
+
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)

@@ -1826,13 +1826,8 @@ class _BoxDrawMixins(object):
             ax = plt.gca()
 
         if setlim:
-            x1, y1, x2, y2 = self.to_ltrb().components
-            xmin, xmax = x1.min(), x2.max()
-            ymin, ymax = y1.min(), y2.max()
-            w = (xmax - xmin)
-            pad = ((w * setlim) - w) / 2
-            ax.set_xlim(xmin - pad, xmax + pad)
-            ax.set_ylim(ymin - pad, ymax + pad)
+            xmin, ymin, xmax, ymax = self.to_ltrb().components
+            _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
 
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:

@@ -70,27 +70,55 @@ def test_interlaced():
 
 
 def test_cross_backend_reads():
+    """
+    This is an investigation in an issue where scikit-image will save a file in
+    a format that will cause issues with gdal.
+
+    It turns out this is really an tifffile problem, because scikit-image
+    itself is also using a backend plugin system.
+    """
     import pytest
     pytest.skip('This is a demonstration of an issue, not a test that we should run yet')
 
-    import kwimage
-    import ubelt as ub
     from kwimage import im_io
-    from os.path import join
-    import numpy as np
-
-    dpath = ub.ensure_app_cache_dir('kwimage/tests/io')
     if not im_io._have_gdal():
         import pytest
         pytest.skip()
 
-    data = np.random.rand(128, 128, 13)
+    import kwimage
+    import ubelt as ub
+    import numpy as np
 
-    skim_fpath = join(dpath, 'written_skimage.tif')
-    gdal_fpath = join(dpath, 'written_gdal.tif')
+    # Using 3 or 4 channels is fine, 5... not so much
+    data = np.random.rand(8, 8, 5)
 
+    import imageio
+    import tifffile
+
+    dpath = ub.Path.appdir('kwimage/tests/io').ensuredir()
+    skim_fpath = dpath / 'written_skimage.tif'
+    gdal_fpath = dpath / 'written_gdal.tif'
+    imio_fpath = dpath / 'written_imio.tif'
+
+    tiff_fpath = dpath / 'written_tiff.tif'
+
+    with pytest.raises(ValueError):
+        imageio.imwrite(imio_fpath, data)
+
+    tifffile.imwrite(tiff_fpath, data)
     kwimage.imwrite(skim_fpath, data, backend='skimage')
     kwimage.imwrite(gdal_fpath, data, backend='gdal')
+
+    import os
+    from osgeo import gdal
+    infos = {}
+    infos['skim'] = gdal.Info(os.fspath(skim_fpath), format='json')
+    infos['tif'] = gdal.Info(os.fspath(tiff_fpath), format='json')
+    infos['gdal'] = gdal.Info(os.fspath(gdal_fpath), format='json')
+
+    print('infos["gdal"] = {}'.format(ub.repr2(infos["gdal"], nl=-1)))
+    print('infos["tif"] = {}'.format(ub.repr2(infos["tif"], nl=-1)))
+    print('infos["skim"] = {}'.format(ub.repr2(infos["skim"], nl=-1)))
 
     results = {}
     results['recon_skim_with_gdal'] = kwimage.imread(skim_fpath, backend='gdal')

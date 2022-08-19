@@ -1906,20 +1906,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                 hole.draw(color=vertexcolor, radius=vertex)
 
         if setlim:
-            x1, y1, x2, y2 = self.to_boxes().to_ltrb().data[0]
-
-            if setlim == 'grow':
-                # only allow growth
-                x1_, x2_ = ax.get_xlim()
-                x1 = min(x1_, x1)
-                x2 = max(x2_, x2)
-
-                y1_, y2_ = ax.get_ylim()
-                y1 = min(y1_, y1)
-                y2 = max(y2_, y2)
-
-            ax.set_xlim(x1, x2)
-            ax.set_ylim(y1, y2)
+            xmin, ymin, xmax, ymax = self.to_boxes().to_ltrb().data[0]
+            _generic._setlim(xmin, ymin, xmax, ymax, setlim=setlim, ax=ax)
         return patch
 
     def _ensure_vertex_order(self, inplace=False):
@@ -1952,6 +1940,138 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             if not _is_clockwise(interior.data):
                 interior.data = interior.data[::-1]
         return new
+
+    def interpolate(self, other, alpha):
+        """
+        Perform polygon-to-polygon interpolation.
+
+        Note:
+            This current algorithm is very basic and does not yet prevent
+            self-intersections in intermediate polygons.
+
+        Args:
+            other (kwimage.Polygon): the other polygon to morph into
+
+            alpha (float | List[float]):
+                A value between 0 and 1, indicating the fractional position of
+                the new interpolated polygon between ``self`` and ``other``.
+                If given as a list multiple interpolations are returned.
+
+        Returns:
+            Polygon | List[Polygon]: one ore more interpolated polygons
+
+        TODO:
+            - [ ] Implement level set method [LevelSet]_ which rasterizes each
+            polygon, interpolates the raster, and computes the interpolated
+            polygon as contours in that interpolated raster.
+
+            - [ ] Implement methods from [Albrecht2006]_ and [PolygonMorph]_
+
+        References:
+            .. [InterpPoly] http://lambdafunk.com/2017-02-21-Interpolating-Polygons/
+            .. [LevelSet] https://en.wikipedia.org/wiki/Level-set_method
+            .. [HaudrenShapes] https://github.com/haudren/shapes/blob/master/shapes/shapes.py
+            .. [PolygonMorph] https://github.com/micycle1/Polygon-Morphing
+            .. [Albrecht2006] http://www2.inf.uos.de/prakt/pers/dipl/svalbrec/thesis.pdf
+            .. [KamvysselisMorph] http://web.mit.edu/manoli/www/ecimorph/ecimorph.html#code
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(6, convex=0)
+            >>> other = kwimage.Polygon.random(15, convex=0).translate((2, 2))
+            >>> results = self.interpolate(other, np.linspace(0, 1, 5))
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> plt = kwplot.autoplt()
+            >>> kwplot.figure(doclf=1)
+            >>> self.draw(setlim='grow', color='kw_blue', alpha=0.5, vertex=0.02)
+            >>> other.draw(setlim='grow', color='kw_green', alpha=0.5, vertex=0.02)
+            >>> for new in results:
+            >>>     pt = new.exterior.data[0]
+            >>>     new.draw(color='kw_gray', alpha=0.5, vertex=0.01)
+            >>> intepolation_lines = np.array([new.exterior.data for new in results])
+            >>> for interp_line in intepolation_lines.transpose(1, 0, 2)[::8]:
+            >>>     plt.plot(*interp_line.T, '--x')
+        """
+        from shapely import geometry
+        import kwimage
+        # Create a variant of each polygon
+        shape1 = self.to_shapely()
+        shape2 = other.to_shapely()
+
+        if len(shape1.interiors) > 0:
+            raise NotImplementedError('no holes in interpolation yet')
+
+        if len(shape2.interiors) > 0:
+            raise NotImplementedError('no holes in interpolation yet')
+
+        ring1 = shape1.exterior
+        ring2 = shape2.exterior
+
+        ring1_coords = np.array(ring1.xy).T
+        ring2_coords = np.array(ring2.xy).T
+
+        # Rotate each ring to align the leftmost point
+        # Rotate the coordinates such that vertices are in better
+        # correspondence. There are different ways we can (and should implement
+        # options to) do this, but this one is reasonable
+        idx1 = ring1_coords.argmin(axis=0)[0]
+        idx2 = ring2_coords.argmin(axis=0)[0]
+        aligned_ring_coords1 = np.roll(ring1_coords, -idx1, axis=0)
+        aligned_ring_coords2 = np.roll(ring2_coords, -idx2, axis=0)
+
+        ring1 = geometry.polygon.LinearRing(aligned_ring_coords1)
+        ring2 = geometry.polygon.LinearRing(aligned_ring_coords2)
+
+        # For each polygon exterior, find the normalized fractional point each
+        # vertex lives on.
+        ring_dist1 = [ring1.project(geometry.Point(pt), normalized=True)
+                      for pt in zip(*ring1.xy)]
+        ring_dist2 = [ring2.project(geometry.Point(pt), normalized=True)
+                      for pt in zip(*ring2.xy)]
+        # Get a common set of normalized ring distances
+        ring_distB = sorted(set(ring_dist1 + ring_dist2))
+        interps = np.array(ring_distB)
+
+        # Determine the coordinates for the common fractional points on each
+        # exterior.
+        length1 = shape1.exterior.length
+        length2 = shape2.exterior.length
+
+        interps1 = (interps * length1) % length1
+        interps2 = (interps * length2) % length2
+
+        coords1 = np.array([ring1.interpolate(i).xy for i in interps1])[..., 0]
+        coords2 = np.array([ring2.interpolate(i).xy for i in interps2])[..., 0]
+
+        # # Find the left-most point and use that as the base for the
+        # # correspondence.
+        # idx1 = coords1.argmin(axis=0)[0]
+        # idx2 = coords2.argmin(axis=0)[0]
+
+        # # centered_coords1 = coords1 - coords1.mean(axis=1, keepdims=1)
+        # # centered_coords2 = coords2 - coords2.mean(axis=1, keepdims=1)
+        # # kwarray.algo_assignment.mindist_assignment(centered_coords1, centered_coords2)
+        # # kwarray.algo_assignment.mindist_assignment(coords1, coords2)
+
+        # aligned_coords1 = np.roll(coords1, -idx1, axis=0)
+        # aligned_coords2 = np.roll(coords2, -idx2, axis=0)
+
+        was_iterable = ub.iterable(alpha)
+        if not was_iterable:
+            alpha = [alpha]
+
+        alpha2 = np.array(alpha).ravel()[:, None, None]
+        alpha1 = 1 - alpha2
+
+        interpolated_coords = (
+            (coords1[None, :] * alpha1) +
+            (coords2[None, :] * alpha2)
+        )
+        result = [kwimage.Polygon(exterior=xy) for xy in interpolated_coords]
+        if not was_iterable:
+            result = result[0]
+        return result
 
 
 def _is_clockwise(verts):

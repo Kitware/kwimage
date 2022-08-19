@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * The `bg_color` arg to `draw_header_text`
 * Implemented `kwimage.warp_image`
 * The `kwimage.Color.forimage` function is now public
+* Basic support for polygon interpolation.
 
 ### Fixed
 * Issue in Detections.draw where "cids" was not respected.
