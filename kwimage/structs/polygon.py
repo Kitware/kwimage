@@ -1,4 +1,8 @@
 """
+A class to represent a polygon (and a MultiPolygon)
+
+Defines :class:`Polygon` and :class:`MultiPolygon`
+
 TODO:
     - [ ]  Make function mask -> polygon list
     - [ ]  Make function multipolygon -> polygon list
@@ -568,11 +572,23 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
     Example:
         >>> import kwimage
+        >>> poly1 = kwimage.Polygon(exterior=[[ 5., 10.], [ 1.,  8.], [ 3.,  4.], [ 5.,  3.], [ 8.,  9.], [ 6., 10.]])
+        >>> poly2 = kwimage.Polygon.random(rng=34214, n_holes=2).scale(10).round()
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.figure(doclf=True)
+        >>> poly1.draw(setlim=1.4, vertex=0.2, vertexcolor='kw_orange', color='kw_blue', edgecolor='kw_green', alpha=0.5)
+        >>> poly2.draw(setlim=2.9, vertex=0.2, vertexcolor='kw_red', color='kw_darkgreen', edgecolor='kw_darkblue', alpha=0.5)
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> import kwimage
         >>> data = {
         >>>     'exterior': np.array([[13,  1], [13, 19], [25, 19], [25,  1]]),
         >>>     'interiors': [
-        >>>         np.array([[13, 13], [14, 12], [24, 12], [25, 13], [25, 18],
-        >>>                   [24, 19], [14, 19], [13, 18]]),
+        >>>         np.array([[14, 13], [15, 12], [23, 12], [24, 13], [24, 18],
+        >>>                   [23, 19], [13, 19], [12, 18]]),
         >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11],
         >>>                   [24, 12], [14, 12], [13, 11]])]
         >>> }
@@ -580,7 +596,23 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> self.draw(setlim=True)
+        >>> self.draw(setlim=1.4, vertex=0.2, vertexcolor='kw_orange', color='kw_blue', edgecolor='kw_green')
+
+    Example:
+        >>> import kwimage
+        >>> data = {
+        >>>     'exterior': np.array([[13,  1], [13, 19], [25, 19], [25,  1]]),
+        >>>     'interiors': [
+        >>>         np.array([[14, 13], [15, 12], [23, 12], [24, 13], [24, 18],
+        >>>                   [23, 19], [13, 19], [12, 18]]),
+        >>>         np.array([[13,  2], [14,  1], [24,  1], [25, 2], [25, 11],
+        >>>                   [24, 12], [14, 12], [13, 11]])]
+        >>> }
+        >>> self = kwimage.Polygon(**data)
+        >>> # xdoc: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> self.draw(setlim=1.4, vertex=0.2, vertexcolor='kw_orange', color='kw_blue', edgecolor='kw_green')
 
     Example:
         >>> import kwimage
@@ -1890,6 +1922,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
                     edgecolor[1] -= .1
                     edgecolor[2] -= .1
                     edgecolor = [min(1, max(0, c)) for c in edgecolor]
+            else:
+                edgecolor = kwimage.Color(edgecolor).as01('rgba')
             kw['edgecolor'] = edgecolor
         else:
             kw['linewidth'] = 0
@@ -1977,8 +2011,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
 
         Example:
             >>> import kwimage
-            >>> self = kwimage.Polygon.random(6, convex=0)
-            >>> other = kwimage.Polygon.random(15, convex=0).translate((2, 2))
+            >>> self = kwimage.Polygon.random(3, convex=0)
+            >>> other = kwimage.Polygon.random(4, convex=0).translate((2, 2))
             >>> results = self.interpolate(other, np.linspace(0, 1, 5))
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
