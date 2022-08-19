@@ -8,6 +8,7 @@ TODO:
     - [ ]  Make function multipolygon -> polygon list
     - [ ]  Make function PolygonList -> Boxes
     - [ ]  Make function SegmentationList -> Boxes
+    - [ ] First class shapely support (format='shapely' to mitigate format conversion cost) (or use shapely as the primary format).
 
 """
 import cv2
@@ -848,16 +849,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             xdoctest -m kwimage.structs.polygon Polygon.random
 
         Example:
-            >>> rng = None
-            >>> n = 4
-            >>> n_holes = 1
-            >>> cls = Polygon
-            >>> self = Polygon.random(n=n, rng=rng, n_holes=n_holes, convex=1)
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(n=4, rng=None, n_holes=2, convex=1)
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
-            >>> self.draw()
+            >>> self.draw(color='kw_green', edgecolor='kw_blue', vertexcolor='kw_darkblue', vertex=0.01)
 
         References:
             https://gis.stackexchange.com/questions/207731/random-multipolygon
@@ -2020,9 +2018,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> kwplot.figure(doclf=1)
             >>> self.draw(setlim='grow', color='kw_blue', alpha=0.5, vertex=0.02)
             >>> other.draw(setlim='grow', color='kw_green', alpha=0.5, vertex=0.02)
-            >>> for new in results:
+            >>> colors = kwimage.Color('kw_blue').interpolate(kwimage.Color('kw_green'), np.linspace(0, 1, 5))
+            >>> for new, c in zip(results, colors):
             >>>     pt = new.exterior.data[0]
-            >>>     new.draw(color='kw_gray', alpha=0.5, vertex=0.01)
+            >>>     new.draw(color=c, alpha=0.5, vertex=0.01)
             >>> intepolation_lines = np.array([new.exterior.data for new in results])
             >>> for interp_line in intepolation_lines.transpose(1, 0, 2)[::8]:
             >>>     plt.plot(*interp_line.T, '--x')

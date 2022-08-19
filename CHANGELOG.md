@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.7 - Unreleased
 
 
+### Added
+* interpolate to Polygon and Color
+
 ## Version 0.9.6 - Released 2022-08-10
 
 ### Added
