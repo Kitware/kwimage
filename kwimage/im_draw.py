@@ -957,7 +957,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
 
 
 def draw_header_text(image, text, fit=False, color='strawberry', halign='center',
-                     stack='auto', bg_color='black'):
+                     stack='auto', bg_color='black', **kwargs):
     """
     Places a black bar on top of an image and writes text in it
 
@@ -985,6 +985,9 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
             if True returns the stacked image, otherwise just returns the
             header. If 'auto', will only stack if an image is given as an
             ndarray.
+
+        **kwargs: used only for parameter aliases. Currently accepts
+            bg_value as an alias for bg_color.
 
     Returns:
         ndarray
@@ -1032,6 +1035,12 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
         if w < min_pixels or h < min_pixels:
             image = kwimage.imresize(image, min_dim=min_pixels)
         width = image.shape[1]
+
+    if 'bg_value' in kwargs:
+        bg_color = kwargs.pop('bg_value')
+
+    if kwargs:
+        raise ValueError('Unexpected kwargs = {}'.format(kwargs))
 
     bginfo = {'color': bg_color}
 

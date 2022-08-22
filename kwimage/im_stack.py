@@ -27,8 +27,14 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
 
         resize (int | str | None):
             if None image sizes are not modified, otherwise resize resize can
-            be either 0 or 1.  We resize the `resize`-th image to match the `1
-            - resize`-th image. Can also be strings "larger" or "smaller".
+            be either 0 or 1.  We resize the `resize`-th image to match the
+            `1 - resize`-th image. In other words, resize=0 means the current
+            image is resized to match the next image, and resize=1 means the
+            next image is resized to match the current image.
+            Can also be strings "larger" or "smaller". If resize="larger", the
+            current image is only resized if the next image is larger. If
+            resize='smaller' the current image is resized only if the next
+            image is smaller.
 
         interpolation (int | str):
             string or cv2-style interpolation type.
@@ -62,6 +68,11 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
 
     SeeAlso:
         :func:`kwimage.im_stack.stack_images_grid`
+
+    TODO:
+        - [ ] This is currently implemented by calling the "stack_two_images"
+              function multiple times. This should be optimized by allocating
+              the entire canvas first.
 
     Example:
         >>> import kwimage

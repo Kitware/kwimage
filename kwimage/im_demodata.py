@@ -8,68 +8,104 @@ _TEST_IMAGES = {
     'airport': {
         'fname': 'airport.jpg',
         'sha256': 'bff5f9212d5c77dd47f2b80e5dc1b4409fa7813b08fc39b504294497b3483ffc',
-        # seems to hang (2021-08-12), reuploaded to data.kitware.com
-        # 'url': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Fires_and_Deforestation_on_the_Amazon_Frontier%2C_Rondonia%2C_Brazil_-_August_12%2C_2007.jpg',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
+        'ipfs_cids': [
+            'bafkreif76x4sclk4o7oup4vybzo4dncat6tycoyi7q43kbbjisl3gsb77q',
+        ],
     },
     'amazon': {
         'fname': 'amazon.jpg',
         'sha256': 'ef352b60f2577692ab3e9da19d09a49fa9da9937f892afc48094988a17c32dc3',
         'url': 'https://data.kitware.com/api/v1/file/611e9f4b2fa25629b9dc0ca2/download',
+        'ipfs_cids': [
+            'bafybeia3telu2s742xco3ap5huh4tk45cikwuxczwhrd6gwc3rcuat7odq',
+        ],
     },
-    # https://en.wikipedia.org/wiki/Eileen_Collins
     'astro': {
         'fname': 'astro.png',
         'sha256': '9f2b4671e868fd51451f03809a694006425eee64ad472f7065da04079be60c53',
         'url': 'https://i.imgur.com/KXhKM72.png',
+        'note': 'An image of Eileen Collins.',
+        'ipfs_cids': [
+            'bafybeif2w42xgi6vkfuuwmn3c6apyetl56fukkj6wnfgzcbsrpocciuv3i',
+        ],
     },
     'carl': {
         'fname': 'carl.jpg',
-        'sha256': '595056e142951bbdc19d79009cb443e29e8a0148597629dbd16fbd7207063f20',
-        'url': 'https://i.imgur.com/flTHWFD.png',   # imgur thinks this is a PNG for some reason
+        'sha256': '94c2a5acfe53cf7d0f6c75577bd947bf559a4a99d1a200e0fca537602a966da2',
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/b/be/Carl_Sagan_Planetary_Society.JPG',
+        'mirrors': [
+            'https://i.imgur.com/YnrLyry.jpg',
+        ],
+        'note': 'An image of Carl Sagan.',
+        'ipfs_cids': [
+            'bafkreieuyks2z7stz56q63dvk555sr57kwnevgoruiaob7ffg5qcvftnui',
+        ],
     },
     'lowcontrast': {
         'fname': 'lowcontrast.jpg',
         'sha256': '532572a245d2b401583488ccf9f033e5960dc9f3f56b8ca6b933a8986ec9e95e',
         'url': 'https://i.imgur.com/dyC68Bi.jpg',
+        'ipfs_cids': [
+            'bafkreictevzkeroswqavqneizt47am7fsyg4t47vnogknojtvcmg5spjly',
+        ],
     },
     'paraview': {
         'fname': 'paraview.png',
         'sha256': '859423aefce1037b2b6959b74d7b137a4104acd6db95a9247abb26c2d0aa93b8',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/4/46/ParaView_splash1.png',
+        'ipfs_cids': [
+            'bafkreiefsqr257hban5sw2kzw5gxwe32ieckzvw3swusi6v3e3bnbkutxa',
+        ],
     },
     'parrot': {
         'fname': 'parrot.png',
         'sha256': 'fadd4cdddc46e43185999421dcb1ae9d3ba6d13b5b6d0acc05268fc7246f3e59',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png',
+        'ipfs_cids': [
+            'bafkreih23vgn3xcg4qyylgmueholdlu5hotnco23nufmybjgr7dsi3z6le',
+        ],
     },
     'stars': {
         'fname': 'stars.png',
         'sha256': '36391b4d36b4b5e2597c53f9465951910542fbec82f5a0213715759d1de9714f',
         'url': 'https://i.imgur.com/kCi7C1r.png',
+        'ipfs_cids': [
+            'bafkreibwhenu2nvuwxrfs7ct7fdfsumravbpx3ec6wqccnyvowor32lrj4',
+        ],
     },
     'pm5644': {
-        # Test pattern
         'fname': 'Philips_Pattern_pm5644.png',
         'sha256': 'eba500341492649d4fa4e83b5200abbffa6673de5de4c20ed669dedeb00d3941',
-        'url': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Philips_Pattern_pm5644.png'
+        'url': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Philips_Pattern_pm5644.png',
+        'note': 'A test pattern good for checking aliasing effects',
+        'ipfs_cids': [
+            'bafkreihluuadifesmsou7jhihnjabk577jthhxs54tba5vtj33pladjzie',
+        ],
     },
     'tsukuba_l': {
         'fname': 'tsukuba_l.png',
         'sha256': 'e29144841f4e2200e88eb6ad928cfa3ee0c55ccac0a28532c9293c4a5e0b284d',
         'url': 'https://i.imgur.com/DhIKgGx.png',
+        'mirrors': [
+            'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imL.png',
+        ],
+        'ipfs_cids': [
+            'bafkreihcsfciih2oeiaordvwvwjiz6r64dcvzswaukctfsjjhrff4cziju',
+        ],
     },
     'tsukuba_r': {
         'fname': 'tsukuba_r.png',
         'sha256': 'fb4e8b1561c177a9aba23693bd576d0e06f5778b8d44e1c1cc5c5dd35d5fd1d4',
         'url': 'https://i.imgur.com/38RST9H.png',
+        'mirrors': [
+            'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imR.png',
+        ],
+        'ipfs_cids': [
+            'bafkreih3j2frkyobo6u2xirwso6vo3ioa32xpc4nitq4dtc4lxjv2x6r2q',
+        ],
     },
 }
-
-
-# Note: tsukuba images are mirrored from the following urls:
-# 'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imL.png',
-# 'https://raw.githubusercontent.com/tohojo/image-processing/master/test-images/middlebury-stereo-pairs/tsukuba/imR.png',
 
 
 def _update_hashes():
@@ -81,6 +117,9 @@ def _update_hashes():
         xdoctest -m kwimage.im_demodata _update_hashes --require-hashes
     """
     TEST_IMAGES = _TEST_IMAGES.copy()
+
+    ENSURE_IPFS = ub.argflag('--ensure-ipfs')
+    REQUIRE_EXISTING_HASH = ub.argflag('--require-hashes')
 
     for key in TEST_IMAGES.keys():
         item = TEST_IMAGES[key]
@@ -95,7 +134,6 @@ def _update_hashes():
         # hasher_priority = ['sha512', 'sha1']
         hasher_priority = ['sha256']
 
-        REQUIRE_EXISTING_HASH = ub.argflag('--require-hashes')
         if REQUIRE_EXISTING_HASH:
             for hasher in hasher_priority:
                 if hasher in item:
@@ -115,7 +153,21 @@ def _update_hashes():
             prefix = ub.hash_file(fpath, hasher=hasher)
             item[hasher] = prefix[0:64]
 
-        print('_TEST_IMAGES = ' + ub.repr2(TEST_IMAGES, nl=2))
+        if ENSURE_IPFS:
+            ipfs_cids = item.get('ipfs_cids', [])
+            if not ipfs_cids:
+                info = ub.cmd('ipfs add {} --cid-version=1'.format(fpath), verbose=3)
+                cid = info['out'].split(' ')[1]
+                ipfs_cids.append(cid)
+                item['ipfs_cids'] = ipfs_cids
+
+    print('_TEST_IMAGES = ' + ub.repr2(TEST_IMAGES, nl=3, sort=0))
+
+    if ENSURE_IPFS:
+        args = ' '.join(list(ub.flatten([item.get('ipfs_cids') for item in TEST_IMAGES.values()])))
+        command = 'ipfs pin add ' + args
+        print('To pin on another machine:')
+        print(command)
 
 
 def grab_test_image(key='astro', space='rgb', dsize=None,
@@ -148,10 +200,25 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
     Example:
         >>> # xdoctest: +REQUIRES(--network)
         >>> import kwimage
+        >>> key_to_image = {}
         >>> for key in kwimage.grab_test_image.keys():
         >>>     print('attempt to grab key = {!r}'.format(key))
-        >>>     kwimage.grab_test_image(key)
+        >>>     imdata = kwimage.grab_test_image(key, dsize=(256, None))
+        >>>     key_to_image[key] = imdata
         >>>     print('grabbed key = {!r}'.format(key))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoc: +REQUIRES(module:kwplot)
+        >>> import kwplot
+        >>> kwplot.autoplt()
+        >>> to_stack = [kwimage.draw_header_text(
+        >>>     imdata, text=key, color='kw_blue')
+        >>>     for key, imdata in key_to_image.items()]
+        >>> stacked = kwimage.stack_images_grid(to_stack, bg_value='kw_darkgray')
+        >>> stacked = kwimage.draw_header_text(stacked, 'kwimage.grab_test_image', fit=True, color='kitware_green')
+        >>> kwplot.imshow(stacked)
+
+    Example:
+        >>> # Can get images with a specific shape
         >>> kwimage.grab_test_image('astro', dsize=(255, 255)).shape
         (255, 255, 3)
     """

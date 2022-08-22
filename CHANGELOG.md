@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.7 - Unreleased
 
+### Changed
+* Changed image of Carl Sagan to one I know has a CC license. 
+* Added IPFS CIDs to all demo images.
+* Minor doc improvements.
+
 
 ## Version 0.9.6 - Released 2022-08-10
 
