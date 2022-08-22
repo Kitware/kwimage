@@ -1,3 +1,10 @@
+"""
+A class to make it easier to work with single colors.
+
+TODO:
+    - [ ] Make init faster an coerce more general
+"""
+
 import numpy as np
 import ubelt as ub
 from collections import OrderedDict
@@ -127,6 +134,10 @@ class Color(ub.NiceRepr):
         self.color01 = color01
 
         self.space = space
+
+    @classmethod
+    def coerce(cls, data, **kwargs):
+        return cls(data, **kwargs)
 
     def __nice__(self):
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
@@ -502,6 +513,42 @@ class Color(ub.NiceRepr):
         vec1 = np.array(self.as01(space))
         vec2 = np.array(other.as01(space))
         return np.linalg.norm(vec1 - vec2)
+
+    def interpolate(self, other, alpha=0.5, ispace=None, ospace=None):
+        """
+        Example:
+            >>> import kwimage
+            >>> color1 = self = kwimage.Color.coerce('orangered')
+            >>> color2 = other = kwimage.Color.coerce('dodgerblue')
+            >>> alpha = np.linspace(0, 1, 6)
+            >>> ispace = 'rgb'
+            >>> ospace = 'rgb'
+            >>> colorBs = self.interpolate(other, alpha, ispace=ispace, ospace=ospace)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> from kwimage.im_color import _draw_color_swatch
+            >>> swatch_colors = [color1] + colorBs + [color2]
+            >>> print('swatch_colors = {}'.format(ub.repr2(swatch_colors, nl=1)))
+            >>> swatch1 = _draw_color_swatch(swatch_colors, cellshape=(8, 8))
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(swatch1, pnum=(1, 1, 1), fnum=1)
+            >>> kwplot.show_if_requested()
+        """
+        import kwimage
+        vec1 = np.array(self.as01(ispace))
+        vec2 = np.array(other.as01(ispace))
+        if ub.iterable(alpha):
+            alpha = np.asarray(alpha).ravel()
+            vecB = vec1[None, :] * (1 - alpha)[:, None] + (vec2[None, :] * alpha[:, None])
+            new = [kwimage.Color(kwimage.Color(c, space=ispace).as01(ospace),
+                                 space=ospace) for c in vecB]
+        else:
+            vecB = vec1 * (1 - alpha) + (vec2 * alpha)
+            c = vecB
+            new = kwimage.Color(kwimage.Color(c, space=ispace).as01(ospace),
+                                space=ospace)
+        return new
 
 
 def _draw_color_swatch(colors, cellshape=9):
