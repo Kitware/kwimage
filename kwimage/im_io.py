@@ -552,6 +552,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test nodata values
         >>> import kwimage
+        >>> from osgeo import gdal
         >>> from osgeo import osr
         >>> # Make a dummy geotiff
         >>> imdata = kwimage.grab_test_image('airport')

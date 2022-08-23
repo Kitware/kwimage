@@ -109,3 +109,6 @@ wheelhouse
 mb_work
 
 #docs/source/kwimage.*.rst
+#
+docs/source/_static/
+docs/source/images/

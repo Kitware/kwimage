@@ -5,15 +5,6 @@ include *.py
 include *.txt
 include *.toml
 include *.ini
-include run_tests.sh
-recursive-include CMake *.cmake
+include run_tests.py
 recursive-include requirements *.txt
 recursive-include tests *.py
-recursive-include kwimage *.txt
-recursive-include kwimage *.pyx
-recursive-include kwimage *.pxd
-recursive-include kwimage *.pyd
-recursive-include kwimage *.c
-recursive-include kwimage *.h
-recursive-include kwimage *.hpp
-recursive-include kwimage *.cu

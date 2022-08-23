@@ -119,7 +119,7 @@ stages:
 ._run_tests_in_sandboxed_dir: &_run_tests_in_sandboxed_dir |-
     # Hack to test the installed wheel. TODO: make run_tests work better in this case.
     MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
-    mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))") ../tests
+    mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" --xdoc $(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))") ../tests && cd ..
 
     
     
@@ -136,6 +136,7 @@ stages:
       - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
       # - pip install "${MOD_NAME}"[all] -f wheelhouse  # xcookie: +COMMENT_IF(cv2)
       - pip install "${MOD_NAME}"[all,headless] -f wheelhouse  # xcookie: +UNCOMMENT_IF(cv2)
+      - pip install -r requirements/gdal.txt # xcookie: +UNCOMMENT_IF(gdal)
       - *_run_tests_in_sandboxed_dir
 
 
@@ -167,7 +168,9 @@ stages:
       - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
       # - pip install "${MOD_NAME}"[all-strict] -f wheelhouse  # xcookie: +COMMENT_IF(cv2)
       - pip install "${MOD_NAME}"[all-strict,headless-strict] -f wheelhouse  # xcookie: +UNCOMMENT_IF(cv2)
-      #- pip install GDAL==3.3.3 --find-links https://girder.github.io/large_image_wheels -U  # xcookie: +UNCOMMENT_IF(gdal)
+      # Hack for gdal, which can't go in the setup.py yet
+      - sed 's/>=/==/' requirements/gdal.txt > requirements/gdal-strict.txt  # xcookie: +UNCOMMENT_IF(gdal)
+      - pip install -r requirements/gdal-strict.txt  # xcookie: +UNCOMMENT_IF(gdal)
       - *_run_tests_in_sandboxed_dir
 
 
@@ -184,7 +187,6 @@ stages:
       - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
       # - pip install "${MOD_NAME}"[runtime-strict,tests-strict] -f wheelhouse  # xcookie: +COMMENT_IF(cv2)
       - pip install "${MOD_NAME}"[runtime-strict,tests-strict,headless-strict] -f wheelhouse  # xcookie: +UNCOMMENT_IF(cv2)
-      #- pip install GDAL>=3.3.3 --find-links https://girder.github.io/large_image_wheels -U  # xcookie: +UNCOMMENT_IF(gdal)
       - *_run_tests_in_sandboxed_dir
 
 
