@@ -118,6 +118,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> kwimage.imwrite(tmp.name, img1)
         >>> img2 = kwimage.imread(tmp.name)
         >>> assert np.all(img2 == img1)
+        >>> tmp.close()
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -138,6 +139,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> tif_im = kwimage.imread(tmp_tif.name)
         >>> png_im = kwimage.imread(tmp_png.name)
         >>> assert np.all(tif_im == png_im)
+        >>> tmp_tif.close()
+        >>> tmp_png.close()
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -159,6 +162,8 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> kwimage.imwrite(tmp_png.name, img1)
         >>> tif_im = kwimage.imread(tmp_tif.name)
         >>> png_im = kwimage.imread(tmp_png.name)
+        >>> tmp_tif.close()
+        >>> tmp_png.close()
         >>> assert np.all(tif_im == png_im)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
@@ -184,6 +189,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> recon = kwimage.imread(tmp_file.name)
         >>> assert not np.may_share_memory(recon, img1_stack)
         >>> assert np.all(recon == img1_stack)
+        >>> tmp_file.close()
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -864,7 +870,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
             options (List[str]): other gdal options.
             nodata (int): denotes a integer value as nodata.
-            transform (kwimage.Affine): Transform into CRS
+            transform (kwimage.Affine): Transform to CRS from pixel space
             crs (str): The coordinate reference system for transform.
             See :func:`_imwrite_cloud_optimized_geotiff` for more details each options.
             When the backend is itk, see :func:`itk.imwrite` for options
@@ -925,6 +931,8 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>         elif space in ['rgba', 'bgra']:
         >>>             assert tif_im.shape[2] == 4
         >>>             assert png_im.shape[2] == 4
+        >>>         tmp_tif.close()
+        >>>         tmp_png.close()
 
     Benchmark:
         >>> import timerit
@@ -1015,10 +1023,12 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>     kwimage.imread(fpath, backend='gdal')
         >>> # In this case the backend will resolve to cv2, and thus we expect
         >>> # a failure
+        >>> temp.close()
         >>> temp = tempfile.NamedTemporaryFile(suffix='.png')
         >>> fpath = temp.name
         >>> with pytest.raises(NotImplementedError):
         >>>     kwimage.imwrite(fpath, data)
+        >>> temp.close()
 
     Example:
         >>> import ubelt as ub
@@ -1192,6 +1202,7 @@ def load_image_shape(fpath, backend='auto'):
         >>> print('results = {}'.format(ub.repr2(results, nl=2, align=':', sort=0)))
         >>> for shapes in results.values():
         >>>     assert ub.allsame(shapes.values())
+        >>> temp_dir.cleanup()
 
     Benchmark:
         >>> # For large files, PIL is much faster
@@ -1490,8 +1501,6 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>>     'dsize': [(256, 256), (532, 202)],
         >>>     'dtype': ['float32', 'uint8'],
         >>> }
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> fpath = tmp_tif.name
         >>> data_param_grid = list(ub.named_product(data_param_basis))
         >>> imwrite_param_grid = list(ub.named_product(imwrite_param_basis))
         >>> for data_kwargs in data_param_grid:
@@ -1504,6 +1513,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>>         _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>>         loaded = kwimage.imread(fpath)
         >>>         assert np.all(loaded == data)
+        >>> tmp_tif.close()
     """
     from osgeo import gdal
     if len(data.shape) == 2:

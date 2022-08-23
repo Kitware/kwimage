@@ -1880,7 +1880,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             # This is actually the original style, but it relies on
             # to_bytes_rle, which doesnt always work.
             data = bytes_rle.data.copy()
-            data['counts'] = ub.ensure_unicode(data['counts'])
+            text = data['counts']
+            if isinstance(text, bytes):
+                text = text.decode('utf8')
+            data['counts'] = text
             return data
         else:
             data = self.to_array_rle().data.copy()
