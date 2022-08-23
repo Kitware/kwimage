@@ -545,7 +545,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         image = dtype_fixer(image, copy=False)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=None, radius=1, **kwargs):
+    def draw(self, color='blue', ax=None, alpha=None, radius=1, setlim=False, **kwargs):
         """
         TODO: can use kwplot.draw_points
 
@@ -554,8 +554,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
             >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.figure(doclf=1)
             >>> pts.draw(radius=0.01)
-
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(10, classes=['a', 'b', 'c'])
             >>> self.draw(radius=0.01, color='classes')
@@ -566,6 +567,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         if ax is None:
             ax = plt.gca()
         xy = self.data['xy'].data.reshape(-1, 2)
+        # kwplot.draw_points(color=color, class_idxs)
 
         # More grouped patches == more efficient runtime
         if alpha is None:
@@ -610,6 +612,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             if fc is not None:
                 pcolor = fc
 
+            print(f'circlekw={circlekw}')
+            print(f'pcolor={pcolor}')
             patches = [
                 mpl.patches.Circle((x, y), fc=pcolor, **circlekw)
                 for x, y in xy[idxs]
@@ -617,6 +621,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             col = mpl.collections.PatchCollection(patches, match_original=True)
             collections.append(col)
             ax.add_collection(col)
+
+        if setlim:
+            xmin = xy[:, 0].min()
+            xmax = xy[:, 0].max()
+            ymin = xy[:, 1].min()
+            ymax = xy[:, 1].max()
+            _generic._setlim(xmin, ymin, xmax, ymax, setlim=setlim, ax=ax)
+
         return collections
 
     def compress(self, flags, axis=0, inplace=False):

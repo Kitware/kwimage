@@ -12,10 +12,10 @@ matplotlib>=3.1.0     ; python_version < '3.7' and python_version >= '3.6'    # 
 # pyqt5>=5.14.0, <= 5.15.3 ; python_version < '3.9.0' and python_version >= '3.5.0'   # Python 3.5-3.9
 # pyqt5>=5.11.2, <= 5.13.2 ; python_version < '3.5.0' and python_version >= '3.4.0'   # Python 3.4
 
-# TODO torch for 3.10 when available
+# TODO torch for 3.11 when available
 torch>=1.11.0    ;                            python_version >= '3.10'    # Python 3.10+
 torch>=1.7.1     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
-torch>=1.7.0     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+torch>=1.7.1     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
 torch>=1.7.0     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
 torch>=1.7.0     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
 
@@ -24,12 +24,38 @@ PyTurboJPEG  # also requires ``apt install libturbojpeg``
 
 itk-io>=5.3rc4 ;                             python_version >= '3.10'  # Python 3.10
 itk-io>=5.1.2  ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
-itk-io>=5.0.1  ; python_version < '3.9'  and python_version >= '3.8'   # Python 3.8
-itk-io>=5.2.0  ; python_version < '3.8'  and python_version >= '3.7'   # Python 3.7
-itk-io>=5.2.0  ; python_version < '3.7'  and python_version >= '3.6'   # Python 3.6
-itk-io>=5.2.0  ; python_version < '3.6'  and python_version >= '3.5'   # Python 3.5
-itk-io>=5.2.0  ; python_version < '3.5'  and python_version >= '3.4'   # Python 3.4
-itk-io>=5.2.0  ; python_version < '3.4'  and python_version >= '2.7'   # Python 2.7
+itk-io>=5.2.1  ; python_version < '3.9'  and python_version >= '3.8'   # Python 3.8
+itk-io>=5.2.1  ; python_version < '3.8'  and python_version >= '3.7'   # Python 3.7
+itk-io>=5.2.1  ; python_version < '3.7'  and python_version >= '3.6'   # Python 3.6
+itk-io>=5.2.1  ; python_version < '3.6'  and python_version >= '3.5'   # Python 3.5
+itk-io>=5.2.1  ; python_version < '3.5'  and python_version >= '3.4'   # Python 3.4
+itk-io>=5.2.1  ; python_version < '3.4'  and python_version >= '2.7'   # Python 2.7
 
 
 kwimage_ext >= 0.2.0
+
+colormath>=3.0.0
+
+# Networkx is a transitive dependency of colormath, and requires pinning for strict versioning
+networkx>=2.7           ;                            python_version >= '3.8'    # Python 3.8+
+networkx>=2.6.2         ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+networkx>=2.2.0,<=2.5.1 ; python_version < '3.7.0' and python_version >= '3.6.0'   # Python 3.6
+
+
+# Other transitive dependencies that might need pinning in the future
+# typing-extensions
+# tifffile
+# packaging
+# imageio
+# PyWavelets
+# tomli
+# py
+# pluggy
+# attrs
+# iniconfig
+# python-dateutil
+# pyparsing
+# kiwisolver
+# fonttools
+# cycler
+# itk-core

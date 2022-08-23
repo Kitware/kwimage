@@ -1,3 +1,10 @@
+"""
+A class to make it easier to work with single colors.
+
+TODO:
+    - [ ] Make init faster an coerce more general
+"""
+
 import numpy as np
 import ubelt as ub
 from collections import OrderedDict
@@ -34,11 +41,13 @@ def _colormath_convert(src_color, src_space, dst_space):
     Example:
         >>> # xdoctest: +REQUIRES(module:colormath)
         >>> import kwimage
+        >>> from kwimage.im_color import _colormath_convert
         >>> src_color = kwimage.Color('turquoise').as01()
         >>> print('src_color = {}'.format(ub.repr2(src_color, nl=0, precision=2)))
         >>> src_space = 'rgb'
         >>> dst_space = 'lab'
         >>> lab_color = _colormath_convert(src_color, src_space, dst_space)
+        ...
         >>> print('lab_color = {}'.format(ub.repr2(lab_color, nl=0, precision=2)))
         lab_color = (78.11, -70.09, -9.33)
         >>> rgb_color = _colormath_convert(lab_color, 'lab', 'rgb')
@@ -127,6 +136,10 @@ class Color(ub.NiceRepr):
         self.color01 = color01
 
         self.space = space
+
+    @classmethod
+    def coerce(cls, data, **kwargs):
+        return cls(data, **kwargs)
 
     def __nice__(self):
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
@@ -433,15 +446,6 @@ class Color(ub.NiceRepr):
         else:
             return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
 
-        if 0:
-            import kwimage
-            from distinctipy import distinctipy
-            existing_colors = kwimage.Color.distinct(5)
-            distinctipy.color_swatch(existing_colors)
-            # distinctipy.get_colors(10)
-            new_colors = distinctipy.get_colors(10, existing_colors)
-            distinctipy.color_swatch(existing_colors + new_colors)
-
     @classmethod
     def random(Color, pool='named'):
         """
@@ -502,6 +506,42 @@ class Color(ub.NiceRepr):
         vec1 = np.array(self.as01(space))
         vec2 = np.array(other.as01(space))
         return np.linalg.norm(vec1 - vec2)
+
+    def interpolate(self, other, alpha=0.5, ispace=None, ospace=None):
+        """
+        Example:
+            >>> import kwimage
+            >>> color1 = self = kwimage.Color.coerce('orangered')
+            >>> color2 = other = kwimage.Color.coerce('dodgerblue')
+            >>> alpha = np.linspace(0, 1, 6)
+            >>> ispace = 'rgb'
+            >>> ospace = 'rgb'
+            >>> colorBs = self.interpolate(other, alpha, ispace=ispace, ospace=ospace)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> from kwimage.im_color import _draw_color_swatch
+            >>> swatch_colors = [color1] + colorBs + [color2]
+            >>> print('swatch_colors = {}'.format(ub.repr2(swatch_colors, nl=1)))
+            >>> swatch1 = _draw_color_swatch(swatch_colors, cellshape=(8, 8))
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(swatch1, pnum=(1, 1, 1), fnum=1)
+            >>> kwplot.show_if_requested()
+        """
+        import kwimage
+        vec1 = np.array(self.as01(ispace))
+        vec2 = np.array(other.as01(ispace))
+        if ub.iterable(alpha):
+            alpha = np.asarray(alpha).ravel()
+            vecB = vec1[None, :] * (1 - alpha)[:, None] + (vec2[None, :] * alpha[:, None])
+            new = [kwimage.Color(kwimage.Color(c, space=ispace).as01(ospace),
+                                 space=ospace) for c in vecB]
+        else:
+            vecB = vec1 * (1 - alpha) + (vec2 * alpha)
+            c = vecB
+            new = kwimage.Color(kwimage.Color(c, space=ispace).as01(ospace),
+                                space=ospace)
+        return new
 
 
 def _draw_color_swatch(colors, cellshape=9):

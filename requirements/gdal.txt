@@ -1,3 +1,7 @@
 # python ~/local/tools/supported_python_versions_pip.py gdal --find-links https://girder.github.io/large_image_wheels
+# pip install GDAL==3.4.1 --find-links https://girder.github.io/large_image_wheels
+
+affine>=2.3.1
+
 --find-links https://girder.github.io/large_image_wheels
-GDAL>=3.3.3,!=3.4.0
+GDAL>=3.4.1

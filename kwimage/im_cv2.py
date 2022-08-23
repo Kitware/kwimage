@@ -419,19 +419,19 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             ordering is x,y. Mutually exclusive with dsize, max_dim, and
             min_dim.
 
-        dsize (Tuple[int]):
-            The desired with and height of the new image. If a dimension is
+        dsize (Tuple[int | None, int | None]):
+            The desired width and height of the new image. If a dimension is
             None, then it is automatically computed to preserve aspect ratio.
-            Mutually exclusive with size, max_dim, and min_dim.
+            Mutually exclusive with scale, max_dim, and min_dim.
 
         max_dim (int):
             New size of the maximum dimension, the other dimension is scaled to
-            maintain aspect ratio. Mutually exclusive with size, dsize, and
+            maintain aspect ratio. Mutually exclusive with scale, dsize, and
             min_dim.
 
         min_dim (int):
             New size of the minimum dimension, the other dimension is scaled to
-            maintain aspect ratio.Mutually exclusive with size, dsize, and
+            maintain aspect ratio.Mutually exclusive with scale, dsize, and
             max_dim.
 
         interpolation (str | int):
@@ -825,7 +825,8 @@ def gaussian_patch(shape=(7, 7), sigma=None):
 
         sigma (float | Tuple[float, float] | None):
             Gaussian standard deviation. If unspecified, it is derived using
-            the formulation described in [Cv2GaussKern]_.
+            the formula ``0.3 * ((s - 1) * 0.5 - 1) + 0.8`` as described in
+            [Cv2GaussKern]_.
 
     Returns:
         ndarray
