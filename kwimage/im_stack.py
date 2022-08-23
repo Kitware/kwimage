@@ -35,6 +35,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
             current image is only resized if the next image is larger. If
             resize='smaller' the current image is resized only if the next
             image is smaller.
+            TODO: this needs to be reworked to be more intuitive.
 
         interpolation (int | str):
             string or cv2-style interpolation type.

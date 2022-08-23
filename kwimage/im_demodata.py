@@ -203,6 +203,7 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>> key_to_image = {}
         >>> for key in kwimage.grab_test_image.keys():
         >>>     print('attempt to grab key = {!r}'.format(key))
+        >>>     # specifying dsize will returned a resized variant
         >>>     imdata = kwimage.grab_test_image(key, dsize=(256, None))
         >>>     key_to_image[key] = imdata
         >>>     print('grabbed key = {!r}'.format(key))
@@ -216,11 +217,6 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>> stacked = kwimage.stack_images_grid(to_stack, bg_value='kw_darkgray')
         >>> stacked = kwimage.draw_header_text(stacked, 'kwimage.grab_test_image', fit=True, color='kitware_green')
         >>> kwplot.imshow(stacked)
-
-    Example:
-        >>> # Can get images with a specific shape
-        >>> kwimage.grab_test_image('astro', dsize=(255, 255)).shape
-        (255, 255, 3)
     """
     import kwimage
     # from kwimage import im_cv2
