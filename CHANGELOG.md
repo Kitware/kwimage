@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.7 - Unreleased
+## Version 0.9.8 - Unreleased
+
+
+## Version 0.9.7 - Released 2022-08-23
 
 ### Changed
 * Changed image of Carl Sagan to one I know has a CC license. 
