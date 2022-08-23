@@ -41,11 +41,13 @@ def _colormath_convert(src_color, src_space, dst_space):
     Example:
         >>> # xdoctest: +REQUIRES(module:colormath)
         >>> import kwimage
+        >>> from kwimage.im_color import _colormath_convert
         >>> src_color = kwimage.Color('turquoise').as01()
         >>> print('src_color = {}'.format(ub.repr2(src_color, nl=0, precision=2)))
         >>> src_space = 'rgb'
         >>> dst_space = 'lab'
         >>> lab_color = _colormath_convert(src_color, src_space, dst_space)
+        ...
         >>> print('lab_color = {}'.format(ub.repr2(lab_color, nl=0, precision=2)))
         lab_color = (78.11, -70.09, -9.33)
         >>> rgb_color = _colormath_convert(lab_color, 'lab', 'rgb')
@@ -443,15 +445,6 @@ class Color(ub.NiceRepr):
             return distinct_colors
         else:
             return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
-
-        if 0:
-            import kwimage
-            from distinctipy import distinctipy
-            existing_colors = kwimage.Color.distinct(5)
-            distinctipy.color_swatch(existing_colors)
-            # distinctipy.get_colors(10)
-            new_colors = distinctipy.get_colors(10, existing_colors)
-            distinctipy.color_swatch(existing_colors + new_colors)
 
     @classmethod
     def random(Color, pool='named'):

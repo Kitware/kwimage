@@ -35,3 +35,27 @@ itk-io>=5.2.0  ; python_version < '3.4'  and python_version >= '2.7'   # Python 
 kwimage_ext >= 0.2.0
 
 colormath>=3.0.0
+
+# Networkx is a transitive dependency of colormath, and requires pinning for strict versioning
+networkx>=2.7           ;                            python_version >= '3.8'    # Python 3.8+
+networkx>=2.6.2         ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+networkx>=2.2.0,<=2.5.1 ; python_version < '3.7.0' and python_version >= '3.6.0'   # Python 3.6
+
+
+# Other transitive dependencies that might need pinning in the future
+# typing-extensions
+# tifffile
+# packaging
+# imageio
+# PyWavelets
+# tomli
+# py
+# pluggy
+# attrs
+# iniconfig
+# python-dateutil
+# pyparsing
+# kiwisolver
+# fonttools
+# cycler
+# itk-core
