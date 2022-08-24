@@ -1744,8 +1744,8 @@ class Affine(Projective):
             Affine : a transform that warps from "space1" to "space2".
 
         Note:
-            An affine matrix has 6 degrees of freedome, so at least 6
-            point pairs are needed.
+            An affine matrix has 6 degrees of freedom, so at least 3
+            non-colinear xy-point pairs are needed.
 
         References:
             https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf page 22

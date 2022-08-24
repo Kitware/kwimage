@@ -455,7 +455,7 @@ class _BoxConversionMixins(object):
             y1, x1, h, w = self.components
             return self.to_ltrb(copy=copy).to_xywh(copy=copy)
         else:
-            raise KeyError(self.format)
+            raise KeyError('Unknown conversion from format={} to xywh'.format(self.format))
         xywh = _cat([x1, y1, w, h])
         return Boxes(xywh, BoxFormat.XYWH, check=False)
 
@@ -484,7 +484,7 @@ class _BoxConversionMixins(object):
         elif self.format == BoxFormat._RCHW:
             return self.to_ltrb(copy=copy).to_cxywh(copy=copy)
         else:
-            raise KeyError(self.format)
+            raise KeyError('Unknown conversion from format={} to cxywh'.format(self.format))
         cxywh = _cat([cx, cy, w, h])
         return Boxes(cxywh, BoxFormat.CXYWH, check=False)
 
@@ -513,7 +513,7 @@ class _BoxConversionMixins(object):
             x2 = x1 + w
             y2 = y1 + h
         else:
-            raise KeyError(self.format)
+            raise KeyError('Unknown conversion from format={} to ltrb'.format(self.format))
         ltrb = _cat([x1, y1, x2, y2])
         return Boxes(ltrb, BoxFormat.LTRB, check=False)
 
