@@ -509,6 +509,17 @@ class Color(ub.NiceRepr):
 
     def interpolate(self, other, alpha=0.5, ispace=None, ospace=None):
         """
+        Interpolate between colors
+
+        Args:
+            other (Color): A coercable Color
+            alpha (float | List[float]): one or more interpolation values
+            ispace (str | None): colorspace to interpolate in
+            ospace (str | None): colorspace of returned color
+
+        Returns:
+            Color | List[Color]
+
         Example:
             >>> import kwimage
             >>> color1 = self = kwimage.Color.coerce('orangered')
@@ -529,6 +540,7 @@ class Color(ub.NiceRepr):
             >>> kwplot.show_if_requested()
         """
         import kwimage
+        other = kwimage.Color.coerce(other)
         vec1 = np.array(self.as01(ispace))
         vec2 = np.array(other.as01(ispace))
         if ub.iterable(alpha):

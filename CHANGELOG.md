@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.8 - Unreleased
 
+### Fixed
+* Bug in `kwimage.Boxes.draw(setlim=1)`
+
+### Changed
+* support for torch in `Boxes.iooa` (requires kwarray update)
+
 
 ## Version 0.9.7 - Released 2022-08-23
 

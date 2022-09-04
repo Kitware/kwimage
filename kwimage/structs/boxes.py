@@ -332,21 +332,23 @@ def _box_ious_py(ltrb1, ltrb2, bias=0):
     return ious
 
 
-def _isect_areas(ltrb1, ltrb2, bias=0):
+def _isect_areas(ltrb1, ltrb2, bias=0, _impl=None):
     """
     Returns only the area of the intersection
     """
-    x_maxs = np.minimum(ltrb1[:, 2][:, None], ltrb2[:, 2])
-    x_mins = np.maximum(ltrb1[:, 0][:, None], ltrb2[:, 0])
+    if _impl is None:
+        _impl = np
+    x_maxs = _impl.minimum(ltrb1[:, 2][:, None], ltrb2[:, 2])
+    x_mins = _impl.maximum(ltrb1[:, 0][:, None], ltrb2[:, 0])
 
-    iws = np.maximum(x_maxs - x_mins + bias, 0)
+    iws = _impl.maximum(x_maxs - x_mins + bias, 0)
     # note: it would be possible to significantly reduce the computation by
     # filtering any box pairs where iws <= 0. Not sure how to do with numpy.
 
-    y_maxs = np.minimum(ltrb1[:, 3][:, None], ltrb2[:, 3])
-    y_mins = np.maximum(ltrb1[:, 1][:, None], ltrb2[:, 1])
+    y_maxs = _impl.minimum(ltrb1[:, 3][:, None], ltrb2[:, 3])
+    y_mins = _impl.maximum(ltrb1[:, 1][:, None], ltrb2[:, 1])
 
-    ihs = np.maximum(y_maxs - y_mins + bias, 0)
+    ihs = _impl.maximum(y_maxs - y_mins + bias, 0)
 
     inter_areas = iws * ihs
     return inter_areas
@@ -1774,7 +1776,7 @@ class _BoxDrawMixins(object):
     """
 
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
-             fill=False, lw=2, ax=None, setlim=False):
+             fill=False, lw=2, ax=None, setlim=False, **kwargs):
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
@@ -1825,8 +1827,14 @@ class _BoxDrawMixins(object):
         if ax is None:
             ax = plt.gca()
 
+        lw = kwargs.get('linewidth', lw)
+
         if setlim:
-            xmin, ymin, xmax, ymax = self.to_ltrb().components
+            xmins, ymins, xmaxs, ymaxs = self.to_ltrb().components
+            xmin = xmins.min()
+            ymin = ymins.min()
+            xmax = xmaxs.max()
+            ymax = ymaxs.max()
             _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
 
         boxes = self.to_xywh()
@@ -2755,7 +2763,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         data = self.data
         if torch is not None and torch.is_tensor(data):
-            data = data.data.cpu().numpy()
+            data = self._impl.numpy(data.data)
+            # data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format)
         return newself
 
@@ -3011,7 +3020,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             self_ltrb = self.to_ltrb(copy=False)
             other_ltrb = other.to_ltrb(copy=False)
 
-            isect = _isect_areas(self_ltrb.data, other_ltrb.data)
+            _impl = self._impl
+            isect = _isect_areas(self_ltrb.data, other_ltrb.data, _impl=_impl)
 
         if other_is_1d:
             isect = isect[..., 0]

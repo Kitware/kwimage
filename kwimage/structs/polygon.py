@@ -2018,7 +2018,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> kwplot.figure(doclf=1)
             >>> self.draw(setlim='grow', color='kw_blue', alpha=0.5, vertex=0.02)
             >>> other.draw(setlim='grow', color='kw_green', alpha=0.5, vertex=0.02)
-            >>> colors = kwimage.Color('kw_blue').interpolate(kwimage.Color('kw_green'), np.linspace(0, 1, 5))
+            >>> colors = kwimage.Color('kw_blue').interpolate(
+            >>>     'kw_green', np.linspace(0, 1, 5))
             >>> for new, c in zip(results, colors):
             >>>     pt = new.exterior.data[0]
             >>>     new.draw(color=c, alpha=0.5, vertex=0.01)
