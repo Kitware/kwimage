@@ -25,6 +25,120 @@ except Exception:
     from ubelt import identity as profile
 
 
+def _kwimage_from_shapely(geom):
+    import kwimage
+    if geom.geom_type == 'Polygon':
+        return kwimage.Polygon.from_shapely(geom)
+    elif geom.geom_type == 'MultiPolygon':
+        return kwimage.MultiPolygon.from_shapely(geom)
+    else:
+        raise TypeError(geom.geom_type)
+
+
+class _ShapelyMixin:
+    """
+    TODO: make shapely the main "format" to reduce conversion cost
+    """
+
+    def oriented_bounding_box(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random().scale(100, 100).round()
+            >>> obox = self.oriented_bounding_box()
+            >>> print(f'obox={obox}')
+        """
+        import cv2
+        from collections import namedtuple
+        OrientedBBox = namedtuple('OrientedBBox', ('center', 'extent', 'theta'))
+        hull = self.convex_hull()
+        cv2_xy = hull.exterior.data.astype(np.float32)
+        center, extent, angle = cv2.minAreaRect(cv2_xy)
+        theta = np.deg2rad(angle)
+        obox = OrientedBBox(center, extent, theta)
+        return obox
+
+    def buffer(self, *args, **kwargs):
+        a = self.to_shapely()
+        r = a.buffer(*args, **kwargs)
+        return _kwimage_from_shapely(r)
+
+    def convex_hull(self):
+        a = self.to_shapely()
+        r = a.convex_hull
+        return _kwimage_from_shapely(r)
+
+    # __shapely__?
+    # area
+    # crosses
+    # disjoint
+    # distance
+    # empty
+    # envelope
+    # equals
+    # almost_equals
+    # contains
+    # interpolate (conflict)
+    # intersects
+    # within
+    # touches
+    # simplify
+    # representative_point
+    # project
+    # relate
+    # overlaps
+    # normalize
+    # minimum_clearance
+    # minimum_rotated_rectangle (i.e. oriented_bounding_box)
+    # minimum_rotated_rectangle (i.e. oriented_bounding_box)
+    # is_valid, is_closed, is_empty, is_ring, is_simple, is_valid
+
+    # https://shapely.readthedocs.io/en/stable/manual.html#set-theoretic-methods
+
+    def union(self, other):
+        a, b = self.to_shapely(), other.to_shapely()
+        c = a.intersection(b)
+        return _kwimage_from_shapely(c)
+
+    def intersection(self, other):
+        a, b = self.to_shapely(), other.to_shapely()
+        c = a.intersection(b)
+        return _kwimage_from_shapely(c)
+
+    def difference(self, other):
+        a, b = self.to_shapely(), other.to_shapely()
+        c = a.difference(b)
+        return _kwimage_from_shapely(c)
+
+    def symmetric_difference(self, other):
+        a, b = self.to_shapely(), other.to_shapely()
+        c = a.symmetric_difference(b)
+        return _kwimage_from_shapely(c)
+
+    # ----
+
+    def iooa(self, other):
+        """
+        Intersection over other area
+        """
+        a = self.to_shapely()
+        b = other.to_shapely()
+        isect = a.intersection(b)
+        iooa = isect.area / b.area
+        return iooa
+
+    def iou(self, other):
+        """
+        Intersection area over union area
+        """
+        a = self.to_shapely()
+        b = other.to_shapely()
+        isect = a.intersection(b)
+        union = a.union(b)
+        iou = isect.area / union.area
+        return iou
+
+
 class _PolyArrayBackend:
     def is_numpy(self):
         return self._impl.is_numpy
@@ -563,7 +677,7 @@ class _PolyWarpMixin:
         return new
 
 
-class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
+class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin, ub.NiceRepr):
     """
     Represents a single polygon as set of exterior boundary points and a list
     of internal polygons representing holes.
@@ -1974,8 +2088,18 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
         return new
 
     def interpolate(self, other, alpha):
+        from kwimage._internal import schedule_deprecation
+        schedule_deprecation(
+            modname='kwimage', migration='use morph instead',
+            name='interpolate', type='method',
+            # deprecate='0.8.7', error='1.0.0', remove='1.1.0',
+            deprecate='now', error='soon', remove='soon',
+        )
+        return self.morph(other, alpha)
+
+    def morph(self, other, alpha):
         """
-        Perform polygon-to-polygon interpolation.
+        Perform polygon-to-polygon morphing.
 
         Note:
             This current algorithm is very basic and does not yet prevent
@@ -2011,14 +2135,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, ub.NiceRepr):
             >>> import kwimage
             >>> self = kwimage.Polygon.random(3, convex=0)
             >>> other = kwimage.Polygon.random(4, convex=0).translate((2, 2))
-            >>> results = self.interpolate(other, np.linspace(0, 1, 5))
+            >>> results = self.morph(other, np.linspace(0, 1, 5))
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> kwplot.figure(doclf=1)
             >>> self.draw(setlim='grow', color='kw_blue', alpha=0.5, vertex=0.02)
             >>> other.draw(setlim='grow', color='kw_green', alpha=0.5, vertex=0.02)
-            >>> colors = kwimage.Color('kw_blue').interpolate(
+            >>> colors = kwimage.Color('kw_blue').morph(
             >>>     'kw_green', np.linspace(0, 1, 5))
             >>> for new, c in zip(results, colors):
             >>>     pt = new.exterior.data[0]
@@ -2147,7 +2271,7 @@ def _order_vertices(verts):
     return verts
 
 
-class MultiPolygon(_generic.ObjectList):
+class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
     """
     Data structure for storing multiple polygons (typically related to the same
     underlying but potentitally disjoing object)

@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.8 - Unreleased
 
+### Added
+* Basic shapely feature parity in Polygon
+* `Polygon.oriented_bounding_box`
+
+
 ### Fixed
 * Bug in `kwimage.Boxes.draw(setlim=1)`
 
