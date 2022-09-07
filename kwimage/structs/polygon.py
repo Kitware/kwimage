@@ -25,19 +25,26 @@ except Exception:
     from ubelt import identity as profile
 
 
-def _kwimage_from_shapely(geom):
-    import kwimage
-    if geom.geom_type == 'Polygon':
-        return kwimage.Polygon.from_shapely(geom)
-    elif geom.geom_type == 'MultiPolygon':
-        return kwimage.MultiPolygon.from_shapely(geom)
-    else:
-        raise TypeError(geom.geom_type)
-
-
 class _ShapelyMixin:
     """
     TODO: make shapely the main "format" to reduce conversion cost
+
+    Example:
+        >>> from kwimage.structs.polygon import *  # NOQA
+        >>> import itertools as it
+        >>> import kwimage
+        >>> poly1 = kwimage.Polygon.random()
+        >>> poly2 = kwimage.Polygon.random()
+        >>> mpoly1 = kwimage.MultiPolygon.random()
+        >>> mpoly2 = kwimage.MultiPolygon.random().buffer(0)
+        >>> for self, other in it.combinations([poly1, poly2, mpoly1, mpoly2], 2):
+        >>>     self.iou(other)
+        >>>     self.iooa(other)
+        >>>     self.intersection(other)
+        >>>     self.union(other)
+        >>>     self.difference(other)
+        >>>     self.symmetric_difference(other)
+        >>>     self.oriented_bounding_box()
     """
 
     def oriented_bounding_box(self):
@@ -51,7 +58,7 @@ class _ShapelyMixin:
         import cv2
         from collections import namedtuple
         OrientedBBox = namedtuple('OrientedBBox', ('center', 'extent', 'theta'))
-        hull = self.convex_hull()
+        hull = self.convex_hull
         cv2_xy = hull.exterior.data.astype(np.float32)
         center, extent, angle = cv2.minAreaRect(cv2_xy)
         theta = np.deg2rad(angle)
@@ -61,11 +68,6 @@ class _ShapelyMixin:
     def buffer(self, *args, **kwargs):
         a = self.to_shapely()
         r = a.buffer(*args, **kwargs)
-        return _kwimage_from_shapely(r)
-
-    def convex_hull(self):
-        a = self.to_shapely()
-        r = a.convex_hull
         return _kwimage_from_shapely(r)
 
     # __shapely__?
@@ -91,27 +93,27 @@ class _ShapelyMixin:
     # minimum_clearance
     # minimum_rotated_rectangle (i.e. oriented_bounding_box)
     # minimum_rotated_rectangle (i.e. oriented_bounding_box)
-    # is_valid, is_closed, is_empty, is_ring, is_simple, is_valid
+    # is_valid, is_closed, is_empty, is_ring, is_simple
 
     # https://shapely.readthedocs.io/en/stable/manual.html#set-theoretic-methods
 
     def union(self, other):
-        a, b = self.to_shapely(), other.to_shapely()
+        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
         c = a.intersection(b)
         return _kwimage_from_shapely(c)
 
     def intersection(self, other):
-        a, b = self.to_shapely(), other.to_shapely()
+        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
         c = a.intersection(b)
         return _kwimage_from_shapely(c)
 
     def difference(self, other):
-        a, b = self.to_shapely(), other.to_shapely()
+        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
         c = a.difference(b)
         return _kwimage_from_shapely(c)
 
     def symmetric_difference(self, other):
-        a, b = self.to_shapely(), other.to_shapely()
+        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
         c = a.symmetric_difference(b)
         return _kwimage_from_shapely(c)
 
@@ -121,8 +123,7 @@ class _ShapelyMixin:
         """
         Intersection over other area
         """
-        a = self.to_shapely()
-        b = other.to_shapely()
+        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
         isect = a.intersection(b)
         iooa = isect.area / b.area
         return iooa
@@ -131,12 +132,68 @@ class _ShapelyMixin:
         """
         Intersection area over union area
         """
-        a = self.to_shapely()
-        b = other.to_shapely()
+        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
         isect = a.intersection(b)
         union = a.union(b)
         iou = isect.area / union.area
         return iou
+
+    # --- Properties
+
+    @property
+    def area(self):
+        """
+        Computes area via shapley conversion
+
+        Returns:
+            float
+        """
+        return self.to_shapely().area
+
+    @property
+    def convex_hull(self):
+        a = self.to_shapely()
+        r = a.convex_hull
+        return _kwimage_from_shapely(r)
+
+    @property
+    def is_invalid(self, explain=False):
+        """
+        Return True if the polygon is invalid according to shapely.
+
+        Args:
+            explain (bool): if True, the return value is a string
+                explaining why the polygon is invalid.
+
+        Returns:
+            bool | str: Always returns False if the polygon is valid.
+                Returns True or a string if the polygon is invalid according to
+                shapely.
+        """
+        a = self.to_shapely()
+        if a.is_valid:
+            return False
+        elif explain:
+            from shapely import validation
+            return validation.explain_validity(a)
+        else:
+            return True
+
+    def fix(self):
+        """
+        Attempt to ensure validity
+
+        References:
+            https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
+        """
+        # from shapely.geometry.base import geom_factory
+        # from shapely.geos import lgeos
+        from shapely.validation import make_valid
+        a = self.to_shapely()
+        if not a.is_valid:
+            a = make_valid(a)
+            # a = geom_factory(lgeos.GEOSMakeValid(a._geom))
+        return _kwimage_from_shapely(a)
 
 
 class _PolyArrayBackend:
@@ -202,7 +259,6 @@ class _PolyArrayBackend:
 
 class _PolyWarpMixin:
 
-    # @profile
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
         Warps by applying an augmenter from the imgaug library
@@ -260,7 +316,6 @@ class _PolyWarpMixin:
         new.data['interiors'] = new_interiors
         return new
 
-    # @profile
     def to_imgaug(self, shape):
         import imgaug
         ia_exterior = imgaug.Polygon(self.data['exterior'])
@@ -268,7 +323,6 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -328,7 +382,6 @@ class _PolyWarpMixin:
         ]
         return new
 
-    @profile
     def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale a polygon by a factor
@@ -375,7 +428,6 @@ class _PolyWarpMixin:
             for p in new.data['interiors']]
         return new
 
-    @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the polygon up/down left/right
@@ -398,7 +450,6 @@ class _PolyWarpMixin:
                                  for p in new.data['interiors']]
         return new
 
-    @profile
     def rotate(self, theta, about=None, output_dims=None, inplace=False):
         """
         Rotate the polygon
@@ -1353,8 +1404,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
-    def to_shapely(self):
+    def to_shapely(self, fix=False):
         """
+        Args:
+            fix (bool):
+                if True, will check for validity and if any simple fixes
+                can be applied, otherwise it returns the data as is.
+
         Returns:
             shapely.geometry.polygon.Polygon
 
@@ -1378,17 +1434,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 shell=shell_data,
                 holes=[c.data for c in self.data['interiors']]
             )
+        if fix:
+            if not geom.is_valid:
+                geom = geom.buffer(0)
         return geom
-
-    @property
-    def area(self):
-        """
-        Computes are via shapley conversion
-
-        Returns:
-            float
-        """
-        return self.to_shapely().area
 
     def to_geojson(self):
         """
@@ -2232,45 +2281,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return result
 
 
-def _is_clockwise(verts):
-    """
-    References:
-        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
-
-    Ignore:
-        verts = poly.data['exterior'].data[::-1]
-    """
-    x1 = verts[:-1][:, 0]
-    y1 = verts[:-1][:, 1]
-    x2 = verts[1:][:, 0]
-    y2 = verts[1:][:, 1]
-    is_clockwise = ((x2 - x1) * (y2 + y1)).sum() > 0
-    # cross_product = np.cross(verts[:-1], verts[1:])
-    # is_clockwise = cross_product.sum() > 0
-    return is_clockwise
-
-
-def _order_vertices(verts):
-    """
-    References:
-        https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
-
-    Ignore:
-        verts = poly.data['exterior'].data[::-1]
-    """
-    mean_x = verts.T[0].sum() / len(verts)
-    mean_y = verts.T[1].sum() / len(verts)
-
-    delta_x = mean_x - verts.T[0]
-    delta_y = verts.T[1] - mean_y
-
-    tau = np.pi * 2
-    angle = (np.arctan2(delta_x, delta_y) + tau) % tau
-    sortx = angle.argsort()
-    verts = verts.take(sortx, axis=0)
-    return verts
-
-
 class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
     """
     Data structure for storing multiple polygons (typically related to the same
@@ -2279,16 +2289,6 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
     Attributes:
         data (List[Polygon])
     """
-
-    @property
-    def area(self):
-        """
-        Computes are via shapley conversion
-
-        Returns:
-            float
-        """
-        return self.to_shapely().area
 
     @classmethod
     def random(self, n=3, n_holes=0, rng=None, tight=False):
@@ -2459,8 +2459,13 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             self = self.to_multi_polygon()
         return self
 
-    def to_shapely(self):
+    def to_shapely(self, fix=False):
         """
+        Args:
+            fix (bool):
+                if True, will check for validity and if any simple fixes
+                can be applied, otherwise it returns the data as is.
+
         Returns:
             shapely.geometry.MultiPolygon
 
@@ -2476,6 +2481,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         import shapely.geometry
         polys = [p.to_shapely() for p in self.data]
         geom = shapely.geometry.MultiPolygon(polys)
+        if fix:
+            if not geom.is_valid:
+                geom = geom.buffer(0)
         return geom
 
     @classmethod
@@ -2766,3 +2774,52 @@ class PolygonList(_generic.ObjectList):
         Polygon.draw_on.__doc__
         # ^ docstring
         return super().draw_on(*args, **kw)
+
+
+def _kwimage_from_shapely(geom):
+    import kwimage
+    if geom.geom_type == 'Polygon':
+        return kwimage.Polygon.from_shapely(geom)
+    elif geom.geom_type == 'MultiPolygon':
+        return kwimage.MultiPolygon.from_shapely(geom)
+    else:
+        raise TypeError(geom.geom_type)
+
+
+def _is_clockwise(verts):
+    """
+    References:
+        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
+
+    Ignore:
+        verts = poly.data['exterior'].data[::-1]
+    """
+    x1 = verts[:-1][:, 0]
+    y1 = verts[:-1][:, 1]
+    x2 = verts[1:][:, 0]
+    y2 = verts[1:][:, 1]
+    is_clockwise = ((x2 - x1) * (y2 + y1)).sum() > 0
+    # cross_product = np.cross(verts[:-1], verts[1:])
+    # is_clockwise = cross_product.sum() > 0
+    return is_clockwise
+
+
+def _order_vertices(verts):
+    """
+    References:
+        https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
+
+    Ignore:
+        verts = poly.data['exterior'].data[::-1]
+    """
+    mean_x = verts.T[0].sum() / len(verts)
+    mean_y = verts.T[1].sum() / len(verts)
+
+    delta_x = mean_x - verts.T[0]
+    delta_y = verts.T[1] - mean_y
+
+    tau = np.pi * 2
+    angle = (np.arctan2(delta_x, delta_y) + tau) % tau
+    sortx = angle.argsort()
+    verts = verts.take(sortx, axis=0)
+    return verts
