@@ -416,22 +416,21 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
         scale (float | Tuple[float, float]):
             Desired floating point scale factor. If a tuple, the dimension
-            ordering is x,y. Mutually exclusive with dsize, max_dim, and
-            min_dim.
+            ordering is x,y.  Mutually exclusive with dsize, min_dim, max_dim.
 
         dsize (Tuple[int | None, int | None]):
             The desired width and height of the new image. If a dimension is
             None, then it is automatically computed to preserve aspect ratio.
-            Mutually exclusive with scale, max_dim, and min_dim.
+            Mutually exclusive with scale, min_dim, max_dim.
 
         max_dim (int):
             New size of the maximum dimension, the other dimension is scaled to
-            maintain aspect ratio. Mutually exclusive with scale, dsize, and
+            maintain aspect ratio. Mutually exclusive with scale, dsize,
             min_dim.
 
         min_dim (int):
             New size of the minimum dimension, the other dimension is scaled to
-            maintain aspect ratio.Mutually exclusive with scale, dsize, and
+            maintain aspect ratio. Mutually exclusive with scale, dsize,
             max_dim.
 
         interpolation (str | int):
