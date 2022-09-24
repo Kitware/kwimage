@@ -11,9 +11,12 @@ parameterize two points! Because of this THE USER MUST ALWAYS BE EXPLICIT ABOUT
 THE BOX FORMAT.
 
 There are 3 main bounding box formats:
-    xywh: top left xy-coordinates and width height offsets
-    cxywh: center xy-coordinates and width height offsets
-    ltrb: top left and bottom right xy coordinates
+
+    * xywh: top left xy-coordinates and width height offsets
+
+    * cxywh: center xy-coordinates and width height offsets
+
+    * ltrb: top left and bottom right xy coordinates
 
 Here is some example usage
 
