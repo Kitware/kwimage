@@ -70,6 +70,11 @@ class _ShapelyMixin:
         r = a.buffer(*args, **kwargs)
         return _kwimage_from_shapely(r)
 
+    def simplify(self, tolerance, preserve_topology=True):
+        a = self.to_shapely()
+        r = a.simplify(tolerance, preserve_topology=preserve_topology)
+        return _kwimage_from_shapely(r)
+
     # __shapely__?
     # area
     # crosses
@@ -2774,6 +2779,14 @@ class PolygonList(_generic.ObjectList):
         Polygon.draw_on.__doc__
         # ^ docstring
         return super().draw_on(*args, **kw)
+
+    def unary_union(self):
+        from shapely.ops import unary_union
+        from kwimage.structs.polygon import _kwimage_from_shapely
+        polys_sh = [p.to_shapely() for p in self]
+        union_sh = unary_union(polys_sh)
+        new = _kwimage_from_shapely(union_sh)
+        return new
 
 
 def _kwimage_from_shapely(geom):
