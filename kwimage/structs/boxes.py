@@ -522,7 +522,12 @@ class _BoxConversionMixins(object):
         ltrb = _cat([x1, y1, x2, y2])
         return Boxes(ltrb, BoxFormat.LTRB, check=False)
 
-    to_tlbr = to_ltrb
+    def to_tlbr(self, **kwargs):
+        ub.schedule_deprecation(
+            'kwimage', 'Boxes.to_tlbr', 'method',
+            migration='Use Boxes.to_ltrb instead.', deprecate='0.9.8',
+            error='0.11.0', remove='0.12.0')
+        return self.to_ltrb(**kwargs)
 
     @_register_convertor(BoxFormat._RCHW)
     def _to_rchw(self, copy=True):
