@@ -168,7 +168,8 @@ class Matrix(Transform):
         """
         TODO: rename to "is_symbolic"
         """
-        import sympy
+        if sympy is None:
+            return False
         return isinstance(self.matrix, sympy.Matrix) and isinstance(self.matrix[0, 0], (sympy.Rational, sympy.core.symbol.Symbol, sympy.core.basic.Basic))
 
     def inv(self):
