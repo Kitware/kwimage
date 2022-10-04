@@ -642,6 +642,12 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         if dsize is None:
             raise ValueError('letterbox can only be used with dsize')
         orig_size = np.array(img.shape[0:2][::-1])
+        w, h = dsize
+        if w is None:
+            w = orig_size[0]
+        if h is None:
+            h = orig_size[1]
+        dsize = (w, h)
         target_size = np.array(dsize)
         # Determine to use the x or y scale factor
         unequal_sxy = (target_size / orig_size)

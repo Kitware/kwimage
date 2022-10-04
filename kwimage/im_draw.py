@@ -1088,12 +1088,23 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
         return header
 
 
-def fill_nans_with_checkers(canvas, square_shape=8):
+def fill_nans_with_checkers(canvas, square_shape=8,
+                            on_value='auto', off_value='auto'):
     """
-    Fills nan values with a 2d checkerboard pattern.
+    Fills nan or masked values with a 2d checkerboard pattern.
 
     Args:
         canvas (np.ndarray): data replace nans in
+
+        square_shape (int | Tuple[int, int] | str):
+            Size of the checker squares. Defaults to 8.
+
+        on_value (Number):
+            The value of one checker. Defaults to 1 for floats and 255 for
+            ints.
+
+        off_value (Number):
+            The value off the other checker. Defaults to 0.
 
     Returns:
         np.ndarray: the inplace modified canvas
@@ -1142,10 +1153,10 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> kwplot.imshow(canvas, pnum=(1, 2, 2))
     """
     invalid_mask = np.isnan(canvas)
-    return _masked_checkerboard(canvas, invalid_mask, square_shape)
+    return _masked_checkerboard(canvas, invalid_mask, square_shape, on_value=on_value, off_value=off_value)
 
 
-def _masked_checkerboard(canvas, invalid_mask, square_shape):
+def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value):
     import kwimage
     import kwarray
     canvas = kwarray.atleast_nd(canvas, 3)
@@ -1157,10 +1168,13 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape):
     dsize = canvas.shape[0:2][::-1]
     checkers2d = None
 
-    if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
-        on_value = 255
-    else:
-        on_value = 1
+    if on_value == 'auto':
+        if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
+            on_value = 255
+        else:
+            on_value = 1
+    if off_value == 'auto':
+        off_value = 0
 
     if np.any(allchan_invalid_mask):
         if checkers2d is None:

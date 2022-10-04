@@ -16,6 +16,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * support for torch in `Boxes.iooa` (requires kwarray update)
+* imresize with letterbox now works when dsize has a None component.
+* Expose `on_value` and `off_value` in `fill_nans_with_checkers`
 
 
 ## Version 0.9.7 - Released 2022-08-23
