@@ -29,6 +29,10 @@ class _ShapelyMixin:
     """
     TODO: make shapely the main "format" to reduce conversion cost
 
+    References:
+        - [WikiBoolPolygon] https://en.wikipedia.org/wiki/Boolean_operations_on_polygons
+        - [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
+
     Example:
         >>> from kwimage.structs.polygon import *  # NOQA
         >>> import itertools as it
