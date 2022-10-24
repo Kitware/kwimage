@@ -1539,7 +1539,20 @@ class Affine(Projective):
             >>>     'shearx': np.linspace(- 10 * np.pi, 10 * np.pi, 4),
             >>> }))
             >>> def normalize_angle(radian):
-            >>>     return np.arctan2(np.sin(K!!ams)
+            >>>     return np.arctan2(np.sin(radian), np.cos(radian))
+            >>> for pextra in param_grid:
+            >>>     params0 = dict(scale=(3.05, 3.07), offset=(10.5, 12.1), **pextra)
+            >>>     self = recon0 = kwimage.Affine.affine(**params0)
+            >>>     self.decompose()
+            >>>     # Test drift with multiple decompose / reconstructions
+            >>>     params_list = [params0]
+            >>>     recon_list = [recon0]
+            >>>     n = 4
+            >>>     for _ in range(n):
+            >>>         prev = recon_list[-1]
+            >>>         params = prev.decompose()
+            >>>         recon = kwimage.Affine.coerce(**params)
+            >>>         params_list.append(params)
             >>>         recon_list.append(recon)
             >>>     params_df = pd.DataFrame(params_list)
             >>>     #print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
