@@ -837,7 +837,7 @@ class Projective(Linear):
         return self
 
     def decompose(self):
-        """
+        r"""
         Based on the analysis done in [ME1319680]_.
 
         Returns:
@@ -1492,7 +1492,7 @@ class Affine(Projective):
 
     @profile
     def decompose(self):
-        """
+        r"""
         Decompose the affine matrix into its individual scale, translation,
         rotation, and skew parameters.
 

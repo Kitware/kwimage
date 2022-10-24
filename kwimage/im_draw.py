@@ -1197,13 +1197,22 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value
     return canvas
 
 
-def nodata_checkerboard(canvas, square_shape=8):
+def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto'):
     """
     Fills nans or masked values with a checkerbord pattern.
 
     Args:
         canvas (ndarray): A 2D image with any number of channels.
+
         square_shape (int): the pixel size of the checkers
+
+        on_value (Number):
+            The value of one checker. Defaults to 1 for floats and 255 for
+            ints.
+
+        off_value (Number):
+            The value off the other checker. Defaults to 0.
+
 
     Returns:
         ndarray : an output array with imputed values.
@@ -1269,7 +1278,8 @@ def nodata_checkerboard(canvas, square_shape=8):
         invalid_mask = None
 
     if invalid_mask is not None:
-        canvas = _masked_checkerboard(canvas, invalid_mask, square_shape)
+        canvas = _masked_checkerboard(canvas, invalid_mask, square_shape,
+                                      on_value, off_value)
 
     if is_masked:
         canvas = np.ma.MaskedArray(data=canvas, mask=invalid_mask)
