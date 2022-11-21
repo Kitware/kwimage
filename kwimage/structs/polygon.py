@@ -79,7 +79,25 @@ class _ShapelyMixin:
         r = a.simplify(tolerance, preserve_topology=preserve_topology)
         return _kwimage_from_shapely(r)
 
-    # __shapely__?
+    @property
+    def __geo_interface__(self):
+        """
+        Geometry interface standardized in GeoInterface_.
+
+        References:
+            .. [GeoInterface] https://gist.github.com/sgillies/2217756
+
+        Example:
+            >>> import kwimage
+            >>> x = kwimage.Polygon.random()
+            >>> geos = x.__geo_interface__
+            >>> # xdoctest: +REQUIRES(module:geopandas)
+            >>> import geopandas as gpd
+            >>> # This allows kwimage Polygons to work with geopandas seemlessly
+            >>> gpd.GeoDataFrame({'geometry': [x]})
+        """
+        return self.to_shapely().__geo_interface__
+
     # area
     # crosses
     # disjoint
