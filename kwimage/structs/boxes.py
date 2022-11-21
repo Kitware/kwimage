@@ -74,6 +74,7 @@ import ubelt as ub
 import warnings
 import skimage
 import kwarray
+import numbers
 from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
 
@@ -632,10 +633,20 @@ class _BoxConversionMixins(object):
         return self
 
     @classmethod
-    def coerce(Boxes, data):
+    def coerce(Boxes, data, **kwargs):
         """
+        Args:
+            data : can be :
+                * a Boxes object
+                * a shapely Polygon
+                * list of 4 numbers (also requires the format kwarg)
+
+            **kwargs:
+                format (str | None) :
+                    specify the format code
+
         Returns:
-            Boxes:
+            Boxes: the wrapped or converted object
         """
         from shapely.geometry import Polygon
         if isinstance(data, Boxes):
@@ -643,7 +654,19 @@ class _BoxConversionMixins(object):
         elif isinstance(data, Polygon):
             self = Boxes.from_shapely(data)
         else:
-            raise NotImplementedError
+            _arr_data = None
+            if isinstance(data, np.ndarray):
+                _arr_data = np.array(data)
+            elif isinstance(data, list):
+                _arr_data = np.array(data)
+
+            if _arr_data is not None:
+                format = kwargs.get('format', None)
+                if format is None:
+                    raise Exception('ambiguous, specify Box format')
+                self = Boxes(_arr_data, format=format)
+            else:
+                raise NotImplementedError
         return self
 
     @classmethod
@@ -1946,7 +1969,6 @@ class _BoxDrawMixins(object):
         """
         import cv2
         import kwimage
-        import numbers
         def _coords(x, y):
             # ensure coords don't go out of bounds or cv2 throws weird error
             x = min(max(x, 0), w - 1)

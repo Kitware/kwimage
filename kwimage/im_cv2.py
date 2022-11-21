@@ -568,15 +568,19 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
         - [ ] Allow for pre-clipping when letterbox=True
     """
-    old_w, old_h = img.shape[0:2][::-1]
-
     _mutex_args = [scale, dsize, max_dim, min_dim]
-    if sum(a is not None for a in _mutex_args) != 1:
+    _num_mutex_args = sum(a is not None for a in _mutex_args)
+    if _num_mutex_args > 1:
         raise ValueError(ub.paragraph(
             '''
-            Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim'
+            May only specify EXACTLY one of scale, dsize, max_dim, xor min_dim'
             Got scale={}, dsize={}, max_dim={}, min_dim={}
             ''').format(*_mutex_args))
+    elif _num_mutex_args == 0:
+        # None of the scale params were specified, return the image as-is
+        return img
+
+    old_w, old_h = img.shape[0:2][::-1]
 
     if scale is not None:
         try:

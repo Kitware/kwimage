@@ -91,7 +91,7 @@ class Color(ub.NiceRepr):
         >>> print(Color([1, 1, 1], alpha=255))
         >>> print(Color([1, 1, 1], alpha=255, space='lab'))
     """
-    def __init__(self, color, alpha=None, space=None):
+    def __init__(self, color, alpha=None, space=None, coerce=True):
         """
         Args:
             color (Color | Iterable[int | float] | str):
@@ -100,41 +100,57 @@ class Color(ub.NiceRepr):
                 if psecified adds an alpha value
             space (str):
                 The colorspace to interpret this color as. Defaults to rgb.
+            coerce (bool):
+                The exsting init is not lightweight. This is a design problem
+                that will need to be fixed in future versions. Setting
+                coerce=False will disable all magic and use imputed color and
+                space args directly. Alpha will be ignored.
         """
-        try:
-            # Hack for ipython reload
-            is_color_cls = color.__class__.__name__ == 'Color'
-        except Exception:
-            is_color_cls = isinstance(color, Color)
+        if coerce:
+            try:
+                # Hack for ipython reload
+                is_color_cls = color.__class__.__name__ == 'Color'
+            except Exception:
+                is_color_cls = isinstance(color, Color)
 
-        if is_color_cls:
-            assert alpha is None
-            assert space is None
-            space = color.space
-            color = color.color01
-        else:
-            color = self._ensure_color01(color)
+            if is_color_cls:
+                assert alpha is None
+                assert space is None
+                space = color.space
+                color = color.color01
+            else:
+                # FIXME: This is a bad check, and it's hard to fix given that there
+                # is lots of code that likely depends on this now. We should not be
+                # doing coercion in an `__init__`, which should alway be
+                # lightweight.  The check_inputs=False can be used to disable this
+                # explicitly as a workaround.
+                color = self._ensure_color01(color)
+                if alpha is not None:
+                    alpha = self._ensure_color01([alpha])[0]
+
+            if space is None:
+                space = 'rgb'
+
+            # always normalize the color down to 01
+            color01 = list(color)
+
             if alpha is not None:
-                alpha = self._ensure_color01([alpha])[0]
+                if len(color01) not in [1, 3]:
+                    raise ValueError('alpha already in color')
+                color01 = color01 + [alpha]
 
-        if space is None:
-            space = 'rgb'
+            # correct space if alpha is given
+            if len(color01) in [2, 4]:
+                if not space.endswith('a'):
+                    space += 'a'
+        else:
+            color01 = color
+            space = space
 
-        # always normalize the color down to 01
-        color01 = list(color)
-
-        if alpha is not None:
-            if len(color01) not in [1, 3]:
-                raise ValueError('alpha already in color')
-            color01 = color01 + [alpha]
-
-        # correct space if alpha is given
-        if len(color01) in [2, 4]:
-            if not space.endswith('a'):
-                space += 'a'
-
+        # FIXME: color01 is not a good name because the data wont be between 0
+        # and 1 for non-rgb spaces. We should differentiate between rgb01 and
+        # rgb255.
         self.color01 = color01
-
         self.space = space
 
     @classmethod
@@ -268,6 +284,12 @@ class Color(ub.NiceRepr):
                 # Note: in this case we will not get a 0-1 normalized color.
                 # because lab does not natively exist in the 0-1 space.
                 color = _colormath_convert(color, 'rgb', 'lab')
+            elif space == 'hsv' and self.space == 'rgb':
+                color = _colormath_convert(color, 'rgb', 'hsv')
+            elif space == 'rgb' and self.space == 'hsv':
+                color = _colormath_convert(color, 'hsv', 'rgb')
+            elif space == 'rgb' and self.space == 'lab':
+                color = _colormath_convert(color, 'lab', 'rgb')
             else:
                 # from colormath import color_conversions
                 raise NotImplementedError('{} -> {}'.format(self.space, space))
@@ -546,13 +568,18 @@ class Color(ub.NiceRepr):
         if ub.iterable(alpha):
             alpha = np.asarray(alpha).ravel()
             vecB = vec1[None, :] * (1 - alpha)[:, None] + (vec2[None, :] * alpha[:, None])
-            new = [kwimage.Color(kwimage.Color(c, space=ispace).as01(ospace),
-                                 space=ospace) for c in vecB]
+            new = [
+                kwimage.Color(
+                    kwimage.Color(c, space=ispace, coerce=False).as01(ospace),
+                    space=ospace, coerce=False)
+                for c in vecB
+            ]
         else:
             vecB = vec1 * (1 - alpha) + (vec2 * alpha)
             c = vecB
-            new = kwimage.Color(kwimage.Color(c, space=ispace).as01(ospace),
-                                space=ospace)
+            new = kwimage.Color(
+                kwimage.Color(c, space=ispace, coerce=False).as01(ospace),
+                space=ospace, coerce=False)
         return new
 
 
