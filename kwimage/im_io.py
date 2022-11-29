@@ -1143,6 +1143,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         skimage.io.imsave(fpath, image, **kwargs)
     elif backend == 'gdal':
         _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+    elif backend == 'pil':
+        from PIL import Image
+        pil_img = Image.fromarray(image)
+        pil_img.save(fpath)
     elif backend == 'itk':
         import itk
         itk_obj = itk.image_view_from_array(image)
@@ -1242,6 +1246,11 @@ def load_image_shape(fpath, backend='auto'):
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
         >>> shape = kwimage.load_image_shape(fpath)
         >>> assert shape == (64, 64, 3)
+
+    Ignore:
+        * Note: this seems to have an issue with PNG's with mode='LA',
+          which means that there really are two underlying channels, but it
+          kwimage.imread cv2 backend reads it as a 4 channel RGBA array.
     """
     if backend == 'auto':
         try:

@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Basic shapely features in Polygon and MultiPolygon
 * `Polygon.oriented_bounding_box`
 * Added `__geo_interface__` to Polygon and MultiPolygon
+* Add imwrite "pil" backend. 
 
 
 ### Changed:
