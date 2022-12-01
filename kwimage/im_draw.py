@@ -51,11 +51,13 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             "thickness": border thickness, defaults to 1.
 
     Returns:
-        ndarray: the image that was drawn on
+        ndarray | Tuple[ndarray, dict] :
+            The image that was drawn on and optionally an information
+            dictionary if return_info was True.
 
     Note:
         The image is modified inplace. If the image is non-contiguous then this
-        returns a UMat instead of a ndarray, so be carefull with that.
+        returns a UMat instead of a ndarray, so be careful with that.
 
     Related:
         The logic in this function is related to the following stack overflow
@@ -208,7 +210,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     needs_y0 = y0 is None and valign != 'top'
 
     if needs_x0 or needs_y0:
-        # Speical case: when the alignment is non left-top, AND we don't have
+        # Special case: when the alignment is non left-top, AND we don't have
         # an origin we need to do a bit of extra computation to figure out what
         # the width / height need to be
         text_w, text_h = _text_sizes(text, (1, 1), border_thickness, kwargs, None, halign='left')[0:2]
