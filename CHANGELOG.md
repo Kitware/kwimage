@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.8 - Unreleased
 
 ### Added
+* Added new `Box` class to represent a single box.
 * Basic shapely features in Polygon and MultiPolygon
 * `Polygon.oriented_bounding_box`
 * Added `__geo_interface__` to Polygon and MultiPolygon
