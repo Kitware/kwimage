@@ -6,7 +6,7 @@ from typing import Tuple
 import kwimage
 from typing import Dict
 from typing import List
-import kwcoco
+from typing import Any
 from . import _generic
 from _typeshed import Incomplete
 
@@ -145,7 +145,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin, _HeatmapWarpMixin,
     @classmethod
     def random(cls,
                dims: Tuple[int, int] = ...,
-               classes: Union[int, List[str], kwcoco.CategoryTree] = 3,
+               classes: Union[int, List[str], Any] = 3,
                diameter: bool = True,
                offset: bool = True,
                keypoints: bool = False,
