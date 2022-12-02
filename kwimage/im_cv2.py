@@ -203,8 +203,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     """
     DEPRECATED and removed: use imresize instead
     """
-    from kwimage._internal import schedule_deprecation
-    schedule_deprecation(
+    ub.schedule_deprecation(
         modname='kwimage',
         name='imscale',
         type='function',

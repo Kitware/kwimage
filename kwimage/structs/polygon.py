@@ -2052,8 +2052,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             ax = plt.gca()
 
         if border is not None:
-            from kwimage._internal import schedule_deprecation
-            schedule_deprecation(
+            ub.schedule_deprecation(
                 modname='kwimage', migration='use linewidth instead',
                 name='border', type='kwarg to Polygon.draw_on',
                 deprecate='0.8.7', error='1.0.0', remove='1.1.0',
@@ -2164,8 +2163,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return new
 
     def interpolate(self, other, alpha):
-        from kwimage._internal import schedule_deprecation
-        schedule_deprecation(
+        ub.schedule_deprecation(
             modname='kwimage', migration='use morph instead',
             name='interpolate', type='method',
             # deprecate='0.8.7', error='1.0.0', remove='1.1.0',
