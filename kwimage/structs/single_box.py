@@ -6,24 +6,24 @@ class Box(ub.NiceRepr):
     """
     Represents a single Box.
 
-    For multiple boxes use kwimage.Boxes, which is more efficient.
-    This is a convinience class.
+    This is a convinience class. For multiple boxes use kwimage.Boxes, which is
+    more efficient.
 
     Currently implemented by storing a Boxes object with one item and indexing
-    into it. Could be done more efficiently
+    into it. This implementation could be done more efficiently.
 
     SeeAlso:
-        :class:`kwimage.structs.boxes.Box`
+        :class:`kwimage.structs.boxes.Boxes`
 
     Example:
         >>> from kwimage.structs.single_box import *  # NOQA
-        >>> box = util_kwimage.Box.random()
+        >>> box = Box.random()
         >>> print(f'box={box}')
         >>> #
         >>> box.scale(10).quantize().to_slice()
         >>> #
         >>> sl = (slice(0, 10), slice(0, 30))
-        >>> box = util_kwimage.Box.from_slice(sl)
+        >>> box = Box.from_slice(sl)
         >>> print(f'box={box}')
     """
 

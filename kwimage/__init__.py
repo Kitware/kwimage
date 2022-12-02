@@ -65,7 +65,7 @@ from .im_filter import (fourier_mask, radial_fourier_mask,)
 from .im_io import (imread, imwrite, load_image_shape,)
 from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
 from .im_stack import (stack_images, stack_images_grid,)
-from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
+from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                       MultiPolygon, Points, PointsList, Polygon, PolygonList,
                       Segmentation, SegmentationList, smooth_prob,)
 from .transform import (Affine, Linear, Matrix, Projective, Transform,
@@ -76,9 +76,9 @@ from .util_warp import (add_homog, remove_homog, subpixel_accum,
                         subpixel_slice, subpixel_translate, warp_points,
                         warp_tensor,)
 
-__all__ = ['Affine', 'Boxes', 'Color', 'Coords', 'Detections', 'Heatmap',
-           'Linear', 'Mask', 'MaskList', 'Matrix', 'MultiPolygon', 'Points',
-           'PointsList', 'Polygon', 'PolygonList', 'Projective',
+__all__ = ['Affine', 'Box', 'Boxes', 'Color', 'Coords', 'Detections',
+           'Heatmap', 'Linear', 'Mask', 'MaskList', 'Matrix', 'MultiPolygon',
+           'Points', 'PointsList', 'Polygon', 'PolygonList', 'Projective',
            'Segmentation', 'SegmentationList', 'Transform', 'add_homog',
            'atleast_3channels', 'available_nms_impls', 'checkerboard',
            'connected_components', 'convert_colorspace', 'daq_spatial_nms',

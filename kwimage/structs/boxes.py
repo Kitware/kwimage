@@ -68,6 +68,10 @@ Example:
     >>> boxes.draw(color='kw_red')
     >>> plt.gcf().suptitle('Matplotlib and OpenCV have first class visualization support')
     >>> kwplot.show_if_requested()
+
+
+SeeAlso:
+    :class:`kwimage.structs.single_box.Box`
 """
 import numpy as np
 import ubelt as ub
@@ -2091,6 +2095,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     the raw data and let the class be garbage collected. This will help ensure
     that your code is portable and understandable if this class is not
     available.
+
+    This class is meant to efficiently store and manipulate multiple boxes. In
+    the case of a single box the :class:`kwimage.structs.single_box.Box` class
+    can be used instead.
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE

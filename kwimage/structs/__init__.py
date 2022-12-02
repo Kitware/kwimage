@@ -49,7 +49,8 @@ from .mask import (Mask, MaskList,)
 from .points import (Points, PointsList,)
 from .polygon import (MultiPolygon, Polygon, PolygonList,)
 from .segmentation import (Segmentation, SegmentationList,)
+from .single_box import (Box,)
 
-__all__ = ['Boxes', 'Coords', 'Detections', 'Heatmap', 'Mask', 'MaskList',
-           'MultiPolygon', 'Points', 'PointsList', 'Polygon', 'PolygonList',
-           'Segmentation', 'SegmentationList', 'smooth_prob']
+__all__ = ['Box', 'Boxes', 'Coords', 'Detections', 'Heatmap', 'Mask',
+           'MaskList', 'MultiPolygon', 'Points', 'PointsList', 'Polygon',
+           'PolygonList', 'Segmentation', 'SegmentationList', 'smooth_prob']
