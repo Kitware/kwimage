@@ -1911,8 +1911,9 @@ class _BoxDrawMixins(object):
             ndarray: the image drawn onto.
 
         Example:
-            >>> from kwimage.structs.boxes import *  # NOQA
-            >>> self = Boxes.random(num=10, scale=256, rng=0, format='ltrb')
+            >>> import kwimage
+            >>> import numpy as np
+            >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'
             >>> image = (np.random.rand(256, 256, 3) * 255).astype(np.uint8)
@@ -1927,9 +1928,9 @@ class _BoxDrawMixins(object):
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> from kwimage.structs.boxes import *  # NOQA
             >>> import kwimage
-            >>> self = Boxes.random(num=10, rng=0).scale(128)
+            >>> import numpy as np
+            >>> self = kwimage.Boxes.random(num=10, rng=0).scale(128)
             >>> self.data[0][:] = [3, 3, 100, 100]
             >>> color = 'blue'
             >>> # Test drawong on all channel + dtype combinations
@@ -1960,8 +1961,8 @@ class _BoxDrawMixins(object):
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> from kwimage.structs.boxes import *  # NOQA
-            >>> self = Boxes.random(num=10, scale=256, rng=0, format='ltrb')
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> image = self.draw_on()
             >>> # xdoc: +REQUIRES(--show)
             >>> # xdoc: +REQUIRES(module:kwplot)

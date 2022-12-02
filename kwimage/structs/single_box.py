@@ -50,9 +50,12 @@ class Box(ub.NiceRepr):
         return nice
 
     @classmethod
-    def random(self, *args, **kwargs):
+    def random(self, **kwargs):
         import kwimage
-        boxes = kwimage.Boxes.random(*args, **kwargs)
+        if kwargs.get('num', 1) != 1:
+            raise ValueError('Cannot specify num for Box. Use Boxes instead.')
+        kwargs['num'] = 1
+        boxes = kwimage.Boxes.random(**kwargs)
         self = Box(boxes, _check=False)
         return self
 
@@ -233,3 +236,56 @@ class Box(ub.NiceRepr):
 
     def to_coco(self):
         return self.boxes.to_coco()[0]
+
+    def draw_on(self, image=None, color='blue', alpha=None, label=None,
+                copy=False, thickness=2, label_loc='top_left'):
+        """
+        Draws a box directly on an image using OpenCV
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Box.random(scale=256, rng=10, format='ltrb')
+            >>> canvas = np.zeros((256, 256, 3), dtype=np.uint8)
+            >>> image = self.draw_on(canvas)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwplot
+            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+            >>> kwplot.show_if_requested()
+        """
+        return self.boxes.draw_on(image=image, color=color, alpha=alpha,
+                                  labels=[label], copy=copy,
+                                  thickness=thickness, label_loc=label_loc)
+
+    def draw(self, color='blue', alpha=None, label=None, centers=False,
+             fill=False, lw=2, ax=None, setlim=False, **kwargs):
+        """
+        Draws a box directly on an image using OpenCV
+
+        Example:
+            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> import kwimage
+            >>> self = kwimage.Box.random(scale=512.0, rng=0, format='ltrb')
+            >>> self.translate((-128, -128), inplace=True)
+            >>> #image = (np.random.rand(256, 256) * 255).astype(np.uint8)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=True)
+            >>> #kwplot.imshow(image)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> self.draw(color='blue', setlim=1.2)
+            >>> # xdoc: +REQUIRES(--show)
+            >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
+            >>>     o.set_clip_on(False)
+            >>> kwplot.show_if_requested()
+        """
+        if label is None:
+            labels = None
+        else:
+            labels = [label]
+        return self.boxes.draw(color=color, alpha=alpha, labels=labels,
+                               centers=centers, fill=fill, lw=lw, ax=ax,
+                               setlim=setlim, **kwargs)

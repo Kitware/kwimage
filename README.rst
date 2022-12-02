@@ -29,7 +29,7 @@ for overlaying visualizations on matplotlib axes or numpy image matrices
 respectively. 
 
 
-Read the docs at: http://kwimage.readthedocs.io/en/master/
+Read the docs at: http://kwimage.readthedocs.io/en/main/
 
 
 The top-level API is:
@@ -59,7 +59,7 @@ The top-level API is:
     from .im_io import (imread, imwrite, load_image_shape,)
     from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
     from .im_stack import (stack_images, stack_images_grid,)
-    from .structs import (Boxes, Coords, Detections, Heatmap, Mask, MaskList,
+    from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                           MultiPolygon, Points, PointsList, Polygon, PolygonList,
                           Segmentation, SegmentationList, smooth_prob,)
     from .transform import (Affine, Linear, Matrix, Projective, Transform,
@@ -183,11 +183,11 @@ linux systems:
     :target: http://kwimage.readthedocs.io/en/release/
 
 .. # See: https://ci.appveyor.com/project/jon.crall/kwimage/settings/badges
-.. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/py3s2d6tyfjc8lm3/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/jon.crall/kwimage/branch/master
+.. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/py3s2d6tyfjc8lm3/branch/main?svg=true
+   :target: https://ci.appveyor.com/project/jon.crall/kwimage/branch/main
 
-.. |GitlabCIPipeline| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/master/pipeline.svg
+.. |GitlabCIPipeline| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/pipeline.svg
    :target: https://gitlab.kitware.com/computer-vision/kwimage/-/jobs
 
-.. |GitlabCICoverage| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/master/coverage.svg?job=coverage
-    :target: https://gitlab.kitware.com/computer-vision/kwimage/commits/master
+.. |GitlabCICoverage| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/coverage.svg?job=coverage
+    :target: https://gitlab.kitware.com/computer-vision/kwimage/commits/main
