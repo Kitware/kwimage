@@ -142,6 +142,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def demo(cls) -> Mask:
         ...
 
+    @classmethod
+    def from_text(cls,
+                  text: str,
+                  zero_chr: str = '.',
+                  shape: Union[None, Tuple[int, int]] = None,
+                  has_border: bool = False):
+        ...
+
     def copy(self) -> Mask:
         ...
 

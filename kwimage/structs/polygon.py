@@ -183,7 +183,6 @@ class _ShapelyMixin:
         r = a.convex_hull
         return _kwimage_from_shapely(r)
 
-    @property
     def is_invalid(self, explain=False):
         """
         Return True if the polygon is invalid according to shapely.

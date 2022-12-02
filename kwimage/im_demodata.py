@@ -365,10 +365,10 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
         dtype (type): return data type
 
-        on_value (Number):
+        on_value (Number | int):
             The value of one checker. Defaults to 1.
 
-        off_value (Number):
+        off_value (Number | int):
             The value off the other checker. Defaults to 0.
 
     References:

@@ -5,9 +5,10 @@ from typing import Sequence
 import kwcoco
 import kwimage
 from typing import List
-from typing import Any
 from nptyping import Float32
+from typing import Any
 import numpy as np
+from numbers import Number
 import numpy as np
 from _typeshed import Incomplete
 
@@ -16,7 +17,7 @@ def draw_text_on_image(img: Union[ndarray, None, dict],
                        text: str,
                        org: Tuple[int, int] = None,
                        return_info: bool = False,
-                       **kwargs) -> ndarray:
+                       **kwargs) -> ndarray | Tuple[ndarray, dict]:
     ...
 
 
@@ -96,14 +97,22 @@ def draw_header_text(image: Union[ndarray, dict, None],
                      fit: Union[bool, str] = False,
                      color: Union[str, Tuple] = 'strawberry',
                      halign: str = 'center',
-                     stack: Union[bool, str] = 'auto') -> ndarray:
+                     stack: Union[bool, str] = 'auto',
+                     bg_color: str = ...,
+                     **kwargs) -> ndarray:
     ...
 
 
-def fill_nans_with_checkers(canvas: np.ndarray,
-                            square_shape: int = ...) -> np.ndarray:
+def fill_nans_with_checkers(
+        canvas: np.ndarray,
+        square_shape: Union[int, Tuple[int, int], str] = 8,
+        on_value: Union[Number, str] = 'auto',
+        off_value: Union[Number, str] = 'auto') -> np.ndarray:
     ...
 
 
-def nodata_checkerboard(canvas, square_shape: int = ...):
+def nodata_checkerboard(canvas: ndarray,
+                        square_shape: int = 8,
+                        on_value: Union[Number, str] = 'auto',
+                        off_value: Union[Number, str] = 'auto') -> ndarray:
     ...

@@ -23,6 +23,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                  meta: Incomplete | None = ...) -> None:
         ...
 
+    def __array__(self):
+        ...
+
     def __nice__(self):
         ...
 
@@ -73,7 +76,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     def astype(self, dtype, inplace: bool = False) -> Coords:
         ...
 
-    def round(self, inplace: bool = False):
+    def round(self, decimals: int = 0, inplace: bool = False) -> Coords:
         ...
 
     def view(self, *shape) -> Coords:

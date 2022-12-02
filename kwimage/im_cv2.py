@@ -1952,7 +1952,7 @@ def connected_components(image, connectivity=8, ltype=np.int32,
 
         connectivity (int): either 4 or 8
 
-        ltype (dtype | str | int):
+        ltype (numpy.dtype | str | int):
             The dtype for the output label array.
             Can be either 'int32' or 'uint16', and this can be specified as a
             cv2 code or a numpy dtype.

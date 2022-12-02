@@ -4,6 +4,9 @@ from numpy.typing import ArrayLike
 from typing import Sequence
 from typing import Tuple
 import kwimage
+from typing import Dict
+from typing import List
+import kwcoco
 from . import _generic
 from _typeshed import Incomplete
 
@@ -49,7 +52,7 @@ class _HeatmapDrawMixin:
 class _HeatmapWarpMixin:
 
     def upscale(self,
-                channel: Incomplete | None = ...,
+                channel: Union[ndarray, None] = None,
                 interpolation: str = ...):
         ...
 
@@ -102,8 +105,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin, _HeatmapWarpMixin,
     __datakeys__: Incomplete
     __metakeys__: Incomplete
     __spatialkeys__: Incomplete
-    data: Incomplete
-    meta: Incomplete
+    data: Dict[str, ArrayLike]
+    meta: Dict[str, object]
+    kwargs: Incomplete
 
     def __init__(self,
                  data: Incomplete | None = ...,
@@ -140,15 +144,16 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin, _HeatmapWarpMixin,
 
     @classmethod
     def random(cls,
-               dims: Tuple = ...,
-               classes: int = ...,
-               diameter: bool = ...,
-               offset: bool = ...,
-               keypoints: bool = ...,
+               dims: Tuple[int, int] = ...,
+               classes: Union[int, List[str], kwcoco.CategoryTree] = 3,
+               diameter: bool = True,
+               offset: bool = True,
+               keypoints: bool = False,
                img_dims: Tuple = None,
                dets: Incomplete | None = ...,
                nblips: int = ...,
                noise: float = ...,
+               smooth_k: int = 3,
                rng: Incomplete | None = ...,
                ensure_background: bool = ...) -> Heatmap:
         ...

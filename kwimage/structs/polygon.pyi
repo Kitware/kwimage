@@ -1,22 +1,70 @@
 from typing import Union
+from typing import Any
+from typing import Tuple
 from typing import Callable
 from skimage.transform._geometric import GeometricTransform
 from numpy.typing import ArrayLike
-from typing import Any
-from typing import Tuple
 import kwimage
 from typing import List
 from typing import Iterable
 from numbers import Number
+from numpy import ndarray
 import shapely
 from typing import Dict
-from numpy import ndarray
 import numpy as np
 import matplotlib
 import ubelt as ub
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+
+class _ShapelyMixin:
+
+    def oriented_bounding_box(self):
+        ...
+
+    def buffer(self, *args, **kwargs):
+        ...
+
+    def simplify(self, tolerance, preserve_topology: bool = ...):
+        ...
+
+    @property
+    def __geo_interface__(self):
+        ...
+
+    def union(self, other):
+        ...
+
+    def intersection(self, other):
+        ...
+
+    def difference(self, other):
+        ...
+
+    def symmetric_difference(self, other):
+        ...
+
+    def iooa(self, other):
+        ...
+
+    def iou(self, other):
+        ...
+
+    @property
+    def area(self) -> float:
+        ...
+
+    @property
+    def convex_hull(self):
+        ...
+
+    def is_invalid(self, explain: bool = False) -> bool | str:
+        ...
+
+    def fix(self):
+        ...
 
 
 class _PolyArrayBackend:
@@ -66,12 +114,18 @@ class _PolyWarpMixin:
                inplace: bool = ...):
         ...
 
+    def round(self, decimals: int = 0, inplace: bool = False) -> Polygon:
+        ...
+
+    def astype(self, dtype, inplace: bool = False) -> Polygon:
+        ...
+
     def swap_axes(self, inplace: bool = False) -> Polygon:
         ...
 
 
 class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
-              ub.NiceRepr):
+              _ShapelyMixin, ub.NiceRepr):
     __datakeys__: Incomplete
     __metakeys__: Incomplete
     data: Incomplete
@@ -99,7 +153,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
     @classmethod
     def circle(cls,
                xy: Iterable[Number],
-               r: Number,
+               r: Union[Number, Tuple[Number, Number]],
                resolution: int = 64) -> Polygon:
         ...
 
@@ -117,7 +171,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
                 pixels_are: str = 'points') -> kwimage.Mask:
         ...
 
-    def to_relative_mask(self) -> kwimage.Mask:
+    def to_relative_mask(self, return_offset: bool = ...) -> kwimage.Mask:
         ...
 
     @classmethod
@@ -138,11 +192,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
     def from_geojson(Polygon, data_geojson: dict) -> Polygon:
         ...
 
-    def to_shapely(self) -> shapely.geometry.polygon.Polygon:
-        ...
-
-    @property
-    def area(self) -> float:
+    def to_shapely(self,
+                   fix: bool = False) -> shapely.geometry.polygon.Polygon:
         ...
 
     def to_geojson(self) -> Dict[str, object]:
@@ -214,12 +265,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
              vertexcolor: Any = None) -> matplotlib.patches.PathPatch | None:
         ...
 
-
-class MultiPolygon(_generic.ObjectList):
-
-    @property
-    def area(self) -> float:
+    def interpolate(self, other, alpha):
         ...
+
+    def morph(self, other: kwimage.Polygon,
+              alpha: Union[float, List[float]]) -> Polygon | List[Polygon]:
+        ...
+
+
+class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
     @classmethod
     def random(self,
@@ -249,7 +303,7 @@ class MultiPolygon(_generic.ObjectList):
                 pixels_are: str = ...) -> kwimage.Mask:
         ...
 
-    def to_relative_mask(self) -> kwimage.Mask:
+    def to_relative_mask(self, return_offset: bool = ...) -> kwimage.Mask:
         ...
 
     @classmethod
@@ -258,7 +312,7 @@ class MultiPolygon(_generic.ObjectList):
                dims: Incomplete | None = ...) -> None | MultiPolygon:
         ...
 
-    def to_shapely(self) -> shapely.geometry.MultiPolygon:
+    def to_shapely(self, fix: bool = False) -> shapely.geometry.MultiPolygon:
         ...
 
     @classmethod
@@ -317,4 +371,7 @@ class PolygonList(_generic.ObjectList):
         ...
 
     def draw_on(self, *args, **kw):
+        ...
+
+    def unary_union(self):
         ...

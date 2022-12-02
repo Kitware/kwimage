@@ -1,6 +1,7 @@
 from typing import Sequence
 from numpy import ndarray
 import numpy as np
+from typing import Union
 import numpy as np
 
 
@@ -19,7 +20,7 @@ def overlay_alpha_images(img1: ndarray,
 
 
 def ensure_alpha_channel(img: ndarray,
-                         alpha: float = 1.0,
+                         alpha: Union[float, ndarray] = 1.0,
                          dtype: type = ...,
                          copy: bool = False) -> ndarray:
     ...
