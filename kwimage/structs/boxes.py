@@ -530,7 +530,7 @@ class _BoxConversionMixins(object):
     def to_tlbr(self, **kwargs):
         ub.schedule_deprecation(
             'kwimage', 'Boxes.to_tlbr', 'method',
-            migration='Use Boxes.to_ltrb instead.', deprecate='0.9.8',
+            migration='Use Boxes.to_ltrb instead.', deprecate='0.9.9',
             error='0.11.0', remove='0.12.0')
         return self.to_ltrb(**kwargs)
 
