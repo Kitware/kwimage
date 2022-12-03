@@ -1,6 +1,6 @@
 from numpy import ndarray
-from os import PathLike
 from typing import Union
+from os import PathLike
 from _typeshed import Incomplete
 
 JPG_EXTENSIONS: Incomplete
@@ -24,5 +24,5 @@ def imwrite(fpath: PathLike,
     ...
 
 
-def load_image_shape(fpath: str):
+def load_image_shape(fpath: str, backend: str = 'auto'):
     ...

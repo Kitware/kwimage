@@ -7,29 +7,34 @@
 # python ~/local/tools/supported_python_versions_pip.py imageio
 
 
-scipy>=1.8.0     ;                            python_version >= '3.10'    # Python 3.10+
-scipy>=1.5.4     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+scipy>=1.9.2     ; python_version < '4.0'  and python_version >= '3.11'  # Python 3.11+
+scipy>=1.7.2     ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
+scipy>=1.5.4     ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
 scipy>=1.5.4     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
 scipy>=1.5.3     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
 scipy>=1.5.3     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
 
-numpy>=1.21.4    ;                            python_version >= '3.10'    # Python 3.10+
-numpy>=1.19.3    ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
-numpy>=1.19.2    ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
-numpy>=1.19.2    ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
-numpy>=1.19.2    ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+numpy>=1.23.2  ;                             python_version >= '3.11'  # Python 3.11
+numpy>=1.21.6  ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
+numpy>=1.19.3  ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
+numpy>=1.19.2  ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+numpy>=1.19.2  ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+numpy>=1.19.2  ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
 
-shapely>=1.8.2     ;                            python_version >= '3.10'    # Python 3.10+
-shapely>=1.7.1     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
-shapely>=1.7.1     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
-shapely>=1.7.1     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
-shapely>=1.7.1     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+shapely>=1.8.5 ; python_version < '4.0'  and python_version >= '3.11'  # Python 3.11+
+shapely>=1.8.2 ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
+shapely>=1.7.1 ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
+shapely>=1.7.1 ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+shapely>=1.7.1 ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+shapely>=1.7.1 ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
 
-Pillow>=9.1.0     ;                            python_version >= '3.10'    # Python 3.10+
+Pillow>=9.2.0     ; python_version < '4.0'  and python_version >= '3.11'  # Python 3.11+
+Pillow>=9.1.0     ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
 Pillow>=8.0.0     ; python_version < '3.10' and python_version >= '3.6'    # Python 3.6-3.9
 
-scikit-image>=0.19.0    ;                            python_version >= '3.10'    # Python 3.10+
-scikit-image>=0.18.0    ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+scikit-image>=0.19.3    ; python_version < '4.0'  and python_version >= '3.11'   # Python 3.10+
+scikit-image>=0.19.0    ; python_version < '3.11' and python_version >= '3.10'   # Python 3.10+
+scikit-image>=0.18.0    ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
 scikit-image>=0.17.2    ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
 scikit-image>=0.17.2    ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
 scikit-image>=0.17.2    ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6

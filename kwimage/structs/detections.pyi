@@ -1,6 +1,6 @@
+from nptyping import UInt8
 from numpy import ndarray
 from typing import Any
-from nptyping import UInt8
 from typing import Union
 from typing import List
 from typing import Dict
@@ -87,8 +87,8 @@ class _DetAlgoMixin:
 class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     __datakeys__: Incomplete
     __metakeys__: Incomplete
-    data: Incomplete
-    meta: Incomplete
+    data: Dict
+    meta: Dict
 
     def __init__(self,
                  data: Dict[str, ArrayLike] = None,

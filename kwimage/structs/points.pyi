@@ -1,10 +1,12 @@
+from typing import Any
+from typing import Tuple
 from typing import Union
 from typing import Callable
 import kwimage
 from skimage.transform._geometric import GeometricTransform
 from numpy.typing import ArrayLike
-from typing import Any
-from typing import Tuple
+from numpy import ndarray
+from typing import List
 from typing import Dict
 import kwcoco
 from _typeshed import Incomplete
@@ -97,10 +99,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         ...
 
     def draw_on(self,
-                image: Incomplete | None = ...,
-                color: str = ...,
-                radius: Incomplete | None = ...,
-                copy: bool = ...):
+                image: ndarray = None,
+                color: Union[str, Any, List[Any]] = 'white',
+                radius: Union[None, int] = None,
+                copy: bool = False):
         ...
 
     def draw(self,
@@ -108,6 +110,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
              ax: Incomplete | None = ...,
              alpha: Incomplete | None = ...,
              radius: int = ...,
+             setlim: bool = ...,
              **kwargs):
         ...
 

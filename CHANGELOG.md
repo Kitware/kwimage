@@ -4,7 +4,33 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.7 - Unreleased
+## Version 0.9.8 - Unreleased
+
+### Added
+* Added new `Box` class to represent a single box.
+* Basic shapely features in Polygon and MultiPolygon
+* `Polygon.oriented_bounding_box`
+* Added `__geo_interface__` to Polygon and MultiPolygon
+* Add imwrite "pil" backend. 
+
+
+### Changed:
+* imresize no longer fails if none of the scale params are given, it just
+  returns the image as-is.
+
+
+### Fixed
+* Bug in `kwimage.Boxes.draw(setlim=1)`
+* But in `fill_nans_with_checkers` with what channels were filled with checkers.
+
+### Changed
+* support for torch in `Boxes.iooa` (requires kwarray update)
+* imresize with letterbox now works when dsize has a None component.
+* Expose `on_value` and `off_value` in `fill_nans_with_checkers`
+* Better color support
+
+
+## Version 0.9.7 - Released 2022-08-23
 
 ### Changed
 * Changed image of Carl Sagan to one I know has a CC license. 

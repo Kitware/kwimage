@@ -3,7 +3,7 @@ import tqdm
 import numpy as np
 
 
-def demo():
+def demo_with_heatmap():
     window_shape = (512, 512)
     big_image = (np.random.rand(2048, 2048, 3).astype(np.float32) * 512).round()
 
@@ -77,5 +77,56 @@ def _stitcher_center_weighted_add(stitcher, space_slice, data):
     stitcher.add(stitch_slice, stitch_data, weight=stitch_weights)
 
 
+def demo_with_boxes():
+    import kwimage
+    import kwarray
+
+    rng = kwarray.ensure_rng(0)
+
+    # A dummy big image
+    big_image = rng.rand(2048, 2048, 3)
+
+    def detector(data):
+        """
+        A dummy detector. Plugin whatever you want here.
+        """
+        h, w = data.shape[0:2]
+        n = rng.randint(0, 4)
+        dets = kwimage.Detections(
+            boxes=kwimage.Boxes.random(n),
+            scores=rng.rand(n),
+        ).scale((w, h))
+        return dets
+
+    # The slider generates slices that index into the window according to a
+    # requested scheme.
+    window_shape = (512, 512)
+    slider = kwarray.SlidingWindow(big_image.shape[0:2], window_shape,
+                                   overlap=0.3, keepbound=True,
+                                   allow_overshoot=True)
+
+    det_accum = []
+    for slices in slider:
+
+        data = big_image[slices]
+
+        # Get detections relative to the window
+        rel_dets = detector(data)
+
+        # Put them into absolute coordinates
+        offset_x = slices[0].start
+        offset_y = slices[1].start
+        abs_dets = rel_dets.translate((offset_x, offset_y))
+
+        det_accum.append(abs_dets)
+
+    # Merge all the boxes together
+    all_boxes = kwimage.Detections.concatenate(det_accum)
+
+    keep_idxs = all_boxes.non_max_supression()
+    final_boxes = all_boxes.take(keep_idxs)
+    return final_boxes
+
+
 if __name__ == '__main__':
-    demo()
+    demo_with_heatmap()

@@ -203,8 +203,7 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     """
     DEPRECATED and removed: use imresize instead
     """
-    from kwimage._internal import schedule_deprecation
-    schedule_deprecation(
+    ub.schedule_deprecation(
         modname='kwimage',
         name='imscale',
         type='function',
@@ -416,22 +415,21 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
         scale (float | Tuple[float, float]):
             Desired floating point scale factor. If a tuple, the dimension
-            ordering is x,y. Mutually exclusive with dsize, max_dim, and
-            min_dim.
+            ordering is x,y.  Mutually exclusive with dsize, min_dim, max_dim.
 
         dsize (Tuple[int | None, int | None]):
             The desired width and height of the new image. If a dimension is
             None, then it is automatically computed to preserve aspect ratio.
-            Mutually exclusive with scale, max_dim, and min_dim.
+            Mutually exclusive with scale, min_dim, max_dim.
 
         max_dim (int):
             New size of the maximum dimension, the other dimension is scaled to
-            maintain aspect ratio. Mutually exclusive with scale, dsize, and
+            maintain aspect ratio. Mutually exclusive with scale, dsize,
             min_dim.
 
         min_dim (int):
             New size of the minimum dimension, the other dimension is scaled to
-            maintain aspect ratio.Mutually exclusive with scale, dsize, and
+            maintain aspect ratio. Mutually exclusive with scale, dsize,
             max_dim.
 
         interpolation (str | int):
@@ -569,15 +567,19 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
         - [ ] Allow for pre-clipping when letterbox=True
     """
-    old_w, old_h = img.shape[0:2][::-1]
-
     _mutex_args = [scale, dsize, max_dim, min_dim]
-    if sum(a is not None for a in _mutex_args) != 1:
+    _num_mutex_args = sum(a is not None for a in _mutex_args)
+    if _num_mutex_args > 1:
         raise ValueError(ub.paragraph(
             '''
-            Must specify EXACTLY one of scale, dsize, max_dim, xor min_dim'
+            May only specify EXACTLY one of scale, dsize, max_dim, xor min_dim'
             Got scale={}, dsize={}, max_dim={}, min_dim={}
             ''').format(*_mutex_args))
+    elif _num_mutex_args == 0:
+        # None of the scale params were specified, return the image as-is
+        return img
+
+    old_w, old_h = img.shape[0:2][::-1]
 
     if scale is not None:
         try:
@@ -643,6 +645,12 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         if dsize is None:
             raise ValueError('letterbox can only be used with dsize')
         orig_size = np.array(img.shape[0:2][::-1])
+        w, h = dsize
+        if w is None:
+            w = orig_size[0]
+        if h is None:
+            h = orig_size[1]
+        dsize = (w, h)
         target_size = np.array(dsize)
         # Determine to use the x or y scale factor
         unequal_sxy = (target_size / orig_size)
@@ -1944,7 +1952,7 @@ def connected_components(image, connectivity=8, ltype=np.int32,
 
         connectivity (int): either 4 or 8
 
-        ltype (dtype | str | int):
+        ltype (numpy.dtype | str | int):
             The dtype for the output label array.
             Can be either 'int32' or 'uint16', and this can be specified as a
             cv2 code or a numpy dtype.

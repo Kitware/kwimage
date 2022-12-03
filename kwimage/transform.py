@@ -131,6 +131,21 @@ class Matrix(Transform):
             >>> # m[len(m)] = None @ Matrix.random()
             >>> # m[len(m)] = np.eye(3) @ None
             >>> print('m = {}'.format(ub.repr2(m)))
+
+        Example:
+            >>> # Test with rationals
+            >>> # xdoctest: +REQUIRES(module:sympy)
+            >>> import kwimage
+            >>> a = kwimage.Matrix.random((3, 3)).rationalize()
+            >>> b = kwimage.Matrix.random((3, 3)).rationalize()
+            >>> c = kwimage.Matrix.random((3, 3))
+            >>> assert not c.is_rational()
+            >>> assert (a @ c).is_rational()
+            >>> assert (c @ a).is_rational()
+
+        Ignore:
+            %timeit c.inv()
+            %timeit a.inv()
         """
         if other is None:
             return self
@@ -149,21 +164,42 @@ class Matrix(Transform):
         else:
             raise TypeError('{} @ {}'.format(type(self), type(other)))
 
+    def is_rational(self):
+        """
+        TODO: rename to "is_symbolic"
+        """
+        if sympy is None:
+            return False
+        return isinstance(self.matrix, sympy.Matrix) and isinstance(self.matrix[0, 0], (sympy.Rational, sympy.core.symbol.Symbol, sympy.core.basic.Basic))
+
     def inv(self):
         """
         Returns the inverse of this matrix
 
         Returns:
             Matrix
+
+        Example:
+            >>> # Test with rationals
+            >>> # xdoctest: +REQUIRES(module:sympy)
+            >>> import kwimage
+            >>> self = kwimage.Matrix.random((3, 3)).rationalize()
+            >>> inv = self.inv()
+            >>> eye = self @ inv
+            >>> eye.isclose_identity(0, 0)
         """
         if self.matrix is None:
             return self.__class__(None)
         else:
             try:
                 inv_mat = np.linalg.inv(self.matrix)
-            except np.core._exceptions.UFuncTypeError:
-                # handle object arrays (rationals)
-                inv_mat = self.matrix.inv()
+            except (np.linalg.LinAlgError, np.core._exceptions.UFuncTypeError):
+                if self.is_rational():
+                    # inv_mat = mp.inverse(self.matrix)
+                    # handle object arrays (rationals)
+                    inv_mat = self.matrix.inv()
+                else:
+                    raise
             return self.__class__(inv_mat)
 
     @property
@@ -228,6 +264,10 @@ class Matrix(Transform):
         Convert the underlying matrix to a rational type to avoid floating
         point errors. This does decrease efficiency.
 
+        TODO:
+            - [ ] mpmath for arbitrary precision? It doesn't seem to do
+            inverses correct whereas sympy does.
+
         Ignore:
             from sympy import Rational
             from fractions import Fraction
@@ -253,22 +293,20 @@ class Matrix(Transform):
         Example:
             >>> # xdoctest: +REQUIRES(module:sympy)
             >>> import kwimage
-            >>> self = mat = kwimage.Matrix.random((3, 3)).rationalize()
+            >>> self = kwimage.Matrix.random((3, 3))
+            >>> mat = self.rationalize()
             >>> mat2 = kwimage.Matrix.random((3, 3))
             >>> mat3 = mat @ mat2
-            >>> assert 'sympy' in mat3.matrix.__class__.__module__
+            >>> #assert 'sympy' in mat3.matrix.__class__.__module__
             >>> mat3 = mat2 @ mat
-            >>> assert 'sympy' in mat3.matrix.__class__.__module__
+            >>> #assert 'sympy' in mat3.matrix.__class__.__module__
             >>> assert not mat.isclose_identity()
             >>> assert (mat @ mat.inv()).isclose_identity(rtol=0, atol=0)
         """
         if self.matrix is None:
             new_mat = self.matrix
         else:
-            import sympy
-            float_mat = self.matrix
-            flat_rat = list(map(sympy.Rational, float_mat.ravel().tolist()))
-            new_mat = sympy.Matrix(flat_rat).reshape(*float_mat.shape)
+            new_mat = _RationalNDArray.from_numpy(self.matrix)
         new = self.__class__(new_mat)
         return new
 
@@ -298,9 +336,11 @@ class Matrix(Transform):
             try:
                 return np.allclose(self.matrix, eye, rtol=rtol, atol=atol)
             except TypeError:
-                # For sympy
-                residual = np.array(self.matrix - eye).astype(float)
-                return np.allclose(residual, 0, rtol=rtol, atol=atol)
+                if self.is_rational():
+                    residual = np.array(self.matrix - eye).astype(float)
+                    return np.allclose(residual, 0, rtol=rtol, atol=atol)
+                else:
+                    raise
 
 
 class Linear(Matrix):
@@ -472,7 +512,6 @@ class Projective(Linear):
             >>> img1_warp = kwimage.warp_projective(img1, A_recovered.matrix, dsize=img1.shape[0:2][::-1])
             >>> canvas = kwimage.stack_images([img1, img2, img1_warp], pad=10, axis=1, bg_value=(1., 1., 1.))
             >>> kwplot.imshow(canvas)
-
         """
         if 0:
             import cv2
@@ -798,7 +837,7 @@ class Projective(Linear):
         return self
 
     def decompose(self):
-        """
+        r"""
         Based on the analysis done in [ME1319680]_.
 
         Returns:
@@ -822,6 +861,22 @@ class Projective(Linear):
             >>> # Recover the warp
             >>> pts1, pts2 = points1.xy, points2.xy
             >>> self = kwimage.Projective.random()
+            >>> self.decompose()
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:sympy)
+            >>> from kwimage.transform import *  # NOQA
+            >>> import kwimage
+            >>> from kwimage.transform import _RationalNDArray
+            >>> self = kwimage.Projective.random().rationalize()
+            >>> rat_decomp = self.decompose()
+            >>> print('rat_decomp = {}'.format(ub.repr2(rat_decomp, nl=1)))
+            >>> ####
+            >>> import sympy
+            >>> cells = sympy.symbols('h1, h2, h3, h4, h5, h6, h7, h8, h9')
+            >>> matrix = _RationalNDArray(cells).reshape(3, 3)
+            >>> # Symbolic decomposition. Neat.
+            >>> self = kwimage.Projective(matrix)
             >>> self.decompose()
 
         Ignore:
@@ -904,7 +959,7 @@ class Projective(Linear):
         """
         import numpy as np
         h1, h2, h3, h4, h5, h6, h7, h8, h9 = self.matrix.ravel()
-        assert h9 == 1
+        # assert h9 == 1
 
         a1 = h1 - h3 * h7
         a2 = h2 - h3 * h8
@@ -913,7 +968,9 @@ class Projective(Linear):
         a5 = h5 - h6 * h8
         a6 = h6
 
-        affine_part = Affine(np.array([
+        mcls = _RationalNDArray if self.is_rational() else np.array
+
+        affine_part = Affine(mcls([
             [a1, a2, a3],
             [a4, a5, a6],
             [0,   0,  1],
@@ -1435,7 +1492,7 @@ class Affine(Projective):
 
     @profile
     def decompose(self):
-        """
+        r"""
         Decompose the affine matrix into its individual scale, translation,
         rotation, and skew parameters.
 
@@ -1463,6 +1520,13 @@ class Affine(Projective):
             >>> self = Affine.scale(0.001) @ Affine.random()
             >>> params = self.decompose()
             >>> self.det()
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:sympy)
+            >>> # Test decompose with symbolic matrices
+            >>> from kwimage.transform import *  # NOQA
+            >>> self = Affine.random().rationalize()
+            >>> self.decompose()
 
         Example:
             >>> # xdoctest: +REQUIRES(module:pandas)
@@ -1540,17 +1604,30 @@ class Affine(Projective):
                     'theta': 0., }
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
 
-        sx = math.sqrt(a11 * a11 + a21 * a21)
-        theta = math.atan2(a21, a11)
-        sin_t = math.sin(theta)
-        cos_t = math.cos(theta)
+        if self.is_rational():
+            math_mod = sympy
+        else:
+            math_mod = math
+
+        sx = math_mod.sqrt(a11 * a11 + a21 * a21)
+        theta = math_mod.atan2(a21, a11)
+        sin_t = math_mod.sin(theta)
+        cos_t = math_mod.cos(theta)
 
         msy = a12 * cos_t + a22 * sin_t
 
-        if abs(cos_t) < abs(sin_t):
-            sy = (msy * cos_t - a12) / sin_t
-        else:
-            sy = (a22 - msy * sin_t) / cos_t
+        try:
+            if abs(cos_t) < abs(sin_t):
+                sy = (msy * cos_t - a12) / sin_t
+            else:
+                sy = (a22 - msy * sin_t) / cos_t
+        except TypeError:
+            # symbolic issue
+            sy = sympy.Piecewise(
+                ((msy * cos_t - a12) / sin_t, abs(cos_t) < abs(sin_t)),
+                ((a22 - msy * sin_t) / cos_t, True)
+            )
+
         shearx = msy / sy
         tx, ty = a13, a23
 
@@ -1744,8 +1821,8 @@ class Affine(Projective):
             Affine : a transform that warps from "space1" to "space2".
 
         Note:
-            An affine matrix has 6 degrees of freedome, so at least 6
-            point pairs are needed.
+            An affine matrix has 6 degrees of freedom, so at least 3
+            non-colinear xy-point pairs are needed.
 
         References:
             https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf page 22
@@ -1835,6 +1912,93 @@ class Affine(Projective):
             [   0, 0, 1],
         ])
         return Affine(mat)
+
+
+try:
+    import sympy
+    _RationalMatrixBase = sympy.Matrix
+except Exception:
+    sympy = None
+    _RationalMatrixBase = object
+
+
+class _RationalNDArray(_RationalMatrixBase):
+    """
+    Wraps sympy matrices to make it somewhat more compatible with numpy.
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:sympy)
+        >>> from kwimage.transform import *  # NOQA
+        >>> from kwimage.transform import _RationalNDArray
+        >>> arr = np.random.rand(3, 3)
+        >>> a = _RationalNDArray.from_numpy(arr)
+        >>> b = np.random.rand(3, 3)
+        >>> c = a @ b
+        >>> c @ c.inv()
+    """
+
+    @classmethod
+    def from_numpy(_RationalNDArray, arr):
+        flat_rat = list(map(sympy.Rational, arr.ravel().tolist()))
+        self = _RationalNDArray(flat_rat).reshape(*arr.shape)
+        return self
+
+    def __matmul__(self, other):
+        if isinstance(other, np.ndarray):
+            other = _RationalNDArray.from_numpy(other)
+        return super().__matmul__(other)
+
+    def __rmatmul__(self, other):
+        if isinstance(other, np.ndarray):
+            other = _RationalNDArray.from_numpy(other)
+        return super().__matmul__(other)
+
+    def numpy(self):
+        return np.array(self.tolist()).astype(float)
+
+    def ravel(self):
+        return self.flat()
+
+# Does not seem to be working out
+# if 0:
+#     try:
+#         from mpmath import matrix as mp_matrix_base
+#     except ImportError:
+#         mp_matrix_base = object
+#     class _mpmatrix(mp_matrix_base):
+#         """
+#         A compatability layer for mpmath matrix
+
+#         Example:
+#             >>> # xdoctest: +REQUIRES(module:mpmath)
+#             >>> from kwimage.transform import _mpmatrix  # NOQA
+#             >>> A = _mpmatrix(np.random.rand(3, 3))
+#             >>> B = _mpmatrix(np.random.rand(3, 3))
+#             >>> C = np.random.rand(3, 3)
+#             >>> A @ B
+#             >>> B @ A
+#             >>> self = A
+#             >>> other = C
+#             >>> A.__matmul__(C)
+#             >>> # C.__matmul__(A) not sure why this fails
+#         """
+
+#         @property
+#         def shape(self):
+#             return (self.rows, self.cols)
+
+#         def __matmul__(self, other):
+#             if isinstance(other, np.ndarray):
+#                 other = _mpmatrix(other)
+#             return _mpmatrix(mp_matrix_base.__matmul__(self, other))
+
+#         def __rmatmul__(self, other):
+#             if isinstance(other, np.ndarray):
+#                 other = _mpmatrix(other)
+#             return _mpmatrix(mp_matrix_base.__matmul__(other, self))
+
+#         def numpy(self):
+#             return np.array(self).reshape(*self.shape)
 
 
 # def _ensure_iterablen(scalar, n):

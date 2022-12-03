@@ -1,14 +1,10 @@
-from torch import Tensor
 from typing import Tuple
+from torch import Tensor
 from numpy.typing import ArrayLike
 from typing import Sequence
 from _typeshed import Incomplete
 
 TORCH_GRID_SAMPLE_HAS_ALIGN: Incomplete
-
-
-def warp_image(inputs, mat, **kw) -> None:
-    ...
 
 
 def warp_tensor(inputs: Tensor,

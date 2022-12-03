@@ -11,9 +11,12 @@ parameterize two points! Because of this THE USER MUST ALWAYS BE EXPLICIT ABOUT
 THE BOX FORMAT.
 
 There are 3 main bounding box formats:
-    xywh: top left xy-coordinates and width height offsets
-    cxywh: center xy-coordinates and width height offsets
-    ltrb: top left and bottom right xy coordinates
+
+    * xywh: top left xy-coordinates and width height offsets
+
+    * cxywh: center xy-coordinates and width height offsets
+
+    * ltrb: top left and bottom right xy coordinates
 
 Here is some example usage
 
@@ -65,12 +68,17 @@ Example:
     >>> boxes.draw(color='kw_red')
     >>> plt.gcf().suptitle('Matplotlib and OpenCV have first class visualization support')
     >>> kwplot.show_if_requested()
+
+
+SeeAlso:
+    :class:`kwimage.structs.single_box.Box`
 """
 import numpy as np
 import ubelt as ub
 import warnings
 import skimage
 import kwarray
+import numbers
 from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
 
@@ -332,21 +340,23 @@ def _box_ious_py(ltrb1, ltrb2, bias=0):
     return ious
 
 
-def _isect_areas(ltrb1, ltrb2, bias=0):
+def _isect_areas(ltrb1, ltrb2, bias=0, _impl=None):
     """
     Returns only the area of the intersection
     """
-    x_maxs = np.minimum(ltrb1[:, 2][:, None], ltrb2[:, 2])
-    x_mins = np.maximum(ltrb1[:, 0][:, None], ltrb2[:, 0])
+    if _impl is None:
+        _impl = np
+    x_maxs = _impl.minimum(ltrb1[:, 2][:, None], ltrb2[:, 2])
+    x_mins = _impl.maximum(ltrb1[:, 0][:, None], ltrb2[:, 0])
 
-    iws = np.maximum(x_maxs - x_mins + bias, 0)
+    iws = _impl.maximum(x_maxs - x_mins + bias, 0)
     # note: it would be possible to significantly reduce the computation by
     # filtering any box pairs where iws <= 0. Not sure how to do with numpy.
 
-    y_maxs = np.minimum(ltrb1[:, 3][:, None], ltrb2[:, 3])
-    y_mins = np.maximum(ltrb1[:, 1][:, None], ltrb2[:, 1])
+    y_maxs = _impl.minimum(ltrb1[:, 3][:, None], ltrb2[:, 3])
+    y_mins = _impl.maximum(ltrb1[:, 1][:, None], ltrb2[:, 1])
 
-    ihs = np.maximum(y_maxs - y_mins + bias, 0)
+    ihs = _impl.maximum(y_maxs - y_mins + bias, 0)
 
     inter_areas = iws * ihs
     return inter_areas
@@ -455,7 +465,7 @@ class _BoxConversionMixins(object):
             y1, x1, h, w = self.components
             return self.to_ltrb(copy=copy).to_xywh(copy=copy)
         else:
-            raise KeyError(self.format)
+            raise KeyError('Unknown conversion from format={} to xywh'.format(self.format))
         xywh = _cat([x1, y1, w, h])
         return Boxes(xywh, BoxFormat.XYWH, check=False)
 
@@ -484,7 +494,7 @@ class _BoxConversionMixins(object):
         elif self.format == BoxFormat._RCHW:
             return self.to_ltrb(copy=copy).to_cxywh(copy=copy)
         else:
-            raise KeyError(self.format)
+            raise KeyError('Unknown conversion from format={} to cxywh'.format(self.format))
         cxywh = _cat([cx, cy, w, h])
         return Boxes(cxywh, BoxFormat.CXYWH, check=False)
 
@@ -513,11 +523,16 @@ class _BoxConversionMixins(object):
             x2 = x1 + w
             y2 = y1 + h
         else:
-            raise KeyError(self.format)
+            raise KeyError('Unknown conversion from format={} to ltrb'.format(self.format))
         ltrb = _cat([x1, y1, x2, y2])
         return Boxes(ltrb, BoxFormat.LTRB, check=False)
 
-    to_tlbr = to_ltrb
+    def to_tlbr(self, **kwargs):
+        ub.schedule_deprecation(
+            'kwimage', 'Boxes.to_tlbr', 'method',
+            migration='Use Boxes.to_ltrb instead.', deprecate='0.9.8',
+            error='0.11.0', remove='0.12.0')
+        return self.to_ltrb(**kwargs)
 
     @_register_convertor(BoxFormat._RCHW)
     def _to_rchw(self, copy=True):
@@ -622,10 +637,20 @@ class _BoxConversionMixins(object):
         return self
 
     @classmethod
-    def coerce(Boxes, data):
+    def coerce(Boxes, data, **kwargs):
         """
+        Args:
+            data : can be :
+                * a Boxes object
+                * a shapely Polygon
+                * list of 4 numbers (also requires the format kwarg)
+
+            **kwargs:
+                format (str | None) :
+                    specify the format code
+
         Returns:
-            Boxes:
+            Boxes: the wrapped or converted object
         """
         from shapely.geometry import Polygon
         if isinstance(data, Boxes):
@@ -633,7 +658,19 @@ class _BoxConversionMixins(object):
         elif isinstance(data, Polygon):
             self = Boxes.from_shapely(data)
         else:
-            raise NotImplementedError
+            _arr_data = None
+            if isinstance(data, np.ndarray):
+                _arr_data = np.array(data)
+            elif isinstance(data, list):
+                _arr_data = np.array(data)
+
+            if _arr_data is not None:
+                format = kwargs.get('format', None)
+                if format is None:
+                    raise Exception('ambiguous, specify Box format')
+                self = Boxes(_arr_data, format=format)
+            else:
+                raise NotImplementedError
         return self
 
     @classmethod
@@ -1774,7 +1811,7 @@ class _BoxDrawMixins(object):
     """
 
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
-             fill=False, lw=2, ax=None, setlim=False):
+             fill=False, lw=2, ax=None, setlim=False, **kwargs):
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
@@ -1825,8 +1862,14 @@ class _BoxDrawMixins(object):
         if ax is None:
             ax = plt.gca()
 
+        lw = kwargs.get('linewidth', lw)
+
         if setlim:
-            xmin, ymin, xmax, ymax = self.to_ltrb().components
+            xmins, ymins, xmaxs, ymaxs = self.to_ltrb().components
+            xmin = xmins.min()
+            ymin = ymins.min()
+            xmax = xmaxs.max()
+            ymax = ymaxs.max()
             _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
 
         boxes = self.to_xywh()
@@ -1868,8 +1911,9 @@ class _BoxDrawMixins(object):
             ndarray: the image drawn onto.
 
         Example:
-            >>> from kwimage.structs.boxes import *  # NOQA
-            >>> self = Boxes.random(num=10, scale=256, rng=0, format='ltrb')
+            >>> import kwimage
+            >>> import numpy as np
+            >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> color = 'blue'
             >>> image = (np.random.rand(256, 256, 3) * 255).astype(np.uint8)
@@ -1884,9 +1928,9 @@ class _BoxDrawMixins(object):
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> from kwimage.structs.boxes import *  # NOQA
             >>> import kwimage
-            >>> self = Boxes.random(num=10, rng=0).scale(128)
+            >>> import numpy as np
+            >>> self = kwimage.Boxes.random(num=10, rng=0).scale(128)
             >>> self.data[0][:] = [3, 3, 100, 100]
             >>> color = 'blue'
             >>> # Test drawong on all channel + dtype combinations
@@ -1917,8 +1961,8 @@ class _BoxDrawMixins(object):
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> from kwimage.structs.boxes import *  # NOQA
-            >>> self = Boxes.random(num=10, scale=256, rng=0, format='ltrb')
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> image = self.draw_on()
             >>> # xdoc: +REQUIRES(--show)
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -1930,7 +1974,6 @@ class _BoxDrawMixins(object):
         """
         import cv2
         import kwimage
-        import numbers
         def _coords(x, y):
             # ensure coords don't go out of bounds or cv2 throws weird error
             x = min(max(x, 0), w - 1)
@@ -2053,6 +2096,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     the raw data and let the class be garbage collected. This will help ensure
     that your code is portable and understandable if this class is not
     available.
+
+    This class is meant to efficiently store and manipulate multiple boxes. In
+    the case of a single box the :class:`kwimage.structs.single_box.Box` class
+    can be used instead.
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE
@@ -2755,7 +2802,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         data = self.data
         if torch is not None and torch.is_tensor(data):
-            data = data.data.cpu().numpy()
+            data = self._impl.numpy(data.data)
+            # data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format)
         return newself
 
@@ -3011,7 +3059,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             self_ltrb = self.to_ltrb(copy=False)
             other_ltrb = other.to_ltrb(copy=False)
 
-            isect = _isect_areas(self_ltrb.data, other_ltrb.data)
+            _impl = self._impl
+            isect = _isect_areas(self_ltrb.data, other_ltrb.data, _impl=_impl)
 
         if other_is_1d:
             isect = isect[..., 0]

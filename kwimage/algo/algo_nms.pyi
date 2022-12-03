@@ -1,10 +1,10 @@
 from numpy import ndarray
 from typing import Union
 from typing import Tuple
-from typing import Any
 from nptyping import Float32
-from nptyping import Shape
+from typing import Any
 from nptyping import Int64
+from nptyping import Shape
 from _typeshed import Incomplete
 from typing import Any
 

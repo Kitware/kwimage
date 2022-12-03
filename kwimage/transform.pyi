@@ -1,7 +1,8 @@
 from numpy import ndarray
+import skimage.transform
 from typing import Dict
-from typing import Union
 from typing import Tuple
+from typing import Union
 import ubelt as ub
 from _typeshed import Incomplete
 
@@ -41,6 +42,9 @@ class Matrix(Transform):
     def __matmul__(self, other):
         ...
 
+    def is_rational(self):
+        ...
+
     def inv(self) -> Matrix:
         ...
 
@@ -64,6 +68,12 @@ class Matrix(Transform):
     def __getitem__(self, index):
         ...
 
+    def rationalize(self):
+        ...
+
+    def astype(self, dtype: type):
+        ...
+
     def isclose_identity(self, rtol: float = ..., atol: float = ...):
         ...
 
@@ -76,6 +86,36 @@ class Projective(Linear):
 
     @classmethod
     def fit(cls, pts1: ndarray, pts2: ndarray) -> Projective:
+        ...
+
+    @classmethod
+    def projective(cls,
+                   scale: Incomplete | None = ...,
+                   offset: Incomplete | None = ...,
+                   shearx: Incomplete | None = ...,
+                   theta: Incomplete | None = ...,
+                   uv: Incomplete | None = ...,
+                   about: Incomplete | None = ...):
+        ...
+
+    @classmethod
+    def coerce(cls, data: Incomplete | None = ..., **kwargs) -> Projective:
+        ...
+
+    def is_affine(self) -> bool:
+        ...
+
+    def to_skimage(self) -> skimage.transform.AffineTransform:
+        ...
+
+    @classmethod
+    def random(cls,
+               shape: Incomplete | None = ...,
+               rng: Incomplete | None = ...,
+               **kw):
+        ...
+
+    def decompose(self) -> Dict:
         ...
 
 
@@ -95,10 +135,13 @@ class Affine(Projective):
     def coerce(cls, data: Incomplete | None = ..., **kwargs) -> Affine:
         ...
 
-    def eccentricity(self):
+    def eccentricity(self) -> float:
         ...
 
-    def to_shapely(self):
+    def to_shapely(self) -> Tuple[float, float, float, float, float, float]:
+        ...
+
+    def to_skimage(self) -> skimage.transform.AffineTransform:
         ...
 
     @classmethod
@@ -135,6 +178,8 @@ class Affine(Projective):
                shear: float = None,
                about: Union[float, Tuple[float, float]] = None,
                shearx: float = None,
+               array_cls: Incomplete | None = ...,
+               math_mod: Incomplete | None = ...,
                **kwargs) -> Affine:
         ...
 

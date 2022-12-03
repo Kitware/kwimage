@@ -12,17 +12,19 @@ def stack_images(images: Iterable[ndarray],
                  interpolation: Union[int, str] = None,
                  overlap: int = 0,
                  return_info: bool = False,
-                 bg_value: Union[Number, ndarray] = None,
-                 pad: int = None) -> Tuple[ndarray, List]:
+                 bg_value: Union[Number, ndarray, str] = None,
+                 pad: int = None,
+                 allow_casting: bool = True) -> Tuple[ndarray, List]:
     ...
 
 
-def stack_images_grid(
-        images: Iterable[ndarray],
-        chunksize: int = None,
-        axis: int = 0,
-        overlap: int = 0,
-        pad: int = None,
-        return_info: bool = False,
-        bg_value: Union[Number, ndarray] = None) -> Tuple[ndarray, List]:
+def stack_images_grid(images: Iterable[ndarray],
+                      chunksize: int = None,
+                      axis: int = 0,
+                      overlap: int = 0,
+                      pad: int = None,
+                      return_info: bool = False,
+                      bg_value: Union[Number, ndarray, str] = None,
+                      resize: Union[int, str, None] = None,
+                      allow_casting: bool = True) -> Tuple[ndarray, List]:
     ...

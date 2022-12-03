@@ -650,8 +650,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
         import gdal
     try:
         if nodata is not None:
-            from kwimage._internal import schedule_deprecation
-            schedule_deprecation(
+            ub.schedule_deprecation(
                 modname='kwimage', name='nodata',
                 type='argument to _imread_gdal',
                 migration='use nodata_method instead',
@@ -1143,6 +1142,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         skimage.io.imsave(fpath, image, **kwargs)
     elif backend == 'gdal':
         _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+    elif backend == 'pil':
+        from PIL import Image
+        pil_img = Image.fromarray(image)
+        pil_img.save(fpath)
     elif backend == 'itk':
         import itk
         itk_obj = itk.image_view_from_array(image)
@@ -1242,6 +1245,11 @@ def load_image_shape(fpath, backend='auto'):
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
         >>> shape = kwimage.load_image_shape(fpath)
         >>> assert shape == (64, 64, 3)
+
+    Ignore:
+        * Note: this seems to have an issue with PNG's with mode='LA',
+          which means that there really are two underlying channels, but it
+          kwimage.imread cv2 backend reads it as a 4 channel RGBA array.
     """
     if backend == 'auto':
         try:
@@ -1343,6 +1351,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      interleave='PIXEL',
                                      options=None,
                                      nodata=None,
+                                     nodata_value=None,
                                      crs=None, transform=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
@@ -1371,8 +1380,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         options (List[str]): other gdal options. See [GDAL_GTiff_Options]_ for
             details.
 
-        nodata (int):
-            if specified, writes a nodata value to the geotiff in each band
+        nodata_value (int):
+            if specified, uses this as the nodata value for each band.
 
         transform (kwimage.Affine):
             An affine transform from image coordinates into a specified
@@ -1613,12 +1622,22 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         data_set.SetProjection(crs)
         data_set.SetGeoTransform(aff.to_gdal())
 
+    if nodata is not None:
+        ub.schedule_deprecation(
+            modname='kwimage', name='nodata',
+            type='argument to _imwrite_gdal',
+            migration='use nodata_value instead',
+            deprecate='0.9.5', error='0.10.0', remove='0.11.0')
+
+    if nodata_value is None:
+        nodata_value = nodata
+
     for i in range(num_bands):
         band_data = np.ascontiguousarray(data[:, :, i])
         band = data_set.GetRasterBand(i + 1)
         band.WriteArray(band_data)
-        if nodata is not None:
-            band.SetNoDataValue(nodata)
+        if nodata_value is not None:
+            band.SetNoDataValue(nodata_value)
         # TODO:
         # could set the color interpretation here
         band = None

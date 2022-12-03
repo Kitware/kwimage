@@ -51,11 +51,13 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             "thickness": border thickness, defaults to 1.
 
     Returns:
-        ndarray: the image that was drawn on
+        ndarray | Tuple[ndarray, dict] :
+            The image that was drawn on and optionally an information
+            dictionary if return_info was True.
 
     Note:
         The image is modified inplace. If the image is non-contiguous then this
-        returns a UMat instead of a ndarray, so be carefull with that.
+        returns a UMat instead of a ndarray, so be careful with that.
 
     Related:
         The logic in this function is related to the following stack overflow
@@ -208,7 +210,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     needs_y0 = y0 is None and valign != 'top'
 
     if needs_x0 or needs_y0:
-        # Speical case: when the alignment is non left-top, AND we don't have
+        # Special case: when the alignment is non left-top, AND we don't have
         # an origin we need to do a bit of extra computation to figure out what
         # the width / height need to be
         text_w, text_h = _text_sizes(text, (1, 1), border_thickness, kwargs, None, halign='left')[0:2]
@@ -1088,12 +1090,23 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
         return header
 
 
-def fill_nans_with_checkers(canvas, square_shape=8):
+def fill_nans_with_checkers(canvas, square_shape=8,
+                            on_value='auto', off_value='auto'):
     """
-    Fills nan values with a 2d checkerboard pattern.
+    Fills nan or masked values with a 2d checkerboard pattern.
 
     Args:
         canvas (np.ndarray): data replace nans in
+
+        square_shape (int | Tuple[int, int] | str):
+            Size of the checker squares. Defaults to 8.
+
+        on_value (Number | str):
+            The value of one checker. Defaults to 1 for floats and 255 for
+            ints.
+
+        off_value (Number | str):
+            The value off the other checker. Defaults to 0.
 
     Returns:
         np.ndarray: the inplace modified canvas
@@ -1109,12 +1122,16 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> poly2 = kwimage.Polygon.random(rng=3).scale(orig_img.shape[0])
         >>> poly3 = kwimage.Polygon.random(rng=4).scale(orig_img.shape[0] // 2)
         >>> poly3 = poly3.translate((0, 200))
+        >>> poly4 = poly2.translate((100, 0))
+        >>> poly5 = poly2.translate((50, 100))
         >>> img = orig_img.copy()
         >>> img = poly1.fill(img, np.nan)
         >>> img = poly3.fill(img, 0)
         >>> img[:, :, 0] = poly2.fill(np.ascontiguousarray(img[:, :, 0]), np.nan)
+        >>> img[:, :, 2] = poly4.fill(np.ascontiguousarray(img[:, :, 2]), np.nan)
+        >>> img[:, :, 1] = poly5.fill(np.ascontiguousarray(img[:, :, 1]), np.nan)
         >>> input_img = img.copy()
-        >>> canvas = fill_nans_with_checkers(input_img)
+        >>> canvas = fill_nans_with_checkers(input_img, on_value=0.3)
         >>> assert input_img is canvas
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
@@ -1140,56 +1157,88 @@ def fill_nans_with_checkers(canvas, square_shape=8):
         >>> kwplot.autompl()
         >>> kwplot.imshow(img, pnum=(1, 2, 1))
         >>> kwplot.imshow(canvas, pnum=(1, 2, 2))
+
+    Ignore:
+        >>> import kwarray
+        >>> import numpy as np
+        >>> img = np.array([[
+        >>>     [   0.5,    0.5,    0.5],
+        >>>     [np.nan,    0.5,    0.5],
+        >>>     [   0.5, np.nan,    0.5],
+        >>>     [np.nan, np.nan,    0.5],
+        >>>     [   0.5,    0.5, np.nan],
+        >>>     [np.nan,    0.5, np.nan],
+        >>>     [   0.5, np.nan, np.nan],
+        >>>     [np.nan, np.nan, np.nan],
+        >>> ]])
+        >>> canvas = kwimage.fill_nans_with_checkers(img, square_shape=1)
+        >>> print(ub.repr2({'canvas': canvas}, nl=2, with_dtype=False))
+        >>> print(canvas)
     """
     invalid_mask = np.isnan(canvas)
-    return _masked_checkerboard(canvas, invalid_mask, square_shape)
+    return _masked_checkerboard(canvas, invalid_mask, square_shape, on_value=on_value, off_value=off_value)
 
 
-def _masked_checkerboard(canvas, invalid_mask, square_shape):
+def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value):
     import kwimage
     import kwarray
     canvas = kwarray.atleast_nd(canvas, 3)
     invalid_mask = kwarray.atleast_nd(invalid_mask, 3)
-    allchan_invalid_mask = invalid_mask.all(axis=2, keepdims=1)
-    anychan_invalid_mask = invalid_mask.any(axis=2, keepdims=1)
+    allchan_invalid_mask = invalid_mask.all(axis=2, keepdims=True)
+    anychan_invalid_mask = invalid_mask.any(axis=2, keepdims=True)
 
     some_invalid_mask = (~allchan_invalid_mask) * anychan_invalid_mask
     dsize = canvas.shape[0:2][::-1]
-    checkers2d = None
 
-    if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
-        on_value = 255
-    else:
-        on_value = 1
+    if on_value == 'auto':
+        if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
+            on_value = 255
+        else:
+            on_value = 1
+    if off_value == 'auto':
+        off_value = 0
 
-    if np.any(allchan_invalid_mask):
-        if checkers2d is None:
-            checkers2d = kwimage.checkerboard(square_shape=square_shape,
-                                              dsize=dsize, dtype=canvas.dtype,
-                                              on_value=on_value)
-        # canvas = kwimage.ensure_alpha_channel(canvas, (1 - invalid_mask))
-        # checkers = kwimage.ensure_alpha_channel(checkers, 1)
-        locs = np.where(allchan_invalid_mask)
-        canvas[locs[0:2]] = checkers2d[..., None][locs[0:2]]
+    any_total_nans = np.any(allchan_invalid_mask)
+    any_partial_nans = np.any(some_invalid_mask)
 
-    if np.any(some_invalid_mask):
-        if checkers2d is None:
-            checkers2d = kwimage.checkerboard(
-                square_shape=square_shape, dsize=dsize, dtype=canvas.dtype,
-                on_value=on_value)
+    if any_total_nans or any_partial_nans:
+        checkers2d = kwimage.checkerboard(
+            square_shape=square_shape, dsize=dsize, dtype=canvas.dtype,
+            on_value=on_value)
 
-        locs = np.where(some_invalid_mask)
-        canvas[locs] = checkers2d[locs[0:2]]
+        if any_total_nans:
+            # canvas = kwimage.ensure_alpha_channel(canvas, (1 - invalid_mask))
+            # checkers = kwimage.ensure_alpha_channel(checkers, 1)
+            locs = np.where(allchan_invalid_mask)
+            canvas[locs[0:2]] = checkers2d[..., None][locs[0:2]]
+
+        if any_partial_nans:
+            for chan_idx in range(invalid_mask.shape[2]):
+                chan_mask = invalid_mask[..., chan_idx]
+                locs3d = np.where(chan_mask[..., None])
+                locs3d[2][:] = chan_idx
+                locs2d = locs3d[0:2]
+                canvas[locs3d] = checkers2d[locs2d]
+
     return canvas
 
 
-def nodata_checkerboard(canvas, square_shape=8):
+def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto'):
     """
     Fills nans or masked values with a checkerbord pattern.
 
     Args:
         canvas (ndarray): A 2D image with any number of channels.
+
         square_shape (int): the pixel size of the checkers
+
+        on_value (Number | str):
+            The value of one checker. Defaults to 1 for floats and 255 for
+            ints.
+
+        off_value (Number | str):
+            The value off the other checker. Defaults to 0.
+
 
     Returns:
         ndarray : an output array with imputed values.
@@ -1208,8 +1257,8 @@ def nodata_checkerboard(canvas, square_shape=8):
         >>> ma_mask = na_circle.fill(np.zeros(data.shape, dtype=np.uint8), value=1).astype(bool)
         >>> na_mask = ma_circle.fill(np.zeros(data.shape, dtype=np.uint8), value=1).astype(bool)
         >>> # Hack the channels to make a ven diagram
-        >>> ma_mask[..., 0] = False
-        >>> na_mask[..., 2] = False
+        >>> ma_mask[..., [0, 1]] = False
+        >>> na_mask[..., [0, 2]] = False
         >>> data = kwimage.ensure_float01(data)
         >>> data[na_mask] = np.nan
         >>> canvas = np.ma.MaskedArray(data, ma_mask)
@@ -1217,7 +1266,7 @@ def nodata_checkerboard(canvas, square_shape=8):
         >>> kwimage.draw_text_on_image(canvas, 'nan values',    (256 + 96, 256 + 128), halign='center', valign='top', border=2)
         >>> kwimage.draw_text_on_image(canvas, 'kwimage.nodata_checkerboard',    (256, 5), halign='center', valign='top', border=2)
         >>> kwimage.draw_text_on_image(canvas, '(pip install kwimage)', (512, 512 - 10), halign='right', valign='bottom', border=2, fontScale=0.8)
-        >>> result = kwimage.nodata_checkerboard(canvas)
+        >>> result = kwimage.nodata_checkerboard(canvas, on_value=0.5)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -1255,7 +1304,8 @@ def nodata_checkerboard(canvas, square_shape=8):
         invalid_mask = None
 
     if invalid_mask is not None:
-        canvas = _masked_checkerboard(canvas, invalid_mask, square_shape)
+        canvas = _masked_checkerboard(canvas, invalid_mask, square_shape,
+                                      on_value, off_value)
 
     if is_masked:
         canvas = np.ma.MaskedArray(data=canvas, mask=invalid_mask)

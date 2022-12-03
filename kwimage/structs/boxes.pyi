@@ -8,6 +8,7 @@ import kwimage
 from typing import Callable
 from numpy.typing import ArrayLike
 import numpy as np
+from numbers import Number
 from typing import Optional
 import matplotlib
 from torch import Tensor
@@ -64,7 +65,8 @@ class _BoxConversionMixins:
     def to_ltrb(self, copy: bool = ...):
         ...
 
-    to_tlbr: Incomplete
+    def to_tlbr(self, **kwargs):
+        ...
 
     def to_imgaug(self, shape: tuple):
         ...
@@ -80,7 +82,7 @@ class _BoxConversionMixins:
         ...
 
     @classmethod
-    def coerce(Boxes, data) -> Boxes:
+    def coerce(Boxes, data, **kwargs) -> Boxes:
         ...
 
     @classmethod
@@ -92,7 +94,8 @@ class _BoxConversionMixins:
                    slices,
                    shape: Tuple[int, int] = None,
                    clip: bool = True,
-                   endpoint: bool = True):
+                   endpoint: bool = True,
+                   wrap: bool = False):
         ...
 
     def to_slices(self, endpoint: bool = True) -> List[Tuple[slice, slice]]:
@@ -195,7 +198,18 @@ class _BoxTransformMixins:
              inplace: bool = False) -> Boxes:
         ...
 
-    def pad(self, x_left, y_top, x_right, y_bot, inplace: bool = ...):
+    def resize(self,
+               width: Union[Number, ndarray, None] = None,
+               height: Union[Number, ndarray, None] = None,
+               inplace: bool = False) -> Boxes:
+        ...
+
+    def pad(self,
+            x_left: Union[int, float],
+            y_top: Union[int, float],
+            x_right: Union[int, float],
+            y_bot: Union[int, float],
+            inplace: bool = ...) -> Boxes:
         ...
 
     def transpose(self):
@@ -212,7 +226,8 @@ class _BoxDrawMixins:
              fill: bool = ...,
              lw: float = 2,
              ax: Optional[matplotlib.axes.Axes] = None,
-             setlim: bool = False):
+             setlim: bool = False,
+             **kwargs):
         ...
 
     def draw_on(self,
@@ -228,8 +243,8 @@ class _BoxDrawMixins:
 
 class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             _BoxDrawMixins, ub.NiceRepr):
-    data: Incomplete
-    format: Incomplete
+    data: Union[ndarray, Tensor, Boxes]
+    format: str
 
     def __init__(self,
                  data: Union[ndarray, Tensor, Boxes],
