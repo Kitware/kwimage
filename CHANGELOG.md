@@ -21,6 +21,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Bug in `kwimage.Boxes.draw(setlim=1)`
+* But in `fill_nans_with_checkers` with what channels were filled with checkers.
 
 ### Changed
 * support for torch in `Boxes.iooa` (requires kwarray update)
