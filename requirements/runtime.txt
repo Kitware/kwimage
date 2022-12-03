@@ -7,7 +7,8 @@
 # python ~/local/tools/supported_python_versions_pip.py imageio
 
 
-scipy>=1.8.0     ;                            python_version >= '3.10'   # Python 3.10+
+scipy>=1.9.2     ; python_version < '4.0'  and python_version >= '3.11'  # Python 3.11+
+scipy>=1.7.2     ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
 scipy>=1.5.4     ; python_version < '3.10' and python_version >= '3.9'   # Python 3.9
 scipy>=1.5.4     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
 scipy>=1.5.3     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
