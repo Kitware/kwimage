@@ -3,6 +3,54 @@ import numpy as np
 import cv2
 
 
+def _draw_text_on_image_pil(img, text, org=None):
+    """
+    PIL backend.
+
+    TODO:
+        - [ ] Abstract `draw_text_on_image` to have an opencv and PIL backend.
+              OpenCV can't do unicode, but PIL needs an external font file.
+              However, PIL seems to have a much prettier result, we may
+              want to use that as the default.
+
+    References:
+        https://stackoverflow.com/questions/50854235/how-to-draw-chinese-text-on-the-image-using-cv2-puttextcorrectly-pythonopen
+
+    Ignore:
+        from kwimage.im_draw import *  # NOQA
+        from kwimage.im_draw import _draw_text_on_image_pil, _text_sizes, _broadcast_colors, _masked_checkerboard
+        img = np.zeros((128, 128, 3), dtype=np.uint8)
+        text = 'hello\n⬍\nworld'
+        org = (1, 1)
+        new_img = _draw_text_on_image_pil(img, text, org)
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(new_img)
+
+
+    """
+    from PIL import Image, ImageDraw, ImageFont
+    # fontpath = "./simsun.ttc"
+    # unicode_font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+    fontpath = "DejaVuSans.ttf"
+    font = ImageFont.truetype(fontpath, 32)
+    img_pil = Image.fromarray(img)
+    draw = ImageDraw.Draw(img_pil)
+    from kwimage import Color
+    color = Color.coerce('white').as255()
+    if org is None:
+        org = (1, 1)
+
+    bbox = draw.textbbox(org, text, font=font)
+    # size = draw.textlength(text, font=font)
+    print(f'bbox={bbox}')
+    # print(f'size={size}')
+
+    draw.text(org, text, font=font, fill=color)
+    new_img = np.array(img_pil)
+    return new_img
+
+
 def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     r"""
     Draws multiline text on an image using opencv
