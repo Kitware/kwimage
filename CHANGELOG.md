@@ -4,7 +4,16 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.8 - Unreleased
+## Version 0.9.9 - Unreleased
+
+### Fixed
+
+* Fixed issue in kwimage.Box where some functions (e.g. `tl_x`) were returning
+  incorrectly shaped.
+* Bug in nms with cython cpu.
+
+
+## Version 0.9.8 - Released 2022-12-03
 
 ### Added
 * Added new `Box` class to represent a single box.
