@@ -15,6 +15,7 @@ Submodules
    kwimage.structs.points
    kwimage.structs.polygon
    kwimage.structs.segmentation
+   kwimage.structs.single_box
 
 Module contents
 ---------------
