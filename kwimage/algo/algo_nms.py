@@ -499,7 +499,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         warnings.warn(
             'impl="cpu" is deprecated use impl="cython_cpu" instead',
             DeprecationWarning)
-        impl = 'cython_impl'
+        impl = 'cython_cpu'
     elif impl == 'gpu':
         import warnings
         warnings.warn(
