@@ -43,7 +43,7 @@ class Box(ub.NiceRepr):
         return self.boxes.data[0]
 
     def __nice__(self):
-        data_repr = repr(self.data)
+        data_repr = repr(self.data.tolist())
         if '\n' in data_repr:
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
         nice = '{}, {}'.format(self.format, data_repr)
