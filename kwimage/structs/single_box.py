@@ -63,6 +63,7 @@ class Box(ub.NiceRepr):
     def from_slice(self, slice_):
         """
         Example:
+            >>> import kwimage
             >>> slice_ = kwimage.Box.random().scale(10).quantize().to_slice()
             >>> new = kwimage.Box.from_slice(slice_)
         """
@@ -176,6 +177,7 @@ class Box(ub.NiceRepr):
     def to_ltrb(self, *args, **kwargs):
         """
         Example:
+            >>> import kwimage
             >>> self = kwimage.Box.random().to_ltrb()
             >>> assert self.format == 'ltrb'
         """
@@ -184,6 +186,7 @@ class Box(ub.NiceRepr):
     def to_xywh(self, *args, **kwargs):
         """
         Example:
+            >>> import kwimage
             >>> self = kwimage.Box.random().to_xywh()
             >>> assert self.format == 'xywh'
         """
@@ -192,6 +195,7 @@ class Box(ub.NiceRepr):
     def to_cxywh(self, *args, **kwargs):
         """
         Example:
+            >>> import kwimage
             >>> self = kwimage.Box.random().to_cxywh()
             >>> assert self.format == 'cxywh'
         """
@@ -206,6 +210,7 @@ class Box(ub.NiceRepr):
     def corners(self, *args, **kwargs):
         """
         Example:
+            >>> import kwimage
             >>> assert kwimage.Box.random().corners().shape == (4, 2)
         """
         return self.boxes.corners(*args, **kwargs)
@@ -220,6 +225,7 @@ class Box(ub.NiceRepr):
     def aspect_ratio(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().aspect_ratio)
         """
         return self.boxes.aspect_ratio.ravel()[0]
@@ -228,6 +234,7 @@ class Box(ub.NiceRepr):
     def width(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().width)
         """
         return self.boxes.width.ravel()[0]
@@ -236,6 +243,7 @@ class Box(ub.NiceRepr):
     def height(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().height)
         """
         return self.boxes.height.ravel()[0]
@@ -244,6 +252,7 @@ class Box(ub.NiceRepr):
     def tl_x(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().tl_x)
         """
         return self.boxes.tl_x.ravel()[0]
@@ -252,6 +261,7 @@ class Box(ub.NiceRepr):
     def tl_y(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().tl_y)
         """
         return self.boxes.tl_y.ravel()[0]
@@ -260,6 +270,7 @@ class Box(ub.NiceRepr):
     def br_x(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().br_y)
         """
         return self.boxes.br_x.ravel()[0]
@@ -268,6 +279,7 @@ class Box(ub.NiceRepr):
     def br_y(self):
         """
         Example:
+            >>> import kwimage
             >>> assert not ub.iterable(kwimage.Box.random().br_y)
         """
         return self.boxes.br_y.ravel()[0]
@@ -283,8 +295,9 @@ class Box(ub.NiceRepr):
     def to_slice(self, endpoint=True):
         """
         Example:
-            >>> kwimage.Box.random().scale(10).quantize().to_slice()
-            (slice(0, 2, None), slice(1, 7, None))
+            >>> import kwimage
+            >>> kwimage.Box.random(rng=0).scale(10).quantize().to_slice()
+            (slice(5, 8, None), slice(5, 7, None))
         """
         return self.boxes.to_slices(endpoint=endpoint)[0]
 
