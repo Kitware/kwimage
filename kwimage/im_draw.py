@@ -300,8 +300,9 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             alloc_w = text_w
         if alloc_h is None:
             alloc_h = text_h
-        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
+        img = np.zeros((alloc_h, alloc_w, len(bg_color)), dtype=np.uint8)
         img[...] = np.array(bg_color)[None, None, :]
+        kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
 
     if border_thickness > 0:
         # recursive call

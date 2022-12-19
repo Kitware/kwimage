@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.10 - Unreleased
 
+* Fixed issue when drawing text on an unspecified image with an rgba background color
 
 ## Version 0.9.9 - Released 2022-12-16
 
