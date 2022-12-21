@@ -105,3 +105,25 @@ def test_imresize_multi_channel():
     print('n_pass = {}'.format(len(success)))
     print('n_fail = {}'.format(len(failures)))
     print('failures = {}'.format(ub.repr2(failures, nl=1)))
+
+
+def test_resize_shapes():
+    import kwimage
+    data = np.random.rand(32, 32)
+    new = kwimage.imresize(data, scale=2)
+    assert new.shape == (64, 64)
+
+    data = np.random.rand(32, 32, 1)
+    new = kwimage.imresize(data, scale=2)
+    assert new.shape == (64, 64, 1)
+
+    data = np.random.rand(32, 32, 3)
+    new = kwimage.imresize(data, scale=2)
+    assert new.shape == (64, 64, 3)
+
+
+def test_resize_bool():
+    import kwimage
+    img = (np.random.rand(32, 32, 1) > 0.5).astype(bool)
+    new = kwimage.imresize(img, scale=2)
+    assert new.dtype.kind == 'b'

@@ -7,6 +7,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.10 - Unreleased
 
 
+### Fixed
+
+* imresize now accepts input dtypes: bool, int32
+* imresize now outputs the same channel dimensions as given in the input
+
+
 ## Version 0.9.9 - Released 2022-12-16
 
 ### Fixed
