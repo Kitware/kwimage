@@ -3303,7 +3303,7 @@ def _compress(data, flags, axis=None):
     elif torch is not None and torch.is_tensor(data):
         if not torch.is_tensor(flags):
             if _TORCH_HAS_BOOL_COMP:
-                flags = np.asarray(flags, dtype=np.bool)
+                flags = np.asarray(flags, dtype=bool)
                 flags = torch.BoolTensor(flags).to(data.device)
             else:
                 flags = np.asarray(flags).astype(np.uint8)

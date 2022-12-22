@@ -131,7 +131,7 @@ def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
         if True:
             # Marginally faster. best=618.2 us
             ordered_keep = np.zeros(len(conflicting), dtype=np.uint8)
-            supress = np.zeros(len(conflicting), dtype=np.bool)
+            supress = np.zeros(len(conflicting), dtype=bool)
             for i, row in enumerate(conflicting.cpu().numpy() > 0):
                 if not supress[i]:
                     ordered_keep[i] = 1
