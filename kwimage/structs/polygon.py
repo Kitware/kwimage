@@ -126,7 +126,7 @@ class _ShapelyMixin:
 
     def union(self, other):
         a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
-        c = a.intersection(b)
+        c = a.union(b)
         return _kwimage_from_shapely(c)
 
     def intersection(self, other):
@@ -2362,6 +2362,22 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             kwimage.Boxes
         """
         return self.bounding_box()
+
+    def to_box(self):
+        """
+        Returns:
+            kwimage.Box
+        """
+        import kwimage
+        lt = np.array([np.inf, np.inf])
+        rb = np.array([-np.inf, -np.inf])
+        for data in self.data:
+            xys = data.data['exterior'].data
+            lt = np.minimum(lt, xys.min(axis=0))
+            rb = np.maximum(rb, xys.max(axis=0))
+        ltrb = np.hstack([lt, rb])
+        boxes = kwimage.Box.coerce(ltrb, format='ltrb')
+        return boxes
 
     def bounding_box(self):
         """

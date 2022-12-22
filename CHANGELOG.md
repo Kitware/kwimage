@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * imresize now accepts input dtypes: bool, int32
 * imresize now outputs the same channel dimensions as given in the input
+* Polygon.union is fixed. (previously it did intersection)
 
 
 ## Version 0.9.9 - Released 2022-12-16
