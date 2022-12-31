@@ -19,6 +19,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Better shapely and gdal transform support in Affine
 * Improved agreement between polygon and box draw_on methods.
+* Added Color.adjust 
+* Moved color data to its own module
 
 
 ## Version 0.9.9 - Released 2022-12-16
