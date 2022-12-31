@@ -1,7 +1,8 @@
 """
 Wrappers around cv2 functions
 
-Note: all functions in kwimage work with RGB input by default instead of BGR.
+Note: all functions in kwimage work with RGB input by default instead of BGR,
+which is what the underlying cv2 functions use.
 """
 import cv2
 import numpy as np
@@ -31,6 +32,32 @@ _CV2_BORDER_MODES = {
     # 'isolated':    cv2.BORDER_ISOLATED,
 }
 
+__note__ = """
+
+TODO:
+
+Handle different settings of align corners in both imresize and warp_affine.
+Behaviors should follow:
+
+
+    +---------------+-----------------------+
+    | align_corners | pixels interpretation |
+    +---------------+-----------------------+
+    | True          | points in a grid      |
+    +---------------+-----------------------+
+    | False         | areas of 1x1 squares  |
+    +---------------+-----------------------+
+
+References:
+    https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
+    https://medium.com/@elagwoog/you-might-have-misundertood-the-meaning-of-align-corners-c681d0e38300
+    https://user-images.githubusercontent.com/9757500/58150486-c5315900-7c34-11e9-9466-24f2bd431fa4.png
+
+
+SeeAlso:
+    Notes in warp_tensor
+
+"""
 
 
 def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
@@ -454,6 +481,16 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     Slightly more general than cv2.resize, allows for specification of either a
     scale factor, a final size, or the final size for a particular dimension.
 
+    Note:
+        As described in [ResizeConfusion]_, this each entry in the image array
+        as representing the center of a pixel. This is the pixels_are='area'
+        approach, or align_corners=False in pytorch. It is equivalent to a
+        shift and scale in warp_affine (which by default uses align corners).
+
+    Note:
+        The border mode cannot be specified here and seems to always be reflect
+        in the underlying cv2 implementation.
+
     Args:
         img (ndarray): image to resize
 
@@ -513,6 +550,9 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         ndarray | Tuple[ndarray, Dict] :
             the new image and optionally an info dictionary if
             `return_info=True`
+
+    References:
+        .. [ResizeConfusion] https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
 
     Example:
         >>> import kwimage
@@ -604,9 +644,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
+    Ignore:
+
+
     TODO:
         - [X] When interpolation is area and the number of channels > 4 cv2.resize will error but it is fine for linear interpolation
-
         - [ ] TODO: add padding options when letterbox=True
 
         - [ ] Allow for pre-clipping when letterbox=True

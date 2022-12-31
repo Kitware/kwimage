@@ -21,6 +21,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Improved agreement between polygon and box draw_on methods.
 * Added Color.adjust 
 * Moved color data to its own module
+* `fill_nans_with_checkers` uses a muted checkerboard which is less visually jarring
 
 
 ## Version 0.9.9 - Released 2022-12-16

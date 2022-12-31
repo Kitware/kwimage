@@ -22,6 +22,8 @@ __todo__ = """
 
     - [ ] Should have operations to convert to/from different internal formats.
 
+    - [ ] Keep old auto-coercing init, but have a way to disable it by default.
+
 """
 
 BASE_COLORS = _im_color_data.BASE_COLORS

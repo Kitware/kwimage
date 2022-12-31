@@ -1151,11 +1151,11 @@ def fill_nans_with_checkers(canvas, square_shape=8,
             Size of the checker squares. Defaults to 8.
 
         on_value (Number | str):
-            The value of one checker. Defaults to 1 for floats and 255 for
-            ints.
+            The value of one checker. Defaults to a dark-gray color, 0.3 for
+            floats and 77 for ints.
 
         off_value (Number | str):
-            The value off the other checker. Defaults to 0.
+            The value off the other checker. Defaults to black, which is 0.
 
     Returns:
         np.ndarray: the inplace modified canvas
@@ -1241,9 +1241,9 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value
 
     if on_value == 'auto':
         if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
-            on_value = 255
+            on_value = 77  # 255
         else:
-            on_value = 1
+            on_value = 0.3  # 1
     if off_value == 'auto':
         off_value = 0
 
