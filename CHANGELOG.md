@@ -6,7 +6,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.10 - Unreleased
 
-* Fixed issue when drawing text on an unspecified image with an rgba background color
 
 ### Fixed
 
@@ -14,6 +13,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * imresize now outputs the same channel dimensions as given in the input
 * Polygon.union is fixed. (previously it did intersection)
 * replaced np.bool with bool
+* Fixed issue when drawing text on an unspecified image with an rgba background color
+
+### Changed
+
+* Better shapely and gdal transform support in Affine
+* Improved agreement between polygon and box draw_on methods.
 
 
 ## Version 0.9.9 - Released 2022-12-16

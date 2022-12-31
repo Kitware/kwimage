@@ -88,6 +88,13 @@ class Box(ub.NiceRepr):
         return self
 
     @classmethod
+    def from_data(self, data, format):
+        import kwimage
+        boxes = kwimage.Boxes([data], format)
+        self = Box(boxes, _check=False)
+        return self
+
+    @classmethod
     def coerce(cls, data, **kwargs):
         if isinstance(data, Box):
             return data

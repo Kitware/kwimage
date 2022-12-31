@@ -281,6 +281,19 @@ def _handle_perinstance_color_arg(selflen, instkw_list, kwargs, argname):
             kwargs[argname] = color
 
 
+def _coerce_color_list_for(image, color, num):
+    """
+    Get a list of colors for each item
+    """
+    import kwimage
+    if (ub.iterable(color) and len(color) == num and
+         len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
+        color_list = [kwimage.Color(c)._forimage(image) for c in color]
+    else:
+        color_list = [kwimage.Color(color)._forimage(image)] * num
+    return color_list
+
+
 def _consistent_dtype_fixer(data):
     """
     helper for ensuring out.dtype == in.dtype
@@ -389,3 +402,25 @@ def _setlim(xmin, ymin, xmax, ymax, setlim=False, ax=None):
 
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
+
+
+def _handle_color_args_for(color, alpha, border, fill, edgecolor, facecolor, image):
+    """
+    Common logic for boxes and polygons
+    """
+    import kwimage
+    if facecolor is None:
+        if fill:
+            facecolor = color
+    elif facecolor is True:
+        facecolor = color
+    else:
+        facecolor = kwimage.Color(facecolor, alpha=alpha)._forimage(image)
+
+    if edgecolor is None:
+        if border:
+            edgecolor = color
+    elif edgecolor is True:
+        edgecolor = color
+    else:
+        edgecolor = kwimage.Color(edgecolor, alpha=alpha)._forimage(image)
