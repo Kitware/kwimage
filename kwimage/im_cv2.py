@@ -32,33 +32,6 @@ _CV2_BORDER_MODES = {
     # 'isolated':    cv2.BORDER_ISOLATED,
 }
 
-__note__ = """
-
-TODO:
-
-Handle different settings of align corners in both imresize and warp_affine.
-Behaviors should follow:
-
-
-    +---------------+-----------------------+
-    | align_corners | pixels interpretation |
-    +---------------+-----------------------+
-    | True          | points in a grid      |
-    +---------------+-----------------------+
-    | False         | areas of 1x1 squares  |
-    +---------------+-----------------------+
-
-References:
-    https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
-    https://medium.com/@elagwoog/you-might-have-misundertood-the-meaning-of-align-corners-c681d0e38300
-    https://user-images.githubusercontent.com/9757500/58150486-c5315900-7c34-11e9-9466-24f2bd431fa4.png
-
-
-SeeAlso:
-    Notes in warp_tensor
-
-"""
-
 
 def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                           grow_default=cv2.INTER_LANCZOS4,
