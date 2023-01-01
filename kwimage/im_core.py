@@ -605,6 +605,7 @@ def find_robust_normalizers(data, params='auto'):
         # towards -1 / +1.
         alpha = max(abs(min_val - beta), abs(max_val - beta)) / 6.212606
 
+        # todo: Can we also infer a gain parameter?
         normalizer = {
             'type': 'normalize',
             'mode': params['mode'],
@@ -715,8 +716,6 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         >>>     _, ax = kwplot.imshow(row['result'], fnum=1, pnum=pnum_())
         >>>     ax.set_title(row['key'])
     """
-    import kwarray
-
     if axis is not None:
         # Hack, normalize each channel individually. This could
         # be implementd more effciently.
@@ -754,22 +753,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     assert not np.any(np.isnan(imdata_valid))
 
     normalizer = find_robust_normalizers(imdata_valid, params=params)
-
-    if normalizer['type'] is None:
-        imdata_normalized = imdata.astype(dtype)
-    elif normalizer['type'] == 'normalize':
-        # Note: we are using kwarray normalize, the one in kwimage is deprecated
-        imdata_valid_normalized = kwarray.normalize(
-            imdata_valid.astype(dtype), mode=normalizer['mode'],
-            beta=normalizer['beta'], alpha=normalizer['alpha'],
-        )
-        if mask is None:
-            imdata_normalized = imdata_valid_normalized
-        else:
-            imdata_normalized = imdata.copy()
-            imdata_normalized[mask] = imdata_valid_normalized
-    else:
-        raise KeyError(normalizer['type'])
+    imdata_normalized = _apply_robust_normalizer(normalizer, imdata, imdata_valid, mask, dtype)
 
     if mask is not None:
         result = np.where(mask, imdata_normalized, imdata)
@@ -780,3 +764,28 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         return result, normalizer
     else:
         return result
+
+
+def _apply_robust_normalizer(normalizer, imdata, imdata_valid, mask, dtype, copy=True):
+    """
+    TODO:
+        abstract into a scikit-learn-style Normalizer class which can
+        fit/predict different types of normalizers.
+    """
+    import kwarray
+    if normalizer['type'] is None:
+        imdata_normalized = imdata.astype(dtype, copy=copy)
+    elif normalizer['type'] == 'normalize':
+        # Note: we are using kwarray normalize, the one in kwimage is deprecated
+        imdata_valid_normalized = kwarray.normalize(
+            imdata_valid.astype(dtype, copy=copy), mode=normalizer['mode'],
+            beta=normalizer['beta'], alpha=normalizer['alpha'],
+        )
+        if mask is None:
+            imdata_normalized = imdata_valid_normalized
+        else:
+            imdata_normalized = imdata.copy() if copy else imdata
+            imdata_normalized[mask] = imdata_valid_normalized
+    else:
+        raise KeyError(normalizer['type'])
+    return imdata_normalized
