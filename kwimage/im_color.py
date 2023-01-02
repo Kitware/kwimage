@@ -677,6 +677,7 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(canvas)
 
         Example:
+            >>> import kwimage
             >>> adjustments = [
             >>>     {'saturate': -0.2},
             >>>     {'saturate': +0.2},

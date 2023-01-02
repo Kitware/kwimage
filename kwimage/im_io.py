@@ -578,12 +578,12 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
         >>> imdata[-100:] = nodata
         >>> imdata[0:200:, -200:-180] = nodata
         >>> mask = (imdata == nodata)
-        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata=-9999,
+        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata_value=-9999,
         >>>                 crs=crs, transform=transform)
         >>> # Read the geotiff with different methods
-        >>> raw_recon = kwimage.imread(geo_fpath, nodata=None)
-        >>> ma_recon = kwimage.imread(geo_fpath, nodata='ma')
-        >>> nan_recon = kwimage.imread(geo_fpath, nodata='float')
+        >>> raw_recon = kwimage.imread(geo_fpath, nodata_method=None)
+        >>> ma_recon = kwimage.imread(geo_fpath, nodata_method='ma')
+        >>> nan_recon = kwimage.imread(geo_fpath, nodata_method='float')
         >>> # raw values should be read
         >>> assert np.all(raw_recon[mask] == nodata)
         >>> assert not np.any(raw_recon[~mask] == nodata)

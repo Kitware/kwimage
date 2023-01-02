@@ -3,7 +3,6 @@ Not sure how to best classify these functions
 """
 import ubelt as ub
 import numpy as np
-import math
 
 
 def num_channels(img):
@@ -510,6 +509,8 @@ def find_robust_normalizers(data, params='auto'):
     """
     Finds robust normalization statistics for a single observation
 
+    DEPRECATED IN FAVOR of kwarray.find_robust_normalizers
+
     Args:
         data (ndarray): a 1D numpy array where invalid data has already been removed
 
@@ -533,87 +534,16 @@ def find_robust_normalizers(data, params='auto'):
         >>> print('norm_params2 = {}'.format(ub.repr2(norm_params2, nl=1)))
         >>> print('norm_params3 = {}'.format(ub.repr2(norm_params3, nl=1)))
     """
-    if data.size == 0:
-        normalizer = {
-            'type': None,
-            'min_val': np.nan,
-            'max_val': np.nan,
-        }
-    else:
-        # should center the desired distribution to visualize on zero
-        # beta = np.median(imdata)
-        default_params = {
+    import kwarray
+    if isinstance(params, str) and params == 'auto':
+        # Override kwarray defaults for backwards compatability
+        params = {
             'low': 0.01,
             'mid': 0.5,
             'high': 0.9,
             'mode': 'sigmoid',
         }
-        if isinstance(params, str):
-            if params == 'auto':
-                params = {}
-            else:
-                raise KeyError(params)
-
-        params = ub.dict_union(default_params, params)
-        quant_low = params['low']
-        quant_mid = params['mid']
-        quant_high = params['high']
-        qvals = [0, quant_low, quant_mid, quant_high, 1]
-        quantile_vals = np.quantile(data, qvals)
-
-        (quant_low_abs, quant_low_val, quant_mid_val, quant_high_val,
-         quant_high_abs) = quantile_vals
-
-        # TODO: we could implement a hueristic where we do a numerical inspection
-        # of the intensity distribution. We could apply a normalization that is
-        # known to work for data with that sort of histogram distribution.
-        # This might involve fitting several parametarized distributions to the
-        # data and choosing the one with the best fit. (check how many modes there
-        # are).
-
-        # inner_range = quant_high_val - quant_low_val
-        # upper_inner_range = quant_high_val - quant_mid_val
-        # upper_lower_range = quant_mid_val - quant_low_val
-        # http://mathcenter.oxford.emory.edu/site/math117/shapeCenterAndSpread/
-
-        # Compute amount of weight in each quantile
-        quant_center_amount = (quant_high_val - quant_low_val)
-        quant_low_amount = (quant_mid_val - quant_low_val)
-        quant_high_amount = (quant_high_val - quant_mid_val)
-
-        if math.isclose(quant_center_amount, 0):
-            high_weight = 0.5
-            low_weight = 0.5
-        else:
-            high_weight = quant_high_amount / quant_center_amount
-            low_weight = quant_low_amount / quant_center_amount
-
-        quant_high_residual = (1.0 - quant_high)
-        quant_low_residual = (quant_low - 0.0)
-        # todo: verify, having slight head fog, not 100% sure
-        low_pad_val = quant_low_residual * (low_weight * quant_center_amount)
-        high_pad_val = quant_high_residual * (high_weight * quant_center_amount)
-
-        min_val = max(quant_low_abs, quant_low_val - low_pad_val)
-        max_val = max(quant_high_abs, quant_high_val - high_pad_val)
-
-        beta = quant_mid_val
-        # division factor
-        # from scipy.special import logit
-        # alpha = max(abs(old_min - beta), abs(old_max - beta)) / logit(0.998)
-        # This chooses alpha such the original min/max value will be pushed
-        # towards -1 / +1.
-        alpha = max(abs(min_val - beta), abs(max_val - beta)) / 6.212606
-
-        # todo: Can we also infer a gain parameter?
-        normalizer = {
-            'type': 'normalize',
-            'mode': params['mode'],
-            'min_val': min_val,
-            'max_val': max_val,
-            'beta': beta,
-            'alpha': alpha,
-        }
+    normalizer = kwarray.find_robust_normalizers(data, params=params)
     return normalizer
 
 
@@ -627,7 +557,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     reasonable for visualization.
 
     TODO:
-        - [ ] Move to kwarray and renamed to robust_normalize?
+        - [x] Move to kwarray and renamed to robust_normalize?
         - [ ] Support for M-estimators?
 
     Args:
@@ -716,76 +646,15 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         >>>     _, ax = kwplot.imshow(row['result'], fnum=1, pnum=pnum_())
         >>>     ax.set_title(row['key'])
     """
-    if axis is not None:
-        # Hack, normalize each channel individually. This could
-        # be implementd more effciently.
-        assert not return_info
-        reorg = imdata.swapaxes(0, axis)
-        if mask is None:
-            parts = []
-            for item in reorg:
-                part = normalize_intensity(item, nodata=nodata, axis=None)
-                parts.append(part[None, :])
-        else:
-            reorg_mask = mask.swapaxes(0, axis)
-            parts = []
-            for item, item_mask in zip(reorg, reorg_mask):
-                part = normalize_intensity(item, nodata=nodata, axis=None,
-                                           mask=item_mask)
-                parts.append(part[None, :])
-        recomb = np.concatenate(parts, axis=0)
-        final = recomb.swapaxes(0, axis)
-        return final
-
-    if imdata.dtype.kind == 'f':
-        if mask is None:
-            mask = ~np.isnan(imdata)
-
-    if mask is None:
-        if nodata is not None:
-            mask = imdata != nodata
-
-    if mask is None:
-        imdata_valid = imdata
-    else:
-        imdata_valid = imdata[mask]
-
-    assert not np.any(np.isnan(imdata_valid))
-
-    normalizer = find_robust_normalizers(imdata_valid, params=params)
-    imdata_normalized = _apply_robust_normalizer(normalizer, imdata, imdata_valid, mask, dtype)
-
-    if mask is not None:
-        result = np.where(mask, imdata_normalized, imdata)
-    else:
-        result = imdata_normalized
-
-    if return_info:
-        return result, normalizer
-    else:
-        return result
-
-
-def _apply_robust_normalizer(normalizer, imdata, imdata_valid, mask, dtype, copy=True):
-    """
-    TODO:
-        abstract into a scikit-learn-style Normalizer class which can
-        fit/predict different types of normalizers.
-    """
     import kwarray
-    if normalizer['type'] is None:
-        imdata_normalized = imdata.astype(dtype, copy=copy)
-    elif normalizer['type'] == 'normalize':
-        # Note: we are using kwarray normalize, the one in kwimage is deprecated
-        imdata_valid_normalized = kwarray.normalize(
-            imdata_valid.astype(dtype, copy=copy), mode=normalizer['mode'],
-            beta=normalizer['beta'], alpha=normalizer['alpha'],
-        )
-        if mask is None:
-            imdata_normalized = imdata_valid_normalized
-        else:
-            imdata_normalized = imdata.copy() if copy else imdata
-            imdata_normalized[mask] = imdata_valid_normalized
-    else:
-        raise KeyError(normalizer['type'])
-    return imdata_normalized
+    if isinstance(params, str) and params == 'auto':
+        # Override kwarray defaults for backwards compatability
+        params = {
+            'low': 0.01,
+            'mid': 0.5,
+            'high': 0.9,
+            'mode': 'sigmoid',
+        }
+    return kwarray.robust_normalize(imdata, return_info=return_info,
+                                    nodata=nodata, axis=axis, dtype=dtype,
+                                    params=params, mask=mask)
