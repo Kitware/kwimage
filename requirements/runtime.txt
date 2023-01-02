@@ -40,7 +40,7 @@ scikit-image>=0.17.2    ; python_version < '3.8' and python_version >= '3.7'    
 scikit-image>=0.17.2    ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
 
 ubelt>=1.2.1
-kwarray>=0.6.6
+kwarray>=0.6.7
 
 distinctipy>=1.2.1
 parse>=1.14.0
