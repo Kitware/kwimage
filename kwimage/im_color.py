@@ -643,6 +643,8 @@ class Color(ub.NiceRepr):
         """
         Adjust the saturation or value of a color.
 
+        Requires that :mod:`colormath` is installed.
+
         Args:
             saturate (float):
                 between +1 and -1, when positive saturates the color, when
@@ -653,6 +655,7 @@ class Color(ub.NiceRepr):
                 negative darkens the color.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> self = kwimage.Color.coerce('salmon')
             >>> new = self.adjust(saturate=+0.2)
@@ -665,6 +668,7 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(canvas)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> self = kwimage.Color.coerce('salmon', alpha=0.5)
             >>> new = self.adjust(saturate=+0.2)
@@ -677,6 +681,7 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(canvas)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> adjustments = [
             >>>     {'saturate': -0.2},
