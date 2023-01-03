@@ -1182,6 +1182,41 @@ class Affine(Projective):
         return params
 
     @classmethod
+    def from_shapely(cls, sh_aff):
+        """
+        Shapely affine tuples are in the format (a, b, d, e, x, y)
+        """
+        (a, b, d, e, x, y) = sh_aff
+        matrix = np.array([[a, b, x], [d, e, y], [0, 0, 1]])
+        self = cls(matrix=matrix)
+        return self
+
+    @classmethod
+    def from_affine(cls, aff):
+        a, b, c, d, e, f = aff.a, aff.b, aff.c, aff.d, aff.e, aff.f
+        matrix = np.array([[a, b, c], [d, e, f], [0, 0, 1]])
+        self = cls(matrix=matrix)
+        return self
+
+    @classmethod
+    def from_gdal(cls, gdal_aff):
+        """
+        gdal affine tuples are in the format (c, a, b, f, d, e)
+        """
+        c, a, b, f, d, e = gdal_aff
+        matrix = np.array([[a, b, c], [d, e, f], [0, 0, 1]])
+        self = cls(matrix=matrix)
+        return self
+
+    @classmethod
+    def from_skimage(cls, sk_aff):
+        """
+        gdal affine tuples are in the format (c, a, b, f, d, e)
+        """
+        self = cls(matrix=sk_aff.params)
+        return self
+
+    @classmethod
     @profile
     def coerce(cls, data=None, **kwargs):
         """
@@ -1216,6 +1251,11 @@ class Affine(Projective):
             self = cls(matrix=data.params)
         elif data.__class__.__name__ == cls.__name__:
             self = data
+        elif isinstance(data, tuple):
+            raise ValueError(
+                'Cannot determine if a tuple is in shapely or gdal order.'
+                'use from_shapely or from_gdal instead'
+            )
         elif isinstance(data, dict):
             keys = set(data.keys())
             if 'matrix' in keys:
@@ -1263,6 +1303,27 @@ class Affine(Projective):
 
         ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
         return ecc
+
+    def to_affine(self):
+        """
+        Convert to an affine module
+
+        Returns:
+            affine.Affine
+        """
+        import affine
+        a, b, c, d, e, f = self.matrix.ravel()[0:6]
+        aff = affine.Affine(a, b, c, d, e, f)
+        return aff
+
+    def to_gdal(self):
+        """
+        Convert to a gdal tuple (c, a, b, f, d, e)
+
+        Returns:
+            Tuple[float, float, float, float, float, float]
+        """
+        return self.to_affine().to_gdal()
 
     def to_shapely(self):
         """

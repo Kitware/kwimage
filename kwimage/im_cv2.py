@@ -1,7 +1,8 @@
 """
 Wrappers around cv2 functions
 
-Note: all functions in kwimage work with RGB input by default instead of BGR.
+Note: all functions in kwimage work with RGB input by default instead of BGR,
+which is what the underlying cv2 functions use.
 """
 import cv2
 import numpy as np
@@ -380,7 +381,7 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
         cen_h = new_h // 2
 
     if interpolation == 'linear':
-        return cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
+        new_img = cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
     elif interpolation == 'nearest':
         # build a patch that may go outside the image bounds
         ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
@@ -393,11 +394,54 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
         bot, xmax = max(0, xmax - old_h), min(old_h, xmax)
 
         # slice the image using the corrected bounds and append the rest as a border
-        return cv2.copyMakeBorder(img[xmin:xmax, ymin:ymax], top, bot, lft, rgt,
-                                  borderType=cv2.BORDER_CONSTANT,
-                                  value=border_value)
+        new_img = cv2.copyMakeBorder(img[xmin:xmax, ymin:ymax], top, bot, lft, rgt,
+                                     borderType=cv2.BORDER_CONSTANT,
+                                     value=border_value)
     else:
         raise KeyError(interpolation)
+
+    if len(new_img.shape) == 2 and len(img.shape) == 3:
+        # Make the output shape consistent with the input
+        assert img.shape[2] == 1, 'have 1 input channel in this case'
+        new_img = new_img[..., None]
+
+    return new_img
+
+
+def _cv2_input_fixer(img):
+    """
+    OpenCV is very particular about its inputs, we would like to loosen those
+    requirements by seemlessly detecting and fixing dtypes when possible
+    """
+    # Notes:
+    # CV2 Data Types
+    # https://udayawijenayake.com/2021/06/07/opencv-data-types/
+    # sorted([{'cv_code': k, 'cv_value': getattr(cv2, k)} for k in dir(cv2) if k.startswith('CV_')], key=lambda x: x['cv_value'])
+    # [
+    #     {'cv_code': 'CV_8U', 'cv_value': cv2.CV_8U},
+    #     {'cv_code': 'CV_8S', 'cv_value': cv2.CV_8S},
+    #     {'cv_code': 'CV_16U', 'cv_value': cv2.CV_16U},
+    #     {'cv_code': 'CV_16S', 'cv_value': cv2.CV_16S},
+    #     {'cv_code': 'CV_32SC1', 'cv_value': cv2.CV_32SC1},
+    #     {'cv_code': 'CV_32F', 'cv_value': cv2.CV_32F},
+    #     {'cv_code': 'CV_64FC1', 'cv_value': cv2.CV_64FC1},
+    # ]
+    final_dtype = None
+    if img.dtype.kind == 'b':
+        final_dtype = img.dtype
+        img = img.astype(np.uint8)
+
+    # TODO: can we be flexible with more data types?
+    # # Allow upcast
+    # if img.dtype.kind == 'i' and img.dtype.itemsize == 1:
+    #     final_dtype = img.dtype
+    #     img = img.astype(np.int16)
+    # if img.dtype.kind == 'i' and img.dtype.itemsize == 4:
+    #     # Allowing memory increase for the sake of easy of use
+    #     final_dtype = img.dtype
+    #     img = img.astype(np.int64)
+    #     ...
+    return img, final_dtype
 
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
@@ -409,6 +453,16 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
     Slightly more general than cv2.resize, allows for specification of either a
     scale factor, a final size, or the final size for a particular dimension.
+
+    Note:
+        As described in [ResizeConfusion]_, this each entry in the image array
+        as representing the center of a pixel. This is the pixels_are='area'
+        approach, or align_corners=False in pytorch. It is equivalent to a
+        shift and scale in warp_affine (which by default uses align corners).
+
+    Note:
+        The border mode cannot be specified here and seems to always be reflect
+        in the underlying cv2 implementation.
 
     Args:
         img (ndarray): image to resize
@@ -469,6 +523,9 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         ndarray | Tuple[ndarray, Dict] :
             the new image and optionally an info dictionary if
             `return_info=True`
+
+    References:
+        .. [ResizeConfusion] https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
 
     Example:
         >>> import kwimage
@@ -560,9 +617,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
+    Ignore:
+
+
     TODO:
         - [X] When interpolation is area and the number of channels > 4 cv2.resize will error but it is fine for linear interpolation
-
         - [ ] TODO: add padding options when letterbox=True
 
         - [ ] Allow for pre-clipping when letterbox=True
@@ -579,8 +638,33 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         # None of the scale params were specified, return the image as-is
         return img
 
+    def _aa_resize(a, scale, dsize, interpolation):
+        sx, sy = scale
+        if sx < 1 or sy < 1:
+            a, sx, sy = _prepare_downscale(a, sx, sy)
+        return cv2.resize(a, dsize=dsize, interpolation=interpolation)
+
+    def _regular_resize(a, scale, dsize, interpolation):
+        return cv2.resize(a, dsize=dsize, interpolation=interpolation)
+
+    def _patched_resize(img, scale, dsize, interpolation):
+        img = _cv2_imputation(img)
+        sx, sy = scale
+        num_chan = im_core.num_channels(img)
+        if num_chan > 512 or (num_chan > 4 and interpolation == cv2.INTER_AREA):
+            parts = np.split(img, img.shape[-1], -1)
+            newparts = [
+                _chosen_resize(chan, scale, dsize=dsize, interpolation=interpolation)[..., None]
+                for chan in parts
+            ]
+            newimg = np.concatenate(newparts, axis=2)
+            return newimg
+        newimg = _chosen_resize(img, scale, dsize, interpolation)
+        return newimg
+
     old_w, old_h = img.shape[0:2][::-1]
 
+    # Compute the new size based on the input arguments
     if scale is not None:
         try:
             sx, sy = scale
@@ -610,36 +694,15 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         assert new_w is not None
         new_h = new_w * old_h / old_w
 
+    # Determine other settings and backends
     grow_interpolation = _coerce_interpolation(grow_interpolation)
-
-    def _aa_resize(a, scale, dsize, interpolation):
-        sx, sy = scale
-        if sx < 1 or sy < 1:
-            a, sx, sy = _prepare_downscale(a, sx, sy)
-        return cv2.resize(a, dsize=dsize, interpolation=interpolation)
-
-    def _regular_resize(a, scale, dsize, interpolation):
-        return cv2.resize(a, dsize=dsize, interpolation=interpolation)
 
     if antialias:
         _chosen_resize = _aa_resize
     else:
         _chosen_resize = _regular_resize
 
-    def _patched_resize(img, scale, dsize, interpolation):
-        img = _cv2_imputation(img)
-        sx, sy = scale
-        num_chan = im_core.num_channels(img)
-        if num_chan > 512 or (num_chan > 4 and interpolation == cv2.INTER_AREA):
-            parts = np.split(img, img.shape[-1], -1)
-            newparts = [
-                _chosen_resize(chan, scale, dsize=dsize, interpolation=interpolation)[..., None]
-                for chan in parts
-            ]
-            newimg = np.concatenate(newparts, axis=2)
-            return newimg
-        newimg = _chosen_resize(img, scale, dsize, interpolation)
-        return newimg
+    img, final_dtype = _cv2_input_fixer(img)
 
     if letterbox:
         if dsize is None:
@@ -684,10 +747,6 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
                 'dsize': dsize,
                 'embed_size': embed_size,
             }
-            return new_img, info
-        else:
-            return new_img
-
     else:
         # Use np.round over python round, which has incompatible behavior
         old_dsize = (old_w, old_h)
@@ -708,9 +767,20 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
                 # 'matrix': transform.matrix,
                 'dsize': new_dsize,
             }
-            return new_img, info
-        else:
-            return new_img
+
+    if final_dtype is not None:
+        # The output type and input type should match
+        new_img = new_img.astype(final_dtype)
+
+    if len(new_img.shape) == 2 and len(img.shape) == 3:
+        # Make the output shape consistent with the input
+        assert img.shape[2] == 1, 'have 1 input channel in this case'
+        new_img = new_img[..., None]
+
+    if return_info:
+        return new_img, info
+    else:
+        return new_img
 
 
 def convert_colorspace(img, src_space, dst_space, copy=False,
@@ -1918,8 +1988,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
     if kernel.size == 0:
         return data.copy()
 
-    if data.dtype.kind == 'b':
-        data = data.astype(np.uint8)
+    data, final_dtype = _cv2_input_fixer(data)
 
     borderMode = _coerce_border_mode(border_mode)
     borderValue = _coerce_border_value(border_value, image=data)
@@ -1935,6 +2004,8 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         data, op=morph_mode, kernel=kernel, iterations=iterations,
         borderValue=borderValue, borderType=borderMode
     )
+    if final_dtype is not None:
+        new = new.astype(final_dtype)
     return new
 
 

@@ -1785,9 +1785,9 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
             mask = np.zeros_like(cidx_mask, dtype=np.uint8)
             mask = cv2.ellipse(mask, center, axes, angle=0.0,
                                startAngle=0.0, endAngle=360.0, color=1,
-                               thickness=-1).astype(np.bool)
+                               thickness=-1).astype(bool)
         else:
-            mask = sseg_mask.to_c_mask().data.astype(np.bool)
+            mask = sseg_mask.to_c_mask().data.astype(bool)
         # class index
         cidx_mask[mask] = int(cidx)
         if 'class_probs' not in exclude:

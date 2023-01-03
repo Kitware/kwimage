@@ -84,6 +84,9 @@ def imread(fpath, space='auto', backend='auto', **kw):
 
         **kw : backend-specific arguments
 
+            The gdal backend accepts:
+                overview, ignore_color_table, nodata_method, band_indices
+
     Returns:
         ndarray: the image data in the specified color space.
 
@@ -523,8 +526,9 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
     gdal imread backend
 
     Args:
-        overview (int):
-            if specified load a specific overview level
+        overview (int | str):
+            if specified load a specific overview level.
+            Can be `coarsest` to use the lowest resolution overview.
 
         ignore_color_table (bool):
             if True and the image has a color table, return its indexes
@@ -574,12 +578,12 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
         >>> imdata[-100:] = nodata
         >>> imdata[0:200:, -200:-180] = nodata
         >>> mask = (imdata == nodata)
-        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata=-9999,
+        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata_value=-9999,
         >>>                 crs=crs, transform=transform)
         >>> # Read the geotiff with different methods
-        >>> raw_recon = kwimage.imread(geo_fpath, nodata=None)
-        >>> ma_recon = kwimage.imread(geo_fpath, nodata='ma')
-        >>> nan_recon = kwimage.imread(geo_fpath, nodata='float')
+        >>> raw_recon = kwimage.imread(geo_fpath, nodata_method=None)
+        >>> ma_recon = kwimage.imread(geo_fpath, nodata_method='ma')
+        >>> nan_recon = kwimage.imread(geo_fpath, nodata_method='float')
         >>> # raw values should be read
         >>> assert np.all(raw_recon[mask] == nodata)
         >>> assert not np.any(raw_recon[~mask] == nodata)
@@ -1352,6 +1356,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      options=None,
                                      nodata=None,
                                      nodata_value=None,
+                                     metadata=None,
                                      crs=None, transform=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
@@ -1386,6 +1391,10 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         transform (kwimage.Affine):
             An affine transform from image coordinates into a specified
             coordinate reference system (must set crs).
+
+        metadata (dict):
+            if specified this is interpreted as the metadata for the default
+            empty domain.
 
         crs (str):
             The coordinate reference system for the geo_transform.
@@ -1611,16 +1620,21 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     data_set = driver.Create(str(''), x_size, y_size, num_bands, eType=eType)
 
     if transform is not None or crs is not None:
-        import affine
         # TODO: add ability to add RPC
         if crs is None or transform is None:
             raise ValueError('Specify transform and crs together')
         # TODO: Allow transform to be a normal gdal object or something
         # coercable to an affine object.
-        a, b, c, d, e, f = transform.matrix.ravel()[0:6]
-        aff = affine.Affine(a, b, c, d, e, f)
+        if isinstance(transform, tuple):
+            # assume we have a normal gdal tuple
+            aff_gdal = transform
+        else:
+            aff_gdal = transform.to_gdal()
         data_set.SetProjection(crs)
-        data_set.SetGeoTransform(aff.to_gdal())
+        data_set.SetGeoTransform(aff_gdal)
+
+    if metadata is not None:
+        data_set.SetMetadata(metadata)
 
     if nodata is not None:
         ub.schedule_deprecation(

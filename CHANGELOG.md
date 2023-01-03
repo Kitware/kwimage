@@ -4,7 +4,27 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.9 - Unreleased
+## Version 0.9.10 - Unreleased
+
+
+### Fixed
+
+* imresize now accepts input dtypes: bool, int32
+* imresize now outputs the same channel dimensions as given in the input
+* Polygon.union is fixed. (previously it did intersection)
+* replaced np.bool with bool
+* Fixed issue when drawing text on an unspecified image with an rgba background color
+
+### Changed
+
+* Better shapely and gdal transform support in Affine
+* Improved agreement between polygon and box draw_on methods.
+* Added Color.adjust 
+* Moved color data to its own module
+* `fill_nans_with_checkers` uses a muted checkerboard which is less visually jarring
+
+
+## Version 0.9.9 - Released 2022-12-16
 
 ### Fixed
 

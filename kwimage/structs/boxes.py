@@ -1882,7 +1882,8 @@ class _BoxDrawMixins(object):
                                  lw=lw, ax=ax)
 
     def draw_on(self, image=None, color='blue', alpha=None, labels=None,
-                copy=False, thickness=2, label_loc='top_left'):
+                copy=False, thickness=2, edgecolor=None, facecolor=None,
+                fill=False, border=True, label_loc='top_left'):
         """
         Draws boxes directly on the image using OpenCV
 
@@ -1906,6 +1907,14 @@ class _BoxDrawMixins(object):
 
             label_loc (str): indicates where labels (if specified) should be
                 drawn.
+
+            edgecolor (str | tuple): color for the border
+
+            facecolor (str | tuple): color for the fill. not implemented
+
+            fill (bool): not implemented
+
+            border (bool):
 
         Returns:
             ndarray: the image drawn onto.
@@ -2016,12 +2025,21 @@ class _BoxDrawMixins(object):
         image = kwimage.atleast_3channels(image, copy=copy)
         image = np.ascontiguousarray(image)
 
-        if isinstance(color, list) and not isinstance(color, numbers.Number):
-            # Passed list of color for each box
-            colors = [kwimage.Color(c)._forimage(image) for c in color]
-        else:
-            # Passed a single color
-            colors = [kwimage.Color(color)._forimage(image)] * num
+        # border = True
+        # fill = False
+        # TODO: consolidate logic
+        # _generic._handle_color_args_for(
+        #     color, alpha, border, fill, edgecolor, facecolor, image)
+        # TODO: implement facecolor
+        if edgecolor is None:
+            if border:
+                edgecolor = color
+        elif edgecolor is True:
+            edgecolor = color
+
+        # Colors can be passed in as a single color for all boxes, or a color
+        # per box. In both cases coerce to a list of colors, one for each box.
+        edge_colors = _generic._coerce_color_list_for(image, edgecolor, num)
 
         if alpha is None:
             alpha = [1.0] * num
@@ -2048,7 +2066,7 @@ class _BoxDrawMixins(object):
 
         rel_x, rel_y = text_relxy_org
 
-        for ltrb, label, alpha_, col in zip(ltrb_list, labels, alpha, colors):
+        for ltrb, label, alpha_, edge_col in zip(ltrb_list, labels, alpha, edge_colors):
             x1, y1, x2, y2 = ltrb
             pt1 = _coords(x1, y1)
             pt2 = _coords(x2, y2)
@@ -2059,7 +2077,7 @@ class _BoxDrawMixins(object):
 
             # while cv2.rectangle will accept an alpha color it will not do any
             # blending with the background image.
-            image = cv2.rectangle(image, pt1, pt2, color=col, **rectkw)
+            image = cv2.rectangle(image, pt1, pt2, color=edge_col, **rectkw)
             if label:
                 # Compute the prefered location of the text origin
                 x1, y1 = pt1
@@ -2069,13 +2087,15 @@ class _BoxDrawMixins(object):
                 org_y = (y1 * (1 - rel_y)) + (y2 * rel_y) + y_shift
                 org = (org_x, org_y)
                 image = kwimage.draw_text_on_image(
-                    image, text=label, org=org, color=col, valign=valign,
+                    image, text=label, org=org, color=edge_col, valign=valign,
                     halign=halign, **fontkw)
             if alpha_ < 1.0:
+                # todo:
                 # We could get away with only doing this to a slice of the
                 # image. It might result in a significant speedup. We would
                 # need to know the bounding region of the modified pixels,
-                # which could be tricky if there are labels.
+                # which could be tricky if there are labels, but managable
+                # with return info available in draw_text_on_image
                 cv2.addWeighted(
                     src1=image, alpha=alpha_,
                     src2=background, beta=1 - alpha_,
@@ -3303,7 +3323,7 @@ def _compress(data, flags, axis=None):
     elif torch is not None and torch.is_tensor(data):
         if not torch.is_tensor(flags):
             if _TORCH_HAS_BOOL_COMP:
-                flags = np.asarray(flags, dtype=np.bool)
+                flags = np.asarray(flags, dtype=bool)
                 flags = torch.BoolTensor(flags).to(data.device)
             else:
                 flags = np.asarray(flags).astype(np.uint8)

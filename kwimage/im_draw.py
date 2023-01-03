@@ -300,8 +300,9 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             alloc_w = text_w
         if alloc_h is None:
             alloc_h = text_h
-        img = np.zeros((alloc_h, alloc_w, 3), dtype=np.uint8)
+        img = np.zeros((alloc_h, alloc_w, len(bg_color)), dtype=np.uint8)
         img[...] = np.array(bg_color)[None, None, :]
+        kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
 
     if border_thickness > 0:
         # recursive call
@@ -1150,11 +1151,11 @@ def fill_nans_with_checkers(canvas, square_shape=8,
             Size of the checker squares. Defaults to 8.
 
         on_value (Number | str):
-            The value of one checker. Defaults to 1 for floats and 255 for
-            ints.
+            The value of one checker. Defaults to a dark-gray color, 0.3 for
+            floats and 77 for ints.
 
         off_value (Number | str):
-            The value off the other checker. Defaults to 0.
+            The value off the other checker. Defaults to black, which is 0.
 
     Returns:
         np.ndarray: the inplace modified canvas
@@ -1240,9 +1241,9 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value
 
     if on_value == 'auto':
         if canvas.dtype.kind == 'u' and canvas.dtype.itemsize == 1:
-            on_value = 255
+            on_value = 77  # 255
         else:
-            on_value = 1
+            on_value = 0.3  # 1
     if off_value == 'auto':
         off_value = 0
 
