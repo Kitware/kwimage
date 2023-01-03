@@ -39,12 +39,12 @@ def test_geotiff():
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     crs = srs.ExportToWkt()
 
-    nodata = 0
+    nodata_value = 0
     imdata = kwimage.ensure_uint255(imdata)
 
-    # Add in some nodata
-    imdata[-10:, 10:] = nodata
-    imdata[0:10:, -200:-180] = nodata
+    # Add in some nodata_value
+    imdata[-10:, 10:] = nodata_value
+    imdata[0:10:, -200:-180] = nodata_value
     imdata = imdata[:, :, 0:3]
 
     metadata = {
@@ -55,7 +55,7 @@ def test_geotiff():
         fpath,
         imdata,
         backend="gdal",
-        nodata=nodata,
+        nodata_value=nodata_value,
         crs=crs,
         transform=tf_wld_from_img,
         overviews="auto",
