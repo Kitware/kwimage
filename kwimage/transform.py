@@ -826,8 +826,8 @@ class Projective(Linear):
         rng = kwarray.ensure_rng(rng)
         aff_part = kwimage.Affine.random(shape, rng=rng, **kw)
         # Random projective part
-        u = 1 / rng.randint(0, 10000)
-        v = 1 / rng.randint(0, 10000)
+        u = 1 / rng.randint(1, 10000)
+        v = 1 / rng.randint(1, 10000)
         proj_part = np.array([
             [ 1,  0,  0],
             [ 0,  1,  0],
