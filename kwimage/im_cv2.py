@@ -444,14 +444,112 @@ def _cv2_input_fixer(img):
     return img, final_dtype
 
 
+DTYPE_KEY_TO_DTYPE = {
+    ('b', 1): bool,
+
+    ('u', 1): np.uint8,
+    ('u', 2): np.uint16,
+    ('u', 4): np.uint32,
+    ('u', 8): np.uint64,
+
+    ('i', 1): np.int8,
+    ('i', 2): np.int16,
+    ('i', 4): np.int32,
+    ('i', 8): np.int64,
+
+    ('f', 2): np.float16,
+    ('f', 4): np.float32,
+    ('f', 8): np.float64,
+    ('f', 16): np.float128,
+}
+DTYPE_TO_DTYPE_KEY = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
+
+
+def __build_cv2_allowed_dtypes():
+    default = ub.udict({
+        DTYPE_TO_DTYPE_KEY[bool]: np.uint8,
+        DTYPE_TO_DTYPE_KEY[np.uint8]: np.uint8,
+
+        DTYPE_TO_DTYPE_KEY[np.uint16]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.uint32]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.uint64]: np.float32,
+
+        DTYPE_TO_DTYPE_KEY[np.int8]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.int16]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.int32]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.int64]: np.float32,
+
+        DTYPE_TO_DTYPE_KEY[np.int8]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.float16]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.float32]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
+    })
+
+    CV2_ALLOWED_DTYPE_MAPPINGS = {}
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32'] = default
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32'] | {
+        DTYPE_TO_DTYPE_KEY[np.int8]: np.int16,
+        DTYPE_TO_DTYPE_KEY[np.int16]: np.int16,
+    }
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,float32']  | {
+        DTYPE_TO_DTYPE_KEY[np.uint16]: np.int32,
+        DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
+    }
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
+        DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
+        DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
+        DTYPE_TO_DTYPE_KEY[np.float128]: np.float64,
+    }
+    for k in CV2_ALLOWED_DTYPE_MAPPINGS.keys():
+        CV2_ALLOWED_DTYPE_MAPPINGS[k] = CV2_ALLOWED_DTYPE_MAPPINGS[k].map_values(np.dtype)
+    return CV2_ALLOWED_DTYPE_MAPPINGS
+
+
+CV2_ALLOWED_DTYPE_MAPPINGS = __build_cv2_allowed_dtypes()
+
+
+def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64', contiguous=True):
+    """
+    OpenCV is very particular about its inputs, we would like to loosen those
+    requirements by seemlessly detecting and fixing dtypes when possible
+
+    Example:
+        from kwimage.im_cv2 import _cv2_input_fixer_v2  # NOQA
+        img = np.random.rand(32, 32).astype(np.int64)
+        fixed_img, final_dtype = _cv2_input_fixer_v2(img)
+        print(f'img.dtype={img.dtype}')
+        print(f'fixed_img.dtype={fixed_img.dtype}')
+        print(f'final_dtype={final_dtype}')
+    """
+    # Notes:
+    # CV2 Data Types
+    # https://udayawijenayake.com/2021/06/07/opencv-data-types/
+    in_dtype = img.dtype
+    in_dtype_key = in_dtype.kind, in_dtype.itemsize
+    out_dtype = CV2_ALLOWED_DTYPE_MAPPINGS[allowed_types][in_dtype_key]
+    out_dtype_key = out_dtype.kind, out_dtype.itemsize
+
+    if out_dtype_key == in_dtype_key:
+        final_dtype = None
+    else:
+        final_dtype = img.dtype
+        img = img.astype(out_dtype)
+
+    if contiguous and not img.flags['C_CONTIGUOUS'] or not img.flags['OWNDATA']:
+        # Cv2 only likes certain types of numpy arrays
+        img = np.ascontiguousarray(img).copy()
+
+    return img, final_dtype
+
+
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
              interpolation=None, grow_interpolation=None, letterbox=False,
              return_info=False, antialias=False, border_value=0):
     """
-    Resize an image based on a scale factor, final size, or size and aspect
-    ratio.
+    Resize an image via a scale factor, final size, or size and aspect ratio.
 
-    Slightly more general than cv2.resize, allows for specification of either a
+    Wraps and generalizes cv2.resize, allows for specification of either a
     scale factor, a final size, or the final size for a particular dimension.
 
     Note:
@@ -617,9 +715,6 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
-    Ignore:
-
-
     TODO:
         - [X] When interpolation is area and the number of channels > 4 cv2.resize will error but it is fine for linear interpolation
         - [ ] TODO: add padding options when letterbox=True
@@ -688,8 +783,11 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         raise AssertionError('impossible')
 
     if new_w is None:
-        assert new_h is not None
-        new_w = new_h * old_w / old_h
+        if new_h is None:
+            new_h = old_h
+            new_w = old_w
+        else:
+            new_w = new_h * old_w / old_h
     elif new_h is None:
         assert new_w is not None
         new_h = new_w * old_h / old_w

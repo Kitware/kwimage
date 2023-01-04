@@ -1695,11 +1695,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> fill_v2 = self.fill(image.copy(), value=(1, 2))
             >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
         """
+        from kwimage.im_cv2 import _cv2_input_fixer_v2
+        image, final_dtype = _cv2_input_fixer_v2(image, allowed_types='uint8,int16,int32,float32,float64', contiguous=True)
         if pixels_are == 'areas':
             # rasterio hac: todo nicer organization
             from rasterio import features
             shapes = [self.translate((0.5, 0.5)).to_geojson()]
-            features.rasterize(shapes, out=image, default_value=1)
+            features.rasterize(shapes, out=image, default_value=value)
         elif pixels_are == 'points':
             # line_type = cv2.LINE_AA
             cv_contours = self._to_cv_countours()
@@ -1718,6 +1720,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                     cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
                     image[..., bx] = tmp
 
+        if final_dtype is not None:
+            image = image.astype(final_dtype)
         return image
 
     @profile

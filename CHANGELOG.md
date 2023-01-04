@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.12 - Unreleased
 
+### Changed
+* imresize now returns the original image if all scale / dsize arguments are unspecified or None.
+
 
 ## Version 0.9.11 - Released 2023-01-02
 
