@@ -1665,14 +1665,20 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         np.clip(ys, y_min, y_max, out=ys)
         return self2
 
-    def fill(self, image, value=1, pixels_are='points'):
+    def fill(self, image, value=1, pixels_are='points', assert_inplace=False):
         """
-        Inplace fill in an image based on this polyon.
+        Fill in an image based on this polyon.
 
         Args:
             image (ndarray): image to draw on
+
             value (int | Tuple[int]): value fill in with. Defaults to 1.
+
             pixels_are (str): either points or areas
+
+            assert_inplace (bool):
+                if True then the function will error if the modification cannot
+                happen inplace.
 
         Returns:
             ndarray: the image that has been modified in place
@@ -1690,39 +1696,72 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> import kwimage
             >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
             >>> self = mask.to_multi_polygon()
-            >>> image = np.zeros(mask.shape[0:2] + (2,))
+            >>> image = np.zeros(mask.shape[0:2] + (2,), dtype=np.float32)
             >>> fill_v1 = self.fill(image.copy(), value=1)
             >>> fill_v2 = self.fill(image.copy(), value=(1, 2))
             >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
+
+        Example:
+            >>> import kwimage
+            >>> # Test dtype with inplace vs not
+            >>> mask = kwimage.Mask.random(shape=(32, 32), rng=0)
+            >>> self = mask.to_multi_polygon()
+            >>> native_dtypes = []
+            >>> native_dtypes += [np.uint8, np.uint16]
+            >>> native_dtypes += [np.int8, np.int16, np.int32]
+            >>> native_dtypes += [np.float32]
+            >>> for dtype in native_dtypes:
+            >>>     image = np.zeros(mask.shape[0:2] + (2,), dtype=dtype)
+            >>>     image1 = self.fill(image, value=1, assert_inplace=True)
+            >>>     assert image1.sum() > 0
+            >>>     assert image.sum() > 0
+            >>>     print(f'dtype: {dtype} inplace')
+            >>> needfix_dtypes = [np.uint32, np.uint64, np.int64, np.float16, np.float64]
+            >>> for dtype in needfix_dtypes:
+            >>>     image = np.zeros(mask.shape[0:2] + (2,), dtype=dtype)
+            >>>     image1 = self.fill(image, value=1, assert_inplace=False)
+            >>>     assert image1.sum() > 0
+            >>>     assert image.sum() == 0
+            >>>     print(f'dtype: {dtype} not inplace')
         """
+        # If the dtype if fixed, then the data is not modified inplace
+        final_dtype = None
+        image_ = image
         from kwimage.im_cv2 import _cv2_input_fixer_v2
-        image, final_dtype = _cv2_input_fixer_v2(image, allowed_types='uint8,int16,int32,float32,float64', contiguous=True)
+        image_, final_dtype = _cv2_input_fixer_v2(
+            image, allowed_types='uint8,uint16,int8,int16,int32,float32',
+            contiguous=False)
+        if assert_inplace and image_ is not image:
+            raise AssertionError('Unable to perform requested inplace operation')
+
         if pixels_are == 'areas':
             # rasterio hac: todo nicer organization
             from rasterio import features
             shapes = [self.translate((0.5, 0.5)).to_geojson()]
-            features.rasterize(shapes, out=image, default_value=value)
+            features.rasterize(shapes, out=image_, default_value=value)
         elif pixels_are == 'points':
             # line_type = cv2.LINE_AA
             cv_contours = self._to_cv_countours()
             line_type = cv2.LINE_8
             # Modification happens inplace
-            if len(image.shape) == 2:
-                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
-            elif len(image.shape) == 3 and image.shape[2] < 4:
+            if len(image_.shape) == 2:
+                cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
+            elif len(image_.shape) == 3 and image_.shape[2] < 4:
                 if isinstance(value, numbers.Number):
-                    value = (value,) * image.shape[2]
-                cv2.fillPoly(image, cv_contours, value, line_type, shift=0)
+                    value = (value,) * image_.shape[2]
+                cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
             else:
                 # handle bands > 3
-                for bx in enumerate(range(image.shape[2])):
-                    tmp = np.ascontiguousarray(image[..., bx])
+                for bx in enumerate(range(image_.shape[2])):
+                    tmp = np.ascontiguousarray(image_[..., bx])
                     cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
-                    image[..., bx] = tmp
+                    image_[..., bx] = tmp
 
         if final_dtype is not None:
-            image = image.astype(final_dtype)
-        return image
+            image_ = image_.astype(final_dtype)
+        if assert_inplace and image_ is not image:
+            raise AssertionError('Unable to perform requested inplace operation')
+        return image_
 
     @profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
@@ -2350,7 +2389,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         self = MultiPolygon(data)
         return self
 
-    def fill(self, image, value=1, pixels_are='points'):
+    def fill(self, image, value=1, pixels_are='points', assert_inplace=False):
         """
         Inplace fill in an image based on this multi-polyon.
 
@@ -2364,9 +2403,23 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         Returns:
             ndarray: the image that has been modified in place
         """
+        from kwimage.im_cv2 import _cv2_input_fixer_v2
+        image_, final_dtype = _cv2_input_fixer_v2(
+            image, allowed_types='uint8,uint16,int8,int16,int32,float32',
+            contiguous=False)
+
+        if assert_inplace and image_ is not image:
+            raise AssertionError('Unable to perform requested inplace operation')
+
         for p in self.data:
-            p.fill(image, value=value, pixels_are=pixels_are)
-        return image
+            image_ = p.fill(image_, value=value, pixels_are=pixels_are,
+                            assert_inplace=assert_inplace)
+
+        if final_dtype is not None:
+            image_ = image_.astype(final_dtype)
+        if assert_inplace and image_ is not image:
+            raise AssertionError('Unable to perform requested inplace operation')
+        return image_
 
     def to_multi_polygon(self):
         """
@@ -2787,7 +2840,7 @@ class PolygonList(_generic.ObjectList):
         else:
             return items
 
-    def fill(self, image, value=1, pixels_are='points'):
+    def fill(self, image, value=1, pixels_are='points', assert_inplace=False):
         """
         Inplace fill in an image based on these polygons
 
@@ -2799,9 +2852,20 @@ class PolygonList(_generic.ObjectList):
         Returns:
             ndarray: the image that has been modified in place
         """
+        from kwimage.im_cv2 import _cv2_input_fixer_v2
+        image_, final_dtype = _cv2_input_fixer_v2(
+            image, allowed_types='uint8,uint16,int8,int16,int32,float32',
+            contiguous=False)
+        if assert_inplace and image_ is not image:
+            raise AssertionError('Unable to perform requested inplace operation')
         for p in self.data:
             if p is not None:
-                p.fill(image, value=value, pixels_are=pixels_are)
+                image = p.fill(image, value=value, pixels_are=pixels_are,
+                               assert_inplace=assert_inplace)
+        if final_dtype is not None:
+            image_ = image_.astype(final_dtype)
+        if assert_inplace and image_ is not image:
+            raise AssertionError('Unable to perform requested inplace operation')
         return image
 
     def draw_on(self, *args, **kw):

@@ -439,6 +439,18 @@ class Color(ub.NiceRepr):
         References:
             .. [HowToDistinct] https://stackoverflow.com/questions/470690/how-to-automatically-generate-n-distinct-colors
 
+            .. [ColorLimits] https://graphicdesign.stackexchange.com/questions/3682/where-can-i-find-a-large-palette-set-of-contrasting-colors-for-coloring-many-d
+            .. [WikiDistinguish] https://en.wikipedia.org/wiki/Help:Distinguishable_colors
+            .. [Disinct2] https://ux.stackexchange.com/questions/17964/how-many-visually-distinct-colors-can-accurately-be-associated-with-a-separate
+
+        TODO:
+            - [ ] If num is more than a threshold we should switch to
+               a different strategy to generating colors that just samples
+               uniformly from some colormap and then shuffles. We have no hope
+               of making things distinguishable when num starts going over
+               10 or so. See [ColorLimits]_ [WikiDistinguish]_ [Disinct2]_ for
+               more ideas.
+
         Returns:
             List[Tuple]: list of distinct float color values
 

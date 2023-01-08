@@ -501,6 +501,14 @@ def __build_cv2_allowed_dtypes():
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
         DTYPE_TO_DTYPE_KEY[np.float128]: np.float64,
     }
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
+        DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
+        DTYPE_TO_DTYPE_KEY[np.int8]: np.int8,
+        DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
+        DTYPE_TO_DTYPE_KEY[np.uint16]: np.uint16,
+        DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
+        DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
+    }
     for k in CV2_ALLOWED_DTYPE_MAPPINGS.keys():
         CV2_ALLOWED_DTYPE_MAPPINGS[k] = CV2_ALLOWED_DTYPE_MAPPINGS[k].map_values(np.dtype)
     return CV2_ALLOWED_DTYPE_MAPPINGS
@@ -509,7 +517,8 @@ def __build_cv2_allowed_dtypes():
 CV2_ALLOWED_DTYPE_MAPPINGS = __build_cv2_allowed_dtypes()
 
 
-def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64', contiguous=True):
+def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64',
+                        contiguous=True, owndata=False):
     """
     OpenCV is very particular about its inputs, we would like to loosen those
     requirements by seemlessly detecting and fixing dtypes when possible
@@ -534,11 +543,13 @@ def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64', 
         final_dtype = None
     else:
         final_dtype = img.dtype
-        img = img.astype(out_dtype)
+        img = img.astype(out_dtype, copy=False)
 
-    if contiguous and not img.flags['C_CONTIGUOUS'] or not img.flags['OWNDATA']:
-        # Cv2 only likes certain types of numpy arrays
-        img = np.ascontiguousarray(img).copy()
+    if contiguous and not img.flags['C_CONTIGUOUS']:
+        img = np.ascontiguousarray(img)
+
+    if owndata and not img.flags['OWNDATA']:
+        img = img.copy()
 
     return img, final_dtype
 

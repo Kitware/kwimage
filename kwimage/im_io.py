@@ -1162,7 +1162,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     return fpath
 
 
-def load_image_shape(fpath, backend='auto'):
+def load_image_shape(fpath, backend='auto', include_channels=True):
     """
     Determine the height/width/channels of an image without reading the entire
     file.
@@ -1170,6 +1170,7 @@ def load_image_shape(fpath, backend='auto'):
     Args:
         fpath (str): path to an image
         backend (str): can be "auto", "pil", or "gdal".
+        include_channels (bool): if False, only reads the height, width.
 
     Returns:
         Tuple[int, int, int] - shape of the image
@@ -1235,10 +1236,19 @@ def load_image_shape(fpath, backend='auto'):
         >>>         pil_img = Image.open(fpath)
         >>>         width, height = pil_img.size
         >>>         pil_img.close()
+        >>> # xdoctest: +REQUIRES(module:imagesize)
+        >>> # The imagesize module is quite fast
+        >>> import imagesize
+        >>> for timer in ti.reset('imagesize'):
+        >>>     with timer:
+        >>>         width, height = imagesize.get(fpath)
         Timed gdal for: 100 loops, best of 10
-            time per loop: best=62.967 µs, mean=63.991 ± 0.8 µs
+            time per loop: best=54.423 µs, mean=72.761 ± 15.9 µs
         Timed PIL for: 100 loops, best of 10
-            time per loop: best=46.640 µs, mean=47.314 ± 0.4 µs
+            time per loop: best=25.986 µs, mean=26.791 ± 1.2 µs
+        Timed imagesize for: 100 loops, best of 10
+            time per loop: best=5.092 µs, mean=5.195 ± 0.1 µs
+
 
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
@@ -1257,12 +1267,12 @@ def load_image_shape(fpath, backend='auto'):
     """
     if backend == 'auto':
         try:
-            shape = load_image_shape(fpath, backend='pil')
+            shape = load_image_shape(fpath, backend='pil', include_channels=include_channels)
         except Exception as pil_ex:
             if not _have_gdal():
                 raise
             try:
-                shape = load_image_shape(fpath, backend='gdal')
+                shape = load_image_shape(fpath, backend='gdal', include_channels=include_channels)
             except Exception:
                 raise pil_ex
     elif backend == 'pil':
@@ -1270,8 +1280,11 @@ def load_image_shape(fpath, backend='auto'):
         fpath = os.fspath(fpath)
         with Image.open(fpath) as pil_img:
             width, height = pil_img.size
-            num_channels = len(pil_img.getbands())
-        shape = (height, width, num_channels)
+            if include_channels:
+                num_channels = len(pil_img.getbands())
+                shape = (height, width, num_channels)
+            else:
+                shape = (height, width)
     elif backend == 'gdal':
         from osgeo import gdal
         fpath = os.fspath(fpath)
@@ -1280,9 +1293,20 @@ def load_image_shape(fpath, backend='auto'):
             raise Exception(gdal.GetLastErrorMsg())
         width = gdal_dset.RasterXSize
         height = gdal_dset.RasterYSize
-        num_channels = gdal_dset.RasterCount
+        if include_channels:
+            num_channels = gdal_dset.RasterCount
+            shape = (height, width, num_channels)
+        else:
+            shape = (height, width)
         gdal_dset = None
-        shape = (height, width, num_channels)
+    elif backend == 'imagesize':
+        import imagesize
+        if include_channels:
+            raise NotImplementedError('no way to get number of channels with imagesize')
+        width, height = imagesize.get(fpath)
+        shape = (height, width)
+    else:
+        raise KeyError(backend)
     return shape
 
 
