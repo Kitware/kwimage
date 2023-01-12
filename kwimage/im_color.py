@@ -750,7 +750,7 @@ def _draw_color_swatch(colors, cellshape=9):
     cell_w = cellshape[1]
     cells = []
     for color in colors:
-        cell = kwimage.Color(color).as_image(dsize=(cell_w, cell_h))
+        cell = kwimage.Color(color).to_image(dsize=(cell_w, cell_h))
         cells.append(cell)
 
     num_colors = len(colors)
