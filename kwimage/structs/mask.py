@@ -1483,7 +1483,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         return polygon
 
-    def to_mask(self, dims=None):
+    def to_mask(self, dims=None, pixels_are='points'):
         """
         Converts to a mask object (which does nothing because this already is
         mask object!)
@@ -1924,7 +1924,7 @@ class MaskList(_generic.ObjectList):
         ])
         return new
 
-    def to_mask_list(self):
+    def to_mask_list(self, dims=None, pixels_are='points'):
         """
         returns this object
 
