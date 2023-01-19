@@ -10,6 +10,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * imresize now returns the original image if all scale / dsize arguments are unspecified or None.
 * Polygon.fill can now work in non-inplace cases, but the `assert_inplace` flag must be set to 0.
 
+### Fixed
+* `labels` in `draw_on` now interprets integers as booleans
+
 
 ## Version 0.9.11 - Released 2023-01-02
 

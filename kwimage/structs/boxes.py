@@ -78,7 +78,7 @@ import ubelt as ub
 import warnings
 import skimage
 import kwarray
-import numbers
+import numbers  # NOQA
 from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
 

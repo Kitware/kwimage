@@ -316,7 +316,7 @@ class _DetDrawMixin:
             return float('nan') if s is None else s
 
         if labels:
-            if labels is True:
+            if labels is True or isinstance(labels, int) and labels:
                 parts = []
                 if self.data.get('class_idxs', None) is not None:
                     parts.append('class')
