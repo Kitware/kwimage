@@ -2618,7 +2618,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             >>> kwimage.MultiPolygon.from_shapely(sh_poly)
             >>> kwimage.MultiPolygon.from_shapely(sh_multi_poly)
         """
-        if geom.type == 'Polygon':
+        if geom.geom_type == 'Polygon':
             polys = [Polygon.from_shapely(geom)]
         else:
             polys = [Polygon.from_shapely(g) for g in geom.geoms]
