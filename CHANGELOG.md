@@ -12,7 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * `labels` in `draw_on` now interprets integers as booleans
-* Use `geom_type` instead of `type` for shapely
+* Fixed shapely warning about the "type" attribute. Now using `geom_type` instead.
 
 
 ## Version 0.9.11 - Released 2023-01-02
