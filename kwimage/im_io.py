@@ -832,7 +832,7 @@ def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
     if nodata_method is not None:
         if nodata_method == 'ma':
             image = np.ma.array(image, mask=mask)
-        elif nodata_method == 'float':
+        elif nodata_method in {'float', 'nan'}:
             promote_dtype = np.result_type(image.dtype, np.float32)
             image = image.astype(promote_dtype)
             image[mask] = np.nan
