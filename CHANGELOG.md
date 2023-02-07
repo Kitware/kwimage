@@ -4,7 +4,19 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.11 - Unreleased
+## Version 0.9.12 - Unreleased
+
+### Changed
+* imresize now returns the original image if all scale / dsize arguments are unspecified or None.
+* Polygon.fill can now work in non-inplace cases, but the `assert_inplace` flag must be set to 0.
+* Allow nan as a nodata_method as alias for float
+
+### Fixed
+* `labels` in `draw_on` now interprets integers as booleans
+* Fixed shapely warning about the "type" attribute. Now using `geom_type` instead.
+
+
+## Version 0.9.11 - Released 2023-01-02
 
 
 ## Version 0.9.10 - Released 2023-01-02

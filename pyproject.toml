@@ -7,9 +7,30 @@ ignore_missing_imports = true
 [tool.xcookie]
 tags = [ "purepy", "gitlab", "kitware", "cv2", "gdal"]
 mod_name = "kwimage"
+author = 'Jon Crall'
+author_email = 'jon.crall@kitware.com'
 repo_name = "kwimage"
 min_python = "3.6"
+url = 'https://gitlab.kitware.com/computer-vision/kwimage'
 dev_status = "beta"
+typed = true
+classifiers = [
+    "Development Status :: 4 - Beta",
+    'Intended Audience :: Developers',
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Software Development',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Utilities',
+    # This should be interpreted as Apache License v2.0
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
 
 [tool.pytest.ini_options]
 addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py"

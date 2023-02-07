@@ -334,9 +334,10 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         >>> print(ub.repr2(data_sliced, with_dtype=False))
         np.array([2, 3])
     """
-    import warnings
-    warnings.warn('Deprecated use kwarray.padded_slice instead',
-                  DeprecationWarning)
+    ub.schedule_deprecation(
+        'kwimage', 'padded_slice', 'function',
+        migration='use kwarray.padded_slice instead',
+        deprecate='now', error='0.11.0', remove='0.12.0')
 
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
@@ -502,6 +503,10 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
         DEPRECATED: this function has been MOVED to ``kwarray.normalize``
     """
     import kwarray
+    ub.schedule_deprecation(
+        'kwimage', 'normalize', 'function',
+        migration='use kwarray.normalize instead',
+        deprecate='0.10.0', error='0.11.0', remove='0.12.0')
     return kwarray.normalize(arr, mode=mode, alpha=alpha, beta=beta, out=out)
 
 
@@ -535,6 +540,15 @@ def find_robust_normalizers(data, params='auto'):
         >>> print('norm_params3 = {}'.format(ub.repr2(norm_params3, nl=1)))
     """
     import kwarray
+    ub.schedule_deprecation(
+        'kwimage', 'find_robust_normalizers', 'function',
+        migration=ub.paragraph(
+            '''
+            use kwarray.find_robust_normalizers instead.  Note: the default
+            here is params=sigmoid, but in kwarray params default to linear.
+            Modify the code accordintly.
+            '''),
+        deprecate='0.10.0', error='0.11.0', remove='0.12.0')
     if isinstance(params, str) and params == 'auto':
         # Override kwarray defaults for backwards compatability
         params = {
