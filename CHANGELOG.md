@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.13 - Unreleased
 
+### Changed
+* Small speedups
+
 
 ## Version 0.9.12 - Released 2023-02-07
 
