@@ -117,6 +117,18 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
     CommandLine:
         XDEV_PROFILE=1 xdoctest -m kwimage.im_filter fourier_mask --show
 
+    import kwimage
+    img_hwc = kwimage.grab_test_image(space='gray')
+    mask = np.random.rand(*img_hwc.shape[0:2])
+    out_hwc = fourier_mask(img_hwc, mask)
+    for timer in ti.reset('fft mask with numpy'):
+        with timer:
+            fourier_mask(out_hwc, mask, backend='numpy')
+
+    for timer in ti.reset('fft mask with cv2'):
+        with timer:
+            fourier_mask(out_hwc, mask, backend='cv2')
+
     Example:
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
@@ -186,23 +198,28 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
     if axis is None:
         for i, s in enumerate(img_chw):
             # hadamard product (aka simple element-wise multiplication)
-            out_chw[i] = _inv_fourier(_fourier(s) * mask)
+            f = _fourier(s)
+            f *= mask
+            # f = _fourier(s) * mask
+            out_chw[i] = _inv_fourier(f)
     else:
         for i, s in enumerate(img_chw):
             if i in axis:
                 # hadamard product (aka simple element-wise multiplication)
-                out_chw[i] = _inv_fourier(_fourier(s) * mask)
+                f = _fourier(s)
+                f *= mask
+                out_chw[i] = _inv_fourier(f)
             else:
                 out_chw[i] = s
 
     if clip:
-        out_chw = np.clip(out_chw, *clip)
+        out_chw = np.clip(out_chw, *clip, out=out_chw)
     out_hwc = out_chw.transpose(1, 2, 0)
     return out_hwc
 
 
 def _np_fourier(s):
-    return np.fft.fftshift(np.fft.fft2(s.astype(np.float32)))
+    return np.fft.fftshift(np.fft.fft2(s))
 
 
 def _np_inv_fourier(f):
@@ -290,14 +307,19 @@ def _benchmark():
         with timer:
             _cv2_inv_fourier(fs_cv2)
 
+
+def _benchmark2():
     import kwimage
+    import timerit
+    ti = timerit.Timerit(100, bestof=10, verbose=3)
     img_hwc = kwimage.grab_test_image(space='gray')
     mask = np.random.rand(*img_hwc.shape[0:2])
     out_hwc = fourier_mask(img_hwc, mask)
-    for timer in ti.reset('fft mask with numpy'):
-        with timer:
-            fourier_mask(out_hwc, mask, backend='numpy')
 
     for timer in ti.reset('fft mask with cv2'):
         with timer:
             fourier_mask(out_hwc, mask, backend='cv2')
+
+    # for timer in ti.reset('fft mask with numpy'):
+    #     with timer:
+    #         fourier_mask(out_hwc, mask, backend='numpy')
