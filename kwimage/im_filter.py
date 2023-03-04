@@ -138,7 +138,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image(space='gray')
-        >>> mask = kwimage.gaussian_patch(mask.shape)
+        >>> mask = kwimage.gaussian_patch(img_hwc.shape[0:2])
         >>> mask = (mask / mask.max()) ** 32
         >>> out_hwc_cv2 = fourier_mask(img_hwc, mask, backend='numpy')
         >>> out_hwc_np = fourier_mask(img_hwc, mask, backend='cv2')
@@ -155,7 +155,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image(space='gray')
-        >>> mask = kwimage.gaussian_patch(mask.shape)
+        >>> mask = kwimage.gaussian_patch(img_hwc.shape[0:2])
         >>> mask = 1 - (mask / mask.max()) ** 32
         >>> out_hwc_cv2 = fourier_mask(img_hwc, mask, backend='numpy')
         >>> out_hwc_np = fourier_mask(img_hwc, mask, backend='cv2')
