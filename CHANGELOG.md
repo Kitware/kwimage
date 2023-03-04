@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Small speedups
+* Add cv2 backend to `fourier_mask`, which is a 3x speedup, and set this to the default.
 
 
 ## Version 0.9.12 - Released 2023-02-07
