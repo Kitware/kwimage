@@ -8,11 +8,11 @@ import skimage.transform
 import math
 from kwimage import _internal
 
-# try:
-#     import xdev
-#     profile = xdev.profile
-# except Exception:
-profile = ub.identity
+try:
+    import xdev
+    profile = xdev.profile
+except Exception:
+    profile = ub.identity
 
 
 class Transform(ub.NiceRepr):
@@ -325,6 +325,7 @@ class Matrix(Transform):
         new = self.__class__(new_mat)
         return new
 
+    @profile
     def isclose_identity(self, rtol=1e-05, atol=1e-08):
         """
         Returns true if the matrix is nearly the identity.
@@ -746,8 +747,16 @@ class Projective(Linear):
                 known_params = {'uv', 'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
                 params = {key: data[key] for key in known_params if key in data}
                 if len(known_params & keys):
-                    type_ = params.pop('type', None)
-                    type_
+                    type_ = params.pop('type', None)  # NOQA
+                    # if len(keys) == 1:
+                    #     # Special cases for speed
+                    #     if keys == {'scale'}:
+                    #         self = cls.scale(**params)
+                    #     if keys == {'translate'}:
+                    #         self = cls.scale(**params)
+                    #     else:
+                    #         self = cls.projective(**params)
+                    # else:
                     self = cls.projective(**params)
                 else:
                     raise KeyError(', '.join(list(data.keys())))
@@ -1265,7 +1274,23 @@ class Affine(Projective):
                 params = {key: data[key] for key in known_params if key in data}
                 if len(known_params & keys):
                     params.pop('type', None)
-                    self = cls.affine(**params)
+                    _nkeys = len(keys)
+                    if _nkeys == 1:
+                        # Special cases for speed
+                        if keys == {'scale'}:
+                            self = cls.scale(**params)
+                        elif keys == {'offset'}:
+                            self = cls.translate(**params)
+                        else:
+                            self = cls.affine(**params)
+                    # elif _nkeys == 2:  # may not be worth it
+                    #     # Special cases for speed
+                    #     if keys == {'scale', 'offset'}:
+                    #         self = cls._scale_translate(**params)
+                    #     else:
+                    #         self = cls.affine(**params)
+                    else:
+                        self = cls.affine(**params)
                 else:
                     raise KeyError(', '.join(list(data.keys())))
         else:
@@ -1422,6 +1447,21 @@ class Affine(Projective):
         # Sympy simplified expression
         mat = np.array([1.0, 0.0, tx,
                         0.0, 1.0, ty,
+                        0.0, 0.0, 1.0])
+        mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
+        self = cls(mat)
+        return self
+
+    @classmethod
+    def _scale_translate(cls, scale, offset):
+        """ helper method for speed """
+        scale_ = 1 if scale is None else scale
+        offset_ = 0 if offset is None else offset
+        sx, sy = _ensure_iterable2(scale_)
+        tx, ty = _ensure_iterable2(offset_)
+        # Sympy simplified expression
+        mat = np.array([sx , 0.0, tx,
+                        0.0,  sy, ty,
                         0.0, 0.0, 1.0])
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)

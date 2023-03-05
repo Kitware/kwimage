@@ -741,6 +741,17 @@ class Color(ub.NiceRepr):
 def _draw_color_swatch(colors, cellshape=9):
     """
     Draw colors in a grid
+
+    Ignore:
+        # https://seaborn.pydata.org/tutorial/color_palettes.html
+
+        import kwplot
+        sns = kwplot.sns
+        from kwimage.im_color import *  # NOQA
+        from kwimage.im_color import _draw_color_swatch
+        colors = sns.palettes.color_palette('deep', n_colors=10)
+        swatch = _draw_color_swatch(colors)
+        kwplot.imshow(swatch)
     """
     import kwimage
     import math

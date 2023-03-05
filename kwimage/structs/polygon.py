@@ -2008,9 +2008,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         modification.
 
         Args:
-            setlim (bool): if True ensures the limits of the axes contains the
-                polygon
-
             color (str | Tuple): coercable color.
                 Default color if specific colors are not given.
 
@@ -2020,8 +2017,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 if True fill the polygon with facecolor, otherwise
                 just draw the border if linewidth > 0
 
-            setlim (bool): if True, modify the x and y limits of the matplotlib
-                axes such that the polygon is can be seen.
+            setlim (bool | str):
+                if True, modify the x and y limits of the matplotlib axes such
+                that the polygon is can be seen. Can also be a string "grow", which
+                only allows growth of the viewport to accomidate the new polyogn.
 
             border (bool):
                 if True, draws an edge border on the polygon.
