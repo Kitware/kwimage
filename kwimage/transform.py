@@ -8,6 +8,11 @@ import skimage.transform
 import math
 from kwimage import _internal
 
+__all__ = [
+    'Transform', 'Matrix', 'Linear', 'Affine', 'Projective'
+]
+
+
 try:
     import xdev
     profile = xdev.profile

@@ -42,9 +42,9 @@ The top-level API is:
                                 overlay_alpha_layers,)
     from .im_color import (Color,)
     from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                          find_robust_normalizers, make_channels_comparable,
-                          normalize, normalize_intensity, num_channels,
-                          padded_slice,)
+                          exactly_1channel, find_robust_normalizers,
+                          make_channels_comparable, normalize, normalize_intensity,
+                          num_channels, padded_slice,)
     from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
                          gaussian_patch, imcrop, imresize, imscale, morphology,
                          warp_affine, warp_image, warp_projective,)
@@ -62,8 +62,7 @@ The top-level API is:
     from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                           MultiPolygon, Points, PointsList, Polygon, PolygonList,
                           Segmentation, SegmentationList, smooth_prob,)
-    from .transform import (Affine, Linear, Matrix, Projective, Transform,
-                            profile,)
+    from .transform import (Affine, Linear, Matrix, Projective, Transform,)
     from .util_warp import (add_homog, remove_homog, subpixel_accum,
                             subpixel_align, subpixel_getvalue, subpixel_maximum,
                             subpixel_minimum, subpixel_set, subpixel_setvalue,
@@ -147,7 +146,7 @@ with one of the following "extra install" tags:
     # OR
 
     # If other parts of your system depend on the opencv qt libs 
-    # (this can conflict with pyqt5)
+    # (NOT RECOMMENDED: this can conflict with pyqt5)
     pip install kwimage[graphics]
 
 

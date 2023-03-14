@@ -11,6 +11,20 @@ import numbers
 from functools import lru_cache
 from . import im_core
 
+__all__ = [
+    'connected_components',
+    'convert_colorspace',
+    'gaussian_blur',
+    'gaussian_patch',
+    'imcrop',
+    'imresize',
+    'imscale',
+    'morphology',
+    'warp_affine',
+    'warp_image',
+    'warp_projective'
+]
+
 
 _CV2_INTERPOLATION_TYPES = {
     'nearest': cv2.INTER_NEAREST,

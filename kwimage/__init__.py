@@ -51,11 +51,9 @@ from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
                       exactly_1channel, find_robust_normalizers,
                       make_channels_comparable, normalize, normalize_intensity,
                       num_channels, padded_slice,)
-from .im_cv2 import (CV2_ALLOWED_DTYPE_MAPPINGS, DTYPE_KEY_TO_DTYPE,
-                     DTYPE_TO_DTYPE_KEY, connected_components,
-                     convert_colorspace, gaussian_blur, gaussian_patch, imcrop,
-                     imresize, imscale, morphology, warp_affine, warp_image,
-                     warp_projective,)
+from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
+                     gaussian_patch, imcrop, imresize, imscale, morphology,
+                     warp_affine, warp_image, warp_projective,)
 from .im_demodata import (checkerboard, grab_test_image,
                           grab_test_image_fpath,)
 from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
@@ -70,16 +68,14 @@ from .im_stack import (stack_images, stack_images_grid,)
 from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                       MultiPolygon, Points, PointsList, Polygon, PolygonList,
                       Segmentation, SegmentationList, smooth_prob,)
-from .transform import (Affine, Linear, Matrix, Projective, Transform,
-                        profile,)
+from .transform import (Affine, Linear, Matrix, Projective, Transform,)
 from .util_warp import (add_homog, remove_homog, subpixel_accum,
                         subpixel_align, subpixel_getvalue, subpixel_maximum,
                         subpixel_minimum, subpixel_set, subpixel_setvalue,
                         subpixel_slice, subpixel_translate, warp_points,
                         warp_tensor,)
 
-__all__ = ['Affine', 'Box', 'Boxes', 'CV2_ALLOWED_DTYPE_MAPPINGS', 'Color',
-           'Coords', 'DTYPE_KEY_TO_DTYPE', 'DTYPE_TO_DTYPE_KEY', 'Detections',
+__all__ = ['Affine', 'Box', 'Boxes', 'Color', 'Coords', 'Detections',
            'Heatmap', 'Linear', 'Mask', 'MaskList', 'Matrix', 'MultiPolygon',
            'Points', 'PointsList', 'Polygon', 'PolygonList', 'Projective',
            'Segmentation', 'SegmentationList', 'Transform', 'add_homog',
@@ -97,11 +93,10 @@ __all__ = ['Affine', 'Box', 'Boxes', 'CV2_ALLOWED_DTYPE_MAPPINGS', 'Color',
            'make_orimask', 'make_vector_field', 'morphology',
            'nodata_checkerboard', 'non_max_supression', 'normalize',
            'normalize_intensity', 'num_channels', 'overlay_alpha_images',
-           'overlay_alpha_layers', 'padded_slice', 'profile',
-           'radial_fourier_mask', 'remove_homog', 'rle_translate',
-           'smooth_prob', 'stack_images', 'stack_images_grid',
-           'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
-           'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
-           'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_affine', 'warp_image', 'warp_points', 'warp_projective',
-           'warp_tensor']
+           'overlay_alpha_layers', 'padded_slice', 'radial_fourier_mask',
+           'remove_homog', 'rle_translate', 'smooth_prob', 'stack_images',
+           'stack_images_grid', 'subpixel_accum', 'subpixel_align',
+           'subpixel_getvalue', 'subpixel_maximum', 'subpixel_minimum',
+           'subpixel_set', 'subpixel_setvalue', 'subpixel_slice',
+           'subpixel_translate', 'warp_affine', 'warp_image', 'warp_points',
+           'warp_projective', 'warp_tensor']
