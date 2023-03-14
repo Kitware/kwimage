@@ -1,6 +1,6 @@
-# python ~/local/tools/supported_python_versions_pip.py matplotlib
-# python ~/local/tools/supported_python_versions_pip.py torch
-# python ~/local/tools/supported_python_versions_pip.py itk-io
+# xdev availpkg matplotlib
+# xdev availpkg torch
+# xdev availpkg itk-io
 
 matplotlib>=3.5.0     ;                            python_version >= '3.10'    # Python 3.10+
 matplotlib>=3.3.3     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9

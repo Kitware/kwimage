@@ -1,10 +1,10 @@
 # 
-# python ~/local/tools/supported_python_versions_pip.py numpy --request_min=1.19.2
-# python ~/local/tools/supported_python_versions_pip.py scipy --request_min=1.5.3
-# python ~/local/tools/supported_python_versions_pip.py shapely
-# python ~/local/tools/supported_python_versions_pip.py scikit-image --request_min=0.17.2
-# python ~/local/tools/supported_python_versions_pip.py Pillow
-# python ~/local/tools/supported_python_versions_pip.py imageio
+# xdev availpkg numpy --request_min=1.19.2
+# xdev availpkg scipy --request_min=1.5.3
+# xdev availpkg shapely
+# xdev availpkg scikit-image --request_min=0.17.2
+# xdev availpkg Pillow
+# xdev availpkg imageio
 
 
 scipy>=1.9.2     ; python_version < '4.0'  and python_version >= '3.11'  # Python 3.11+
