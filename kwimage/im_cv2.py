@@ -740,6 +740,16 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
+    Example:
+        >>> # Test single pixel resize
+        >>> import kwimage
+        >>> import numpy as np
+        >>> assert kwimage.imresize(np.random.rand(1, 1, 3), scale=3).shape == (3, 3, 3)
+        >>> assert kwimage.imresize(np.random.rand(1, 1), scale=3).shape == (3, 3)
+
+        # cv2.resize(np.random.rand(1, 1, 3), (3, 3))
+
+
     TODO:
         - [X] When interpolation is area and the number of channels > 4 cv2.resize will error but it is fine for linear interpolation
         - [ ] TODO: add padding options when letterbox=True
@@ -768,6 +778,13 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         return cv2.resize(a, dsize=dsize, interpolation=interpolation)
 
     def _patched_resize(img, scale, dsize, interpolation):
+        if old_w == 1 and old_h == 1:
+            # Best we can do in this case.
+            new_w, new_h = dsize
+            if len(img.shape) == 2:
+                return np.tile(img, (new_w, new_h))
+            else:
+                return np.tile(img, (new_w, new_h, 1))
         img = _cv2_imputation(img)
         sx, sy = scale
         num_chan = im_core.num_channels(img)
@@ -826,6 +843,8 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         _chosen_resize = _regular_resize
 
     img, final_dtype = _cv2_input_fixer(img)
+    # if not img.flags['C_CONTIGUOUS']:
+    #     img = np.ascontiguousarray(img)
 
     if letterbox:
         if dsize is None:

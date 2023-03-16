@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * New function: `exactly_1channel`.
 
+### Fixed
+* kwimage.imresize now works when the input image has dsize=(1, 1)
+
 
 ## Version 0.9.13 - Released 2023-03-04
 
