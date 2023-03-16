@@ -1,7 +1,7 @@
-# python ~/local/tools/supported_python_versions_pip.py cmake
-# python ~/local/tools/supported_python_versions_pip.py ninja
-# python ~/local/tools/supported_python_versions_pip.py Cython
-# python ~/local/tools/supported_python_versions_pip.py cffi
+# xdev availpkg cmake
+# xdev availpkg ninja
+# xdev availpkg Cython
+# xdev availpkg cffi
 
 numpy>=1.19.2   # tensorflow minimum
 

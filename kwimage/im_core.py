@@ -241,6 +241,11 @@ def atleast_3channels(arr, copy=True):
     Returns:
         ndarray: with shape (N, M, C), where C in {3, 4}
 
+    SeeAlso:
+        * :func:`exactly_1channel`
+        * :func:`atleast_3channels`
+        * :func:`kwarray.atleast_nd`
+
     Doctest:
         >>> assert atleast_3channels(np.zeros((10, 10))).shape[-1] == 3
         >>> assert atleast_3channels(np.zeros((10, 10, 1))).shape[-1] == 3
@@ -262,6 +267,56 @@ def atleast_3channels(arr, copy=True):
     else:
         raise ValueError('Cannot handle arr.shape={}'.format(arr.shape))
     return res
+
+
+def exactly_1channel(image, ndim=2):
+    """
+    Returns a 1-channel image as either a 2D or 3D array.
+
+    Args:
+        image (ndarray): an image with shape (H, W, 1) or (H, W).
+
+        ndim (int): number of dimensions in the output array.
+            Can be either 2 or 3.
+
+    Returns:
+        ndarray:
+            if ndim is 2, returns a (H, W) image.
+            if ndim is 3, returns a (H, W, 1) image.
+
+    Raises:
+        ValueError: if assumptions are not met.
+
+    SeeAlso:
+        * :func:`exactly_1channel`
+        * :func:`atleast_3channels`
+        * :func:`kwarray.atleast_nd`
+
+    Example:
+        >>> import kwimage
+        >>> assert kwimage.exactly_1channel(np.empty((3, 3)), ndim=2).shape == (3, 3)
+        >>> assert kwimage.exactly_1channel(np.empty((3, 3)), ndim=3).shape == (3, 3, 1)
+        >>> assert kwimage.exactly_1channel(np.empty((3, 3, 1)), ndim=2).shape == (3, 3)
+        >>> assert kwimage.exactly_1channel(np.empty((3, 3, 1)), ndim=3).shape == (3, 3, 1)
+        >>> import pytest
+        >>> with pytest.raises(ValueError):
+        >>>     kwimage.exactly_1channel(np.empty((3, 3, 2)), ndim=2)
+        >>> with pytest.raises(ValueError):
+        >>>     kwimage.exactly_1channel(np.empty((3)), ndim=3)
+    """
+    if len(image.shape) == 3:
+        if image.shape[2] != 1:
+            raise ValueError('Expected a 3D 1 channel image')
+        if ndim == 2:
+            image = image[:, :, 0]
+        else:
+            assert ndim == 3
+    else:
+        if len(image.shape) != 2:
+            raise ValueError('Expected a 2D 1 channel image')
+        if ndim == 3:
+            image = image[:, :, None]
+    return image
 
 
 def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):

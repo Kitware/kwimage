@@ -1,6 +1,6 @@
-# python ~/local/tools/supported_python_versions_pip.py matplotlib
-# python ~/local/tools/supported_python_versions_pip.py torch
-# python ~/local/tools/supported_python_versions_pip.py itk-io
+# xdev availpkg matplotlib
+# xdev availpkg torch
+# xdev availpkg itk-io
 
 matplotlib>=3.5.0     ;                            python_version >= '3.10'    # Python 3.10+
 matplotlib>=3.3.3     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
@@ -36,11 +36,6 @@ itk-io>=5.2.1  ; python_version < '3.4'  and python_version >= '2.7'   # Python 
 kwimage_ext >= 0.2.1
 
 colormath>=3.0.0
-
-# Networkx is a transitive dependency of colormath, and requires pinning for strict versioning
-networkx>=2.7           ;                            python_version >= '3.8'    # Python 3.8+
-networkx>=2.6.2         ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
-networkx>=2.2.0,<=2.5.1 ; python_version < '3.7.0' and python_version >= '3.6.0'   # Python 3.6
 
 
 # Other transitive dependencies that might need pinning in the future

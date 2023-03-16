@@ -41,16 +41,16 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.9.13'
+__version__ = '0.9.14'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
                             overlay_alpha_layers,)
 from .im_color import (Color,)
 from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                      find_robust_normalizers, make_channels_comparable,
-                      normalize, normalize_intensity, num_channels,
-                      padded_slice,)
+                      exactly_1channel, find_robust_normalizers,
+                      make_channels_comparable, normalize, normalize_intensity,
+                      num_channels, padded_slice,)
 from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
                      gaussian_patch, imcrop, imresize, imscale, morphology,
                      warp_affine, warp_image, warp_projective,)
@@ -68,8 +68,7 @@ from .im_stack import (stack_images, stack_images_grid,)
 from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                       MultiPolygon, Points, PointsList, Polygon, PolygonList,
                       Segmentation, SegmentationList, smooth_prob,)
-from .transform import (Affine, Linear, Matrix, Projective, Transform,
-                        profile,)
+from .transform import (Affine, Linear, Matrix, Projective, Transform,)
 from .util_warp import (add_homog, remove_homog, subpixel_accum,
                         subpixel_align, subpixel_getvalue, subpixel_maximum,
                         subpixel_minimum, subpixel_set, subpixel_setvalue,
@@ -86,18 +85,18 @@ __all__ = ['Affine', 'Box', 'Boxes', 'Color', 'Coords', 'Detections',
            'draw_header_text', 'draw_line_segments_on_image',
            'draw_text_on_image', 'draw_vector_field', 'encode_run_length',
            'ensure_alpha_channel', 'ensure_float01', 'ensure_uint255',
-           'fill_nans_with_checkers', 'find_robust_normalizers',
-           'fourier_mask', 'gaussian_blur', 'gaussian_patch',
-           'grab_test_image', 'grab_test_image_fpath', 'imcrop', 'imread',
-           'imresize', 'imscale', 'imwrite', 'load_image_shape',
-           'make_channels_comparable', 'make_heatmask', 'make_orimask',
-           'make_vector_field', 'morphology', 'nodata_checkerboard',
-           'non_max_supression', 'normalize', 'normalize_intensity',
-           'num_channels', 'overlay_alpha_images', 'overlay_alpha_layers',
-           'padded_slice', 'profile', 'radial_fourier_mask', 'remove_homog',
-           'rle_translate', 'smooth_prob', 'stack_images', 'stack_images_grid',
-           'subpixel_accum', 'subpixel_align', 'subpixel_getvalue',
-           'subpixel_maximum', 'subpixel_minimum', 'subpixel_set',
-           'subpixel_setvalue', 'subpixel_slice', 'subpixel_translate',
-           'warp_affine', 'warp_image', 'warp_points', 'warp_projective',
-           'warp_tensor']
+           'exactly_1channel', 'fill_nans_with_checkers',
+           'find_robust_normalizers', 'fourier_mask', 'gaussian_blur',
+           'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
+           'imcrop', 'imread', 'imresize', 'imscale', 'imwrite',
+           'load_image_shape', 'make_channels_comparable', 'make_heatmask',
+           'make_orimask', 'make_vector_field', 'morphology',
+           'nodata_checkerboard', 'non_max_supression', 'normalize',
+           'normalize_intensity', 'num_channels', 'overlay_alpha_images',
+           'overlay_alpha_layers', 'padded_slice', 'radial_fourier_mask',
+           'remove_homog', 'rle_translate', 'smooth_prob', 'stack_images',
+           'stack_images_grid', 'subpixel_accum', 'subpixel_align',
+           'subpixel_getvalue', 'subpixel_maximum', 'subpixel_minimum',
+           'subpixel_set', 'subpixel_setvalue', 'subpixel_slice',
+           'subpixel_translate', 'warp_affine', 'warp_image', 'warp_points',
+           'warp_projective', 'warp_tensor']
