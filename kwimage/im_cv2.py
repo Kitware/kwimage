@@ -191,6 +191,9 @@ def _coerce_border_value(border_value, default=0, image=None):
 
         image (None | ndarray):
             The image image the operation will be applied to.
+
+    Returns:
+        ...
     """
     borderValue = border_value
     if borderValue is None:
@@ -1591,8 +1594,25 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         # Handle case where the input image has no size or the destination
         # canvas has no size. In either case we just return empty data
         output_shape = (dsize[1], dsize[0]) + image.shape[2:]
+
+        # Temporary workaround to prevent a hang due to incompatible shapes the
+        # length of borderValue (when iterable) is limited to 4, but we can fix
+        # this in some cases if all of the value are the same by converting to
+        # a scalar.
+        if not ub.iterable(borderValue):
+            fill_value = borderValue
+        elif len(image.shape[2:]) != len(borderValue):
+            if ub.allsame(borderValue):
+                fill_value = borderValue[0]
+            elif all(np.isnan(v) for v in borderValue):
+                fill_value = borderValue[0]
+            else:
+                fill_value = borderValue
+        else:
+            fill_value = borderValue
+
         result = np.full(
-            shape=output_shape, fill_value=borderValue, dtype=image.dtype)
+            shape=output_shape, fill_value=fill_value, dtype=image.dtype)
         if is_masked:
             result_mask = np.full(
                 shape=output_shape, fill_value=False, dtype=mask.dtype)

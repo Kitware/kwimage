@@ -37,7 +37,7 @@ def _coordinate_grid(dims, align_corners=False):
             with shape=(3, *DIMS)
 
     References:
-        https://github.com/ClementPinard/SfmLearner-Pytorch/blob/master/inverse_warp.py
+        .. [InvWarp] https://github.com/ClementPinard/SfmLearner-Pytorch/blob/master/inverse_warp.py
 
     Example:
         >>> # xdoctest: +IGNORE_WHITESPACE
