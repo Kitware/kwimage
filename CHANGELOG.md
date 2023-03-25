@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * `center_x` and `center_y` to Box and Boxes.
+* `Boxes.resize` now has `about` argument.
 
 ### Fixed
 * Bug in `warp_affine` when the input image has more than 4 dims, has an empty dimension, and `border_value` is an array.
