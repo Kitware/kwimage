@@ -1083,13 +1083,48 @@ class _BoxPropertyMixins(object):
             Tuple[ndarray, ndarray]: the center x and y coordinates
 
         Example:
-            >>> Boxes([25, 30, 15, 10], 'xywh').area
-            array([150])
-            >>> Boxes([[25, 30, 0, 0]], 'xywh').area
-            array([[0]])
+            >>> import kwimage
+            >>> print(kwimage.Boxes([25, 30, 15, 10], 'xywh').center)
+            >>> print(kwimage.Boxes([[25, 30, 0, 0]], 'xywh').center)
+            (array([32.5]), array([35.]))
+            (array([[25.]]), array([[30.]]))
         """
         cx, cy = self.to_cxywh(copy=False).components[0:2]
         return cx, cy
+
+    @property
+    def center_x(self):
+        """
+        The center xy-coordinates
+
+        Returns:
+            Tuple[ndarray, ndarray]: the center x and y coordinates
+
+        Example:
+            >>> import kwimage
+            >>> print(kwimage.Boxes([25, 30, 15, 10], 'xywh').center_x)
+            >>> print(kwimage.Boxes([[25, 30, 0, 0]], 'xywh').center_x)
+            [32.5]
+            [[25.]]
+        """
+        return self.to_cxywh(copy=False).components[0]
+
+    @property
+    def center_y(self):
+        """
+        The center xy-coordinates
+
+        Returns:
+            Tuple[ndarray, ndarray]: the center x and y coordinates
+
+        Example:
+            >>> import kwimage
+            >>> print(kwimage.Boxes([25, 30, 15, 10], 'xywh').center_y)
+            >>> print(kwimage.Boxes([[25, 30, 0, 0]], 'xywh').center_y)
+            [35.]
+            [[30.]]
+        """
+        return self.to_cxywh(copy=False).components[1]
 
 
 class _BoxTransformMixins(object):

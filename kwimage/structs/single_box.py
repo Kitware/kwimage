@@ -2,6 +2,12 @@ import numpy as np
 import ubelt as ub
 
 
+# TODO: Perhaps dynamically fix the wraped method signatures to agree with
+# Boxes when possible. OR just make this efficient (perhaps that is a fools
+# errand because single box objects wont be efficient in Python). Probably just
+# maintain the wrapper.
+
+
 class Box(ub.NiceRepr):
     """
     Represents a single Box.
@@ -236,6 +242,34 @@ class Box(ub.NiceRepr):
             >>> assert not ub.iterable(kwimage.Box.random().aspect_ratio)
         """
         return self.boxes.aspect_ratio.ravel()[0]
+
+    @property
+    def center(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> assert len(kwimage.Box.random().center) == 2
+        """
+        xs, ys = self.boxes.center
+        return xs.ravel()[0], ys.ravel()[0]
+
+    @property
+    def center_x(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> assert not ub.iterable(kwimage.Box.random().center_x)
+        """
+        return self.boxes.center_x.ravel()[0]
+
+    @property
+    def center_y(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> assert not ub.iterable(kwimage.Box.random().center_y)
+        """
+        return self.boxes.center_y.ravel()[0]
 
     @property
     def width(self):
