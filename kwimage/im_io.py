@@ -874,6 +874,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             overview_resample (str): Common options NEAREST, CUBIC, LANCZOS
             options (List[str]): other gdal options.
             nodata (int): denotes a integer value as nodata.
+            metadata (dict): the metadata for the default empty domain.
             transform (kwimage.Affine): Transform to CRS from pixel space
             crs (str): The coordinate reference system for transform.
             See :func:`_imwrite_cloud_optimized_geotiff` for more details each options.
@@ -1522,6 +1523,19 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> dinfo = np.iinfo(np.uint16)
         >>> kwplot.imshow(loaded / dinfo.max)
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test GDAL mdatadata
+        >>> import ubelt as ub
+        >>> import kwimage
+        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
+        >>> fpath = dpath / 'foo.tif'
+        >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3), metadata={
+        >>>     'role': 'data',
+        >>>     'quantization': {'min': 0},
+        >>> })
+        >>> print(ub.cmd('gdalinfo ' + fpath)['out'])
 
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
