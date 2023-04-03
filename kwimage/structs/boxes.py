@@ -1702,17 +1702,17 @@ class _BoxTransformMixins(object):
             >>> import kwimage
             >>> self = kwimage.Boxes([[1, 1, 4, 4]] * 5, 'ltrb')
             >>> # Test setting only the width to a scalar
-            >>> new1 = self.resize(width=10, fixed_point='cxy')
+            >>> new1 = self.resize(width=10, about='cxy')
             >>> assert np.all(new1.width == 10)
             >>> assert np.all(new1.height == 3)
             >>> # Test setting only the height to a scalar
-            >>> new2 = self.resize(height=10, fixed_point='cxy')
+            >>> new2 = self.resize(height=10, about='cxy')
             >>> assert np.all(new2.width == 3)
             >>> assert np.all(new2.height == 10)
             >>> # Test setting width and height per-box values
             >>> new3 = self.resize(
             >>>     width=np.arange(0, 5),
-            >>>     height=np.arange(4, 13, 2), fixed_point='cxy')
+            >>>     height=np.arange(4, 13, 2), about='cxy')
             >>> assert np.all(new3.width.ravel() == [0, 1, 2, 3, 4])
             >>> assert np.all(new3.height.ravel() == [4, 6, 8, 10, 12])
 
