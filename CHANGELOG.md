@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Bug in `warp_affine` when the input image has more than 4 dims, has an empty dimension, and `border_value` is an array.
+* Issue in `nodata_checkerboard` with masked arrays.
 
 
 ## Version 0.9.14 - Released 2023-03-16
