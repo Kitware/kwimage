@@ -210,7 +210,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> img1 = kwimage.grab_test_image('amazon', dsize=dsize)
         >>> ti = timerit.Timerit(10, bestof=3, verbose=1, unit='us')
         >>> formats = {}
-        >>> dpath = ub.ensure_app_cache_dir('cache')
+        >>> dpath = ub.Path.appdir('kwimage/bench/im_io').ensuredir()
         >>> space = 'auto'
         >>> formats['png'] = kwimage.imwrite(join(dpath, '.png'), img1, space=space, backend='cv2')
         >>> formats['jpg'] = kwimage.imwrite(join(dpath, '.jpg'), img1, space=space, backend='cv2')
@@ -1038,7 +1038,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Example:
         >>> import ubelt as ub
         >>> import kwimage
-        >>> dpath = ub.Path(ub.ensure_app_cache_dir('kwimage/badwrite'))
+        >>> dpath = ub.Path.appdir('kwimage/badwrite').ensuredir()
         >>> dpath.delete().ensuredir()
         >>> imdata = kwimage.ensure_uint255(kwimage.grab_test_image())[:, :, 0]
         >>> import pytest

@@ -18,7 +18,7 @@ def test_interlaced():
         import pytest
         pytest.skip('need image magick for this test')
 
-    dpath = ub.ensure_app_cache_dir('kwimage/tests/io')
+    dpath = ub.Path.appdir('kwimage/tests/io').ensuredir()
     data = kwimage.grab_test_image('astro')
 
     orig_fpath = join(dpath, 'orig.png')

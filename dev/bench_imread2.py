@@ -44,7 +44,7 @@ def imread2_bench():
     from os.path import join
     import kwimage
 
-    dpath = ub.ensure_app_cache_dir('kwimage/bench/imread2')
+    dpath = ub.Path.appdir('kwimage/bench/imread2').ensuredir()
 
     import timerit
     read_ti = timerit.Timerit(1, bestof=1, verbose=2)
