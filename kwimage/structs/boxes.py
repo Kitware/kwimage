@@ -1083,13 +1083,48 @@ class _BoxPropertyMixins(object):
             Tuple[ndarray, ndarray]: the center x and y coordinates
 
         Example:
-            >>> Boxes([25, 30, 15, 10], 'xywh').area
-            array([150])
-            >>> Boxes([[25, 30, 0, 0]], 'xywh').area
-            array([[0]])
+            >>> import kwimage
+            >>> print(kwimage.Boxes([25, 30, 15, 10], 'xywh').center)
+            >>> print(kwimage.Boxes([[25, 30, 0, 0]], 'xywh').center)
+            (array([32.5]), array([35.]))
+            (array([[25.]]), array([[30.]]))
         """
         cx, cy = self.to_cxywh(copy=False).components[0:2]
         return cx, cy
+
+    @property
+    def center_x(self):
+        """
+        The center xy-coordinates
+
+        Returns:
+            Tuple[ndarray, ndarray]: the center x and y coordinates
+
+        Example:
+            >>> import kwimage
+            >>> print(kwimage.Boxes([25, 30, 15, 10], 'xywh').center_x)
+            >>> print(kwimage.Boxes([[25, 30, 0, 0]], 'xywh').center_x)
+            [32.5]
+            [[25.]]
+        """
+        return self.to_cxywh(copy=False).components[0]
+
+    @property
+    def center_y(self):
+        """
+        The center xy-coordinates
+
+        Returns:
+            Tuple[ndarray, ndarray]: the center x and y coordinates
+
+        Example:
+            >>> import kwimage
+            >>> print(kwimage.Boxes([25, 30, 15, 10], 'xywh').center_y)
+            >>> print(kwimage.Boxes([[25, 30, 0, 0]], 'xywh').center_y)
+            [35.]
+            [[30.]]
+        """
+        return self.to_cxywh(copy=False).components[1]
 
 
 class _BoxTransformMixins(object):
@@ -1609,9 +1644,12 @@ class _BoxTransformMixins(object):
                 np.clip(y2, y_min, y_max, out=y2)
         return new
 
-    def resize(self, width=None, height=None, inplace=False):
+    def resize(self, width=None, height=None, inplace=False, about='xy'):
         """
-        Set the widths and/or heights of each box, while leaving the minimum
+        Set the widths and/or heights of each box, while leaving a point in the
+        box fixed.
+
+        the minimum
         x/y point constant.
 
         Args:
@@ -1627,8 +1665,12 @@ class _BoxTransformMixins(object):
                 if True and possible, perform operation inplace.
                 Defaults to False.
 
+            about (str):
+                which point is the fixed point. if 'xy' the minimum xy point is
+                fixed. If 'cxy' the center xy point is fixed.
+
         TODO:
-            - [ ] It would be nice to specify in which direction the box
+            - [X] It would be nice to specify in which direction the box
                   shrinks or is expanded, but that might not play nice with
                   quantized coordinates.
 
@@ -1657,6 +1699,23 @@ class _BoxTransformMixins(object):
             >>> assert np.all(new3.width.ravel() == [0, 1, 2, 3, 4])
             >>> assert np.all(new3.height.ravel() == [4, 6, 8, 10, 12])
 
+            >>> import kwimage
+            >>> self = kwimage.Boxes([[1, 1, 4, 4]] * 5, 'ltrb')
+            >>> # Test setting only the width to a scalar
+            >>> new1 = self.resize(width=10, about='cxy')
+            >>> assert np.all(new1.width == 10)
+            >>> assert np.all(new1.height == 3)
+            >>> # Test setting only the height to a scalar
+            >>> new2 = self.resize(height=10, about='cxy')
+            >>> assert np.all(new2.width == 3)
+            >>> assert np.all(new2.height == 10)
+            >>> # Test setting width and height per-box values
+            >>> new3 = self.resize(
+            >>>     width=np.arange(0, 5),
+            >>>     height=np.arange(4, 13, 2), about='cxy')
+            >>> assert np.all(new3.width.ravel() == [0, 1, 2, 3, 4])
+            >>> assert np.all(new3.height.ravel() == [4, 6, 8, 10, 12])
+
         Example:
             >>> # Test setting width and height per-box values
             >>> # for a multidimensional setting
@@ -1668,12 +1727,22 @@ class _BoxTransformMixins(object):
             >>> assert np.all(new.width.ravel() == np.arange(0, 8))
             >>> assert np.all(new.height.ravel() == np.arange(10, 18))
         """
-        if inplace:
-            if self.format != BoxFormat.XYWH:
-                raise ValueError('Must be in xywh format to operate inplace')
-            new = self
+        if about == 'xy':
+            if inplace:
+                if self.format != BoxFormat.XYWH:
+                    raise ValueError('Must be in xywh format to operate inplace')
+                new = self
+            else:
+                new = self.to_xywh(copy=True)
+        elif about == 'cxy':
+            if inplace:
+                if self.format != BoxFormat.CXYWH:
+                    raise ValueError('Must be in cxywh format to operate inplace')
+                new = self
+            else:
+                new = self.to_cxywh(copy=True)
         else:
-            new = self.to_xywh(copy=True)
+            raise ValueError(about)
         if width is not None:
             new.data[..., 2] = width
         if height is not None:

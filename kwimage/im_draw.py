@@ -1338,14 +1338,34 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         >>> kwplot.autompl()
         >>> kwplot.imshow(result, title='nodata_checkers with masked uint8')
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Simple test with a bad mask
+        >>> import kwimage
+        >>> data = kwimage.grab_test_image(space='rgb', dsize=(64, 64))
+        >>> data = kwimage.ensure_uint255(data)
+        >>> circle = kwimage.Polygon.circle((32, 32), 16)
+        >>> mask = circle.fill(np.zeros(data.shape, dtype=np.uint8), value=1).astype(bool)
+        >>> img = np.ma.MaskedArray(data, mask)
+        >>> img.__dict__['_mask'] = np.empty((), dtype=bool)
+        >>> import pytest
+        >>> with pytest.raises(Exception):
+        ...     result = kwimage.nodata_checkerboard(img)
     """
     is_masked = isinstance(canvas, np.ma.MaskedArray)
     masks = []
     if is_masked:
-        masks.append(canvas.mask)
-        canvas = canvas.data
-    if canvas.dtype.kind == 'f':
-        masks.append(np.isnan(canvas))
+        if canvas.mask.shape != canvas.data.shape:
+            # It is unclear if we should error on this case or not
+            raise Exception('masked input doesnt agree with data')
+        else:
+            masks.append(canvas.mask)
+        out_canvas = canvas.data
+    else:
+        out_canvas = canvas
+
+    if out_canvas.dtype.kind == 'f':
+        masks.append(np.isnan(out_canvas))
 
     if masks:
         invalid_mask = np.logical_or.reduce(masks)
@@ -1353,10 +1373,10 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         invalid_mask = None
 
     if invalid_mask is not None:
-        canvas = _masked_checkerboard(canvas, invalid_mask, square_shape,
-                                      on_value, off_value)
+        out_canvas = _masked_checkerboard(
+            out_canvas, invalid_mask, square_shape, on_value, off_value)
 
     if is_masked:
-        canvas = np.ma.MaskedArray(data=canvas, mask=invalid_mask)
+        out_canvas = np.ma.MaskedArray(data=out_canvas, mask=invalid_mask)
 
-    return canvas
+    return out_canvas
