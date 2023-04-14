@@ -1148,16 +1148,39 @@ CSS4_COLORS = {
 
 # Kitware color brand guide:
 # https://drive.google.com/file/d/1mUzJw4QrDfxWqqCsPZ_C7QWcQbfR_IBb/view
-# """
-# Ignore:
-#     import kwimage
-#     named_colors = kwimage.Color.named_colors()
-#     color_lut = {name: kwimage.Color(name).as01() for name in named_colors if 'kitware_' in name}
-#     import kwplot
-#     kwplot.autompl()
-#     canvas = kwplot.make_legend_img(color_lut)
-#     kwplot.imshow(canvas)
-# """
+
+__note__ = """
+Demo:
+    import kwimage
+    named_colors = kwimage.Color.named_colors()
+    color_lut = {
+        name + ' ' + kwimage.Color(name).ashex(): kwimage.Color(name).as01()
+        for name in named_colors
+        if 'kitware_' in name}
+    import kwplot
+    kwplot.autompl()
+    canvas = kwplot.make_legend_img(color_lut, dpi=300)
+    kwplot.imshow(canvas)
+
+Demo:
+    import kwimage
+    blue_rgb255 = kwimage.Color('kitware_blue').as255()
+    green_rgb01 = kwimage.Color('kitware_green').as01()
+    print(f'blue_rgb255={blue_rgb255}')
+    print(f'green_rgb01={green_rgb01}')
+
+    import kwplot
+    kwplot.autompl()
+    canvas1 = kwimage.draw_text_on_image(
+        img={'color': 'white'}, text='Kitware',
+        color='kitware_blue', border={'color': 'kitware_darkblue'})
+    canvas2 = kwimage.draw_text_on_image(
+        img={'color': 'white'}, text='Kitware',
+        color='kitware_green', border={'color': 'kitware_darkgreen'})
+    canvas = kwimage.stack_images([canvas1, canvas2], axis=0)
+    kwplot.imshow(canvas)
+"""
+
 KITWARE_COLORS = {
     'kitware_green'     : '#3EAE2B',
     'kitware_blue'      : '#0068C7',

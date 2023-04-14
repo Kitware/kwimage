@@ -1489,7 +1489,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 Defaults to False.
             tensor (bool): determines backend.
                 DEPRECATED.  Call ``.tensor()`` on resulting object instead.
-            rng (np.random.RandomState): random state
+            rng (int | RandomState | None):
+                random state or seed
+
+        Returns:
+            Detections: random detections
 
         Example:
             >>> import kwimage
@@ -1597,6 +1601,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self = self.scale(scale)
 
         if tensor:
+            ub.schedule_deprecation(
+                'kwimage', 'tensor', 'argument to Detections.random',
+                migration='use .tensor() instead',
+                deprecate='0.8.0', error='1.0.0', remove='1.1.0'
+            )
             self = self.tensor()
 
         return self
