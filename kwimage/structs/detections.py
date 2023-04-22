@@ -381,6 +381,22 @@ class _DetAlgoMixin:
 
         Returns:
             ndarray[Shape['*'], Integer]: indices of boxes to keep
+
+        Example:
+            >>> import kwimage
+            >>> dets1 = kwimage.Detections.random(rng=0).scale((512, 512))
+            >>> keep = dets1.non_max_supression(thresh=0.2)
+            >>> dets2 = dets1.take(keep)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> canvas = np.zeros((512, 512, 3))
+            >>> canvas1 = dets1.draw_on(canvas.copy())
+            >>> canvas2 = dets2.draw_on(canvas.copy())
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 1))
+            >>> kwplot.imshow(canvas1)
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 2))
+            >>> kwplot.imshow(canvas2)
         """
         import kwimage
         classes = self.class_idxs if perclass else None

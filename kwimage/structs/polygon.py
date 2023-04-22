@@ -963,6 +963,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> plt.gca().set_xlim(-0.5, 1.5)
             >>> plt.gca().set_ylim(-0.5, 1.5)
             >>> plt.gca().set_aspect('equal')
+
+            kwimage.Polygon.circle(xy, r, resolution=10).draw()
         """
         tau = 2 * np.pi
 
@@ -1021,6 +1023,68 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         exterior = np.stack([xcoords.ravel(), ycoords.ravel()], axis=1)
         self = cls(exterior=exterior)
         return self
+
+    @classmethod
+    def regular(cls, num, xy=(0, 0), r=1):
+        """
+        Make a regular polygon with ``num`` sides.
+
+        Example:
+            >>> import kwimage
+            >>> n_polys = [
+            >>>     kwimage.Polygon.regular(n)
+            >>>     for n in range(3, 11)
+            >>> ]
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> plt = kwplot.autoplt()
+            >>> fig =kwplot.figure(fnum=1, doclf=True)
+            >>> ax = fig.gca()
+            >>> for i, poly in enumerate(n_polys):
+            >>>     poly.translate((i * 2.5, 0), inplace=True)
+            >>>     poly.draw(border=True, fill=False)
+            >>> ax.set_aspect('equal')
+            >>> ax.set_xlim(-1, 8 * 2.5)
+            >>> ax.set_ylim(-1, 1)
+        """
+        return cls.circle(xy=xy, r=r, resolution=num + 1)
+
+    @classmethod
+    def star(cls, xy=(0, 0), r=1):
+        """
+        Make a star polygon
+
+        Example:
+            >>> import kwimage
+            >>> poly kwimage.Polygon.star()
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> plt = kwplot.autoplt()
+            >>> fig =kwplot.figure(fnum=1, doclf=True)
+            >>> ax = fig.gca()
+            >>> poly.draw()
+            >>> ax.set_aspect('equal')
+            >>> ax.set_xlim(-1, 1)
+            >>> ax.set_ylim(-1, 1)
+        """
+        import kwimage
+        decagon = kwimage.Polygon.regular(10, xy=xy, r=r)
+        decagon = decagon.warp(kwimage.Affine.rotate(np.pi / 2))
+        path = [
+            decagon.data['exterior'].data[0],
+            decagon.data['exterior'].data[4],
+            decagon.data['exterior'].data[8],
+            decagon.data['exterior'].data[2],
+            decagon.data['exterior'].data[6],
+            decagon.data['exterior'].data[0],
+        ]
+        # kwimage.Points(xy=np.array(path)).draw(color='red', radius=0.1)
+        # Take contour of self-intersecting shape (note we don't draw them
+        # correctly)
+        shp = kwimage.Polygon(exterior=path).to_shapely().buffer(0)
+        star = kwimage.Polygon.from_shapely(shp)
+        # star.draw(edgecolor='green')
+        return star
 
     @classmethod
     def random(cls, n=6, n_holes=0, convex=True, tight=False, rng=None):
