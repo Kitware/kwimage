@@ -685,7 +685,10 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
     import matplotlib as mpl
     import matplotlib.cm  # NOQA
     assert len(probs.shape) == 2
-    cmap_ = mpl.cm.get_cmap(cmap)
+    try:
+        cmap_ = mpl.colormaps[cmap]
+    except Exception:
+        cmap_ = mpl.cm.get_cmap(cmap)
     probs = kwimage.ensure_float01(probs)
     heatmask = cmap_(probs).astype(np.float32)
     heatmask = kwimage.convert_colorspace(heatmask, 'rgba', space, implicit=True)
@@ -1277,7 +1280,8 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
     Fills nans or masked values with a checkerbord pattern.
 
     Args:
-        canvas (ndarray): A 2D image with any number of channels.
+        canvas (ndarray): A 2D image with any number of channels that may be a
+            masked array or contain nan values.
 
         square_shape (int): the pixel size of the checkers
 

@@ -477,8 +477,13 @@ DTYPE_KEY_TO_DTYPE = {
     ('f', 2): np.float16,
     ('f', 4): np.float32,
     ('f', 8): np.float64,
-    ('f', 16): np.float128,
+    # ('f', 16): np.float128,
 }
+_HAS_FLOAT128 = hasattr(np, 'float128')
+
+if _HAS_FLOAT128:
+    DTYPE_KEY_TO_DTYPE[('f', 16)] = np.float128
+
 DTYPE_TO_DTYPE_KEY = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
 
 
@@ -500,8 +505,9 @@ def __build_cv2_allowed_dtypes():
         DTYPE_TO_DTYPE_KEY[np.float16]: np.float32,
         DTYPE_TO_DTYPE_KEY[np.float32]: np.float32,
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
     })
+    if _HAS_FLOAT128:
+        default[DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
 
     CV2_ALLOWED_DTYPE_MAPPINGS = {}
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32'] = default
@@ -518,6 +524,9 @@ def __build_cv2_allowed_dtypes():
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
         DTYPE_TO_DTYPE_KEY[np.float128]: np.float64,
     }
+    if _HAS_FLOAT128:
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float64
+
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
         DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
         DTYPE_TO_DTYPE_KEY[np.int8]: np.int8,
@@ -526,6 +535,9 @@ def __build_cv2_allowed_dtypes():
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
         DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
     }
+    if _HAS_FLOAT128:
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
+
     for k in CV2_ALLOWED_DTYPE_MAPPINGS.keys():
         CV2_ALLOWED_DTYPE_MAPPINGS[k] = CV2_ALLOWED_DTYPE_MAPPINGS[k].map_values(np.dtype)
     return CV2_ALLOWED_DTYPE_MAPPINGS

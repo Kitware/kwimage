@@ -78,7 +78,7 @@ def parse_requirements(fname="requirements.txt", versions=False):
         List[str]: list of requirements items
 
     CommandLine:
-        python -c "import setup, ubelt; print(ubelt.urepr(setup.parse_requirements()))"
+        python -c "import setup; print(setup.parse_requirements())"
     """
     require_fpath = fname
 

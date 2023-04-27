@@ -10,6 +10,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Add "regular" and "star" classmethods to Polygon
 
+### Fixed
+* float128 issues on windows
+
 
 ## Version 0.9.15 - Released 2023-04-04
 
