@@ -477,7 +477,6 @@ DTYPE_KEY_TO_DTYPE = {
     ('f', 2): np.float16,
     ('f', 4): np.float32,
     ('f', 8): np.float64,
-    # ('f', 16): np.float128,
 }
 _HAS_FLOAT128 = hasattr(np, 'float128')
 
@@ -522,7 +521,6 @@ def __build_cv2_allowed_dtypes():
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
         DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
-        DTYPE_TO_DTYPE_KEY[np.float128]: np.float64,
     }
     if _HAS_FLOAT128:
         CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float64
@@ -533,7 +531,6 @@ def __build_cv2_allowed_dtypes():
         DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
         DTYPE_TO_DTYPE_KEY[np.uint16]: np.uint16,
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
     }
     if _HAS_FLOAT128:
         CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
