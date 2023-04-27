@@ -1056,11 +1056,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> import kwimage
-            >>> poly kwimage.Polygon.star()
+            >>> poly = kwimage.Polygon.star()
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
-            >>> fig =kwplot.figure(fnum=1, doclf=True)
+            >>> fig = kwplot.figure(fnum=1, doclf=True)
             >>> ax = fig.gca()
             >>> poly.draw()
             >>> ax.set_aspect('equal')
