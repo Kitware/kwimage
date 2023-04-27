@@ -32,9 +32,9 @@ def rasterio_mwe():
     # Inspecting the transform shows that it is an offset, two positive scale
     # factors, and negligable rotation / skew. This makes sense given the
     # corner points we fit.
-    print('wld_box_corners_crs84 =\n{}'.format(ub.repr2(wld_box_corners_crs84, nl=1)))
-    print('image_corners =\n{}'.format(ub.repr2(image_corners, nl=1)))
-    print('Transform WLD -> IMG ' + ub.repr2(tf_img_from_wld.decompose()))
+    print('wld_box_corners_crs84 =\n{}'.format(ub.urepr(wld_box_corners_crs84, nl=1)))
+    print('image_corners =\n{}'.format(ub.urepr(image_corners, nl=1)))
+    print('Transform WLD -> IMG ' + ub.urepr(tf_img_from_wld.decompose()))
 
     # We want to create a random test image with a feature corresponding to the
     # world space we defined. Let's project the world polygon into pixel space
@@ -116,7 +116,7 @@ def rasterio_mwe():
     # Gdal reports the upperLeft coordinate as (13, -32).
     # That seems reasonable given that our affine transform was defined to map
     # that point in world space to (0, 0)  in pixel space.
-    print('cornerCoordinates = {}'.format(ub.repr2(cornerCoordinates, nl=1)))
+    print('cornerCoordinates = {}'.format(ub.urepr(cornerCoordinates, nl=1)))
 
     # Hmm, but the rasterio bands are indicating -32 is at the bottom.  that
     # doesn't seem to agree with the metadata in the geotiff. Why is this?

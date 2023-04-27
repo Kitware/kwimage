@@ -491,7 +491,7 @@ class _DetAlgoMixin:
         if img_dims is None:
             img_dims = np.array(input_dims)
         # print(fcn_target.keys())
-        # print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        # print('fcn_target: ' + ub.urepr(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
 
         impl = kwarray.ArrayAPI.coerce(fcn_target['cidx'])
 
@@ -546,7 +546,7 @@ class _DetAlgoMixin:
                 kw_heat['kpts_ignore'] = fcn_target['kpts_ignore']
 
         self = kwimage.Heatmap(**kw_heat)
-        # print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+        # print('self.data: ' + ub.urepr(ub.map_vals(lambda x: x.shape, self.data), nl=1))
         return self
 
 
@@ -1530,8 +1530,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> print('dets = {}'.format(dets))
             dets = <Detections(10)>
             >>> dets.data['boxes'].quantize(inplace=True)
-            >>> print('dets.data = {}'.format(ub.repr2(
-            >>>     dets.data, nl=1, with_dtype=False, strvals=True)))
+            >>> print('dets.data = {}'.format(ub.urepr(
+            >>>     dets.data, nl=1, with_dtype=False, strvals=True, sort=1)))
             dets.data = {
                 'boxes': <Boxes(xywh,
                              array([[548, 544,  55, 172],
@@ -1668,7 +1668,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
         >>> fcn_target.keys()
-        >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        >>> print('fcn_target: ' + ub.urepr(ub.map_vals(lambda x: x.shape, fcn_target), nl=1, sort=1))
         fcn_target: {
             'cidx': (512, 512),
             'class_probs': (10, 512, 512),

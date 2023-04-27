@@ -924,7 +924,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             str
         """
-        return ub.repr2(self.data, nl=1)
+        return ub.urepr(self.data, nl=1)
 
     @classmethod
     def circle(cls, xy, r, resolution=64):
@@ -2155,7 +2155,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     fig = kwplot.figure(fnum=1, pnum=pnum_())
             >>>     ax = fig.gca()
             >>>     self.draw(ax=ax, **kwargs)
-            >>>     title = ub.repr2(kwargs, compact=True)
+            >>>     title = ub.urepr(kwargs, compact=True)
             >>>     title = '\n'.join(textwrap.wrap(
             >>>         title.replace(',', ' '), break_long_words=False,
             >>>         width=60))
@@ -2883,8 +2883,8 @@ class PolygonList(_generic.ObjectList):
             >>> self = kwimage.PolygonList(data)
             >>> geojson = self.to_geojson(as_collection=True)
             >>> items = self.to_geojson(as_collection=False)
-            >>> print('geojson = {}'.format(ub.repr2(geojson, nl=-2, precision=1)))
-            >>> print('items = {}'.format(ub.repr2(items, nl=-2, precision=1)))
+            >>> print('geojson = {}'.format(ub.urepr(geojson, nl=-2, precision=1)))
+            >>> print('items = {}'.format(ub.urepr(items, nl=-2, precision=1)))
         """
         items = [poly.to_geojson() for poly in self.data]
         if as_collection:

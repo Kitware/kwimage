@@ -467,7 +467,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl=impl)
         >>>     solutions[impl] = sorted(keep)
         >>> assert 'numpy' in solutions
-        >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
+        >>> print('solutions = {}'.format(ub.urepr(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
 
     CommandLine:
@@ -490,7 +490,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl=impl)
         >>>     solutions[impl] = sorted(keep)
         >>> assert 'numpy' in solutions
-        >>> print('solutions = {}'.format(ub.repr2(solutions, nl=1)))
+        >>> print('solutions = {}'.format(ub.urepr(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
     """
 

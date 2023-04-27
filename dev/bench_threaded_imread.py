@@ -54,8 +54,8 @@ def bench_threaded_imread():
     # For each variation of your experiment, create a row.
     rows = []
     for params in grid_iter:
-        hue_key = ub.repr2(ub.dict_isect(params, hue_labels), compact=1, si=1)
-        key = ub.repr2(params, compact=1, si=1)
+        hue_key = ub.urepr(ub.dict_isect(params, hue_labels), compact=1, si=1)
+        key = ub.urepr(params, compact=1, si=1)
         kwargs = params.copy()
         # Timerit will run some user-specified number of loops.
         # and compute time stats with similar methodology to timeit

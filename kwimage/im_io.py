@@ -239,7 +239,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>>             kwimage.imread(formats[filefmt], space=space, backend='auto')
         >>> ti.measures = ub.map_vals(ub.sorted_vals, ti.measures)
         >>> import netharn as nh
-        >>> print('ti.measures = {}'.format(nh.util.align(ub.repr2(ti.measures['min'], nl=2), ':')))
+        >>> print('ti.measures = {}'.format(nh.util.align(ub.urepr(ti.measures['min'], nl=2), ':')))
         Timed best=42891.504 µs, mean=44008.439 ± 1409.2 µs for imread-png-cv2
         Timed best=33146.808 µs, mean=34185.172 ± 656.3 µs for imread-jpg-cv2
         Timed best=40120.306 µs, mean=41220.927 ± 1010.9 µs for imread-jpg-gdal
@@ -1003,8 +1003,8 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> file_sizes = ub.sorted_vals(file_sizes)
         >>> import xdev
         >>> file_sizes_human = ub.map_vals(lambda x: xdev.byte_str(x, 'MB'), file_sizes)
-        >>> print('ti.rankings = {}'.format(ub.repr2(ti.rankings, nl=2)))
-        >>> print('file_sizes = {}'.format(ub.repr2(file_sizes_human, nl=1)))
+        >>> print('ti.rankings = {}'.format(ub.urepr(ti.rankings, nl=2)))
+        >>> print('file_sizes = {}'.format(ub.urepr(file_sizes_human, nl=1)))
 
     Example:
         >>> # Test saving a multi-band file
@@ -1209,7 +1209,7 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         >>>     shapes['gdal'] = kwimage.imread(fpath, backend='gdal').shape
         >>>     shapes['skimage'] = kwimage.imread(fpath, backend='skimage').shape
         >>>     results[key] = shapes
-        >>> print('results = {}'.format(ub.repr2(results, nl=2, align=':', sort=0)))
+        >>> print('results = {}'.format(ub.urepr(results, nl=2, align=':', sort=0)))
         >>> for shapes in results.values():
         >>>     assert ub.allsame(shapes.values())
         >>> temp_dir.cleanup()
@@ -1564,8 +1564,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>>     data = kwimage.imresize(orig_data, dsize=data_kwargs['dsize'])
         >>>     data = data.astype(data_kwargs['dtype'])
         >>>     for imwrite_kwargs in imwrite_param_grid:
-        >>>         print('data_kwargs = {}'.format(ub.repr2(data_kwargs, nl=1)))
-        >>>         print('imwrite_kwargs = {}'.format(ub.repr2(imwrite_kwargs, nl=1)))
+        >>>         print('data_kwargs = {}'.format(ub.urepr(data_kwargs, nl=1)))
+        >>>         print('imwrite_kwargs = {}'.format(ub.urepr(imwrite_kwargs, nl=1)))
         >>>         kwimage.imwrite(fpath, data, **imwrite_kwargs)
         >>>         _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>>         loaded = kwimage.imread(fpath)

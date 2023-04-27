@@ -84,7 +84,7 @@ def bench_bbox_iou_method():
             raise AssertionError('different methods report different results')
 
         print('num = {!r}'.format(num))
-        print('ti.measures = {}'.format(ub.repr2(
+        print('ti.measures = {}'.format(ub.urepr(
             ub.map_vals(ub.sorted_vals, ti.measures), align=':',
             nl=2, precision=6)))
 

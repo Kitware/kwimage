@@ -13,6 +13,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * float128 issues on windows
 
+### Changed
+* switch from ubelt.repr2 to ubelt.urepr
+
 
 ## Version 0.9.15 - Released 2023-04-04
 

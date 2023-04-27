@@ -51,7 +51,7 @@ def imread2_bench():
 
     measures = []
     for data_profile in data_profiles:
-        data_profile_key = ub.repr2(data_profile, compact=1, sort=0)
+        data_profile_key = ub.urepr(data_profile, compact=1, sort=0)
         width, height = data_profile['dsize']
         channels = data_profile['channels']
         shape = (height, width, channels)
@@ -61,7 +61,7 @@ def imread2_bench():
 
         for imwrite_profile in imwrite_profiles:
 
-            imwrite_profile_key = ub.repr2(imwrite_profile, compact=1, sort=0)
+            imwrite_profile_key = ub.urepr(imwrite_profile, compact=1, sort=0)
             kwimage.imwrite(fpath, data, **imwrite_profile)
 
             for imread_profile in imread_profiles:
@@ -69,7 +69,7 @@ def imread2_bench():
                 if imread_profile['backend'] == 'cv2' and channels > 4:
                     continue
 
-                imread_profile_key = ub.repr2(imread_profile, compact=1, sort=0)
+                imread_profile_key = ub.urepr(imread_profile, compact=1, sort=0)
 
                 io_profile_key = 'imwrite({})->imread({})'.format(
                     imwrite_profile_key, imread_profile_key)

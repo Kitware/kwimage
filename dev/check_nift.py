@@ -39,7 +39,7 @@ def description():
                 name = None
             elif td.text.strip() in names_noext:
                 name = td.text.strip()
-    print(ub.repr2(name_to_desc, nl=1))
+    print(ub.urepr(name_to_desc, nl=1))
 
 
 NITF_TEST_NAMES = [

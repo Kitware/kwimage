@@ -51,7 +51,7 @@ def gen_api_for_docs():
                     print(':func:`{}.{}`'.format(modname, subname))
             submembers = dir(member)
 
-    print('config = ' + ub.repr2(config.asdict(), nl=1))
+    print('config = ' + ub.urepr(config.asdict(), nl=1))
 
 if __name__ == '__main__':
     """

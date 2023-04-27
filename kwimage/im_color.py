@@ -63,18 +63,18 @@ def _colormath_convert(src_color, src_space, dst_space):
         >>> import kwimage
         >>> from kwimage.im_color import _colormath_convert
         >>> src_color = kwimage.Color('turquoise').as01()
-        >>> print('src_color = {}'.format(ub.repr2(src_color, nl=0, precision=2)))
+        >>> print('src_color = {}'.format(ub.urepr(src_color, nl=0, precision=2)))
         >>> src_space = 'rgb'
         >>> dst_space = 'lab'
         >>> lab_color = _colormath_convert(src_color, src_space, dst_space)
         ...
-        >>> print('lab_color = {}'.format(ub.repr2(lab_color, nl=0, precision=2)))
+        >>> print('lab_color = {}'.format(ub.urepr(lab_color, nl=0, precision=2)))
         lab_color = (78.11, -70.09, -9.33)
         >>> rgb_color = _colormath_convert(lab_color, 'lab', 'rgb')
-        >>> print('rgb_color = {}'.format(ub.repr2(rgb_color, nl=0, precision=2)))
+        >>> print('rgb_color = {}'.format(ub.urepr(rgb_color, nl=0, precision=2)))
         rgb_color = (0.29, 0.88, 0.81)
         >>> hsv_color = _colormath_convert(lab_color, 'lab', 'hsv')
-        >>> print('hsv_color = {}'.format(ub.repr2(hsv_color, nl=0, precision=2)))
+        >>> print('hsv_color = {}'.format(ub.urepr(hsv_color, nl=0, precision=2)))
         hsv_color = (175.39, 1.00, 0.88)
     """
     from colormath.color_conversions import convert_color
@@ -563,7 +563,7 @@ class Color(ub.NiceRepr):
                 r, g, b = color.as01()
                 if r == g and g == b:
                     grays[name] = (r, g, b)
-            print(ub.repr2(ub.sorted_vals(grays), nl=-1))
+            print(ub.urepr(ub.sorted_vals(grays), nl=-1))
 
             for k, v in hard_coded_colors.items():
                 self = kwimage.Color(v)
@@ -609,7 +609,7 @@ class Color(ub.NiceRepr):
             >>> # xdoctest: +REQUIRES(--show)
             >>> from kwimage.im_color import _draw_color_swatch
             >>> swatch_colors = [color1] + colorBs + [color2]
-            >>> print('swatch_colors = {}'.format(ub.repr2(swatch_colors, nl=1)))
+            >>> print('swatch_colors = {}'.format(ub.urepr(swatch_colors, nl=1)))
             >>> swatch1 = _draw_color_swatch(swatch_colors, cellshape=(8, 8))
             >>> import kwplot
             >>> kwplot.autompl()
@@ -712,7 +712,7 @@ class Color(ub.NiceRepr):
             >>> for kwargs in adjustments:
             >>>     new = self.adjust(**kwargs)
             >>>     cell = new.to_image(dsize=dsize)
-            >>>     text = ub.repr2(kwargs, compact=1, nobr=1)
+            >>>     text = ub.urepr(kwargs, compact=1, nobr=1)
             >>>     cell, info = kwimage.draw_text_on_image(cell, text, return_info=1, border={'thickness': 2}, color='white', fontScale=1.0)
             >>>     to_show.append(cell)
             >>> # xdoctest: +REQUIRES(--show)

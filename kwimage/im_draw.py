@@ -185,7 +185,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> canvases = []
         >>> text = 'small-line\na-much-much-much-bigger-line\nanother-small\n.'
         >>> for kw in grid:
-        >>>     header = kwimage.draw_text_on_image({}, ub.repr2(kw, compact=1), color='blue')
+        >>>     header = kwimage.draw_text_on_image({}, ub.urepr(kw, compact=1), color='blue')
         >>>     canvas = kwimage.draw_text_on_image({'color': 'white'}, text, org=None, **kw)
         >>>     canvases.append(kwimage.stack_images([header, canvas], axis=0, bg_value=(255, 255, 255), pad=5))
         >>> # xdoc: +REQUIRES(--show)
@@ -1224,7 +1224,7 @@ def fill_nans_with_checkers(canvas, square_shape=8,
         >>>     [np.nan, np.nan, np.nan],
         >>> ]])
         >>> canvas = kwimage.fill_nans_with_checkers(img, square_shape=1)
-        >>> print(ub.repr2({'canvas': canvas}, nl=2, with_dtype=False))
+        >>> print(ub.urepr({'canvas': canvas}, nl=2, with_dtype=False))
         >>> print(canvas)
     """
     invalid_mask = np.isnan(canvas)

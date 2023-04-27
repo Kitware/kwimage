@@ -66,4 +66,4 @@ def test_geotiff():
     import os
     dset = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
     info = gdal.Info(dset, format='json', allMetadata=True, listMDD=True)
-    print('info = {}'.format(ub.repr2(info, nl=True)))
+    print('info = {}'.format(ub.urepr(info, nl=True)))

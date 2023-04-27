@@ -199,7 +199,7 @@ def bench_imread():
 #         >>> for timer in ti.reset('kwimage.imread'):
 #         >>>     with timer:
 #         >>>         recon = kwimage.imread(fpath)
-#         >>> print('ti.rankings = {}'.format(ub.repr2(ti.rankings['mean'], nl=2, align=':')))
+#         >>> print('ti.rankings = {}'.format(ub.urepr(ti.rankings['mean'], nl=2, align=':')))
 #     """
 
 

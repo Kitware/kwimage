@@ -66,8 +66,8 @@ def test_rational_affine():
     print(f'V2={V2}')
     print(f'V1={V1}')
 
-    print('A    = {}'.format(ub.repr2(A.matrix.tolist(), nl=1)))
-    print('alt  = {}'.format(ub.repr2(alt.matrix.tolist(), nl=1)))
+    print('A    = {}'.format(ub.urepr(A.matrix.tolist(), nl=1)))
+    print('alt  = {}'.format(ub.urepr(alt.matrix.tolist(), nl=1)))
     assert np.all(V1 == V2)
     pt = np.vstack([np.random.rand(2, 1), [[1]]])
     warp_pt1 = (A.matrix @ pt).evalf()

@@ -178,7 +178,7 @@ sympy.solve(equations, (sx, theta))
 
 for e in equations:
     sympy.pretty_print(e)
-print('equations = {}'.format(ub.repr2(equations, nl=1)))
+print('equations = {}'.format(ub.urepr(equations, nl=1)))
 
 check_sx = sympy.simplify(recon_sx.subs(tocheck))
 sympy.pretty_print(check_sx)
