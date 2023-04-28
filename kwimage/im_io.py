@@ -580,8 +580,9 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
         >>> imdata[-100:] = nodata
         >>> imdata[0:200:, -200:-180] = nodata
         >>> mask = (imdata == nodata)
+        >>> # Windows seems to have issues with non-raw compress
         >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata_value=-9999,
-        >>>                 crs=crs, transform=transform)
+        >>>                 crs=crs, transform=transform, compress='RAW')
         >>> # Read the geotiff with different methods
         >>> raw_recon = kwimage.imread(geo_fpath, nodata_method=None)
         >>> ma_recon = kwimage.imread(geo_fpath, nodata_method='ma')
