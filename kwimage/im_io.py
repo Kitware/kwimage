@@ -1804,10 +1804,11 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> assert _gdal_auto_compress(src_fpath='foo.jpg') == 'JPEG'
         >>> assert _gdal_auto_compress(src_fpath='foo.png') == 'LZW'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'DEFLATE'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'DEFLATE'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'DEFLATE'
-        >>> assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'DEFLATE'
+        >>> if not ub.WIN32:
+        >>>     assert _gdal_auto_compress(data=np.random.rand(3, 2)) == 'DEFLATE'
+        >>>     assert _gdal_auto_compress(data=np.random.rand(3, 2, 3).astype(np.uint8)) == 'DEFLATE'
+        >>>     assert _gdal_auto_compress(data=np.random.rand(3, 2, 4).astype(np.uint8)) == 'DEFLATE'
+        >>>     assert _gdal_auto_compress(data=np.random.rand(3, 2, 1).astype(np.uint8)) == 'DEFLATE'
     """
     compress = None
     num_channels = None
@@ -1845,7 +1846,11 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
 
     if compress is None:
         # which backend is best in this case?
-        compress = 'DEFLATE'
+        if ub.WIN32:
+            # windows seems to have issues with deflate, not sure why
+            compress = 'LZW'
+        else:
+            compress = 'DEFLATE'
     return compress
 
 
