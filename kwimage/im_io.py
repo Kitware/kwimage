@@ -190,7 +190,6 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> # Read the image (this is actually a DxHxW stack of images)
         >>> img1_stack = kwimage.imread(fpath)
         >>> # Check that write + read preserves data
-        >>> import tempfile
         >>> dpath = ub.Path.appdir('kwimage/test/imread').ensuredir()
         >>> tmp_fpath = dpath / 'tmp3.mha'
         >>> kwimage.imwrite(tmp_fpath, img1_stack)
@@ -671,7 +670,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
             else:
                 raise TypeError(type(nodata_method))
 
-        gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
+        gdal_dset = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
         if gdal_dset is None:
             raise IOError('GDAL cannot read: {!r}'.format(fpath))
 
@@ -906,9 +905,11 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> # This should be moved to a unit test
         >>> from kwimage.im_io import _have_gdal  # NOQA
         >>> import kwimage
-        >>> import tempfile
+        >>> import ubelt as ub
+        >>> import uuid
+        >>> dpath = ub.Path.appdir('kwimage/test/imwrite').ensuredir()
         >>> test_image_paths = [
-        >>>    ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif'),
+        >>>    #ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff', fname='pepper.tif'),
         >>>    ub.grabdata('http://i.imgur.com/iXNf4Me.png', fname='ada.png'),
         >>>    #ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif'),
         >>>    ub.grabdata('https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png', fname='parrot.png')
@@ -918,18 +919,19 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>         img1 = kwimage.imread(fpath, space=space)
         >>>         print('Test im-io consistency of fpath = {!r} in {} space, shape={}'.format(fpath, space, img1.shape))
         >>>         # Write the image in TIF and PNG format
-        >>>         tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>>         tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>>         kwimage.imwrite(tmp_tif.name, img1, space=space, backend='skimage')
-        >>>         kwimage.imwrite(tmp_png.name, img1, space=space)
-        >>>         tif_im = kwimage.imread(tmp_tif.name, space=space)
-        >>>         png_im = kwimage.imread(tmp_png.name, space=space)
+        >>>         tmp_tif_fpath = dpath / (str(uuid.uuid4()) + '.tif')
+        >>>         tmp_png_fpath = dpath / (str(uuid.uuid4()) + '.png')
+        >>>         kwimage.imwrite(tmp_tif_fpath, img1, space=space, backend='skimage')
+        >>>         kwimage.imwrite(tmp_png_fpath, img1, space=space)
+        >>>         tif_im = kwimage.imread(tmp_tif_fpath, space=space)
+        >>>         png_im = kwimage.imread(tmp_png_fpath, space=space)
         >>>         assert np.all(tif_im == png_im), 'im-read/write inconsistency'
         >>>         if _have_gdal:
-        >>>             tmp_tif2 = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>>             kwimage.imwrite(tmp_tif2.name, img1, space=space, backend='gdal')
-        >>>             tif_im2 = kwimage.imread(tmp_tif2.name, space=space)
+        >>>             tmp_tif2_fpath = dpath / (str(uuid.uuid4()) + '.tif')
+        >>>             kwimage.imwrite(tmp_tif2_fpath, img1, space=space, backend='gdal')
+        >>>             tif_im2 = kwimage.imread(tmp_tif2_fpath, space=space)
         >>>             assert np.all(tif_im == tif_im2), 'im-read/write inconsistency'
+        >>>             tmp_tif2_fpath.delete()
         >>>         if space == 'gray':
         >>>             assert tif_im.ndim == 2
         >>>             assert png_im.ndim == 2
@@ -939,8 +941,8 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>         elif space in ['rgba', 'bgra']:
         >>>             assert tif_im.shape[2] == 4
         >>>             assert png_im.shape[2] == 4
-        >>>         tmp_tif.close()
-        >>>         tmp_png.close()
+        >>>         tmp_tif_fpath.delete()
+        >>>         tmp_png_fpath.delete()
 
     Benchmark:
         >>> import timerit
@@ -1013,12 +1015,12 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> # Test saving a multi-band file
         >>> import kwimage
         >>> import pytest
-        >>> import tempfile
+        >>> import ubelt as ub
+        >>> dpath = ub.Path.appdir('kwimage/test/imwrite').ensuredir()
         >>> # In this case the backend will not resolve to cv2, so
         >>> # we should not need to specify space.
         >>> data = np.random.rand(32, 32, 13).astype(np.float32)
-        >>> temp = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> fpath = temp.name
+        >>> fpath = dpath / 'tmp1.tif'
         >>> kwimage.imwrite(fpath, data)
         >>> recon = kwimage.imread(fpath)
         >>> assert np.all(recon == data)
@@ -1031,12 +1033,9 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>>     kwimage.imread(fpath, backend='gdal')
         >>> # In this case the backend will resolve to cv2, and thus we expect
         >>> # a failure
-        >>> temp.close()
-        >>> temp = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> fpath = temp.name
+        >>> fpath = dpath / 'tmp1.png'
         >>> with pytest.raises(NotImplementedError):
         >>>     kwimage.imwrite(fpath, data)
-        >>> temp.close()
 
     Example:
         >>> import ubelt as ub
@@ -1187,9 +1186,7 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         >>> # Test the loading the shape works the same as loading the image and
         >>> # testing the shape
         >>> import kwimage
-        >>> import tempfile
-        >>> temp_dir = tempfile.TemporaryDirectory()
-        >>> temp_dpath = ub.Path(temp_dir.name)
+        >>> temp_dpath = ub.Path.appdir('kwimage/tests/load_image_shape').ensuredir()
         >>> data = kwimage.grab_test_image()
         >>> datas = {
         >>>     'rgb255': kwimage.ensure_uint255(data),
@@ -1215,7 +1212,7 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         >>> print('results = {}'.format(ub.urepr(results, nl=2, align=':', sort=0)))
         >>> for shapes in results.values():
         >>>     assert ub.allsame(shapes.values())
-        >>> temp_dir.cleanup()
+        >>> temp_dpath.delete()
 
     Benchmark:
         >>> # For large files, PIL is much faster
@@ -1457,10 +1454,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
-        >>> import tempfile
+        >>> dpath = ub.Path.appdir('kwimage/test/imwrite_cog').ensuredir()
+        >>> fpath = dpath / 'tmp0.cog.tif'
         >>> data = np.random.randint(0, 255, (800, 800, 3), dtype=np.uint8)
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.cog.tif')
-        >>> fpath = tmp_tif.name
         >>> compress = 'JPEG'
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='JPEG')
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
@@ -1475,7 +1471,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
 
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=3)
         >>> from osgeo import gdal
-        >>> ds = gdal.Open(fpath, gdal.GA_ReadOnly)
+        >>> ds = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
         >>> filename = ds.GetDescription()
         >>> main_band = ds.GetRasterBand(1)
         >>> assert main_band.GetOverviewCount() == 3
@@ -1486,7 +1482,6 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
-        >>> import tempfile
         >>> import kwimage
         >>> # Test with uint16
         >>> shape = (100, 100, 1)
@@ -1494,9 +1489,8 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> dinfo = np.iinfo(np.uint16)
         >>> data = kwimage.normalize(kwimage.gaussian_patch(shape))
         >>> data = ((data - dinfo.min) * (dinfo.max - dinfo.min)).astype(dtype)
-        >>> import tempfile
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> fpath = tmp_tif.name
+        >>> dpath = ub.Path.appdir('kwimage/test/imwrite_cog').ensuredir()
+        >>> fpath = dpath / 'tmp1.tif'
         >>> kwimage.imwrite(fpath, data)
         >>> loaded = kwimage.imread(fpath)
         >>> assert np.all(loaded.ravel() == data.ravel())
@@ -1511,10 +1505,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import kwimage
-        >>> import tempfile
         >>> data = kwimage.grab_test_image()
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> fpath = tmp_tif.name
+        >>> dpath = ub.Path.appdir('kwimage/test/imwrite_cog').ensuredir()
+        >>> fpath = dpath / 'tmp2.tif'
         >>> kwimage.imwrite(fpath, data, compress='LZW', interleave='PIXEL', blocksize=64, options=['NUM_THREADS=ALL_CPUS'])
         >>> _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>> loaded = kwimage.imread(fpath)
@@ -1547,10 +1540,9 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import kwimage
-        >>> import tempfile
         >>> orig_data = kwimage.grab_test_image()
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> fpath = tmp_tif.name
+        >>> dpath = ub.Path.appdir('kwimage/test/imwrite_cog').ensuredir()
+        >>> fpath = dpath / 'tmp2.tif'
         >>> imwrite_param_basis = {
         >>>     'interleave': ['BAND', 'PIXEL'],
         >>>     'compress': ['NONE', 'DEFLATE'],
@@ -1573,7 +1565,6 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>>         _ = ub.cmd('gdalinfo ' + fpath, verbose=3)
         >>>         loaded = kwimage.imread(fpath)
         >>>         assert np.all(loaded == data)
-        >>> tmp_tif.close()
     """
     from osgeo import gdal
     if len(data.shape) == 2:
@@ -1704,7 +1695,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     driver = None
     # Copy the in-memory dataset to an on-disk GeoTiff
     driver2 = gdal.GetDriverByName(str('GTiff'))
-    data_set2 = driver2.CreateCopy(fpath, data_set, options=_options)
+    data_set2 = driver2.CreateCopy(os.fspath(fpath), data_set, options=_options)
     data_set = None
 
     # OK, so setting things to None turns out to be important. Gah!
