@@ -5,7 +5,6 @@ metadata on top of coordinate data.
 """
 import numpy as np
 import ubelt as ub
-import skimage
 import kwarray
 from kwimage.structs import _generic
 
@@ -14,10 +13,10 @@ try:
 except ImportError:
     from distutils.version import LooseVersion
 
-try:
-    from xdev import profile
-except Exception:
-    from ubelt import identity as profile
+# try:
+#     from xdev import profile
+# except Exception:
+#     from ubelt import identity as profile
 
 
 try:
@@ -478,6 +477,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         Example:
             >>> from kwimage.structs.coords import *  # NOQA
+            >>> import skimage
             >>> self = Coords.random(10, rng=0)
             >>> transform = skimage.transform.AffineTransform(scale=(2, 2))
             >>> new = self.warp(transform)
@@ -516,11 +516,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(self.warp(func).data == 0)
         """
         import kwimage
+        import skimage
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         if transform is None:
             return new
-        elif isinstance(transform, _generic.ARRAY_TYPES):
+        elif _generic.isinstance_arraytypes(transform):
             matrix = transform
         elif isinstance(transform, kwimage.Linear):
             matrix = np.asarray(transform)
@@ -722,7 +723,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self = cls(xy)
         return self
 
-    @profile
+    # @profile
     def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale coordinates by a factor
@@ -782,7 +783,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = data
         return new
 
-    @profile
+    # @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the coordinates
@@ -823,7 +824,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data += offset_
         return new
 
-    @profile
+    # @profile
     def rotate(self, theta, about=None, output_dims=None, inplace=False):
         """
         Rotate the coordinates about a point.

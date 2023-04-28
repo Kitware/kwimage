@@ -6,20 +6,6 @@ import ubelt as ub
 import numpy as np
 import kwarray
 
-try:
-    from packaging.version import parse as LooseVersion
-except ImportError:
-    from distutils.version import LooseVersion
-
-try:
-    import torch
-    import torch.nn.functional as F
-    TORCH_GRID_SAMPLE_HAS_ALIGN = LooseVersion(torch.__version__) >= LooseVersion('1.3.0')
-except Exception:
-    torch = None
-    F = None
-    TORCH_GRID_SAMPLE_HAS_ALIGN = None
-
 
 def _coordinate_grid(dims, align_corners=False):
     """
@@ -59,6 +45,7 @@ def _coordinate_grid(dims, align_corners=False):
                  [1., 1.]]])
 
     """
+    import torch
     if align_corners:
         def _corner_grid(d):
             return torch.linspace(0, d, d)
@@ -333,7 +320,8 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> result2 = (cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR))
         >>> print('result2 =\n{}'.format(ub.urepr(result2, precision=2)))
     """
-
+    import torch
+    import torch.nn.functional as F
     if mode == 'linear':
         mode = 'bilinear'
 
@@ -405,11 +393,6 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     # input is aligned with the top left corner.
     # X = ndims + 1 if ishomog else ndims
     X = ndims + 1
-
-    if not TORCH_GRID_SAMPLE_HAS_ALIGN:
-        import warnings
-        warnings.warn('cannot use new mode in warp_tensor when torch < 1.3')
-        new_mode = False
 
     # NOTE: grid_sample in torch<1.3 does not support align_corners=False correctly
     unwarped_coords = _coordinate_grid(output_dims, align_corners=align_corners)     # [X, *DIMS]
@@ -501,7 +484,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     # TODO: pass align_corners when supported in torch 1.3
     # Note: enabling this breaks tests and backwards compat, so
     # verify there are no problems before enabling this.
-    if new_mode and TORCH_GRID_SAMPLE_HAS_ALIGN:
+    if new_mode:
         # the new grid sample allows you to set align_corners, but I don't
         # remember if the previous logic depends on the old behavior.
         outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
@@ -678,6 +661,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
                   [0. , 0.5, 0.5, 0.5, 0. , 0. ],
                   [0. , 0. , 0. , 0. , 0. , 0. ]])
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> dst = torch.zeros((1, 3, 6, 6))
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.5, 4.5), slice(1.25, 4.25))
@@ -759,6 +743,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> dst = torch.zeros((1, 3, 5, 5)) + .5
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.4, 4.4), slice(1.25, 4.25))
@@ -797,6 +782,7 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> dst = torch.zeros((1, 3, 5, 5)) + .5
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.4, 4.4), slice(1.25, 4.25))
@@ -921,6 +907,7 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> inputs = torch.arange(9).view(1, 1, 3, 3).float()
         >>> print(inputs.long())
         tensor([[[[0, 1, 2],
@@ -1256,6 +1243,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> from kwimage.util.util_warp import *
         >>> from kwimage.util.util_warp import _warp_tensor_cv2
         >>> from kwimage.util.util_warp import warp_tensor
+        >>> import torch
         >>> import numpy as np
         >>> ti = ub.Timerit(10, bestof=3, verbose=2, unit='ms')
         >>> mode = 'linear'
@@ -1370,6 +1358,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
         >>> warp_points(matrix, pts)
         >>> # --- with torch
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> pts = torch.Tensor(pts)
         >>> matrix = torch.Tensor(matrix)
         >>> warp_points(matrix, pts)
@@ -1381,6 +1370,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
         >>> matrix = np.diag([2, 3, 1])
         >>> ra = warp_points(matrix, pts)
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> rb = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
         >>> assert np.allclose(ra, rb.numpy())
 
@@ -1393,6 +1383,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
         >>> matrix = rng.rand(3, 3)
         >>> ra33 = warp_points(matrix, pts)
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> rb33 = warp_points(torch.Tensor(matrix), torch.Tensor(pts))
         >>> assert np.allclose(ra33, rb33.numpy())
         >>> # Test opencv style affine matrices
@@ -1535,6 +1526,7 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
         >>> subpixel_getvalue(img, pts, coord_axes=(1, 0))
         array([4. , 6. , 5.2])
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> img = torch.Tensor(img)
         >>> pts = torch.Tensor(pts)
         >>> subpixel_getvalue(img, pts)

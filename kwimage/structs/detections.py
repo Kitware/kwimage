@@ -30,27 +30,22 @@ If you want to visualize boxes and scores you can do this:
 """
 import numpy as np
 import ubelt as ub
+import sys
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
 
-try:
-    from packaging.version import parse as LooseVersion
-except ImportError:
-    from distutils.version import LooseVersion
-
-
-try:
-    from xdev import profile
-except Exception:
-    from ubelt import identity as profile
-
-try:
-    import torch
-except Exception:
-    torch = None
-    _TORCH_HAS_BOOL_COMP = False
-else:
-    _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
+# try:
+#     from packaging.version import parse as LooseVersion
+# except ImportError:
+#     from distutils.version import LooseVersion
+# try:
+#     from xdev import profile
+# except Exception:
+#     from ubelt import identity as profile
+# try:
+#     import torch
+# except Exception:
+#     torch = None
 
 
 class _DetDrawMixin:
@@ -676,6 +671,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> assert other.data is self.data, 'try not to copy unless necessary'
 
         """
+        torch = sys.modules.get('torch', None)
         # Standardize input format
         if kwargs:
             if data or meta:
@@ -1158,7 +1154,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 inplace=inplace)
         return new
 
-    @profile
+    # @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Spatially scale the detections.
@@ -1181,7 +1177,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 factor, output_dims=output_dims, inplace=inplace)
         return new
 
-    @profile
+    # @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Spatially translate the detections.
@@ -1259,6 +1255,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         sortx = self.scores.argsort()
         if reverse:
+            torch = sys.modules.get('torch', None)
             if torch is not None and torch.is_tensor(sortx):
                 sortx = torch.flip(sortx, dims=(0,))
             else:
@@ -1306,23 +1303,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             raise IndexError('compress must get a flag for every item')
 
         if self.is_tensor():
+            torch = sys.modules.get('torch', None)
             if isinstance(flags, np.ndarray):
                 if flags.dtype.kind == 'b':
                     flags = flags.astype(np.uint8)
             if isinstance(flags, torch.Tensor):
-                if _TORCH_HAS_BOOL_COMP:
-                    if flags.dtype != torch.bool:
-                        flags = flags.bool()
-                else:
-                    if flags.dtype != torch.uint8:
-                        flags = flags.byte()
+                if flags.dtype != torch.bool:
+                    flags = flags.bool()
                 if flags.device != flags.device:
                     flags = flags.to(self.device)
             else:
-                if _TORCH_HAS_BOOL_COMP:
-                    flags = torch.BoolTensor(flags).to(self.device)
-                else:
-                    flags = torch.ByteTensor(flags).to(self.device)
+                flags = torch.BoolTensor(flags).to(self.device)
         newdata = {k: _generic._safe_compress(v, flags, axis)
                    for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
@@ -1347,6 +1338,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> assert len(subset) == 4
         """
         if self.is_tensor():
+            torch = sys.modules.get('torch', None)
             indices = torch.LongTensor(indices).to(self.device)
         newdata = {k: _generic._safe_take(v, indices, axis)
                    for k, v in self.data.items()}
@@ -1411,6 +1403,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if val is None:
                 newval = val
             else:
+                torch = sys.modules.get('torch', None)
                 if torch is not None and torch.is_tensor(val):
                     newval = val.data.cpu().numpy()
                 elif hasattr(val, 'numpy'):
@@ -1461,6 +1454,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             elif hasattr(val, 'tensor'):
                 newval = val.tensor(device)
             else:
+                torch = sys.modules.get('torch', None)
                 if torch is not None and torch.is_tensor(val):
                     newval = val
                 else:

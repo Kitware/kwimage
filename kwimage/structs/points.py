@@ -3,7 +3,6 @@ Data structures to represent and manipulate 2D Points
 """
 import numpy as np
 import ubelt as ub
-import skimage
 import kwarray
 import numbers
 import warnings
@@ -98,6 +97,7 @@ class _PointsWarpMixin:
 
         Example:
             >>> from kwimage.structs.points import *  # NOQA
+            >>> import skimage
             >>> self = Points.random(10, rng=0)
             >>> transform = skimage.transform.AffineTransform(scale=(2, 2))
             >>> new = self.warp(transform)
@@ -109,6 +109,7 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
         import kwimage
+        import skimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         if transform is None:
             return new
@@ -158,6 +159,7 @@ class _PointsWarpMixin:
             >>> new = self.scale(10)
             >>> assert new.xy.max() <= 10
         """
+        import skimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = new.data['xy'].scale(factor, output_dims=output_dims,
                                               inplace=inplace)
@@ -185,6 +187,7 @@ class _PointsWarpMixin:
             >>> assert new.xy.min() >= 10
             >>> assert new.xy.max() <= 11
         """
+        import skimage
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = new.data['xy'].translate(offset, output_dims, inplace)
         if 'tf_data_to_img' in new.meta:
@@ -241,7 +244,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
 
             if 'xy' in data:
-                if isinstance(data['xy'], _generic.ARRAY_TYPES):
+                if _generic.isinstance_arraytypes(data['xy']):
                     import kwimage
                     data['xy'] = kwimage.Coords(data['xy'])
 
@@ -778,7 +781,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         elif isinstance(data, (list, dict)):
             # TODO: determine if coco or geojson
             return cls.from_coco(data)
-        elif isinstance(data, _generic.ARRAY_TYPES):
+        elif _generic.isinstance_arraytypes(data):
             return cls(data)
         else:
             raise TypeError(type(data))

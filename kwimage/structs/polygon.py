@@ -11,18 +11,16 @@ TODO:
     - [ ] First class shapely support (format='shapely' to mitigate format conversion cost) (or use shapely as the primary format).
 
 """
-import cv2
-import skimage
 import numbers
 import ubelt as ub
 import numpy as np
 from kwimage.structs import _generic
 # from . import _generic
 
-try:
-    from xdev import profile
-except Exception:
-    from ubelt import identity as profile
+# try:
+#     from xdev import profile
+# except Exception:
+#     from ubelt import identity as profile
 
 
 class _ShapelyMixin:
@@ -368,6 +366,7 @@ class _PolyWarpMixin:
 
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
+            >>> import skimage
             >>> self = Polygon.random()
             >>> transform = skimage.transform.AffineTransform(scale=(2, 2))
             >>> new = self.warp(transform)
@@ -383,6 +382,7 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(3)).exterior == self.exterior)
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
+        import skimage
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if transform is None:
@@ -871,14 +871,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             if 'exterior' in data:
                 if isinstance(data['exterior'], (list, tuple)):
                     data['exterior'] = kwimage.Coords(np.array(data['exterior']))
-                elif isinstance(data['exterior'], _generic.ARRAY_TYPES):
+                elif _generic.isinstance_arraytypes(data['exterior']):
                     data['exterior'] = kwimage.Coords(data['exterior'])
             if 'interiors' in data:
                 holes = []
                 for hole in data['interiors']:
                     if isinstance(hole, (list, tuple)):
                         hole = kwimage.Coords(np.array(hole))
-                    elif isinstance(hole, _generic.ARRAY_TYPES):
+                    elif _generic.isinstance_arraytypes(hole):
                         hole = kwimage.Coords(hole)
                     holes.append(hole)
                 data['interiors'] = holes
@@ -1788,6 +1788,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     assert image.sum() == 0
             >>>     print(f'dtype: {dtype} not inplace')
         """
+        import cv2
         # If the dtype if fixed, then the data is not modified inplace
         final_dtype = None
         image_ = image
@@ -1827,7 +1828,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    @profile
+    # @profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
                 edgecolor=None, facecolor=None, copy=False):
         """
@@ -1952,6 +1953,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             globals().update(xdev.get_func_kwargs(kwimage.Polygon.draw_on))
         """
         import kwimage
+        import cv2
 
         is_empty = len(self.data['exterior']) == 0
         if is_empty:

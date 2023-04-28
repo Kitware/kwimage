@@ -5,8 +5,6 @@ from _typeshed import Incomplete
 from collections.abc import Generator
 from typing import Any
 
-ARRAY_TYPES: Incomplete
-
 
 class Spatial(ub.NiceRepr):
     ...

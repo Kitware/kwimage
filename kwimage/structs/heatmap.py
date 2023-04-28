@@ -78,18 +78,12 @@ Example:
     >>> kwplot.imshow(raster)
     >>> kwplot.show_if_requested()
 """
-import cv2
 import numpy as np
 import ubelt as ub
-import skimage
 import kwarray
 import functools
+import sys
 from . import _generic
-
-try:
-    import torch
-except Exception:
-    torch = None
 
 
 class _HeatmapDrawMixin(object):
@@ -259,6 +253,7 @@ class _HeatmapDrawMixin(object):
             colormask = self._colorize_class_idx()
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
             if imgspace:
+                torch = sys.modules.get('torch', None)
                 chw = torch.Tensor(colormask.transpose(2, 0, 1))
                 colormask = self._warp_imgspace(chw, interpolation=interpolation).transpose(1, 2, 0)
             return colormask
@@ -349,6 +344,7 @@ class _HeatmapDrawMixin(object):
         """
         import kwimage
         import matplotlib as mpl
+        import cv2
 
         mat = None
         if image is not None:
@@ -559,6 +555,7 @@ class _HeatmapDrawMixin(object):
                     dx, dy, stride=4, scale=1.0, alpha=with_alpha * vec_alpha,
                     color=color)
                 vec_alpha = max(.1, vec_alpha - .1)
+                torch = sys.modules.get('torch', None)
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
@@ -648,6 +645,7 @@ class _HeatmapWarpMixin(object):
         DEPRICATE
         """
         import kwimage
+        import cv2
         M = self.tf_data_to_img.params[0:3]
         dsize = tuple(map(int, self.img_dims[::-1]))
         flags = kwimage.im_cv2._coerce_interpolation(interpolation)
@@ -667,6 +665,7 @@ class _HeatmapWarpMixin(object):
                     return chw.cpu().numpy()
 
             output_dims = self.img_dims
+            torch = sys.modules.get('torch', None)
             mat = torch.Tensor(self.tf_data_to_img.params[0:3])
             outputs = kwimage.warp_tensor(
                 chw[None, :], mat, output_dims=output_dims, mode=interpolation
@@ -691,6 +690,7 @@ class _HeatmapWarpMixin(object):
             >>> colormask = self.upscale()
 
         """
+        torch = sys.modules.get('torch', None)
         if channel is None:
             chw = torch.Tensor(self.class_probs)
         else:
@@ -763,6 +763,7 @@ class _HeatmapWarpMixin(object):
             >>> kwplot.imshow(toshow)
         """
         import kwimage
+        import skimage
 
         if mat is None:
             mat = self.tf_data_to_img.params
@@ -803,6 +804,7 @@ class _HeatmapWarpMixin(object):
         tf = skimage.transform.AffineTransform(matrix=mat_np)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
+        torch = sys.modules.get('torch', None)
         mat_notrans = torch.Tensor(tf_notrans.params)
 
         if output_dims is None:
@@ -1227,6 +1229,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             tf_data_to_img = meta.get('tf_data_to_img', None)
             if tf_data_to_img is not None:
                 if isinstance(tf_data_to_img, np.ndarray):
+                    import skimage
                     meta['tf_data_to_img'] = skimage.transform.AffineTransform(
                         matrix=tf_data_to_img)
 
@@ -1388,6 +1391,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             classes = ['class_{}'.format(c) for c in range(classes)]
 
         # Pretend this heatmap corresponds to some upscaled subregion
+        import skimage
         if img_dims is None:
             scale = 1 + rng.rand(2) * 2
             translation = rng.rand(2) * np.array(dims[::-1]) / 2
@@ -1746,6 +1750,7 @@ def smooth_prob(prob, k=3, inplace=False, eps=1e-9):
 
         sigma=0.8 @ k=3, sigma=1.1 @ k=5, sigma=1.4 @ k=7
     """
+    import cv2
     sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
     blur = cv2.GaussianBlur(prob, (k, k), sigma)
     # Shift and scale the intensities so the maximum and minimum
@@ -1769,6 +1774,7 @@ def _remove_translation(tf):
     TODO:
         - [ ] Is this possible in more general cases? E.g. projective transforms?
     """
+    import skimage
     if isinstance(tf, skimage.transform.AffineTransform):
         tf_notrans = skimage.transform.AffineTransform(
             scale=tf.scale, rotation=tf.rotation, shear=tf.shear)

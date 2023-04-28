@@ -1,16 +1,28 @@
 import ubelt as ub
+import sys
 import kwarray
 import numbers
 import numpy as np
 # import abc
 
-try:
-    import torch
-except Exception:
-    torch = None
-    ARRAY_TYPES = (np.ndarray,)
-else:
-    ARRAY_TYPES = (np.ndarray, torch.Tensor)
+# try:
+#     import torch
+# except Exception:
+#     torch = None
+#     ARRAY_TYPES = (np.ndarray,)
+# else:
+#     ARRAY_TYPES = (np.ndarray, torch.Tensor)
+
+
+def isinstance_arraytypes(obj):
+    """
+    workaround so we dont need to import torch at the global level
+    """
+    torch = sys.modules.get('torch', None)
+    if torch is None:
+        return isinstance(obj, np.ndarray)
+    else:
+        return isinstance(obj, (np.ndarray, torch.Tensor))
 
 
 # class Spatial(ub.NiceRepr, abc.ABC):

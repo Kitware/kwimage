@@ -1,15 +1,11 @@
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
+import sys
 import numpy as np
 import ubelt as ub
 import warnings
 import kwarray
-
-try:
-    import torch
-except Exception:
-    torch = None
 
 
 def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
@@ -195,6 +191,10 @@ class _NMS_Impls():
     def _lazy_init(self):
         _funcs = {}
         from kwimage import _internal
+        try:
+            import torch
+        except ImportError:
+            torch = None
 
         # These are pure python and should always be available
         from kwimage.algo._nms_backend import py_nms
@@ -493,6 +493,7 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         >>> print('solutions = {}'.format(ub.urepr(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
     """
+    torch = sys.modules.get('torch', None)
 
     if impl == 'cpu':
         import warnings

@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.17 - Unreleased
 
+### Changed
+* Avoid importing torch globally
 
 ## Version 0.9.16 - Released 2023-04-27
 
