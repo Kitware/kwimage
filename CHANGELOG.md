@@ -15,6 +15,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * switch from ubelt.repr2 to ubelt.urepr
+* On windows the default gdal compression is changed to LZW.
+  The default everywhere else is still DEFLATE.
 
 
 ## Version 0.9.15 - Released 2023-04-04
