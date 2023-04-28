@@ -253,7 +253,7 @@ class _HeatmapDrawMixin(object):
             colormask = self._colorize_class_idx()
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
             if imgspace:
-                torch = sys.modules.get('torch', None)
+                import torch
                 chw = torch.Tensor(colormask.transpose(2, 0, 1))
                 colormask = self._warp_imgspace(chw, interpolation=interpolation).transpose(1, 2, 0)
             return colormask
@@ -555,13 +555,14 @@ class _HeatmapDrawMixin(object):
                     dx, dy, stride=4, scale=1.0, alpha=with_alpha * vec_alpha,
                     color=color)
                 vec_alpha = max(.1, vec_alpha - .1)
-                torch = sys.modules.get('torch', None)
+                import torch
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
                 layers.append(vecalign)
 
         if kpts is not None:
+            import torch
             # TODO: make a nicer keypoint offset vector visuliazation
             if self.data.get('keypoints', None) is not None:
                 keypoints = self.data['keypoints']
@@ -658,6 +659,7 @@ class _HeatmapWarpMixin(object):
         if self.tf_data_to_img is None and self.img_dims is None:
             aligned = chw.cpu().numpy()
         else:
+            import torch
             if self.tf_data_to_img is None:
                 # If img dims are the same then we dont need a transform we
                 # know its identity
@@ -665,7 +667,6 @@ class _HeatmapWarpMixin(object):
                     return chw.cpu().numpy()
 
             output_dims = self.img_dims
-            torch = sys.modules.get('torch', None)
             mat = torch.Tensor(self.tf_data_to_img.params[0:3])
             outputs = kwimage.warp_tensor(
                 chw[None, :], mat, output_dims=output_dims, mode=interpolation
@@ -690,7 +691,7 @@ class _HeatmapWarpMixin(object):
             >>> colormask = self.upscale()
 
         """
-        torch = sys.modules.get('torch', None)
+        import torch
         if channel is None:
             chw = torch.Tensor(self.class_probs)
         else:
@@ -804,7 +805,7 @@ class _HeatmapWarpMixin(object):
         tf = skimage.transform.AffineTransform(matrix=mat_np)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
-        torch = sys.modules.get('torch', None)
+        import torch
         mat_notrans = torch.Tensor(tf_notrans.params)
 
         if output_dims is None:
@@ -1057,6 +1058,7 @@ class _HeatmapAlgoMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
+            >>> import torch
             >>> import ndsampler
             >>> catgraph = ndsampler.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
@@ -1179,6 +1181,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> from kwimage.structs.heatmap import *  # NOQA
+        >>> import skimage
         >>> import kwimage
         >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ..., 0] / 255.0
         >>> img_dims = (220, 220)
@@ -1568,6 +1571,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> rng = np.random.RandomState(0)
         >>> probs = rng.rand(3, 3).astype(np.float32)
         >>> min_score = .5

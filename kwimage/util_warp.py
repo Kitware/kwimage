@@ -146,6 +146,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> # Create a relatively simple affine matrix
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import skimage
+        >>> import torch
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
         >>>     translation=[1, -1], scale=[.532, 2],
         >>>     rotation=0, shear=0,
@@ -171,6 +172,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> # Create a relatively simple affine matrix
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import skimage
+        >>> import torch
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
         >>>     rotation=0.01, shear=0.1).params)
         >>> # Create inputs and an output dimension
@@ -197,6 +199,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> # Create a random affine matrix
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import skimage
+        >>> import torch
         >>> rng = np.random.RandomState(0)
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
         >>>     translation=rng.randn(2), scale=1 + rng.randn(2),
@@ -223,6 +226,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Example:
         >>> # Test 3D warping with identity
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> mat = torch.eye(4)
         >>> input_dims = [2, 3, 3]
         >>> output_dims = (2, 3, 3)
@@ -235,6 +239,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Example:
         >>> # Test 3D warping with scaling
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> mat = torch.FloatTensor([
         >>>     [0.8,   0,   0, 0],
         >>>     [  0, 1.0,   0, 0],
@@ -258,6 +263,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> mat = torch.eye(3)
         >>> input_dims = [5, 7]
         >>> output_dims = (11, 7)
@@ -270,6 +276,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> mat = torch.eye(4)
         >>> input_dims = [5, 5, 5]
         >>> output_dims = (6, 6, 6)
@@ -284,6 +291,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         import xdev
         globals().update(xdev.get_func_kwargs(warp_tensor))
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> import cv2
         >>> inputs = torch.arange(9).view(1, 1, 3, 3).float() + 2
         >>> input_dims = inputs.shape[2:]

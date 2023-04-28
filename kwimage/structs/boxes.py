@@ -259,6 +259,7 @@ def _box_ious_torch(ltrb1, ltrb2, bias=0):
     """
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> ltrb1 = Boxes.random(5, scale=10.0, rng=0, format='ltrb').tensor().data
         >>> ltrb2 = Boxes.random(7, scale=10.0, rng=1, format='ltrb').tensor().data
         >>> bias = 0
@@ -2344,6 +2345,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh').scale(2).to_ltrb()
         <Boxes(ltrb, array([[50., 60., 80., 80.]]))>
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> kwimage.Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
         <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
@@ -2369,6 +2371,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> Boxes([25, 30, 15, 10], 'xywh').scale(2).to_ltrb()
         <Boxes(ltrb, array([50., 60., 80., 80.]))>
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
         <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
@@ -2996,6 +2999,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Examples:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import torch
             >>> formats = BoxFormat.cannonical
             >>> istensors = [False, True]
             >>> results = {}
@@ -3345,6 +3349,7 @@ def _take(data, indices, axis=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> indices = [1, 3, 5, 7, 11, 13, 17, 21]
@@ -3374,6 +3379,7 @@ def _compress(data, flags, axis=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> flags = (np_data % 2 == 0).ravel()

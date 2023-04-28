@@ -106,8 +106,8 @@ class Box(ub.NiceRepr):
             return data
         else:
             import numbers
-            # import kwimage
-            from kwarray.arrayapi import torch
+            import sys
+            torch = sys.modules.get('torch', None)
             if isinstance(data, list):
                 if data and isinstance(data[0], numbers.Number):
                     data = np.array(data)[None, :]
