@@ -2321,7 +2321,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         boxes.data =
         np.array([[ 0,  0, 10, 10],
                   [ 5,  5, 50, 50],
-                  [20,  0, 30, 10]], dtype=np.int64)
+                  [20,  0, 30, 10]], dtype=...)
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> # This data structure was designed for use with both torch
         >>> # and numpy, the underlying data can be either an array or tensor.
@@ -2506,19 +2506,19 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             <Boxes(xywh,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
-                       [79, 38, 17, 14]]))>
+                       [79, 38, 17, 14]]...))>
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> Boxes.random(3, rng=0, scale=100).tensor()
             <Boxes(xywh,
                 tensor([[ 54,  54,   6,  17],
                         [ 42,  64,   1,  25],
-                        [ 79,  38,  17,  14]]))>
+                        [ 79,  38,  17,  14]]...))>
             >>> anchors = np.array([[.5, .5], [.3, .3]])
             >>> Boxes.random(3, rng=0, scale=100, anchors=anchors)
             <Boxes(xywh,
                 array([[ 2, 13, 51, 51],
                        [32, 51, 32, 36],
-                       [36, 28, 23, 26]]))>
+                       [36, 28, 23, 26]]...))>
 
         Example:
             >>> # Boxes position/shape within 0-1 space should be uniform.
@@ -2639,7 +2639,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.compress([True])
             <Boxes(ltrb, array([[25, 30, 15, 10]]))>
             >>> self.compress([False])
-            <Boxes(ltrb, array([], shape=(0, 4), dtype=int64))>
+            <Boxes(ltrb, array([], shape=(0, 4), dtype=...))>
         """
         if len(self.data.shape) != 2 and _numel(self.data) > 0:
             raise ValueError('data must be 2d got {}d'.format(
@@ -2670,7 +2670,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.take([0])
             <Boxes(ltrb, array([[25, 30, 15, 10]]))>
             >>> self.take([])
-            <Boxes(ltrb, array([], shape=(0, 4), dtype=int64))>
+            <Boxes(ltrb, array([], shape=(0, 4), dtype=...))>
         """
         if len(self.data.shape) != 2 and _numel(self.data) > 0:
             raise ValueError('data must be 2d got {}d'.format(
@@ -2740,16 +2740,16 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> # xdoctest: +REQUIRES(module:torch)
-            >>> Boxes.random(3, 100, rng=0).tensor().astype('int32')
+            >>> Boxes.random(3, 100, rng=0).tensor().astype('int16')
             <Boxes(xywh,
                 tensor([[54, 54,  6, 17],
                         [42, 64,  1, 25],
-                        [79, 38, 17, 14]], dtype=torch.int32))>
-            >>> Boxes.random(3, 100, rng=0).numpy().astype('int32')
+                        [79, 38, 17, 14]], dtype=torch.int16))>
+            >>> Boxes.random(3, 100, rng=0).numpy().astype('int16')
             <Boxes(xywh,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
-                       [79, 38, 17, 14]], dtype=int32))>
+                       [79, 38, 17, 14]], dtype=int16))>
             >>> Boxes.random(3, 100, rng=0).tensor().astype('float32')
             >>> Boxes.random(3, 100, rng=0).numpy().astype('float32')
         """
@@ -2828,7 +2828,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             new = <Boxes(xywh,
                 array([[5, 5, 2, 3],
                        [4, 6, 1, 3],
-                       [7, 3, 3, 3]], dtype=int32))>
+                       [7, 3, 3, 3]]...))>
 
         Example:
             >>> import kwimage

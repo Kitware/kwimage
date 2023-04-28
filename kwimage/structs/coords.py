@@ -204,7 +204,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> self.take([0])
             <Coords(data=array([[25, 30, 15, 10]]))>
             >>> self.take([])
-            <Coords(data=array([], shape=(0, 4), dtype=int64))>
+            <Coords(data=array([], shape=(0, 4), dtype=...))>
         """
         new = self if inplace else self.__class__(self.data, self.meta)
         new.data = self._impl.take(new.data, indices, axis=axis)

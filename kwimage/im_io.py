@@ -108,20 +108,20 @@ def imread(fpath, space='auto', backend='auto', **kw):
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
-        >>> from kwimage.im_io import *  # NOQA
-        >>> import tempfile
-        >>> from os.path import splitext  # NOQA
+        >>> import kwimage
+        >>> import ubelt as ub
         >>> # Test a non-standard image, which encodes a depth map
         >>> fpath = ub.grabdata(
         >>>     'http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif',
         >>>     hasher='sha256', hash_prefix='64522acba6f0fb7060cd4c202ed32c5163c34e63d386afdada4190cce51ff4d4')
         >>> img1 = kwimage.imread(fpath)
         >>> # Check that write + read preserves data
-        >>> tmp = tempfile.NamedTemporaryFile(suffix=splitext(fpath)[1])
-        >>> kwimage.imwrite(tmp.name, img1)
-        >>> img2 = kwimage.imread(tmp.name)
+        >>> dpath = ub.Path.appdir('kwimage/test/imread').ensuredir()
+        >>> tmp_fpath = dpath / 'tmp0.tif'
+        >>> kwimage.imwrite(tmp_fpath, img1)
+        >>> img2 = kwimage.imread(tmp_fpath)
         >>> assert np.all(img2 == img1)
-        >>> tmp.close()
+        >>> tmp_fpath.delete()
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -130,20 +130,21 @@ def imread(fpath, space='auto', backend='auto', **kw):
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
-        >>> import tempfile
         >>> import kwimage
+        >>> import ubelt as ub
         >>> img1 = kwimage.imread(ub.grabdata(
         >>>     'http://i.imgur.com/iXNf4Me.png', fname='ada.png', hasher='sha256',
         >>>     hash_prefix='898cf2588c40baf64d6e09b6a93b4c8dcc0db26140639a365b57619e17dd1c77'))
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> kwimage.imwrite(tmp_tif.name, img1)
-        >>> kwimage.imwrite(tmp_png.name, img1)
-        >>> tif_im = kwimage.imread(tmp_tif.name)
-        >>> png_im = kwimage.imread(tmp_png.name)
+        >>> dpath = ub.Path.appdir('kwimage/test/imread').ensuredir()
+        >>> tmp_tif_fpath = dpath / 'tmp1.tif'
+        >>> tmp_png_fpath = dpath / 'tmp1.png'
+        >>> kwimage.imwrite(tmp_tif_fpath, img1)
+        >>> kwimage.imwrite(tmp_png_fpath, img1)
+        >>> tif_im = kwimage.imread(tmp_tif_fpath)
+        >>> png_im = kwimage.imread(tmp_png_fpath)
         >>> assert np.all(tif_im == png_im)
-        >>> tmp_tif.close()
-        >>> tmp_png.close()
+        >>> tmp_tif_fpath.delete()
+        >>> tmp_png_fpath.delete()
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -152,21 +153,24 @@ def imread(fpath, space='auto', backend='auto', **kw):
 
     Example:
         >>> # xdoctest: +REQUIRES(--network)
-        >>> import tempfile
         >>> import kwimage
+        >>> import ubelt as ub
+        >>> # FIXME: Dead link...
         >>> tif_fpath = ub.grabdata(
         >>>     'https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff',
         >>>     fname='pepper.tif', hasher='sha256',
         >>>     hash_prefix='31ff3a1f416cb7281acfbcbb4b56ee8bb94e9f91489602ff2806e5a49abc03c0')
         >>> img1 = kwimage.imread(tif_fpath)
-        >>> tmp_tif = tempfile.NamedTemporaryFile(suffix='.tif')
-        >>> tmp_png = tempfile.NamedTemporaryFile(suffix='.png')
-        >>> kwimage.imwrite(tmp_tif.name, img1)
-        >>> kwimage.imwrite(tmp_png.name, img1)
-        >>> tif_im = kwimage.imread(tmp_tif.name)
-        >>> png_im = kwimage.imread(tmp_png.name)
-        >>> tmp_tif.close()
-        >>> tmp_png.close()
+        >>> dpath = ub.Path.appdir('kwimage/test/imread').ensuredir()
+        >>> tmp_tif_fpath = dpath / 'tmp2.tif'
+        >>> tmp_png_fpath = dpath / 'tmp2.png'
+        >>> kwimage.imwrite(tmp_tif_fpath, img1)
+        >>> kwimage.imwrite(tmp_png_fpath, img1)
+        >>> tif_im = kwimage.imread(tmp_tif_fpath)
+        >>> png_im = kwimage.imread(tmp_png_fpath)
+        >>> assert np.all(tif_im == png_im)
+        >>> tmp_tif_fpath.delete()
+        >>> tmp_png_fpath.delete()
         >>> assert np.all(tif_im == png_im)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
@@ -187,12 +191,13 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> img1_stack = kwimage.imread(fpath)
         >>> # Check that write + read preserves data
         >>> import tempfile
-        >>> tmp_file = tempfile.NamedTemporaryFile(suffix='.mha')
-        >>> kwimage.imwrite(tmp_file.name, img1_stack)
-        >>> recon = kwimage.imread(tmp_file.name)
+        >>> dpath = ub.Path.appdir('kwimage/test/imread').ensuredir()
+        >>> tmp_fpath = dpath / 'tmp3.mha'
+        >>> kwimage.imwrite(tmp_fpath, img1_stack)
+        >>> recon = kwimage.imread(tmp_fpath)
         >>> assert not np.may_share_memory(recon, img1_stack)
         >>> assert np.all(recon == img1_stack)
-        >>> tmp_file.close()
+        >>> tmp_fpath.delete()
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -201,10 +206,9 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> kwplot.show_if_requested()
 
     Benchmark:
-        >>> from kwimage.im_io import *  # NOQA
         >>> import timerit
         >>> import kwimage
-        >>> import tempfile
+        >>> import ubelt as ub
         >>> #
         >>> dsize = (1920, 1080)
         >>> img1 = kwimage.grab_test_image('amazon', dsize=dsize)
@@ -238,8 +242,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>>         with timer:
         >>>             kwimage.imread(formats[filefmt], space=space, backend='auto')
         >>> ti.measures = ub.map_vals(ub.sorted_vals, ti.measures)
-        >>> import netharn as nh
-        >>> print('ti.measures = {}'.format(nh.util.align(ub.urepr(ti.measures['min'], nl=2), ':')))
+        >>> print('ti.measures = {}'.format(ub.urepr(ti.measures['min'], nl=2, align=':')))
         Timed best=42891.504 µs, mean=44008.439 ± 1409.2 µs for imread-png-cv2
         Timed best=33146.808 µs, mean=34185.172 ± 656.3 µs for imread-jpg-cv2
         Timed best=40120.306 µs, mean=41220.927 ± 1010.9 µs for imread-jpg-gdal
