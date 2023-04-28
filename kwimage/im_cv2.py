@@ -477,8 +477,12 @@ DTYPE_KEY_TO_DTYPE = {
     ('f', 2): np.float16,
     ('f', 4): np.float32,
     ('f', 8): np.float64,
-    ('f', 16): np.float128,
 }
+_HAS_FLOAT128 = hasattr(np, 'float128')
+
+if _HAS_FLOAT128:
+    DTYPE_KEY_TO_DTYPE[('f', 16)] = np.float128
+
 DTYPE_TO_DTYPE_KEY = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
 
 
@@ -500,8 +504,9 @@ def __build_cv2_allowed_dtypes():
         DTYPE_TO_DTYPE_KEY[np.float16]: np.float32,
         DTYPE_TO_DTYPE_KEY[np.float32]: np.float32,
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
     })
+    if _HAS_FLOAT128:
+        default[DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
 
     CV2_ALLOWED_DTYPE_MAPPINGS = {}
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32'] = default
@@ -516,16 +521,20 @@ def __build_cv2_allowed_dtypes():
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
         DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
-        DTYPE_TO_DTYPE_KEY[np.float128]: np.float64,
     }
+    if _HAS_FLOAT128:
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float64
+
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
         DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
         DTYPE_TO_DTYPE_KEY[np.int8]: np.int8,
         DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
         DTYPE_TO_DTYPE_KEY[np.uint16]: np.uint16,
         DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float128]: np.float32,
     }
+    if _HAS_FLOAT128:
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
+
     for k in CV2_ALLOWED_DTYPE_MAPPINGS.keys():
         CV2_ALLOWED_DTYPE_MAPPINGS[k] = CV2_ALLOWED_DTYPE_MAPPINGS[k].map_values(np.dtype)
     return CV2_ALLOWED_DTYPE_MAPPINGS
@@ -983,8 +992,8 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
             lab = convert_colorspace(img01, 'rgb', 'lab')
             np.minimum(lab[0, 0], minvals, out=minvals)
             np.maximum(lab[0, 0], maxvals, out=maxvals)
-        print('minvals = {}'.format(ub.repr2(minvals, nl=0)))
-        print('maxvals = {}'.format(ub.repr2(maxvals, nl=0)))
+        print('minvals = {}'.format(ub.urepr(minvals, nl=0)))
+        print('maxvals = {}'.format(ub.urepr(maxvals, nl=0)))
     """
     src_space = src_space.upper()
     dst_space = dst_space.upper()
@@ -1916,7 +1925,7 @@ def _prepare_downscale(image, sx, sy):
             loss = ((got - want) ** 2).sum()
             return loss
         result = scipy.optimize.minimize(sigma_error, x0=1.0, method='Nelder-Mead')
-        print('result = {}'.format(ub.repr2(result, nl=1)))
+        print('result = {}'.format(ub.urepr(result, nl=1)))
         # This gives a number like 1.06992187 which is not exactly what
         # we use.
         #
@@ -1985,7 +1994,7 @@ def _pyrDownK(a, k=1):
 """
 items = {k.split('_')[1].lower(): 'cv2.' + k for k in dir(cv2) if k.startswith('MORPH_')}
 items = ub.sorted_vals(items, key=lambda x: eval(x, {'cv2': cv2}))
-print('_CV2_MORPH_MODES = {}'.format(ub.repr2(items, nl=1, sv=1, align=':')))
+print('_CV2_MORPH_MODES = {}'.format(ub.urepr(items, nl=1, sv=1, align=':')))
 """
 _CV2_STRUCT_ELEMENTS = {
     'rect'    : cv2.MORPH_RECT,
@@ -2094,7 +2103,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         >>> grid += [{'mode': 'dilate', 'kernel': 'random', 'element': 'custom'}]
         >>> results = {}
         >>> for params in grid:
-        ...     key = ub.repr2(params, compact=1, si=0, nl=1)
+        ...     key = ub.urepr(params, compact=1, si=0, nl=1)
         ...     if params['kernel'] == 'random':
         ...         params['kernel'] = np.random.rand(5, 5)
         ...     results[key] = morphology(image, **params)

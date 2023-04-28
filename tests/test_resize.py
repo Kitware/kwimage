@@ -91,7 +91,7 @@ def test_imresize_multi_channel():
         for resize_kw in resize_kw_list:
             params = dict(resize_kw=resize_kw, imgkw=imgkw)
             try:
-                label = ub.repr2(params, nl=0, nobr=True, si=1, sv=1, kvsep='=', itemsep='')
+                label = ub.urepr(params, nl=0, nobr=True, si=1, sv=1, kvsep='=', itemsep='')
                 for timer in ti.reset(label):
                     with timer:
                         kwimage.imresize(img, **resize_kw)
@@ -104,7 +104,7 @@ def test_imresize_multi_channel():
 
     print('n_pass = {}'.format(len(success)))
     print('n_fail = {}'.format(len(failures)))
-    print('failures = {}'.format(ub.repr2(failures, nl=1)))
+    print('failures = {}'.format(ub.urepr(failures, nl=1)))
 
 
 def test_resize_shapes():

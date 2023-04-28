@@ -52,7 +52,7 @@ class Matrix(Transform):
         if isinstance(self.matrix, np.ndarray):
             return np.array2string(self.matrix, separator=', ', prefix=prefix)
         else:
-            return ub.repr2(self.matrix.tolist(), nl=1)
+            return ub.urepr(self.matrix.tolist(), nl=1)
 
     def __repr__(self):
         return self.__str__()
@@ -135,7 +135,7 @@ class Matrix(Transform):
             >>> # These do not work
             >>> # m[len(m)] = None @ Matrix.random()
             >>> # m[len(m)] = np.eye(3) @ None
-            >>> print('m = {}'.format(ub.repr2(m)))
+            >>> print('m = {}'.format(ub.urepr(m)))
 
         Example:
             >>> # Test with rationals
@@ -382,7 +382,7 @@ class Projective(Linear):
         ...     warp = kwimage.warp_projective(image, mat)
         ...     warp = kwimage.draw_text_on_image(
         ...        warp,
-        ...        ub.repr2(mat.matrix, nl=1, nobr=1, precision=4, si=1, sv=1, with_dtype=0),
+        ...        ub.urepr(mat.matrix, nl=1, nobr=1, precision=4, si=1, sv=1, with_dtype=0),
         ...        org=(1, 1),
         ...        valign='top', halign='left',
         ...        fontScale=0.8, color='kw_green',
@@ -434,7 +434,7 @@ class Projective(Linear):
         >>> #    sympy.pprint(homog_)
         >>> homog = homog_.doit()
         >>> #sympy.pprint(homog)
-        >>> print('homog = {}'.format(ub.repr2(homog.tolist(), nl=1)))
+        >>> print('homog = {}'.format(ub.urepr(homog.tolist(), nl=1)))
         >>> # This could be prettier
         >>> texts = {
         >>>     'Translation': sympy.pretty(R, use_unicode=0),
@@ -443,7 +443,7 @@ class Projective(Linear):
         >>>     'Scale': sympy.pretty(S, use_unicode=0),
         >>>     'Perspective': sympy.pretty(P, use_unicode=0),
         >>> }
-        >>> print(ub.repr2(texts, nl=2, sv=1))
+        >>> print(ub.urepr(texts, nl=2, sv=1))
         >>> equation_stack = []
         >>> for text, m in texts.items():
         >>>     render_canvas = kwimage.draw_text_on_image(None, m, color='kw_green', fontScale=1.0)
@@ -649,7 +649,7 @@ class Projective(Linear):
             >>>     sympy.pprint(homog_)
             >>> homog = homog_.doit()
             >>> sympy.pprint(homog)
-            >>> print('homog = {}'.format(ub.repr2(homog.tolist(), nl=1)))
+            >>> print('homog = {}'.format(ub.urepr(homog.tolist(), nl=1)))
 
         Ignore:
             M = kwimage.Projective.projective(uv=(0, 0.04), about=128)
@@ -884,7 +884,7 @@ class Projective(Linear):
             >>> from kwimage.transform import _RationalNDArray
             >>> self = kwimage.Projective.random().rationalize()
             >>> rat_decomp = self.decompose()
-            >>> print('rat_decomp = {}'.format(ub.repr2(rat_decomp, nl=1)))
+            >>> print('rat_decomp = {}'.format(ub.urepr(rat_decomp, nl=1)))
             >>> ####
             >>> import sympy
             >>> cells = sympy.symbols('h1, h2, h3, h4, h5, h6, h7, h8, h9')
@@ -1033,7 +1033,7 @@ class Affine(Projective):
         ...     warp = kwimage.warp_affine(image, aff)
         ...     warp = kwimage.draw_text_on_image(
         ...        warp,
-        ...        ub.repr2(aff.matrix, nl=1, nobr=1, precision=2, si=1, sv=1, with_dtype=0),
+        ...        ub.urepr(aff.matrix, nl=1, nobr=1, precision=2, si=1, sv=1, with_dtype=0),
         ...        org=(1, 1),
         ...        valign='top', halign='left',
         ...        fontScale=0.8, color='kw_blue',
@@ -1079,7 +1079,7 @@ class Affine(Projective):
         >>>                  [0, 0,   1]])
         >>> # combine transformations
         >>> aff = tr2_ @ aff0 @ tr1_
-        >>> print('aff = {}'.format(ub.repr2(aff.tolist(), nl=1)))
+        >>> print('aff = {}'.format(ub.urepr(aff.tolist(), nl=1)))
         >>> # This could be prettier
         >>> texts = {
         >>>     'Translation': sympy.pretty(R),
@@ -1087,7 +1087,7 @@ class Affine(Projective):
         >>>     'shEar-X': sympy.pretty(E),
         >>>     'Scale': sympy.pretty(S),
         >>> }
-        >>> print(ub.repr2(texts, nl=2, sv=1))
+        >>> print(ub.urepr(texts, nl=2, sv=1))
         >>> equation_stack = []
         >>> for text, m in texts.items():
         >>>     render_canvas = kwimage.draw_text_on_image(None, m, color='kw_blue', fontScale=1.0)
@@ -1129,7 +1129,7 @@ class Affine(Projective):
         >>> assert isinstance(x, Matrix)
         >>> m[len(m)] = x = Matrix.random(3) @ Affine.random()
         >>> assert isinstance(x, Matrix)
-        >>> print('m = {}'.format(ub.repr2(m)))
+        >>> print('m = {}'.format(ub.urepr(m)))
     """
     @property
     def shape(self):
@@ -1158,7 +1158,7 @@ class Affine(Projective):
             >>> self = kwimage.Affine.random(rng=0, scale=1)
             >>> params = self.concise()
             >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
-            >>> print('params = {}'.format(ub.repr2(params, nl=1, precision=2)))
+            >>> print('params = {}'.format(ub.urepr(params, nl=1, precision=2)))
             params = {
                 'offset': (0.08, 0.38),
                 'theta': 0.08,
@@ -1170,7 +1170,7 @@ class Affine(Projective):
             >>> self = kwimage.Affine.random(rng=0, scale=2, offset=0)
             >>> params = self.concise()
             >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
-            >>> print('params = {}'.format(ub.repr2(params, nl=1, precision=2)))
+            >>> print('params = {}'.format(ub.urepr(params, nl=1, precision=2)))
             params = {
                 'scale': 2.00,
                 'theta': 0.04,
@@ -1661,7 +1661,7 @@ class Affine(Projective):
             >>>         params_list.append(params)
             >>>         recon_list.append(recon)
             >>>     params_df = pd.DataFrame(params_list)
-            >>>     #print('params_list = {}'.format(ub.repr2(params_list, nl=1, precision=5)))
+            >>>     #print('params_list = {}'.format(ub.urepr(params_list, nl=1, precision=5)))
             >>>     print(params_df)
             >>>     assert ub.allsame(normalize_angle(params_df['theta']), eq=np.isclose)
             >>>     assert ub.allsame(params_df['shearx'], eq=np.allclose)
@@ -1801,8 +1801,8 @@ class Affine(Projective):
             >>> O = Affine.affine(offset=about)
             >>> # combine (note shear must be on the RHS of rotation)
             >>> alt  = O @ T @ R @ E @ S @ O.inv()
-            >>> print('F    = {}'.format(ub.repr2(F.matrix.tolist(), nl=1)))
-            >>> print('alt  = {}'.format(ub.repr2(alt.matrix.tolist(), nl=1)))
+            >>> print('F    = {}'.format(ub.urepr(F.matrix.tolist(), nl=1)))
+            >>> print('alt  = {}'.format(ub.urepr(alt.matrix.tolist(), nl=1)))
             >>> assert np.all(np.isclose(alt.matrix, F.matrix))
             >>> pt = np.vstack([np.random.rand(2, 1), [[1]]])
             >>> warp_pt1 = (F.matrix @ pt)
@@ -1846,7 +1846,7 @@ class Affine(Projective):
             >>>                  [0, 0,   1]])
             >>> # combine transformations
             >>> aff = tr2_ @ aff0 @ tr1_
-            >>> print('aff = {}'.format(ub.repr2(aff.tolist(), nl=1)))
+            >>> print('aff = {}'.format(ub.urepr(aff.tolist(), nl=1)))
 
         Ignore:
             import timerit

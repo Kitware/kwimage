@@ -899,7 +899,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         >>> mask = Mask(segmentation, 'bytes_rle')
         >>> # convert to binary numpy representation
         >>> binary_mask = mask.to_c_mask().data
-        >>> print(ub.repr2(binary_mask.tolist(), nl=1, nobr=1))
+        >>> print(ub.urepr(binary_mask.tolist(), nl=1, nobr=1))
         [0, 0, 0, 1, 1, 1, 1, 1, 0],
         [0, 0, 1, 1, 1, 0, 0, 0, 0],
         [0, 0, 1, 1, 1, 1, 1, 1, 0],
@@ -921,7 +921,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             raise
 
     def __nice__(self):
-        return '{}, format={}'.format(ub.repr2(self.data, nl=0), self.format)
+        return '{}, format={}'.format(ub.urepr(self.data, nl=0), self.format)
 
     @classmethod
     def random(Mask, rng=None, shape=(32, 32)):
@@ -1402,7 +1402,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_polygon()
-            >>> print('polygons = ' + ub.repr2(polygons))
+            >>> print('polygons = ' + ub.urepr(polygons))
             >>> polygons = self.get_polygon()
             >>> self = self.to_bytes_rle()
             >>> other = Mask.from_polygons(polygons, self.shape)
@@ -1719,7 +1719,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> # xdoc: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_convex_hull()
-            >>> print('polygons = ' + ub.repr2(polygons))
+            >>> print('polygons = ' + ub.urepr(polygons))
             >>> other = Mask.from_polygons(polygons, self.shape)
         """
         mask = self.to_c_mask().data
@@ -1855,8 +1855,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> self = Mask.demo()
             >>> coco_data1 = self.toformat('array_rle').to_coco()
             >>> coco_data2 = self.toformat('bytes_rle').to_coco()
-            >>> print('coco_data1 = {}'.format(ub.repr2(coco_data1, nl=1)))
-            >>> print('coco_data2 = {}'.format(ub.repr2(coco_data2, nl=1)))
+            >>> print('coco_data1 = {}'.format(ub.urepr(coco_data1, nl=1)))
+            >>> print('coco_data2 = {}'.format(ub.urepr(coco_data2, nl=1)))
             coco_data1 = {
                 'binary': True,
                 'counts': [47, 5, 3, 1, 14, ... 1, 4, 19, 141],

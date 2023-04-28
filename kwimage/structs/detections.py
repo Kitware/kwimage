@@ -381,6 +381,22 @@ class _DetAlgoMixin:
 
         Returns:
             ndarray[Shape['*'], Integer]: indices of boxes to keep
+
+        Example:
+            >>> import kwimage
+            >>> dets1 = kwimage.Detections.random(rng=0).scale((512, 512))
+            >>> keep = dets1.non_max_supression(thresh=0.2)
+            >>> dets2 = dets1.take(keep)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> canvas = np.zeros((512, 512, 3))
+            >>> canvas1 = dets1.draw_on(canvas.copy())
+            >>> canvas2 = dets2.draw_on(canvas.copy())
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 1))
+            >>> kwplot.imshow(canvas1)
+            >>> kwplot.figure(fnum=1, pnum=(1, 2, 2))
+            >>> kwplot.imshow(canvas2)
         """
         import kwimage
         classes = self.class_idxs if perclass else None
@@ -475,7 +491,7 @@ class _DetAlgoMixin:
         if img_dims is None:
             img_dims = np.array(input_dims)
         # print(fcn_target.keys())
-        # print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        # print('fcn_target: ' + ub.urepr(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
 
         impl = kwarray.ArrayAPI.coerce(fcn_target['cidx'])
 
@@ -530,7 +546,7 @@ class _DetAlgoMixin:
                 kw_heat['kpts_ignore'] = fcn_target['kpts_ignore']
 
         self = kwimage.Heatmap(**kw_heat)
-        # print('self.data: ' + ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+        # print('self.data: ' + ub.urepr(ub.map_vals(lambda x: x.shape, self.data), nl=1))
         return self
 
 
@@ -1489,7 +1505,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 Defaults to False.
             tensor (bool): determines backend.
                 DEPRECATED.  Call ``.tensor()`` on resulting object instead.
-            rng (np.random.RandomState): random state
+            rng (int | RandomState | None):
+                random state or seed
+
+        Returns:
+            Detections: random detections
 
         Example:
             >>> import kwimage
@@ -1510,8 +1530,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> print('dets = {}'.format(dets))
             dets = <Detections(10)>
             >>> dets.data['boxes'].quantize(inplace=True)
-            >>> print('dets.data = {}'.format(ub.repr2(
-            >>>     dets.data, nl=1, with_dtype=False, strvals=True)))
+            >>> print('dets.data = {}'.format(ub.urepr(
+            >>>     dets.data, nl=1, with_dtype=False, strvals=True, sort=1)))
             dets.data = {
                 'boxes': <Boxes(xywh,
                              array([[548, 544,  55, 172],
@@ -1523,7 +1543,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                                     [118, 639,  26, 306],
                                     [264, 414, 258, 361],
                                     [ 18, 568, 439,  50],
-                                    [612, 616, 332,  66]], dtype=int32))>,
+                                    [612, 616, 332,  66]]...))>,
                 'class_idxs': [1, 2, 0, 0, 2, 0, 0, 0, 0, 0],
                 'keypoints': <PointsList(n=10)>,
                 'scores': [0.3595079 , 0.43703195, 0.6976312 , 0.06022547, 0.66676672, 0.67063787,0.21038256, 0.1289263 , 0.31542835, 0.36371077],
@@ -1597,6 +1617,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self = self.scale(scale)
 
         if tensor:
+            ub.schedule_deprecation(
+                'kwimage', 'tensor', 'argument to Detections.random',
+                migration='use .tensor() instead',
+                deprecate='0.8.0', error='1.0.0', remove='1.1.0'
+            )
             self = self.tensor()
 
         return self
@@ -1643,7 +1668,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         >>> bg_idxs = sampler.catgraph.index('background')
         >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
         >>> fcn_target.keys()
-        >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+        >>> print('fcn_target: ' + ub.urepr(ub.map_vals(lambda x: x.shape, fcn_target), nl=1, sort=1))
         fcn_target: {
             'cidx': (512, 512),
             'class_probs': (10, 512, 512),

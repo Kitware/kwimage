@@ -18,7 +18,7 @@ def test_interlaced():
         import pytest
         pytest.skip('need image magick for this test')
 
-    dpath = ub.ensure_app_cache_dir('kwimage/tests/io')
+    dpath = ub.Path.appdir('kwimage/tests/io').ensuredir()
     data = kwimage.grab_test_image('astro')
 
     orig_fpath = join(dpath, 'orig.png')
@@ -116,9 +116,9 @@ def test_cross_backend_reads():
     infos['tif'] = gdal.Info(os.fspath(tiff_fpath), format='json')
     infos['gdal'] = gdal.Info(os.fspath(gdal_fpath), format='json')
 
-    print('infos["gdal"] = {}'.format(ub.repr2(infos["gdal"], nl=-1)))
-    print('infos["tif"] = {}'.format(ub.repr2(infos["tif"], nl=-1)))
-    print('infos["skim"] = {}'.format(ub.repr2(infos["skim"], nl=-1)))
+    print('infos["gdal"] = {}'.format(ub.urepr(infos["gdal"], nl=-1)))
+    print('infos["tif"] = {}'.format(ub.urepr(infos["tif"], nl=-1)))
+    print('infos["skim"] = {}'.format(ub.urepr(infos["skim"], nl=-1)))
 
     results = {}
     results['recon_skim_with_gdal'] = kwimage.imread(skim_fpath, backend='gdal')
@@ -127,4 +127,4 @@ def test_cross_backend_reads():
     results['recon_gdal_with_skim'] = kwimage.imread(gdal_fpath, backend='skimage')
 
     shapes = ub.map_vals(lambda x: x.shape, results)
-    print('shapes = {}'.format(ub.repr2(shapes, nl=1)))
+    print('shapes = {}'.format(ub.urepr(shapes, nl=1)))

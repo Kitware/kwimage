@@ -26,4 +26,4 @@ def test_bbox_isect_failure_case():
     print('sh_isect_area   = {!r}'.format(sh_isect_area))
 
     recon_isect_box = kwimage.Boxes.from_shapely(sh_isect_box)
-    print('recon_isect_box = {}'.format(ub.repr2(recon_isect_box, nl=1)))
+    print('recon_isect_box = {}'.format(ub.urepr(recon_isect_box, nl=1)))

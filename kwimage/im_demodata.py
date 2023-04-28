@@ -161,7 +161,7 @@ def _update_hashes():
                 ipfs_cids.append(cid)
                 item['ipfs_cids'] = ipfs_cids
 
-    print('_TEST_IMAGES = ' + ub.repr2(TEST_IMAGES, nl=3, sort=0))
+    print('_TEST_IMAGES = ' + ub.urepr(TEST_IMAGES, nl=3, sort=0))
 
     if ENSURE_IPFS:
         args = ' '.join(list(ub.flatten([item.get('ipfs_cids') for item in TEST_IMAGES.values()])))
@@ -271,8 +271,8 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
         >>> # specifying a dsize will construct a new image
         >>> fpath1 = kwimage.grab_test_image_fpath(key)
         >>> fpath2 = kwimage.grab_test_image_fpath(key, dsize=(32, 16))
-        >>> print('fpath1 = {}'.format(ub.repr2(fpath1, nl=1)))
-        >>> print('fpath2 = {}'.format(ub.repr2(fpath2, nl=1)))
+        >>> print('fpath1 = {}'.format(ub.urepr(fpath1, nl=1)))
+        >>> print('fpath2 = {}'.format(ub.urepr(fpath2, nl=1)))
         >>> assert fpath1 != fpath2
         >>> imdata2 = kwimage.imread(fpath2)
         >>> assert imdata2.shape[0:2] == (16, 32)
@@ -313,7 +313,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
 
     if augment_params:
         import os
-        stem_suffix = '_' + ub.repr2(augment_params, compact=True)
+        stem_suffix = '_' + ub.urepr(augment_params, compact=True)
 
         ext = None
         if 'overviews' in augment_params:

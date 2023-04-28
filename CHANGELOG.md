@@ -4,7 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.15 - Unreleased
+## Version 0.9.16 - Unreleased
+
+### Added
+
+* Add "regular" and "star" classmethods to Polygon
+
+### Fixed
+* float128 issues on windows
+
+### Changed
+* switch from ubelt.repr2 to ubelt.urepr
+* On windows the default gdal compression is changed to LZW.
+  The default everywhere else is still DEFLATE.
+
+
+## Version 0.9.15 - Released 2023-04-04
 
 ### Added
 * `center_x` and `center_y` to Box and Boxes.

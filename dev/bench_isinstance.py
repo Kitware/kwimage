@@ -67,7 +67,7 @@ def bench_isinstance_vs_attr():
             print(df)
     except ImportError:
         print('no pandas')
-        print(ub.repr2(data, nl=2, precision=4))
+        print(ub.urepr(data, nl=2, precision=4))
 
 
 if __name__ == '__main__':

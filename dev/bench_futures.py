@@ -42,7 +42,7 @@ def main():
                     fs = [executor.submit(numpy_work) for i in range(njobs)]
                     for f in futures.as_completed(fs):
                         f.result()
-    print('ti.measures = {}'.format(ub.repr2(ti.measures, nl=2, precision=4)))
+    print('ti.measures = {}'.format(ub.urepr(ti.measures, nl=2, precision=4)))
 
     ti = timerit.Timerit(10, bestof=3, verbose=3, unit='ms')
     fpath = kwimage.grab_test_image_fpath()
@@ -54,7 +54,7 @@ def main():
                     fs = [executor.submit(opencv_io_work, fpath) for i in range(njobs)]
                     for f in futures.as_completed(fs):
                         f.result()
-    print('ti.measures = {}'.format(ub.repr2(ti.measures, nl=2, precision=4)))
+    print('ti.measures = {}'.format(ub.urepr(ti.measures, nl=2, precision=4)))
 
     ti = timerit.Timerit(10, bestof=3, verbose=3, unit='ms')
     fpath = kwimage.grab_test_image_fpath()
@@ -66,7 +66,7 @@ def main():
                     fs = [executor.submit(opencv_cpu_io_work, fpath) for i in range(njobs)]
                     for f in futures.as_completed(fs):
                         f.result()
-    print('ti.measures = {}'.format(ub.repr2(ti.measures, nl=2, precision=4)))
+    print('ti.measures = {}'.format(ub.urepr(ti.measures, nl=2, precision=4)))
 
 
 if __name__ == '__main__':

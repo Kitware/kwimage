@@ -378,15 +378,15 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         >>> in_slice = [slice(-2, 7)]
 
         >>> data_sliced = padded_slice(data, in_slice)
-        >>> print(ub.repr2(data_sliced, with_dtype=False))
+        >>> print(ub.urepr(data_sliced, with_dtype=False))
         np.array([0, 0, 0, 1, 2, 3, 4, 0, 0])
 
         >>> data_sliced = padded_slice(data, in_slice, pad=(3, 3))
-        >>> print(ub.repr2(data_sliced, with_dtype=False))
+        >>> print(ub.urepr(data_sliced, with_dtype=False))
         np.array([0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 0, 0, 0, 0, 0])
 
         >>> data_sliced = padded_slice(data, slice(3, 4), pad=[(1, 0)])
-        >>> print(ub.repr2(data_sliced, with_dtype=False))
+        >>> print(ub.urepr(data_sliced, with_dtype=False))
         np.array([2, 3])
     """
     ub.schedule_deprecation(
@@ -590,9 +590,9 @@ def find_robust_normalizers(data, params='auto'):
         >>> norm_params1 = find_robust_normalizers(data, params='auto')
         >>> norm_params2 = find_robust_normalizers(data, params={'low': 0, 'high': 1.0})
         >>> norm_params3 = find_robust_normalizers(np.empty(0), params='auto')
-        >>> print('norm_params1 = {}'.format(ub.repr2(norm_params1, nl=1)))
-        >>> print('norm_params2 = {}'.format(ub.repr2(norm_params2, nl=1)))
-        >>> print('norm_params3 = {}'.format(ub.repr2(norm_params3, nl=1)))
+        >>> print('norm_params1 = {}'.format(ub.urepr(norm_params1, nl=1)))
+        >>> print('norm_params2 = {}'.format(ub.urepr(norm_params2, nl=1)))
+        >>> print('norm_params3 = {}'.format(ub.urepr(norm_params3, nl=1)))
     """
     import kwarray
     ub.schedule_deprecation(
@@ -678,7 +678,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         >>> forground = (kwimage.ensure_float01(forground) * max_val).astype(dtype)
         >>> imdata = background + forground
         >>> normed, info = normalize_intensity(imdata, return_info=True)
-        >>> print('info = {}'.format(ub.repr2(info, nl=1)))
+        >>> print('info = {}'.format(ub.urepr(info, nl=1)))
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -702,10 +702,10 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         >>> rows = []
         >>> rows.append({'key': 'orig', 'result': imdata})
         >>> for params in quantile_grid:
-        >>>     key = ub.repr2(params, compact=1)
+        >>>     key = ub.urepr(params, compact=1)
         >>>     result, info = normalize_intensity(imdata, return_info=True, params=params)
         >>>     print('key = {}'.format(key))
-        >>>     print('info = {}'.format(ub.repr2(info, nl=1)))
+        >>>     print('info = {}'.format(ub.urepr(info, nl=1)))
         >>>     rows.append({'key': key, 'info': info, 'result': result})
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot

@@ -185,7 +185,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> canvases = []
         >>> text = 'small-line\na-much-much-much-bigger-line\nanother-small\n.'
         >>> for kw in grid:
-        >>>     header = kwimage.draw_text_on_image({}, ub.repr2(kw, compact=1), color='blue')
+        >>>     header = kwimage.draw_text_on_image({}, ub.urepr(kw, compact=1), color='blue')
         >>>     canvas = kwimage.draw_text_on_image({'color': 'white'}, text, org=None, **kw)
         >>>     canvases.append(kwimage.stack_images([header, canvas], axis=0, bg_value=(255, 255, 255), pad=5))
         >>> # xdoc: +REQUIRES(--show)
@@ -685,7 +685,10 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
     import matplotlib as mpl
     import matplotlib.cm  # NOQA
     assert len(probs.shape) == 2
-    cmap_ = mpl.cm.get_cmap(cmap)
+    try:
+        cmap_ = mpl.colormaps[cmap]
+    except Exception:
+        cmap_ = mpl.cm.get_cmap(cmap)
     probs = kwimage.ensure_float01(probs)
     heatmask = cmap_(probs).astype(np.float32)
     heatmask = kwimage.convert_colorspace(heatmask, 'rgba', space, implicit=True)
@@ -1221,7 +1224,7 @@ def fill_nans_with_checkers(canvas, square_shape=8,
         >>>     [np.nan, np.nan, np.nan],
         >>> ]])
         >>> canvas = kwimage.fill_nans_with_checkers(img, square_shape=1)
-        >>> print(ub.repr2({'canvas': canvas}, nl=2, with_dtype=False))
+        >>> print(ub.urepr({'canvas': canvas}, nl=2, with_dtype=False))
         >>> print(canvas)
     """
     invalid_mask = np.isnan(canvas)
@@ -1277,7 +1280,8 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
     Fills nans or masked values with a checkerbord pattern.
 
     Args:
-        canvas (ndarray): A 2D image with any number of channels.
+        canvas (ndarray): A 2D image with any number of channels that may be a
+            masked array or contain nan values.
 
         square_shape (int): the pixel size of the checkers
 

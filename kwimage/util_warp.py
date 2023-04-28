@@ -169,14 +169,14 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> output_dims = (11, 7)
         >>> # Warp with our code
         >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims, align_corners=0)
-        >>> print('result1 =\n{}'.format(ub.repr2(result1.cpu().numpy()[0, 0], precision=2)))
+        >>> print('result1 =\n{}'.format(ub.urepr(result1.cpu().numpy()[0, 0], precision=2)))
         >>> # Warp with opencv
         >>> import cv2
         >>> cv2_M = mat.cpu().numpy()[0:2]
         >>> src = inputs[0, 0].cpu().numpy()
         >>> dsize = tuple(output_dims[::-1])
         >>> result2 = cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR)
-        >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
+        >>> print('result2 =\n{}'.format(ub.urepr(result2, precision=2)))
         >>> # Ensure the results are the same (up to floating point errors)
         >>> assert np.all(np.isclose(result1[0, 0].cpu().numpy(), result2, atol=1e-2, rtol=1e-2))
 
@@ -192,7 +192,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> output_dims = (11, 7)
         >>> # Warp with our code
         >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims)
-        >>> print('result1 =\n{}'.format(ub.repr2(result1.cpu().numpy()[0, 0], precision=2, supress_small=True)))
+        >>> print('result1 =\n{}'.format(ub.urepr(result1.cpu().numpy()[0, 0], precision=2, supress_small=True)))
         >>> print('result1.shape = {}'.format(result1.shape))
         >>> # Warp with opencv
         >>> import cv2
@@ -200,7 +200,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> src = inputs[0, 0].cpu().numpy()
         >>> dsize = tuple(output_dims[::-1])
         >>> result2 = cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR)
-        >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
+        >>> print('result2 =\n{}'.format(ub.urepr(result2, precision=2)))
         >>> print('result2.shape = {}'.format(result2.shape))
         >>> # Ensure the results are the same (up to floating point errors)
         >>> # NOTE: The floating point errors seem to be significant for rotation / shear
@@ -221,14 +221,14 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> output_dims = (3, 11)
         >>> # Warp with our code
         >>> result1 = warp_tensor(inputs, mat, output_dims=output_dims, align_corners=0)
-        >>> print('result1 =\n{}'.format(ub.repr2(result1.cpu().numpy()[0, 0], precision=2)))
+        >>> print('result1 =\n{}'.format(ub.urepr(result1.cpu().numpy()[0, 0], precision=2)))
         >>> # Warp with opencv
         >>> import cv2
         >>> cv2_M = mat.cpu().numpy()[0:2]
         >>> src = inputs[0, 0].cpu().numpy()
         >>> dsize = tuple(output_dims[::-1])
         >>> result2 = cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR)
-        >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
+        >>> print('result2 =\n{}'.format(ub.urepr(result2, precision=2)))
         >>> # Ensure the results are the same (up to floating point errors)
         >>> # NOTE: The errors seem to be significant for rotation / shear
         >>> assert np.all(np.isclose(result1[0, 0].cpu().numpy(), result2, atol=1, rtol=1e-2))
@@ -242,7 +242,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> input_shape = [1, 1] + input_dims
         >>> inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
         >>> result = warp_tensor(inputs, mat, output_dims=output_dims)
-        >>> print('result =\n{}'.format(ub.repr2(result.cpu().numpy()[0, 0], precision=2)))
+        >>> print('result =\n{}'.format(ub.urepr(result.cpu().numpy()[0, 0], precision=2)))
         >>> assert torch.all(inputs == result)
 
     Example:
@@ -259,7 +259,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> input_shape = [1, 1] + input_dims
         >>> inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
         >>> result = warp_tensor(inputs, mat, output_dims=output_dims, align_corners=0)
-        >>> print('result =\n{}'.format(ub.repr2(result.cpu().numpy()[0, 0], precision=2)))
+        >>> print('result =\n{}'.format(ub.urepr(result.cpu().numpy()[0, 0], precision=2)))
         result =
         np.array([[[ 0.  ,  1.25,  1.  ],
                    [ 3.  ,  4.25,  2.5 ],
@@ -278,7 +278,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>>      input_shape = [2] * n_prefix_dims + input_dims
         >>>      inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
         >>>      result = warp_tensor(inputs, mat, output_dims=output_dims)
-        >>>      #print('result =\n{}'.format(ub.repr2(result.cpu().numpy(), precision=2)))
+        >>>      #print('result =\n{}'.format(ub.urepr(result.cpu().numpy(), precision=2)))
         >>>      print(result.shape)
 
     Example:
@@ -290,7 +290,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>>      input_shape = [2] * n_prefix_dims + input_dims
         >>>      inputs = torch.arange(int(np.prod(input_shape))).reshape(*input_shape).float()
         >>>      result = warp_tensor(inputs, mat, output_dims=output_dims)
-        >>>      #print('result =\n{}'.format(ub.repr2(result.cpu().numpy(), precision=2)))
+        >>>      #print('result =\n{}'.format(ub.urepr(result.cpu().numpy(), precision=2)))
         >>>      print(result.shape)
 
     Ignore:
@@ -302,7 +302,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> input_dims = inputs.shape[2:]
         >>> #output_dims = (6, 6)
         >>> def fmt(a):
-        >>>     return ub.repr2(a.numpy(), precision=2)
+        >>>     return ub.urepr(a.numpy(), precision=2)
         >>> s = 2.5
         >>> output_dims = tuple(np.round((np.array(input_dims) * s)).astype(int).tolist())
         >>> mat = torch.FloatTensor([[s, 0, 0], [0, s, 0], [0, 0, 1]])
@@ -325,13 +325,13 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
         >>> print('## interpolate, align_corners=False')
         >>> print(fmt(F.interpolate(inputs, output_dims, mode='bilinear', align_corners=False)))
         >>> print('## interpolate (scale), align_corners=False')
-        >>> print(ub.repr2(F.interpolate(inputs, scale_factor=s, mode='bilinear', align_corners=False).numpy(), precision=2))
+        >>> print(ub.urepr(F.interpolate(inputs, scale_factor=s, mode='bilinear', align_corners=False).numpy(), precision=2))
         >>> cv2_M = mat.cpu().numpy()[0:2]
         >>> src = inputs[0, 0].cpu().numpy()
         >>> dsize = tuple(output_dims[::-1])
         >>> print('\nOpen CV warp Result')
         >>> result2 = (cv2.warpAffine(src, cv2_M, dsize=dsize, flags=cv2.INTER_LINEAR))
-        >>> print('result2 =\n{}'.format(ub.repr2(result2, precision=2)))
+        >>> print('result2 =\n{}'.format(ub.urepr(result2, precision=2)))
     """
 
     if mode == 'linear':
@@ -605,7 +605,7 @@ def subpixel_set(dst, src, index, interp_axes=None):
         >>> src = np.ones(2)
         >>> index = [slice(1.5, 3.5)]
         >>> kwimage.util_warp.subpixel_set(dst, src, index)
-        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst, precision=2, with_dtype=0))
         np.array([0.1, 0.5, 1. , 0.5, 0.1])
     """
     aligned_src, aligned_index = subpixel_align(dst, src, index, interp_axes)
@@ -662,7 +662,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
         >>> src = np.ones(2)
         >>> index = [slice(1.5, 3.5)]
         >>> subpixel_accum(dst, src, index)
-        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst, precision=2, with_dtype=0))
         np.array([0. , 0.5, 1. , 0.5, 0. ])
 
     Example:
@@ -670,7 +670,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
         >>> src = np.ones((3, 3))
         >>> index = (slice(1.5, 4.5), slice(1, 4))
         >>> subpixel_accum(dst, src, index)
-        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst, precision=2, with_dtype=0))
         np.array([[0. , 0. , 0. , 0. , 0. , 0. ],
                   [0. , 0.5, 0.5, 0.5, 0. , 0. ],
                   [0. , 1. , 1. , 1. , 0. , 0. ],
@@ -682,7 +682,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.5, 4.5), slice(1.25, 4.25))
         >>> subpixel_accum(dst, src, index)
-        >>> print(ub.repr2(dst.numpy()[0, 0], precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst.numpy()[0, 0], precision=2, with_dtype=0))
         np.array([[0.  , 0.  , 0.  , 0.  , 0.  , 0.  ],
                   [0.  , 0.38, 0.5 , 0.5 , 0.12, 0.  ],
                   [0.  , 0.75, 1.  , 1.  , 0.25, 0.  ],
@@ -754,7 +754,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
         >>> src = np.array([2.0, 2.0])
         >>> index = [slice(1.6, 3.6)]
         >>> subpixel_maximum(dst, src, index)
-        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst, precision=2, with_dtype=0))
         np.array([0. , 1. , 2. , 1.2, 0. ])
 
     Example:
@@ -763,7 +763,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.4, 4.4), slice(1.25, 4.25))
         >>> subpixel_maximum(dst, src, index)
-        >>> print(ub.repr2(dst.numpy()[0, 0], precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst.numpy()[0, 0], precision=2, with_dtype=0))
         np.array([[0.5 , 0.5 , 0.5 , 0.5 , 0.5 ],
                   [0.5 , 0.5 , 0.6 , 0.6 , 0.5 ],
                   [0.5 , 0.75, 1.  , 1.  , 0.5 ],
@@ -792,7 +792,7 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
         >>> src = np.array([2.0, 2.0])
         >>> index = [slice(1.6, 3.6)]
         >>> subpixel_minimum(dst, src, index)
-        >>> print(ub.repr2(dst, precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst, precision=2, with_dtype=0))
         np.array([0. , 0.8, 1. , 1. , 0. ])
 
     Example:
@@ -801,7 +801,7 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
         >>> src = torch.ones((1, 3, 3, 3))
         >>> index = (slice(None), slice(None), slice(1.4, 4.4), slice(1.25, 4.25))
         >>> subpixel_minimum(dst, src, index)
-        >>> print(ub.repr2(dst.numpy()[0, 0], precision=2, with_dtype=0))
+        >>> print(ub.urepr(dst.numpy()[0, 0], precision=2, with_dtype=0))
         np.array([[0.5 , 0.5 , 0.5 , 0.5 , 0.5 ],
                   [0.5 , 0.45, 0.5 , 0.5 , 0.15],
                   [0.5 , 0.5 , 0.5 , 0.5 , 0.25],
@@ -1100,19 +1100,19 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
         >>> in_slice = [slice(-2, 7)]
 
         >>> data_sliced, st_dims = _padded_slice(data, in_slice)
-        >>> print(ub.repr2(data_sliced, with_dtype=False))
+        >>> print(ub.urepr(data_sliced, with_dtype=False))
         >>> print(st_dims)
         np.array([0, 0, 0, 1, 2, 3, 4, 0, 0])
         [(-2, 7)]
 
         >>> data_sliced, st_dims = _padded_slice(data, in_slice, pad_slice=(3, 3))
-        >>> print(ub.repr2(data_sliced, with_dtype=False))
+        >>> print(ub.urepr(data_sliced, with_dtype=False))
         >>> print(st_dims)
         np.array([0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 0, 0, 0, 0, 0])
         [(-5, 10)]
 
         >>> data_sliced, st_dims = _padded_slice(data, slice(3, 4), pad_slice=[(1, 0)])
-        >>> print(ub.repr2(data_sliced, with_dtype=False))
+        >>> print(ub.urepr(data_sliced, with_dtype=False))
         >>> print(st_dims)
         np.array([2, 3])
         [(2, 4)]
@@ -1285,7 +1285,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>>     b = kwarray.ArrayAPI.numpy(results[k2])
         >>>     diff = np.abs(a - b)
         >>>     diff_stats = kwarray.stats_dict(diff, n_extreme=1, extreme=1)
-        >>>     print('{} - {}: {}'.format(k1, k2, ub.repr2(diff_stats, nl=0, precision=4)))
+        >>>     print('{} - {}: {}'.format(k1, k2, ub.urepr(diff_stats, nl=0, precision=4)))
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()

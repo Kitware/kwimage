@@ -178,7 +178,7 @@ def warp_image_test(image, transform, dsize=None):
             suffix, mag = _choose_unit(value)
             unit_val = value / mag
 
-            return key + ' ' + ub.repr2(unit_val, precision=2) + ' ' + suffix
+            return key + ' ' + ub.urepr(unit_val, precision=2) + ' ' + suffix
 
         final_v2 = final_v2.clip(0, 1)
         final_v1 = final_v1.clip(0, 1)
@@ -412,7 +412,7 @@ def _check():
         loss = ((got - want) ** 2).sum()
         return loss
     result = scipy.optimize.minimize(sigma_error, x0=1.0, method='Nelder-Mead')
-    print('result = {}'.format(ub.repr2(result, nl=1)))
+    print('result = {}'.format(ub.urepr(result, nl=1)))
 
     best_loss = float('inf')
     best = None
@@ -446,8 +446,8 @@ def _check():
         print('best_loss = {!r}'.format(best_loss))
         print('best_sigma = {!r}'.format(best_sigma))
 
-    print('results = {}'.format(ub.repr2(results, nl=1, align=':')))
-    print('best_method = {}'.format(ub.repr2(best_method, nl=1)))
+    print('results = {}'.format(ub.urepr(results, nl=1, align=':')))
+    print('best_method = {}'.format(ub.urepr(best_method, nl=1)))
     print('best_method = {!r}'.format(best_method))
 
     sigma_error(1.0565139268118493)

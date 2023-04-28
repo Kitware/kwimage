@@ -190,7 +190,7 @@ def benchamrk_det_nms():
 
         import netharn as nh
         for combo in combos:
-            print('combo = {}'.format(ub.repr2(combo, nl=0)))
+            print('combo = {}'.format(ub.urepr(combo, nl=0)))
 
             label = nh.util.make_idstr(combo)
             mode = combo.copy()
@@ -315,8 +315,8 @@ def benchamrk_det_nms():
 
                 ordered_impls = list(ub.oset(ordered_impls) - {'auto'})
                 ordered_impls2.pop('auto')
-                record('        # {}'.format(ub.repr2(ordered_impls2, precision=1, nl=0, explicit=True)))
-                record('        preference = {}'.format(ub.repr2(ordered_impls, nl=0)))
+                record('        # {}'.format(ub.urepr(ordered_impls2, precision=1, nl=0, explicit=True)))
+                record('        preference = {}'.format(ub.urepr(ordered_impls, nl=0)))
     record('### end times of interest ')
     print(ub.indent('\n'.join(lines), ' ' * 8))
     ###

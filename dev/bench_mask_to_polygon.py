@@ -41,9 +41,9 @@ def bench_mask_to_polygon():
     for params in grid_iter:
         group_keys = {}
         for gname, labels in group_labels.items():
-            group_keys[gname + '_key'] = ub.repr2(
+            group_keys[gname + '_key'] = ub.urepr(
                 ub.dict_isect(params, labels), compact=1, si=1)
-        key = ub.repr2(params, compact=1, si=1)
+        key = ub.urepr(params, compact=1, si=1)
         kwargs = ub.dict_isect(params.copy(),  kw_labels)
 
         dim = int(params['dim'])

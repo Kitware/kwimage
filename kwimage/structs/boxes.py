@@ -48,7 +48,7 @@ Example:
                [27.5, 27.5, 45. , 45. ],
                [15. ,  5. , 10. , 10. ],
                [25. ,  5. , 10. , 10. ]]))>
-    >>> print(ub.repr2(boxes.ious(boxes), precision=2, with_dtype=False))
+    >>> print(ub.urepr(boxes.ious(boxes), precision=2, with_dtype=False))
     np.array([[1.  , 0.01, 0.  , 0.  ],
               [0.01, 1.  , 0.02, 0.02],
               [0.  , 0.02, 1.  , 0.  ],
@@ -226,7 +226,7 @@ def box_ious(ltrb1, ltrb2, bias=0, impl=None):
         >>> ltrb1 = Boxes.random(5, scale=10.0, rng=0, format='ltrb').data
         >>> ltrb2 = Boxes.random(7, scale=10.0, rng=1, format='ltrb').data
         >>> ious = box_ious(ltrb1, ltrb2)
-        >>> print(ub.repr2(ious.tolist(), precision=2))
+        >>> print(ub.urepr(ious.tolist(), precision=2))
         [
             [0.00, 0.00, 0.00, 0.00, 0.00, 0.01, 0.01],
             [0.00, 0.00, 0.00, 0.00, 0.00, 0.02, 0.01],
@@ -772,10 +772,10 @@ class _BoxConversionMixins(object):
             >>> }))
             >>> results = {}
             >>> for kwargs in grid:
-            >>>     key = ub.repr2(kwargs, compact=1)
+            >>>     key = ub.urepr(kwargs, compact=1)
             >>>     box = kwimage.Boxes.from_slice(**kwargs)
             >>>     results[key] = box
-            >>> print('results = {}'.format(ub.repr2(results, nl=1, sort=0, align=':')))
+            >>> print('results = {}'.format(ub.urepr(results, nl=1, sort=0, align=':')))
         """
         # Rectify input slices to agree with a 2D canvas
         if slices is None:
@@ -1415,7 +1415,7 @@ class _BoxTransformMixins(object):
             >>> rng = kwarray.ensure_rng(0)
             >>> boxes = kwimage.Boxes.random(num=3, scale=10, rng=rng).astype(np.float64)
             >>> scale_xy = (10 * rng.rand(len(boxes), 2))
-            >>> print(ub.repr2(boxes.scale(scale_xy).data, precision=2))
+            >>> print(ub.urepr(boxes.scale(scale_xy).data, precision=2))
             np.array([[28.4 , 46.28,  5.68, 18.51],
                       [ 2.84,  5.23,  0.  ,  1.74],
                       [ 1.42, 24.98,  0.4 , 16.65]], dtype=np.float64)
@@ -1429,7 +1429,7 @@ class _BoxTransformMixins(object):
             >>> # Test with about=center
             >>> self = kwimage.Boxes([[25., 30., 15., 10.], [2, 0, 15., 10.]], 'cxywh')
             >>> scale_xy = (2, 4)
-            >>> print(ub.repr2(self.scale(scale_xy, about='center').data, precision=2))
+            >>> print(ub.urepr(self.scale(scale_xy, about='center').data, precision=2))
             >>> y0 = self.toformat('xywh').scale(scale_xy, about='center').toformat('cxywh')
             >>> y1 = self.toformat('ltrb').scale(scale_xy, about='center').toformat('cxywh')
             >>> y2 = self.toformat('xxyy').scale(scale_xy, about='center').toformat('cxywh')
@@ -1776,7 +1776,7 @@ class _BoxTransformMixins(object):
             >>> import kwimage
             >>> self = kwimage.Boxes([[0, 0, 10, 10]], 'xywh').to_ltrb().quantize()
             >>> padded = self.pad(1, 2, 3, 4)
-            >>> print('padded = {}'.format(ub.repr2(padded, nl=1)))
+            >>> print('padded = {}'.format(ub.urepr(padded, nl=1)))
             >>> assert np.all(padded.data == [[-1, -2, 13, 14]])
             >>> # xdoc: +REQUIRES(--show)
             >>> # xdoc: +REQUIRES(module:kwplot)
@@ -2222,15 +2222,15 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> # In addition to format conversion there are other operations
         >>> # We can quickly (using a C-backend) find IoUs
         >>> ious = boxes.ious(boxes)
-        >>> print('{}'.format(ub.repr2(ious, nl=1, precision=2, with_dtype=False)))
+        >>> print('{}'.format(ub.urepr(ious, nl=1, precision=2, with_dtype=False)))
         np.array([[1.  , 0.01, 0.  ],
                   [0.01, 1.  , 0.02],
                   [0.  , 0.02, 1.  ]])
         >>> # We can ask for the area of each box
-        >>> print('boxes.area = {}'.format(ub.repr2(boxes.area, nl=0, with_dtype=False)))
+        >>> print('boxes.area = {}'.format(ub.urepr(boxes.area, nl=0, with_dtype=False)))
         boxes.area = np.array([[ 100],[2025],[ 100]])
         >>> # We can ask for the center of each box
-        >>> print('boxes.center = {}'.format(ub.repr2(boxes.center, nl=1, with_dtype=False)))
+        >>> print('boxes.center = {}'.format(ub.urepr(boxes.center, nl=1, with_dtype=False)))
         boxes.center = (
             np.array([[ 5. ],[27.5],[25. ]]),
             np.array([[ 5. ],[27.5],[ 5. ]]),
@@ -2264,7 +2264,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>>                       [-0.54402111, -0.83907153,  0. ],
         >>>                       [ 0.        ,  0.        ,  1. ]])
         >>> warped_polys = boxes.to_polygons().warp(transform)
-        >>> print(ub.repr2(warped_polys.data, sv=1))
+        >>> print(ub.urepr(warped_polys.data, sv=1))
         [
             <Polygon({
                 'exterior': <Coords(data=
@@ -2296,17 +2296,17 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         ]
         >>> # The kwimage.Boxes data structure is also convertable to
         >>> # several alternative data structures, like shapely, coco, and imgaug.
-        >>> print(ub.repr2(boxes.to_shapely(), sv=1))
+        >>> print(ub.urepr(boxes.to_shapely(), sv=1))
         [
             POLYGON ((0 0, 0 10, 10 10, 10 0, 0 0)),
             POLYGON ((5 5, 5 50, 50 50, 50 5, 5 5)),
             POLYGON ((20 0, 20 10, 30 10, 30 0, 20 0)),
         ]
         >>> # xdoctest: +REQUIRES(module:imgaug)
-        >>> print(ub.repr2(boxes[0:1].to_imgaug(shape=(100, 100)), sv=1))
+        >>> print(ub.urepr(boxes[0:1].to_imgaug(shape=(100, 100)), sv=1))
         BoundingBoxesOnImage([BoundingBox(x1=0.0000, y1=0.0000, x2=10.0000, y2=10.0000, label=None)], shape=(100, 100))
         >>> # xdoctest: -REQUIRES(module:imgaug)
-        >>> print(ub.repr2(list(boxes.to_coco()), sv=1))
+        >>> print(ub.urepr(list(boxes.to_coco()), sv=1))
         [
             [0, 0, 10, 10],
             [5, 5, 45, 45],
@@ -2317,11 +2317,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> # all operations are done on this data, which gives the
         >>> # kwiamge.Boxes data structure almost no overhead when
         >>> # inserted into existing code.
-        >>> print('boxes.data =\n{}'.format(ub.repr2(boxes.data, nl=1)))
+        >>> print('boxes.data =\n{}'.format(ub.urepr(boxes.data, nl=1)))
         boxes.data =
         np.array([[ 0,  0, 10, 10],
                   [ 5,  5, 50, 50],
-                  [20,  0, 30, 10]], dtype=np.int64)
+                  [20,  0, 30, 10]], dtype=...)
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> # This data structure was designed for use with both torch
         >>> # and numpy, the underlying data can be either an array or tensor.
@@ -2329,7 +2329,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         <Boxes(ltrb,
             tensor([[ 0,  0, 10, 10],
                     [ 5,  5, 50, 50],
-                    [20,  0, 30, 10]]))>
+                    [20,  0, 30, 10]]...))>
         >>> boxes.numpy()
         <Boxes(ltrb,
             array([[ 0,  0, 10, 10],
@@ -2506,19 +2506,19 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             <Boxes(xywh,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
-                       [79, 38, 17, 14]]))>
+                       [79, 38, 17, 14]]...))>
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> Boxes.random(3, rng=0, scale=100).tensor()
             <Boxes(xywh,
                 tensor([[ 54,  54,   6,  17],
                         [ 42,  64,   1,  25],
-                        [ 79,  38,  17,  14]]))>
+                        [ 79,  38,  17,  14]]...))>
             >>> anchors = np.array([[.5, .5], [.3, .3]])
             >>> Boxes.random(3, rng=0, scale=100, anchors=anchors)
             <Boxes(xywh,
                 array([[ 2, 13, 51, 51],
                        [32, 51, 32, 36],
-                       [36, 28, 23, 26]]))>
+                       [36, 28, 23, 26]]...))>
 
         Example:
             >>> # Boxes position/shape within 0-1 space should be uniform.
@@ -2639,7 +2639,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.compress([True])
             <Boxes(ltrb, array([[25, 30, 15, 10]]))>
             >>> self.compress([False])
-            <Boxes(ltrb, array([], shape=(0, 4), dtype=int64))>
+            <Boxes(ltrb, array([], shape=(0, 4), dtype=...))>
         """
         if len(self.data.shape) != 2 and _numel(self.data) > 0:
             raise ValueError('data must be 2d got {}d'.format(
@@ -2670,7 +2670,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.take([0])
             <Boxes(ltrb, array([[25, 30, 15, 10]]))>
             >>> self.take([])
-            <Boxes(ltrb, array([], shape=(0, 4), dtype=int64))>
+            <Boxes(ltrb, array([], shape=(0, 4), dtype=...))>
         """
         if len(self.data.shape) != 2 and _numel(self.data) > 0:
             raise ValueError('data must be 2d got {}d'.format(
@@ -2740,16 +2740,16 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> # xdoctest: +REQUIRES(module:torch)
-            >>> Boxes.random(3, 100, rng=0).tensor().astype('int32')
+            >>> Boxes.random(3, 100, rng=0).tensor().astype('int16')
             <Boxes(xywh,
                 tensor([[54, 54,  6, 17],
                         [42, 64,  1, 25],
-                        [79, 38, 17, 14]], dtype=torch.int32))>
-            >>> Boxes.random(3, 100, rng=0).numpy().astype('int32')
+                        [79, 38, 17, 14]], dtype=torch.int16))>
+            >>> Boxes.random(3, 100, rng=0).numpy().astype('int16')
             <Boxes(xywh,
                 array([[54, 54,  6, 17],
                        [42, 64,  1, 25],
-                       [79, 38, 17, 14]], dtype=int32))>
+                       [79, 38, 17, 14]], dtype=int16))>
             >>> Boxes.random(3, 100, rng=0).tensor().astype('float32')
             >>> Boxes.random(3, 100, rng=0).numpy().astype('float32')
         """
@@ -2828,7 +2828,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             new = <Boxes(xywh,
                 array([[5, 5, 2, 3],
                        [4, 6, 1, 3],
-                       [7, 3, 3, 3]], dtype=int32))>
+                       [7, 3, 3, 3]]...))>
 
         Example:
             >>> import kwimage
@@ -2981,7 +2981,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> other = kwimage.Boxes(np.array([[6, 2, 20, 10],
             >>>                                 [100, 200, 300, 300]]), 'ltrb')
             >>> overlaps = boxes1.ious(other)
-            >>> print('{}'.format(ub.repr2(overlaps, precision=2, nl=1)))
+            >>> print('{}'.format(ub.urepr(overlaps, precision=2, nl=1)))
             np.array([[0.18, 0.  ],
                       [0.61, 0.  ],
                       [0.  , 0.  ]]...)
@@ -3011,7 +3011,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>>         results[(format, tensor)] = ious
             >>> results = {k: v.numpy() if torch.is_tensor(v) else v for k, v in results.items() }
             >>> results = {k: v.tolist() for k, v in results.items()}
-            >>> print(ub.repr2(results, sk=True, precision=3, nl=2))
+            >>> print(ub.urepr(results, sk=True, precision=3, nl=2))
             >>> from functools import partial
             >>> assert ub.allsame(results.values(), partial(np.allclose, atol=1e-07))
 

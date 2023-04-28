@@ -51,7 +51,7 @@ Example:
     >>> bg_idxs = sampler.catgraph.index('background')
     >>> fcn_target = _dets_to_fcmaps(dets, bg_size, input_dims, bg_idxs)
     >>> fcn_target.keys()
-    >>> print('fcn_target: ' + ub.repr2(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
+    >>> print('fcn_target: ' + ub.urepr(ub.map_vals(lambda x: x.shape, fcn_target), nl=1))
     >>> # xdoctest: +REQUIRES(--show)
     >>> import kwplot
     >>> kwplot.autompl()
@@ -1060,7 +1060,7 @@ class _HeatmapAlgoMixin(object):
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
             >>> class_probs = catgraph.hierarchical_softmax(class_energy, dim=0)
             >>> self = Heatmap.random(rng=0, dims=(32, 32), classes=catgraph, keypoints=True)
-            >>> print(ub.repr2(ub.map_vals(lambda x: x.shape, self.data), nl=1))
+            >>> print(ub.urepr(ub.map_vals(lambda x: x.shape, self.data), nl=1))
             >>> self.data['class_probs'] = class_probs.numpy()
             >>> channel = catgraph.index('background')
             >>> dets = self.detect(channel, invert=True)

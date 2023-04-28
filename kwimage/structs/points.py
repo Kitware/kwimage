@@ -710,12 +710,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> orig = self._to_coco(style='orig')
             >>> print('orig = {!r}'.format(orig))
             >>> new_name = self._to_coco(style='new-name')
-            >>> print('new_name = {}'.format(ub.repr2(new_name, nl=-1)))
+            >>> print('new_name = {}'.format(ub.urepr(new_name, nl=-1)))
             >>> # xdoctest: +REQUIRES(module:kwcoco)
             >>> import kwcoco
             >>> self.meta['classes'] = kwcoco.CategoryTree.coerce(self.meta['classes'])
             >>> new_id = self._to_coco(style='new-id')
-            >>> print('new_id = {}'.format(ub.repr2(new_id, nl=-1)))
+            >>> print('new_id = {}'.format(ub.urepr(new_id, nl=-1)))
         """
         if self.xy.size == 0:
             return []
