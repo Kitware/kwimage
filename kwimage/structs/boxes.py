@@ -2329,7 +2329,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         <Boxes(ltrb,
             tensor([[ 0,  0, 10, 10],
                     [ 5,  5, 50, 50],
-                    [20,  0, 30, 10]]))>
+                    [20,  0, 30, 10]]...))>
         >>> boxes.numpy()
         <Boxes(ltrb,
             array([[ 0,  0, 10, 10],
