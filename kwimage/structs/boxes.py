@@ -81,22 +81,8 @@ import kwarray
 import numbers  # NOQA
 from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
+import sys
 
-try:
-    from packaging.version import parse as LooseVersion
-except ImportError:
-    from distutils.version import LooseVersion
-
-
-try:
-    import torch
-except Exception:
-    torch = None
-    _TORCH_HAS_EMPTY_SHAPE = None
-    _TORCH_HAS_BOOL_COMP = None
-else:
-    _TORCH_HAS_EMPTY_SHAPE = LooseVersion(torch.__version__) >= LooseVersion('1.0.0')
-    _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 __all__ = ['Boxes']
 
@@ -246,6 +232,7 @@ def box_ious(ltrb1, ltrb2, bias=0, impl=None):
         >>>     ious_py = box_ious(ltrb1, ltrb2, bias=1, impl='py')
         >>>     assert np.all(np.isclose(ious_c, ious_py))
     """
+    torch = sys.modules.get('torch', None)
     if impl is None or impl == 'auto':
         if torch is not None and torch.is_tensor(ltrb1):
             impl = 'torch'
@@ -272,6 +259,7 @@ def _box_ious_torch(ltrb1, ltrb2, bias=0):
     """
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> ltrb1 = Boxes.random(5, scale=10.0, rng=0, format='ltrb').tensor().data
         >>> ltrb2 = Boxes.random(7, scale=10.0, rng=1, format='ltrb').tensor().data
         >>> bias = 0
@@ -281,6 +269,7 @@ def _box_ious_torch(ltrb1, ltrb2, bias=0):
     """
     # ltrb1 = ltrb1.view(-1, 4)
     # ltrb2 = ltrb2.view(-1, 4)
+    torch = sys.modules.get('torch', None)
 
     w1 = ltrb1[..., 2] - ltrb1[..., 0] + bias
     h1 = ltrb1[..., 3] - ltrb1[..., 1] + bias
@@ -1227,6 +1216,7 @@ class _BoxTransformMixins(object):
             >>> assert np.all(new.area == 0)
         """
         import kwimage
+        torch = sys.modules.get('torch', None)
 
         if inplace:
             new = self
@@ -1264,7 +1254,7 @@ class _BoxTransformMixins(object):
                 translation = transform.translation
             elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
                 matrix = transform.params
-            elif isinstance(transform, _generic.ARRAY_TYPES):
+            elif _generic.isinstance_arraytypes(transform):
                 matrix = transform
             elif isinstance(transform, kwimage.Affine):
                 matrix = transform.matrix
@@ -1447,6 +1437,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
+            torch = sys.modules.get('torch', None)
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
@@ -1558,6 +1549,7 @@ class _BoxTransformMixins(object):
             new = self
             new_data = self.data
         else:
+            torch = sys.modules.get('torch', None)
             if torch is not None and torch.is_tensor(self.data):
                 new_data = self.data.float().clone()
             else:
@@ -1630,6 +1622,7 @@ class _BoxTransformMixins(object):
             np.clip(x2, x_min, x_max, out=x2)
             np.clip(y2, y_min, y_max, out=y2)
         else:
+            torch = sys.modules.get('torch', None)
             if torch is not None and torch.is_tensor(new.data):
                 x1, y1, x2, y2 = new.data.t()
                 x1.clamp_(x_min, x_max)
@@ -2352,6 +2345,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> kwimage.Boxes([[25, 30, 15, 10]], 'xywh').scale(2).to_ltrb()
         <Boxes(ltrb, array([[50., 60., 80., 80.]]))>
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> kwimage.Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
         <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
@@ -2377,6 +2371,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>> Boxes([25, 30, 15, 10], 'xywh').scale(2).to_ltrb()
         <Boxes(ltrb, array([50., 60., 80., 80.]))>
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> Boxes(torch.FloatTensor([[25, 30, 15, 20]]), 'xywh').scale(.1).to_ltrb()
         <Boxes(ltrb, tensor([[ 2.5000,  3.0000,  4.0000,  5.0000]]))>
 
@@ -2691,6 +2686,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Returns:
             bool: True if the Boxes are torch tensors
         """
+        torch = sys.modules.get('torch', None)
         return torch is not None and torch.is_tensor(self.data)
 
     def is_numpy(self):
@@ -2754,6 +2750,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> Boxes.random(3, 100, rng=0).numpy().astype('float32')
         """
         data = self.data
+        torch = sys.modules.get('torch', None)
         if torch is not None and torch.is_tensor(data):
             dtype = _rectify_torch_dtype(dtype)
             newself = self.__class__(data.to(dtype), self.format)
@@ -2890,6 +2887,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> assert self.data[0, 0] == 1
         """
         data = self.data
+        torch = sys.modules.get('torch', None)
         if torch is not None and torch.is_tensor(data):
             data = self._impl.numpy(data.data)
             # data = data.data.cpu().numpy()
@@ -2917,6 +2915,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.data[0, 0] = 1
             >>> assert self.data[0, 0] == 1
         """
+        torch = sys.modules.get('torch', None)
         if torch is None:
             raise Exception('torch is not available')
         data = self.data
@@ -3000,6 +2999,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Examples:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import torch
             >>> formats = BoxFormat.cannonical
             >>> istensors = [False, True]
             >>> results = {}
@@ -3044,11 +3044,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         #     self = self[None, :]
 
         if len(other) == 0 or len(self) == 0:
+            torch = sys.modules.get('torch', None)
             if torch is not None and (torch.is_tensor(self.data) or torch.is_tensor(other.data)):
-                if _TORCH_HAS_EMPTY_SHAPE:
-                    ious = torch.empty((len(self), len(other)))
-                else:
-                    ious = torch.empty(0)
+                ious = torch.empty((len(self), len(other)))
             else:
                 ious = np.empty((len(self), len(other)))
         else:
@@ -3137,11 +3135,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             other = other[None, :]
 
         if len(other) == 0 or len(self) == 0:
+            torch = sys.modules.get('torch', None)
             if torch is not None and (torch.is_tensor(self.data) or torch.is_tensor(other.data)):
-                if _TORCH_HAS_EMPTY_SHAPE:
-                    isect = torch.empty((len(self), len(other)))
-                else:
-                    isect = torch.empty(0)
+                isect = torch.empty((len(self), len(other)))
             else:
                 isect = np.empty((len(self), len(other)))
         else:
@@ -3323,6 +3319,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
 
 def _copy(data):
+    torch = sys.modules.get('torch', None)
     if torch is not None and torch.is_tensor(data):
         return data.clone()
     else:
@@ -3330,6 +3327,7 @@ def _copy(data):
 
 
 def _view(data, *shape):
+    torch = sys.modules.get('torch', None)
     if torch is not None and torch.is_tensor(data):
         data_ = data.view(*shape)
     else:
@@ -3338,6 +3336,7 @@ def _view(data, *shape):
 
 
 def _cat(datas, axis=-1):
+    torch = sys.modules.get('torch', None)
     if torch is not None and torch.is_tensor(datas[0]):
         return torch.cat(datas, dim=axis)
     else:
@@ -3350,6 +3349,7 @@ def _take(data, indices, axis=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> indices = [1, 3, 5, 7, 11, 13, 17, 21]
@@ -3359,6 +3359,7 @@ def _take(data, indices, axis=None):
         >>> assert np.allclose(_take(np_data, idxs0, 0), _take(pt_data, idxs0, 0))
         >>> assert np.allclose(_take(np_data, idxs1, 1), _take(pt_data, idxs1, 1))
     """
+    torch = sys.modules.get('torch', None)
     if isinstance(data, np.ndarray):
         return data.take(indices, axis=axis)
     elif torch is not None and torch.is_tensor(data):
@@ -3378,6 +3379,7 @@ def _compress(data, flags, axis=None):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> np_data = np.arange(0, 143).reshape(11, 13)
         >>> pt_data = torch.LongTensor(np_data)
         >>> flags = (np_data % 2 == 0).ravel()
@@ -3387,16 +3389,13 @@ def _compress(data, flags, axis=None):
         >>> assert np.allclose(_compress(np_data, f0, 0), _compress(pt_data, f0, 0))
         >>> assert np.allclose(_compress(np_data, f1, 1), _compress(pt_data, f1, 1))
     """
+    torch = sys.modules.get('torch', None)
     if isinstance(data, np.ndarray):
         return data.compress(flags, axis=axis)
     elif torch is not None and torch.is_tensor(data):
         if not torch.is_tensor(flags):
-            if _TORCH_HAS_BOOL_COMP:
-                flags = np.asarray(flags, dtype=bool)
-                flags = torch.BoolTensor(flags).to(data.device)
-            else:
-                flags = np.asarray(flags).astype(np.uint8)
-                flags = torch.ByteTensor(flags).to(data.device)
+            flags = np.asarray(flags, dtype=bool)
+            flags = torch.BoolTensor(flags).to(data.device)
         if flags.ndimension() != 1:
             raise ValueError('condition must be a 1-d tensor')
         if axis is None:
@@ -3423,6 +3422,7 @@ def _numel(data):
 
 @ub.memoize
 def _torch_dtype_lut():
+    torch = sys.modules.get('torch', None)
     lut = {}
 
     # Handle nonstandard alias dtype names

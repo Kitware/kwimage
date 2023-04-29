@@ -1,17 +1,4 @@
 import numpy as np
-try:
-    from packaging.version import parse as LooseVersion
-except ImportError:
-    from distutils.version import LooseVersion
-
-
-try:
-    import torch
-except Exception:
-    torch = None
-    _TORCH_HAS_BOOL_COMP = False
-else:
-    _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
 def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
@@ -70,13 +57,14 @@ def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
         >>> keep = torch_nms(ltrb, scores, classes, thresh, fast=False)
         >>> bboxes[keep]
     """
+    import torch
+    import kwimage
+
     if ltrb.numel() == 0:
         return []
 
     # Sort coordinates by descending score
     ordered_scores, order = scores.sort(0, descending=True)
-
-    import kwimage
 
     boxes = kwimage.Boxes(ltrb[order], 'ltrb')
     ious = boxes.ious(boxes, bias=bias)
@@ -100,11 +88,7 @@ def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
     #     * consider if overlap <= thresh
     # This convention has the property that when thresh=0, we dont just
     # remove everything.
-    if _TORCH_HAS_BOOL_COMP:
-        conflicting = (ious > thresh).byte().triu(1).bool()
-    else:
-        # Old way
-        conflicting = (ious > thresh).triu(1)
+    conflicting = (ious > thresh).byte().triu(1).bool()
 
     if classes is not None:
         ordered_classes = classes[order]

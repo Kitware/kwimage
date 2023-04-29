@@ -78,18 +78,12 @@ Example:
     >>> kwplot.imshow(raster)
     >>> kwplot.show_if_requested()
 """
-import cv2
 import numpy as np
 import ubelt as ub
-import skimage
 import kwarray
 import functools
+import sys
 from . import _generic
-
-try:
-    import torch
-except Exception:
-    torch = None
 
 
 class _HeatmapDrawMixin(object):
@@ -259,6 +253,7 @@ class _HeatmapDrawMixin(object):
             colormask = self._colorize_class_idx()
             colormask = kwimage.ensure_alpha_channel(colormask, with_alpha)
             if imgspace:
+                import torch
                 chw = torch.Tensor(colormask.transpose(2, 0, 1))
                 colormask = self._warp_imgspace(chw, interpolation=interpolation).transpose(1, 2, 0)
             return colormask
@@ -349,6 +344,7 @@ class _HeatmapDrawMixin(object):
         """
         import kwimage
         import matplotlib as mpl
+        import cv2
 
         mat = None
         if image is not None:
@@ -559,12 +555,14 @@ class _HeatmapDrawMixin(object):
                     dx, dy, stride=4, scale=1.0, alpha=with_alpha * vec_alpha,
                     color=color)
                 vec_alpha = max(.1, vec_alpha - .1)
+                import torch
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
                 vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
                 layers.append(vecalign)
 
         if kpts is not None:
+            import torch
             # TODO: make a nicer keypoint offset vector visuliazation
             if self.data.get('keypoints', None) is not None:
                 keypoints = self.data['keypoints']
@@ -648,6 +646,7 @@ class _HeatmapWarpMixin(object):
         DEPRICATE
         """
         import kwimage
+        import cv2
         M = self.tf_data_to_img.params[0:3]
         dsize = tuple(map(int, self.img_dims[::-1]))
         flags = kwimage.im_cv2._coerce_interpolation(interpolation)
@@ -660,6 +659,7 @@ class _HeatmapWarpMixin(object):
         if self.tf_data_to_img is None and self.img_dims is None:
             aligned = chw.cpu().numpy()
         else:
+            import torch
             if self.tf_data_to_img is None:
                 # If img dims are the same then we dont need a transform we
                 # know its identity
@@ -691,6 +691,7 @@ class _HeatmapWarpMixin(object):
             >>> colormask = self.upscale()
 
         """
+        import torch
         if channel is None:
             chw = torch.Tensor(self.class_probs)
         else:
@@ -763,6 +764,7 @@ class _HeatmapWarpMixin(object):
             >>> kwplot.imshow(toshow)
         """
         import kwimage
+        import skimage
 
         if mat is None:
             mat = self.tf_data_to_img.params
@@ -803,6 +805,7 @@ class _HeatmapWarpMixin(object):
         tf = skimage.transform.AffineTransform(matrix=mat_np)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
+        import torch
         mat_notrans = torch.Tensor(tf_notrans.params)
 
         if output_dims is None:
@@ -1055,6 +1058,7 @@ class _HeatmapAlgoMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> from kwimage.structs.heatmap import *  # NOQA
+            >>> import torch
             >>> import ndsampler
             >>> catgraph = ndsampler.CategoryTree.demo()
             >>> class_energy = torch.rand(len(catgraph), 32, 32)
@@ -1177,6 +1181,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> from kwimage.structs.heatmap import *  # NOQA
+        >>> import skimage
         >>> import kwimage
         >>> class_probs = kwimage.grab_test_image(dsize=(32, 32), space='gray')[None, ..., 0] / 255.0
         >>> img_dims = (220, 220)
@@ -1227,6 +1232,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             tf_data_to_img = meta.get('tf_data_to_img', None)
             if tf_data_to_img is not None:
                 if isinstance(tf_data_to_img, np.ndarray):
+                    import skimage
                     meta['tf_data_to_img'] = skimage.transform.AffineTransform(
                         matrix=tf_data_to_img)
 
@@ -1388,6 +1394,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             classes = ['class_{}'.format(c) for c in range(classes)]
 
         # Pretend this heatmap corresponds to some upscaled subregion
+        import skimage
         if img_dims is None:
             scale = 1 + rng.rand(2) * 2
             translation = rng.rand(2) * np.array(dims[::-1]) / 2
@@ -1564,6 +1571,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> import torch
         >>> rng = np.random.RandomState(0)
         >>> probs = rng.rand(3, 3).astype(np.float32)
         >>> min_score = .5
@@ -1746,6 +1754,7 @@ def smooth_prob(prob, k=3, inplace=False, eps=1e-9):
 
         sigma=0.8 @ k=3, sigma=1.1 @ k=5, sigma=1.4 @ k=7
     """
+    import cv2
     sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
     blur = cv2.GaussianBlur(prob, (k, k), sigma)
     # Shift and scale the intensities so the maximum and minimum
@@ -1769,6 +1778,7 @@ def _remove_translation(tf):
     TODO:
         - [ ] Is this possible in more general cases? E.g. projective transforms?
     """
+    import skimage
     if isinstance(tf, skimage.transform.AffineTransform):
         tf_notrans = skimage.transform.AffineTransform(
             scale=tf.scale, rotation=tf.rotation, shear=tf.shear)

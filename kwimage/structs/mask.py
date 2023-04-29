@@ -28,7 +28,7 @@ Note:
     the coco semantics. Everywhere else in this repo, size uses opencv
     semantics which are w/h.
 """
-import cv2
+import sys
 import copy
 import numpy as np
 import ubelt as ub
@@ -37,15 +37,15 @@ import warnings
 import numbers
 from . import _generic
 
-try:
-    import torch
-except Exception:
-    torch = None
+# try:
+#     import torch
+# except Exception:
+#     torch = None
 
-try:
-    from xdev import profile  # NOQA
-except Exception:
-    from ubelt import identity as profile  # NOQA
+# try:
+#     from xdev import profile  # NOQA
+# except Exception:
+#     from ubelt import identity as profile  # NOQA
 
 
 class _Mask_Backends():
@@ -384,6 +384,7 @@ class _MaskConversionMixin(object):
         """
         data = self.data
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
+            torch = sys.modules.get('torch', None)
             if torch is not None and torch.is_tensor(data):
                 data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format)
@@ -398,6 +399,7 @@ class _MaskConversionMixin(object):
         """
         data = self.data
         if self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}:
+            torch = sys.modules.get('torch', None)
             if torch is not None and not torch.is_tensor(data):
                 data = torch.from_numpy(data)
             if device is not ub.NoParam:
@@ -512,7 +514,7 @@ class _MaskTransformMixin(object):
     Mixin methods relating to geometric transformations of mask objects
     """
 
-    @profile
+    # @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Perform a scale operation on the mask.
@@ -615,6 +617,7 @@ class _MaskTransformMixin(object):
         # HACK: use brute force just to get this implemented.
         # very inefficient
         import kwimage
+        torch = sys.modules.get('torch', None)
         if torch is None:
             raise Exception('need torch to warp raster masks')
 
@@ -646,7 +649,7 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
-    @profile
+    # @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Translate the pixel values in the mask.
@@ -794,6 +797,7 @@ class _MaskDrawMixin(object):
             >>> kwplot.show_if_requested()
         """
         import kwimage
+        import cv2
 
         if image is None:
             image = np.zeros(self.shape[0:2] + (3,), dtype=np.float32)
@@ -852,6 +856,7 @@ class _MaskDrawMixin(object):
             alpha (float): mask alpha value
         """
         import kwimage
+        import cv2
         if ax is None:
             from matplotlib import pyplot as plt
             ax = plt.gca()
@@ -1268,7 +1273,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         patch = temp.to_c_mask().data
         return patch
 
-    @profile
+    # @profile
     def get_xywh(self):
         """
         Gets the bounding xywh box coordinates of this mask
@@ -1326,6 +1331,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
             >>> poly = self.to_multi_polygon()
         """
+        import cv2
         if self.format == MaskFormat.C_MASK:
             # findNonZero seems much faster than np.where
             data = np.ascontiguousarray(self.data).astype(np.uint8)
@@ -1420,6 +1426,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 np.array([[0, 1],[0, 3],[2, 3],[2, 1]], dtype=np.int32),
             ]
         """
+        import cv2
         ub.schedule_deprecation(
             'kwimage', 'Mask.get_polygon', 'method',
             migration='use Mask.to_multi_polygon instead',
@@ -1504,7 +1511,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
-    @profile
+    # @profile
     def to_multi_polygon(self, pixels_are='points'):
         """
         Returns a MultiPolygon object fit around this raster including disjoint
@@ -1722,6 +1729,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> print('polygons = ' + ub.urepr(polygons))
             >>> other = Mask.from_polygons(polygons, self.shape)
         """
+        import cv2
         mask = self.to_c_mask().data
         cc_y, cc_x = np.where(mask)
         points = np.vstack([cc_x, cc_y]).T
