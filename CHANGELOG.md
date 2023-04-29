@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.17 - Unreleased
+## Version 0.9.18 - Unreleased
+
+
+## Version 0.9.17 - Released 2023-04-28
 
 ### Changed
 * Avoid importing torch globally
