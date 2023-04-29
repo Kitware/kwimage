@@ -8,6 +8,8 @@ Subpackages
    :maxdepth: 4
 
    kwimage.algo
+   kwimage.cli
+   kwimage.gis
    kwimage.structs
 
 Submodules

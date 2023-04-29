@@ -36,13 +36,18 @@ def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
 
         impl (str): algorithm to use
 
-    LookInfo:
+    Note:
+
+        # TODO: Look Into
+
         # Didn't read yet but it seems similar
+
         http://www.cyberneum.de/fileadmin/user_upload/files/publications/CVPR2010-Lampert_[0].pdf
 
         https://www.researchgate.net/publication/220929789_Efficient_Non-Maximum_Suppression
 
         # This seems very similar
+
         https://projet.liris.cnrs.fr/m2disco/pub/Congres/2006-ICPR/DATA/C03_0406.PDF
 
     Example:
@@ -362,6 +367,8 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
     """
     Non-Maximum Suppression - remove redundant bounding boxes
 
+    Based on information from [CythonNMS]_ and [NMSPython]_.
+
     Args:
         ltrb (ndarray[Any, Float32]):
             Float32 array of shape Nx4 representing boxes in ltrb format
@@ -392,10 +399,15 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         impl='cython_gpu', and you feed it too many bounding boxes. Ideally this will
         be fixed in the future.
 
+        TODO: SoftNMS [SoftNMS]_.
+
     References:
-        https://github.com/facebookresearch/Detectron/blob/master/detectron/utils/cython_nms.pyx
-        https://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/
-        https://github.com/bharatsingh430/soft-nms/blob/master/lib/nms/cpu_nms.pyx <- TODO
+
+        .. [CythonNMS] https://github.com/facebookresearch/Detectron/blob/master/detectron/utils/cython_nms.pyx
+
+        .. [NMSPython] https://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/
+
+        .. [SoftNMS] https://github.com/bharatsingh430/soft-nms/blob/master/lib/nms/cpu_nms.pyx
 
     CommandLine:
         xdoctest -m ~/code/kwimage/kwimage/algo/algo_nms.py non_max_supression

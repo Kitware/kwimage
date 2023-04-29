@@ -1311,8 +1311,8 @@ class Affine(Projective):
                 directions or skews.
 
         References:
-            https://en.wikipedia.org/wiki/Conic_section
-            https://github.com/rasterio/affine/blob/78c20a0cfbb5ec/affine/__init__.py#L368
+            .. [WikiConic] https://en.wikipedia.org/wiki/Conic_section
+            .. [GHAffine] https://github.com/rasterio/affine/blob/78c20a0cfbb5ec/affine/__init__.py#L368
 
         Example:
             >>> import kwimage
@@ -1606,11 +1606,11 @@ class Affine(Projective):
             Dict: decomposed offset, scale, theta, and shearx params
 
         References:
-            https://math.stackexchange.com/questions/612006/decompose-affine
-            https://math.stackexchange.com/a/3521141/353527
-            https://stackoverflow.com/questions/70357473/how-to-decompose-a-2x2-affine-matrix-with-sympy
-            https://en.wikipedia.org/wiki/Transformation_matrix
-            https://en.wikipedia.org/wiki/Shear_mapping
+            .. [SE612006] https://math.stackexchange.com/questions/612006/decompose-affine
+            .. [SE3521141] https://math.stackexchange.com/a/3521141/353527
+            .. [SE70357473] https://stackoverflow.com/questions/70357473/how-to-decompose-a-2x2-affine-matrix-with-sympy
+            .. [WikiTranMat] https://en.wikipedia.org/wiki/Transformation_matrix
+            .. [WikiShear] https://en.wikipedia.org/wiki/Shear_mapping
 
         Example:
             >>> from kwimage.transform import *  # NOQA
@@ -1931,7 +1931,7 @@ class Affine(Projective):
             non-colinear xy-point pairs are needed.
 
         References:
-            https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf page 22
+            ..[Lowe04] https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf page 22
 
         Example:
             >>> # Create a set of points, warp them, then recover the warp

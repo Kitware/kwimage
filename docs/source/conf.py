@@ -1,19 +1,20 @@
 """
 Notes:
-    Based on template code in: ~/code/xcookie/docs/source/conf.py
+    Based on template code in:
+        ~/code/xcookie/xcookie/builders/docs_conf.py
+        ~/code/xcookie/xcookie/rc/conf_ext.py
 
     http://docs.readthedocs.io/en/latest/getting_started.html
 
     pip install sphinx sphinx-autobuild sphinx_rtd_theme sphinxcontrib-napoleon
 
     cd ~/code/kwimage
-    mkdir docs
+    mkdir -p docs
     cd docs
 
     sphinx-quickstart
 
     # need to edit the conf.py
-
     cd ~/code/kwimage/docs
     sphinx-apidoc -f -o ~/code/kwimage/docs/source ~/code/kwimage/kwimage --separate
     make html
@@ -38,11 +39,23 @@ Notes:
         Make sure you have a .readthedocs.yml file
 
         Click import project: (for github you can select, but gitlab you need to import manually)
-            Set the Repository NAME: $REPO_NAME
-            Set the Repository URL: $REPO_URL
+            Set the Repository NAME: kwimage
+            Set the Repository URL: https://gitlab.kitware.com/computer-vision/kwimage
 
         For gitlab you also need to setup an integrations and add gitlab
-        incoming webhook Then go to $REPO_URL/hooks and add the URL
+        incoming webhook
+
+            https://readthedocs.org/dashboard/kwimage/integrations/create/
+
+        Then go to
+
+            https://gitlab.kitware.com/computer-vision/kwimage/hooks
+
+        and add the URL
+
+        select push, tag, and merge request
+
+        See Docs for more details https://docs.readthedocs.io/en/stable/integrations.html
 
         Will also need to activate the main branch:
             https://readthedocs.org/projects/kwimage/versions/
@@ -92,7 +105,7 @@ def parse_version(fpath):
     return visitor.version
 
 project = 'kwimage'
-copyright = '2022, Jon Crall'
+copyright = '2023, Jon Crall'
 author = 'Jon Crall'
 modname = 'kwimage'
 
@@ -128,6 +141,7 @@ napoleon_use_ivar = True
 autodoc_inherit_docstrings = False
 
 autodoc_member_order = 'bysource'
+autoclass_content = 'both'
 # autodoc_mock_imports = ['torch', 'torchvision', 'visdom']
 
 intersphinx_mapping = {
@@ -280,8 +294,6 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
-
-
 from sphinx.domains.python import PythonDomain  # NOQA
 # from sphinx.application import Sphinx  # NOQA
 from typing import Any, List  # NOQA
@@ -362,7 +374,7 @@ class GoogleStyleDocstringProcessor:
             redone = new_text.split('\n')
             new_lines.extend(redone)
             # import ubelt as ub
-            # print('new_lines = {}'.format(ub.urepr(new_lines, nl=1)))
+            # print('new_lines = {}'.format(ub.repr2(new_lines, nl=1)))
             # new_lines.append('')
             return new_lines
 
@@ -383,29 +395,27 @@ class GoogleStyleDocstringProcessor:
     def process(self, lines):
         """
         Example:
+            >>> import ubelt as ub
             >>> self = GoogleStyleDocstringProcessor()
-            >>> lines = ub.codeblock(
-            ...     '''
-            ...     Hello world
-            ...
-            ...     CommandLine:
-            ...         hi
-            ...
-            ...     CommandLine:
-            ...
-            ...         bye
-            ...
-            ...     TextArt:
-            ...
-            ...         1
-            ...         2
-            ...
-            ...         345
-            ...
-            ...     Foobar:
-            ...
-            ...     TextArt:
-            ...     ''').split(chr(10))
+            >>> lines = ['Hello world',
+            >>>              '',
+            >>>              'CommandLine:',
+            >>>              '    hi',
+            >>>              '',
+            >>>              'CommandLine:',
+            >>>              '',
+            >>>              '    bye',
+            >>>              '',
+            >>>              'TextArt:',
+            >>>              '',
+            >>>              '    1',
+            >>>              '    2',
+            >>>              '',
+            >>>              '    345',
+            >>>              '',
+            >>>              'Foobar:',
+            >>>              '',
+            >>>              'TextArt:']
             >>> new_lines = self.process(lines[:])
             >>> print(chr(10).join(new_lines))
         """
@@ -491,7 +501,7 @@ class GoogleStyleDocstringProcessor:
         # print(f'name={name}')
         # print('BEFORE:')
         # import ubelt as ub
-        # print('lines = {}'.format(ub.urepr(lines, nl=1)))
+        # print('lines = {}'.format(ub.repr2(lines, nl=1)))
 
         self.process(lines)
 
@@ -504,12 +514,20 @@ class GoogleStyleDocstringProcessor:
         #     import xdev
         #     xdev.embed()
 
-        if 1:
+        RENDER_IMAGES = 1
+        if RENDER_IMAGES:
             # DEVELOPING
             if any('REQUIRES(--show)' in line for line in lines):
                 # import xdev
                 # xdev.embed()
                 create_doctest_figure(app, obj, name, lines)
+
+        FIX_EXAMPLE_FORMATTING = 1
+        if FIX_EXAMPLE_FORMATTING:
+            for idx, line in enumerate(lines):
+                if line == "Example:":
+                    lines[idx] = "**Example:**"
+                    lines.insert(idx + 1, "")
 
         REFORMAT_RETURNS = 0
         if REFORMAT_RETURNS:
@@ -556,7 +574,7 @@ class GoogleStyleDocstringProcessor:
                     lines[edit_slice] = new_lines
 
         # print('AFTER:')
-        # print('lines = {}'.format(ub.urepr(lines, nl=1)))
+        # print('lines = {}'.format(ub.repr2(lines, nl=1)))
 
         # if name == 'kwimage.Affine.translate':
         #     import sys
@@ -593,12 +611,11 @@ def create_doctest_figure(app, obj, name, lines):
         module = obj
     else:
         module = sys.modules[obj.__module__]
+    # TODO: read settings from pyproject.toml?
     if '--show' not in sys.argv:
         sys.argv.append('--show')
     if '--nointeract' not in sys.argv:
         sys.argv.append('--nointeract')
-    if '--network' not in sys.argv:
-        sys.argv.append('--network')
     modpath = module.__file__
 
     # print(doctest.format_src())
@@ -756,23 +773,11 @@ def create_doctest_figure(app, obj, name, lines):
         lines.insert(insert_index, '')
 
 
-
 def setup(app):
     import sphinx
     app : sphinx.application.Sphinx = app
-    # sphinx.application.Sphinx
     app.add_domain(PatchedPythonDomain, override=True)
     docstring_processor = GoogleStyleDocstringProcessor()
-    if 1:
-        # New Way
-        # what = None
-        app.connect('autodoc-process-docstring', docstring_processor.process_docstring_callback)
-    else:
-        # OLD WAY
-        # https://stackoverflow.com/questions/26534184/can-sphinx-ignore-certain-tags-in-python-docstrings
-        # Register a sphinx.ext.autodoc.between listener to ignore everything
-        # between lines that contain the word IGNORE
-        # from sphinx.ext.autodoc import between
-        # app.connect('autodoc-process-docstring', between('^ *Ignore:$', exclude=True))
-        pass
+    app.connect('autodoc-process-docstring', docstring_processor.process_docstring_callback)
+    # https://stackoverflow.com/questions/26534184/can-sphinx-ignore-certain-tags-in-python-docstrings
     return app

@@ -1,6 +1,20 @@
 """
 The Kitware Image Module (kwimage) contains functions to accomplish lower-level
 image operations via a high level API.
+
+Module features:
+
+    * Image reader / writer functions with multiple backends
+
+    * Wrapers around opencv that simplify and extend its functionality
+
+    * Annotation datastructure with configurable backends.
+
+    * Many function have awareness of torch tensors and can be used
+      interchangably with ndarrays.
+
+    * Misc image manipulation functions
+
 """
 
 __devnotes__ = """
