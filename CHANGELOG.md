@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.18 - Unreleased
 
+### Changed
+Disable torchvision NMS on windows by default
+
 
 ## Version 0.9.17 - Released 2023-04-28
 
