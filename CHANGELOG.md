@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.18 - Unreleased
+## Version 0.9.19 - Unreleased
+
+
+## Version 0.9.18 - Released 2023-05-02
 
 ### Changed
 Disable torchvision NMS on windows by default
