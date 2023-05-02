@@ -22,6 +22,7 @@ If you want to visualize boxes and scores you can do this:
     >>>     class_idxs=class_idxs,
     >>>     classes=classes,
     >>> )
+    >>> # xdoctest: +REQUIRES(module:kwplot)
     >>> dets.draw()
     >>> import matplotlib.pyplot as plt
     >>> plt.gca().set_xlim(0, 224)
@@ -34,14 +35,6 @@ import sys
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
 
-# try:
-#     from packaging.version import parse as LooseVersion
-# except ImportError:
-#     from distutils.version import LooseVersion
-# try:
-#     from xdev import profile
-# except Exception:
-#     from ubelt import identity as profile
 # try:
 #     import torch
 # except Exception:
