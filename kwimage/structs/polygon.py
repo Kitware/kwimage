@@ -927,7 +927,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return ub.urepr(self.data, nl=1)
 
     @classmethod
-    def circle(cls, xy, r, resolution=64):
+    def circle(cls, xy=(0, 0), r=1.0, resolution=64):
         """
         Create a circular or elliptical polygon.
 
@@ -1653,6 +1653,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
     def to_box(self):
         """
+        ## DEPRECATED: Use :func:`box` instead.
+        ## Do we deprecate this? Should we stick to the to_ / from_ convention?
+
         Returns:
             kwimage.Box
         """
@@ -1662,11 +1665,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
         boxes = kwimage.Box.from_data(ltrb, 'ltrb')
+        # ub.schedule_deprecation(
+        #     'kwimage', 'to_box', 'method',
+        #     migration='use Polygon.box instead',
+        #     deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return boxes
 
     def bounding_box(self):
         """
         Returns an axis-aligned bounding box for the segmentation
+
+        DEPRECATED: Use singular :func:`box` instead.
 
         Returns:
             kwimage.Boxes
@@ -1677,6 +1686,31 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])[None, :]
         boxes = kwimage.Boxes(ltrb, 'ltrb')
+        ub.schedule_deprecation(
+            'kwimage', 'bounding_box', 'method',
+            migration='use Polygon.box instead',
+            deprecate='0.9.19', error='1.0.0', remove='1.1.0')
+        return boxes
+
+    def box(self):
+        """
+        Returns an axis-aligned bounding box for the segmentation
+
+        Returns:
+            kwimage.Box
+
+        Example:
+            >>> import kwimage
+            >>> poly = kwimage.Polygon.random()
+            >>> box = poly.box()
+            >>> print('box = {}'.format(ub.urepr(box, nl=1)))
+        """
+        import kwimage
+        xys = self.data['exterior'].data
+        lt = xys.min(axis=0)
+        rb = xys.max(axis=0)
+        ltrb = np.hstack([lt, rb])
+        boxes = kwimage.Box.coerce(ltrb, format='ltrb')
         return boxes
 
     def bounding_box_polygon(self):

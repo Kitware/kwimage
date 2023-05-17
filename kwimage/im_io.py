@@ -1618,7 +1618,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         'BIGTIFF=YES',
     ]
     if blocksize is not None:
-        _options = [
+        _options += [
             'TILED=YES',
             'BLOCKXSIZE={}'.format(blocksize),
             'BLOCKYSIZE={}'.format(blocksize),
