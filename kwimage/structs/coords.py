@@ -28,6 +28,11 @@ except ImportError:
     _HAS_IMGAUG_XY_ARRAY = None
 
 
+__docstubs__ = """
+from kwimage.typing import SKImageGeometricTransform
+"""
+
+
 class Coords(_generic.Spatial, ub.NiceRepr):
     """
     A data structure to store n-dimensional coordinate geometry.
@@ -451,7 +456,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter | Callable):
+            transform (SKImageGeometricTransform | ArrayLike | Augmenter | Callable):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -516,7 +521,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(self.warp(func).data == 0)
         """
         import kwimage
-        import skimage
+        from kwimage.typing import SKImageGeometricTransform
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         if transform is None:
@@ -525,7 +530,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             matrix = transform
         elif isinstance(transform, kwimage.Linear):
             matrix = np.asarray(transform)
-        elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
+        elif isinstance(transform, SKImageGeometricTransform):
             matrix = transform.params
         else:
 

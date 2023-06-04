@@ -17,6 +17,11 @@ import numpy as np
 from kwimage.structs import _generic
 
 
+__docstubs__ = """
+from kwimage.typing import SKImageGeometricTransform
+"""
+
+
 class _ShapelyMixin:
     """
     Extends :class:`Polygon` and :class:`MultiPolygon` with methods that
@@ -356,7 +361,7 @@ class _PolyWarpMixin:
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+            transform (SKImageGeometricTransform | ArrayLike | Augmenter | callable):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -386,12 +391,12 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(3)).exterior == self.exterior)
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
-        import skimage
+        from kwimage.typing import SKImageGeometricTransform
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if transform is None:
             return new
-        elif not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
+        elif not isinstance(transform, (np.ndarray, SKImageGeometricTransform)):
             try:
                 import imgaug
             except ImportError:
@@ -939,7 +944,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Args:
             xy (Iterable[Number]): x and y center coordinate
-            r (Number | Tuple[Number, Number]):
+            r (float | Number | Tuple[Number, Number]):
                 circular radius or major and minor elliptical radius
             resolution (int): number of sides
 

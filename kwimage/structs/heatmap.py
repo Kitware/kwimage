@@ -82,8 +82,12 @@ import numpy as np
 import ubelt as ub
 import kwarray
 import functools
-import sys
 from . import _generic
+
+
+__docstubs__ = """
+from kwimage.typing import SKImageGeometricTransform
+"""
 
 
 class _HeatmapDrawMixin(object):
@@ -1159,7 +1163,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             img_dims (Tuple[H, W] | Tuple[D, H, W]):
                 original image dimension
 
-            tf_data_to_image (skimage.transform._geometric.GeometricTransform):
+            tf_data_to_image (SKImageGeometricTransform):
                 transformation matrix (typically similarity or affine) that
                 projects the given, heatmap onto the image dimensions such that
                 the image and heatmap are spatially aligned.

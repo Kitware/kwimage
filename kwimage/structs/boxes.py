@@ -76,13 +76,16 @@ SeeAlso:
 import numpy as np
 import ubelt as ub
 import warnings
-import skimage
 import kwarray
 import numbers  # NOQA
 from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
 import sys
 
+
+__docstubs__ = """
+from kwimage.typing import SKImageGeometricTransform
+"""
 
 __all__ = ['Boxes']
 
@@ -1169,7 +1172,7 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | Any):
+            transform (ArrayLike | Callable | kwimage.Affine | SKImageGeometricTransform | Any):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -1187,6 +1190,7 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> import skimage
             >>> transform = skimage.transform.AffineTransform(scale=(2, 3), translation=(4, 5))
             >>> Boxes([25, 30, 15, 10], 'xywh').warp(transform)
             <Boxes(xywh, array([54., 95., 30., 30.]))>
@@ -1221,6 +1225,8 @@ class _BoxTransformMixins(object):
             >>> assert np.all(new.area == 0)
         """
         import kwimage
+        import skimage
+        from kwimage.typing import SKImageGeometricTransform
         torch = sys.modules.get('torch', None)
 
         if inplace:
@@ -1257,7 +1263,7 @@ class _BoxTransformMixins(object):
             elif isinstance(transform, skimage.transform.EuclideanTransform):
                 rotation = transform.rotation
                 translation = transform.translation
-            elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
+            elif isinstance(transform, SKImageGeometricTransform):
                 matrix = transform.params
             elif _generic.isinstance_arraytypes(transform):
                 matrix = transform

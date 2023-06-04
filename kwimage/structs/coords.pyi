@@ -2,7 +2,6 @@ from numpy.typing import ArrayLike
 from typing import Sequence
 from typing import Tuple
 from typing import Callable
-from skimage.transform._geometric import GeometricTransform
 from typing import Any
 from numpy import ndarray
 from typing import List
@@ -11,6 +10,10 @@ import ubelt as ub
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+from kwimage.typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class Coords(_generic.Spatial, ub.NiceRepr):
@@ -101,7 +104,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         ...
 
     def warp(self,
-             transform: GeometricTransform | ArrayLike | Any | Callable,
+             transform: SKImageGeometricTransform | ArrayLike | Any | Callable,
              input_dims: Tuple | None = None,
              output_dims: Tuple | None = None,
              inplace: bool = False) -> Coords:

@@ -9,6 +9,8 @@ import kwcoco
 from . import _generic
 from _typeshed import Incomplete
 
+__docstubs__: str
+
 
 class _HeatmapDrawMixin:
 

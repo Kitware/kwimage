@@ -1,7 +1,6 @@
 from typing import Any
 from typing import Tuple
 from typing import Callable
-from skimage.transform._geometric import GeometricTransform
 from numpy.typing import ArrayLike
 import kwimage
 from typing import List
@@ -16,6 +15,10 @@ import ubelt as ub
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+from kwimage.typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class _ShapelyMixin:
@@ -87,7 +90,7 @@ class _PolyWarpMixin:
         ...
 
     def warp(self,
-             transform: GeometricTransform | ArrayLike | Any | Callable,
+             transform: SKImageGeometricTransform | ArrayLike | Any | Callable,
              input_dims: Tuple | None = None,
              output_dims: Tuple | None = None,
              inplace: bool = False):
@@ -152,7 +155,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
     @classmethod
     def circle(cls,
                xy: Iterable[Number] = ...,
-               r: Number | Tuple[Number, Number] = 1.0,
+               r: float | Number | Tuple[Number, Number] = 1.0,
                resolution: int = 64) -> Polygon:
         ...
 

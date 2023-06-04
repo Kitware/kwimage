@@ -2,7 +2,6 @@ from typing import Any
 from typing import Tuple
 from typing import Callable
 import kwimage
-from skimage.transform._geometric import GeometricTransform
 from numpy.typing import ArrayLike
 from numpy import ndarray
 from typing import List
@@ -11,6 +10,10 @@ import kwcoco
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+from kwimage.typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class _PointsWarpMixin:
@@ -28,7 +31,7 @@ class _PointsWarpMixin:
 
     def warp(self,
              transform: ArrayLike | Callable | kwimage.Affine
-             | GeometricTransform | Any,
+             | SKImageGeometricTransform | Any,
              input_dims: Tuple | None = None,
              output_dims: Tuple | None = None,
              inplace: bool = False):

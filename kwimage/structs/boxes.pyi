@@ -14,11 +14,14 @@ from torch import Tensor
 from numpy.random import RandomState
 from typing import Sequence
 import torch
-import skimage
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
 from typing import Any
+
+from kwimage.typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class NeedsWarpCorners(AssertionError):
@@ -173,7 +176,7 @@ class _BoxTransformMixins:
 
     def warp(self,
              transform: ArrayLike | Callable | kwimage.Affine
-             | skimage.transform._geometric.GeometricTransform | Any,
+             | SKImageGeometricTransform | Any,
              input_dims: Tuple | None = None,
              output_dims: Tuple | None = None,
              inplace: bool = False) -> Boxes:
