@@ -151,9 +151,17 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return self
 
     def is_numpy(self):
+        """
+        Returns:
+            bool
+        """
         return self._impl.is_numpy
 
     def is_tensor(self):
+        """
+        Returns:
+            bool
+        """
         return self._impl.is_tensor
 
     def compress(self, flags, axis=0, inplace=False):

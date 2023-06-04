@@ -57,10 +57,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                meta: Incomplete | None = ...):
         ...
 
-    def is_numpy(self):
+    def is_numpy(self) -> bool:
         ...
 
-    def is_tensor(self):
+    def is_tensor(self) -> bool:
         ...
 
     def compress(self,
