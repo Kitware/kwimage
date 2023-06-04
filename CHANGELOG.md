@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.19 - Unreleased
 
 ### Fixed
+* Fixed compatibility with new scikit-image
 * Mixin methods are now shown in the docs
 
 
