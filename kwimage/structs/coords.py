@@ -29,7 +29,7 @@ except ImportError:
 
 
 __docstubs__ = """
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 """
 
 
@@ -529,7 +529,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(self.warp(func).data == 0)
         """
         import kwimage
-        from kwimage.typing import SKImageGeometricTransform
+        from kwimage._typing import SKImageGeometricTransform
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
         if transform is None:

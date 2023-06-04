@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.19 - Unreleased
 
+### Fixed
+* Mixin methods are now shown in the docs
+
 
 ## Version 0.9.18 - Released 2023-05-02
 

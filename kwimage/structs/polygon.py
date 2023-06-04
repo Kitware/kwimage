@@ -18,7 +18,7 @@ from kwimage.structs import _generic
 
 
 __docstubs__ = """
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 """
 
 
@@ -391,7 +391,7 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(3)).exterior == self.exterior)
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
-        from kwimage.typing import SKImageGeometricTransform
+        from kwimage._typing import SKImageGeometricTransform
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if transform is None:

@@ -84,7 +84,7 @@ import sys
 
 
 __docstubs__ = """
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 """
 
 __all__ = ['Boxes']
@@ -1226,7 +1226,7 @@ class _BoxTransformMixins(object):
         """
         import kwimage
         import skimage
-        from kwimage.typing import SKImageGeometricTransform
+        from kwimage._typing import SKImageGeometricTransform
         torch = sys.modules.get('torch', None)
 
         if inplace:

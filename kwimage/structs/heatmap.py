@@ -86,7 +86,7 @@ from . import _generic
 
 
 __docstubs__ = """
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 """
 
 

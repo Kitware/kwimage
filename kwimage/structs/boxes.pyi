@@ -19,7 +19,7 @@ from _typeshed import Incomplete
 from collections.abc import Generator
 from typing import Any
 
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 
 __docstubs__: str
 

@@ -16,7 +16,7 @@ from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
 
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 
 __docstubs__: str
 

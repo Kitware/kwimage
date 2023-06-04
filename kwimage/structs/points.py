@@ -10,7 +10,7 @@ from kwimage.structs import _generic
 
 
 __docstubs__ = """
-from kwimage.typing import SKImageGeometricTransform
+from kwimage._typing import SKImageGeometricTransform
 """
 
 
@@ -115,7 +115,7 @@ class _PointsWarpMixin:
         """
         import kwimage
         import skimage
-        from kwimage.typing import SKImageGeometricTransform
+        from kwimage._typing import SKImageGeometricTransform
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         if transform is None:
             return new
