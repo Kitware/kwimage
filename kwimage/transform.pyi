@@ -2,10 +2,12 @@ from numpy import ndarray
 import skimage.transform
 from typing import Dict
 from typing import Tuple
-from typing import Union
 import ubelt as ub
 from _typeshed import Incomplete
 
+import affine
+
+__docstubs__: str
 profile: Incomplete
 
 
@@ -132,10 +134,32 @@ class Affine(Projective):
         ...
 
     @classmethod
+    def from_shapely(cls, sh_aff):
+        ...
+
+    @classmethod
+    def from_affine(cls, aff):
+        ...
+
+    @classmethod
+    def from_gdal(cls, gdal_aff):
+        ...
+
+    @classmethod
+    def from_skimage(cls, sk_aff):
+        ...
+
+    @classmethod
     def coerce(cls, data: Incomplete | None = ..., **kwargs) -> Affine:
         ...
 
     def eccentricity(self) -> float:
+        ...
+
+    def to_affine(self) -> affine.Affine:
+        ...
+
+    def to_gdal(self) -> Tuple[float, float, float, float, float, float]:
         ...
 
     def to_shapely(self) -> Tuple[float, float, float, float, float, float]:
@@ -145,11 +169,11 @@ class Affine(Projective):
         ...
 
     @classmethod
-    def scale(cls, scale: Union[float, Tuple[float, float]]) -> Affine:
+    def scale(cls, scale: float | Tuple[float, float]) -> Affine:
         ...
 
     @classmethod
-    def translate(cls, offset: Union[float, Tuple[float, float]]) -> Affine:
+    def translate(cls, offset: float | Tuple[float, float]) -> Affine:
         ...
 
     @classmethod
@@ -172,12 +196,12 @@ class Affine(Projective):
 
     @classmethod
     def affine(cls,
-               scale: Union[float, Tuple[float, float]] = None,
-               offset: Union[float, Tuple[float, float]] = None,
-               theta: float = None,
-               shear: float = None,
-               about: Union[float, Tuple[float, float]] = None,
-               shearx: float = None,
+               scale: float | Tuple[float, float] | None = None,
+               offset: float | Tuple[float, float] | None = None,
+               theta: float | None = None,
+               shear: float | None = None,
+               about: float | Tuple[float, float] | None = None,
+               shearx: float | None = None,
                array_cls: Incomplete | None = ...,
                math_mod: Incomplete | None = ...,
                **kwargs) -> Affine:

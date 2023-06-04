@@ -1,7 +1,6 @@
 from numpy.typing import ArrayLike
 from typing import Sequence
 from typing import Tuple
-from typing import Union
 from typing import Callable
 from skimage.transform._geometric import GeometricTransform
 from typing import Any
@@ -102,9 +101,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         ...
 
     def warp(self,
-             transform: Union[GeometricTransform, ArrayLike, Any, Callable],
-             input_dims: Tuple = None,
-             output_dims: Tuple = None,
+             transform: GeometricTransform | ArrayLike | Any | Callable,
+             input_dims: Tuple | None = None,
+             output_dims: Tuple | None = None,
              inplace: bool = False) -> Coords:
         ...
 
@@ -116,35 +115,35 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         ...
 
     def scale(self,
-              factor: Union[float, Tuple[float, float]],
-              about: Union[Tuple, None] = None,
-              output_dims: Tuple = None,
+              factor: float | Tuple[float, float],
+              about: Tuple | None = None,
+              output_dims: Tuple | None = None,
               inplace: bool = False) -> Coords:
         ...
 
     def translate(self,
-                  offset: Union[float, Tuple[float, float]],
-                  output_dims: Tuple = None,
+                  offset: float | Tuple[float, float],
+                  output_dims: Tuple | None = None,
                   inplace: bool = False) -> Coords:
         ...
 
     def rotate(self,
                theta: float,
-               about: Union[Tuple, None] = None,
-               output_dims: Tuple = None,
+               about: Tuple | None = None,
+               output_dims: Tuple | None = None,
                inplace: bool = False) -> Coords:
         ...
 
     def fill(self,
              image,
              value,
-             coord_axes: Tuple = None,
+             coord_axes: Tuple | None = None,
              interp: str = ...) -> ndarray:
         ...
 
     def soft_fill(self,
                   image,
-                  coord_axes: Tuple = None,
+                  coord_axes: Tuple | None = None,
                   radius: int = ...) -> ndarray:
         ...
 

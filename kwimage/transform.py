@@ -13,6 +13,10 @@ __all__ = [
 ]
 
 
+__docstubs__ = """
+import affine
+"""
+
 try:
     import xdev
     profile = xdev.profile

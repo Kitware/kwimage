@@ -19,5 +19,5 @@ def decode_run_length(counts: ndarray,
 
 def rle_translate(rle: dict,
                   offset: Tuple[int, int],
-                  output_shape: Tuple[int, int] = None):
+                  output_shape: Tuple[int, int] | None = None):
     ...

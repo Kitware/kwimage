@@ -36,6 +36,10 @@ class Box(ub.NiceRepr):
         ...
 
     @classmethod
+    def from_data(self, data, format):
+        ...
+
+    @classmethod
     def coerce(cls, data, **kwargs):
         ...
 
@@ -70,7 +74,7 @@ class Box(ub.NiceRepr):
     def resize(self, *args, **kwargs):
         ...
 
-    def to_ltbr(self, *args, **kwargs):
+    def to_ltrb(self, *args, **kwargs):
         ...
 
     def to_xywh(self, *args, **kwargs):
@@ -92,11 +96,23 @@ class Box(ub.NiceRepr):
         ...
 
     @property
-    def width(self):
+    def aspect_ratio(self):
         ...
 
     @property
-    def aspect_ratio(self):
+    def center(self):
+        ...
+
+    @property
+    def center_x(self):
+        ...
+
+    @property
+    def center_y(self):
+        ...
+
+    @property
+    def width(self):
         ...
 
     @property

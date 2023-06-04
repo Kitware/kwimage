@@ -1,4 +1,3 @@
-from typing import Union
 from typing import List
 from numpy import ndarray
 from typing import Tuple
@@ -58,15 +57,15 @@ class _MaskConversionMixin:
 class _MaskConstructorMixin:
 
     @classmethod
-    def from_polygons(Mask, polygons: Union[ndarray, List[ndarray]],
+    def from_polygons(Mask, polygons: ndarray | List[ndarray],
                       dims: Tuple) -> Mask:
         ...
 
     @classmethod
     def from_mask(Mask,
                   mask: ndarray,
-                  offset: Tuple[int, int] = None,
-                  shape: Tuple[int, int] = None,
+                  offset: Tuple[int, int] | None = None,
+                  shape: Tuple[int, int] | None = None,
                   method: str = ...):
         ...
 
@@ -74,21 +73,21 @@ class _MaskConstructorMixin:
 class _MaskTransformMixin:
 
     def scale(self,
-              factor: Union[float, Tuple[float, float]],
-              output_dims: Tuple[int, int] = None,
+              factor: float | Tuple[float, float],
+              output_dims: Tuple[int, int] | None = None,
               inplace: bool = ...) -> Mask:
         ...
 
     def warp(self,
              transform: ndarray,
-             input_dims: Tuple[int, int] = None,
-             output_dims: Tuple[int, int] = None,
+             input_dims: Tuple[int, int] | None = None,
+             output_dims: Tuple[int, int] | None = None,
              inplace: bool = ...) -> Mask:
         ...
 
     def translate(self,
-                  offset: Union[Tuple, Number],
-                  output_dims: Tuple[int, int] = None,
+                  offset: Tuple | Number,
+                  output_dims: Tuple[int, int] | None = None,
                   inplace: bool = False) -> Mask:
         ...
 
@@ -96,8 +95,8 @@ class _MaskTransformMixin:
 class _MaskDrawMixin:
 
     def draw_on(self,
-                image: ndarray = None,
-                color: Union[str, tuple] = 'blue',
+                image: ndarray | None = None,
+                color: str | tuple = 'blue',
                 alpha: float = 0.5,
                 show_border: bool = False,
                 border_thick: int = ...,
@@ -106,7 +105,7 @@ class _MaskDrawMixin:
         ...
 
     def draw(self,
-             color: Union[str, tuple] = 'blue',
+             color: str | tuple = 'blue',
              alpha: float = 0.5,
              ax: Incomplete | None = ...,
              show_border: bool = ...,
@@ -134,7 +133,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
     @classmethod
     def random(Mask,
-               rng: Union[int, RandomState, None] = None,
+               rng: int | RandomState | None = None,
                shape: Tuple[int, int] = ...) -> Mask:
         ...
 
@@ -146,7 +145,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def from_text(cls,
                   text: str,
                   zero_chr: str = '.',
-                  shape: Union[None, Tuple[int, int]] = None,
+                  shape: None | Tuple[int, int] = None,
                   has_border: bool = False):
         ...
 
@@ -179,7 +178,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
     def get_polygon(self) -> List[ndarray]:
         ...
 
-    def to_mask(self, dims: Incomplete | None = ...) -> kwimage.Mask:
+    def to_mask(self,
+                dims: Incomplete | None = ...,
+                pixels_are: str = ...) -> kwimage.Mask:
         ...
 
     def to_boxes(self) -> kwimage.Boxes:
@@ -195,7 +196,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         ...
 
     @classmethod
-    def coerce(Mask, data: Any, dims: Tuple = None) -> Mask:
+    def coerce(Mask, data: Any, dims: Tuple | None = None) -> Mask:
         ...
 
     def to_coco(self, style: str = 'orig') -> dict:
@@ -210,5 +211,7 @@ class MaskList(_generic.ObjectList):
     def to_segmentation_list(self) -> kwimage.SegmentationList:
         ...
 
-    def to_mask_list(self) -> kwimage.MaskList:
+    def to_mask_list(self,
+                     dims: Incomplete | None = ...,
+                     pixels_are: str = ...) -> kwimage.MaskList:
         ...

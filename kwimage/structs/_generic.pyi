@@ -1,9 +1,12 @@
 from typing import Sequence
-from typing import Union
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
 from typing import Any
+
+
+def isinstance_arraytypes(obj):
+    ...
 
 
 class Spatial(ub.NiceRepr):
@@ -83,7 +86,7 @@ class ObjectList(Spatial):
     @classmethod
     def concatenate(cls,
                     items: Sequence[ObjectList],
-                    axis: Union[int, None] = 0) -> ObjectList:
+                    axis: int | None = 0) -> ObjectList:
         ...
 
     def is_tensor(cls) -> None:

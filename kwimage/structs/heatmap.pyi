@@ -1,4 +1,3 @@
-from typing import Union
 from numpy import ndarray
 from numpy.typing import ArrayLike
 from typing import Sequence
@@ -6,7 +5,7 @@ from typing import Tuple
 import kwimage
 from typing import Dict
 from typing import List
-from typing import Any
+import kwcoco
 from . import _generic
 from _typeshed import Incomplete
 
@@ -14,7 +13,7 @@ from _typeshed import Incomplete
 class _HeatmapDrawMixin:
 
     def colorize(self,
-                 channel: Union[int, str] = None,
+                 channel: int | str | None = None,
                  invert: bool = ...,
                  with_alpha: float = ...,
                  interpolation: str = ...,
@@ -31,35 +30,35 @@ class _HeatmapDrawMixin:
         ...
 
     def draw(self,
-             channel: Union[int, str] = None,
+             channel: int | str | None = None,
              image: Incomplete | None = ...,
              imgspace: Incomplete | None = ...,
              **kwargs) -> None:
         ...
 
     def draw_on(self,
-                image: ndarray = None,
-                channel: Union[int, str] = None,
+                image: ndarray | None = None,
+                channel: int | str | None = None,
                 invert: bool = ...,
                 with_alpha: float = ...,
                 interpolation: str = ...,
                 vecs: bool = ...,
                 kpts: Incomplete | None = ...,
-                imgspace: bool = None):
+                imgspace: bool | None = None):
         ...
 
 
 class _HeatmapWarpMixin:
 
     def upscale(self,
-                channel: Union[ndarray, None] = None,
+                channel: ndarray | None = None,
                 interpolation: str = ...):
         ...
 
     def warp(self,
-             mat: ArrayLike = None,
-             input_dims: tuple = None,
-             output_dims: tuple = None,
+             mat: ArrayLike | None = None,
+             input_dims: tuple | None = None,
+             output_dims: tuple | None = None,
              interpolation: str = 'linear',
              modify_spatial_coords: bool = ...,
              int_interpolation: str = 'nearest',
@@ -85,17 +84,17 @@ class _HeatmapAlgoMixin:
     @classmethod
     def combine(cls,
                 heatmaps: Sequence[Heatmap],
-                root_index: int = None,
+                root_index: int | None = None,
                 dtype=...) -> Heatmap:
         ...
 
     def detect(self,
-               channel: Union[int, ArrayLike],
+               channel: int | ArrayLike,
                invert: bool = False,
                min_score: float = 0.01,
                num_min: int = 10,
-               max_dims: Tuple[int, int] = None,
-               min_dims: Tuple[int, int] = None,
+               max_dims: Tuple[int, int] | None = None,
+               min_dims: Tuple[int, int] | None = None,
                dim_thresh_space: str = 'image') -> kwimage.Detections:
         ...
 
@@ -145,11 +144,11 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin, _HeatmapWarpMixin,
     @classmethod
     def random(cls,
                dims: Tuple[int, int] = ...,
-               classes: Union[int, List[str], Any] = 3,
+               classes: int | List[str] | kwcoco.CategoryTree = 3,
                diameter: bool = True,
                offset: bool = True,
                keypoints: bool = False,
-               img_dims: Tuple = None,
+               img_dims: Tuple | None = None,
                dets: Incomplete | None = ...,
                nblips: int = ...,
                noise: float = ...,

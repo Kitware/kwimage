@@ -1,7 +1,6 @@
 from nptyping import UInt8
 from numpy import ndarray
 from typing import Any
-from typing import Union
 from typing import List
 from typing import Dict
 from nptyping import Shape
@@ -14,9 +13,7 @@ from typing import Tuple
 from typing import Sequence
 import torch
 from nptyping import Bool
-import numpy as np
-import numpy as np
-import torch
+from numpy.random import RandomState
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
@@ -41,15 +38,15 @@ class _DetDrawMixin:
         ...
 
     def draw_on(self,
-                image: ndarray[Any, UInt8] = None,
-                color: Union[str, Any, List[Any]] = 'blue',
-                alpha: float = None,
-                labels: Union[bool, str, List[str]] = True,
+                image: ndarray[Any, UInt8] | None = None,
+                color: str | Any | List[Any] = 'blue',
+                alpha: float | None = None,
+                labels: bool | str | List[str] = True,
                 radius: float = 5,
                 kpts: bool = True,
                 sseg: bool = True,
                 boxes: bool = True,
-                ssegkw: dict = None,
+                ssegkw: dict | None = None,
                 label_loc: str = 'top_left',
                 thickness: int = 2) -> ndarray[Any, UInt8]:
         ...
@@ -62,7 +59,7 @@ class _DetAlgoMixin:
             thresh: float = 0.0,
             perclass: bool = False,
             impl: str = 'auto',
-            daq: Union[bool, Dict] = False,
+            daq: bool | Dict = False,
             device_id: Incomplete | None = ...
     ) -> ndarray[Shape['*'], Integer]:
         ...
@@ -91,10 +88,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     meta: Dict
 
     def __init__(self,
-                 data: Dict[str, ArrayLike] = None,
-                 meta: Dict[str, object] = None,
-                 datakeys: List[str] = None,
-                 metakeys: List[str] = None,
+                 data: Dict[str, ArrayLike] | None = None,
+                 meta: Dict[str, object] | None = None,
+                 datakeys: List[str] | None = None,
+                 metakeys: List[str] | None = None,
                  checks: bool = True,
                  **kwargs) -> None:
         ...
@@ -115,19 +112,19 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     @classmethod
     def from_coco_annots(cls,
                          anns: List[Dict],
-                         cats: List[Dict] = None,
-                         classes: kwcoco.CategoryTree = None,
-                         kp_classes: kwcoco.CategoryTree = None,
-                         shape: tuple = None,
-                         dset: kwcoco.CocoDataset = None) -> Detections:
+                         cats: List[Dict] | None = None,
+                         classes: kwcoco.CategoryTree | None = None,
+                         kp_classes: kwcoco.CategoryTree | None = None,
+                         shape: tuple | None = None,
+                         dset: kwcoco.CocoDataset | None = None) -> Detections:
         ...
 
     def to_coco(
-        self,
-        cname_to_cat: Incomplete | None = ...,
-        style: str = 'orig',
-        image_id: int = None,
-        dset: Union[kwcoco.CocoDataset, None] = None
+            self,
+            cname_to_cat: Incomplete | None = ...,
+            style: str = 'orig',
+            image_id: int | None = None,
+            dset: kwcoco.CocoDataset | None = None
     ) -> Generator[dict, None, None]:
         ...
 
@@ -159,9 +156,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         ...
 
     def warp(self,
-             transform: Union[kwimage.Affine, ndarray, Callable, Any],
-             input_dims: Tuple[int, int] = None,
-             output_dims: Tuple[int, int] = None,
+             transform: kwimage.Affine | ndarray | Callable | Any,
+             input_dims: Tuple[int, int] | None = None,
+             output_dims: Tuple[int, int] | None = None,
              inplace: bool = False) -> Detections:
         ...
 
@@ -188,7 +185,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         ...
 
     def compress(self,
-                 flags: Union[ndarray[Any, Bool], torch.Tensor],
+                 flags: ndarray[Any, Bool] | torch.Tensor,
                  axis: int = ...) -> kwimage.structs.Detections:
         ...
 
@@ -227,12 +224,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     @classmethod
     def random(cls,
                num: int = 10,
-               scale: Union[float, tuple] = 1.0,
-               classes: Union[int, Sequence] = 3,
+               scale: float | tuple = 1.0,
+               classes: int | Sequence = 3,
                keypoints: bool = False,
                segmentations: bool = False,
                tensor: bool = False,
-               rng: np.random.RandomState = None):
+               rng: int | RandomState | None = None) -> Detections:
         ...
 
 

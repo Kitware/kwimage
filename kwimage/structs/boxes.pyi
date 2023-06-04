@@ -1,5 +1,4 @@
 from numpy import ndarray
-from typing import Union
 from typing import List
 import shapely
 from typing import Any
@@ -16,7 +15,6 @@ from numpy.random import RandomState
 from typing import Sequence
 import torch
 import skimage
-import torch
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
@@ -32,7 +30,7 @@ class BoxFormat:
     XYWH: Incomplete
     CXYWH: Incomplete
     LTRB: Incomplete
-    TLBR: Incomplete
+    TLBR = LTRB
     XXYY: Incomplete
     aliases: Incomplete
     blocklist: Incomplete
@@ -41,7 +39,7 @@ class BoxFormat:
 def box_ious(ltrb1: ndarray,
              ltrb2: ndarray,
              bias: int = 0,
-             impl: Union[str, None] = None):
+             impl: str | None = None):
     ...
 
 
@@ -54,7 +52,7 @@ class _BoxConversionMixins:
     def to_xxyy(self, copy: bool = ...):
         ...
 
-    to_extent: Incomplete
+    to_extent = to_xxyy
 
     def to_xywh(self, copy: bool = ...):
         ...
@@ -92,7 +90,7 @@ class _BoxConversionMixins:
     @classmethod
     def from_slice(Boxes,
                    slices,
-                   shape: Tuple[int, int] = None,
+                   shape: Tuple[int, int] | None = None,
                    clip: bool = True,
                    endpoint: bool = True,
                    wrap: bool = False):
@@ -162,15 +160,22 @@ class _BoxPropertyMixins:
     def center(self) -> Tuple[ndarray, ndarray]:
         ...
 
+    @property
+    def center_x(self) -> Tuple[ndarray, ndarray]:
+        ...
+
+    @property
+    def center_y(self) -> Tuple[ndarray, ndarray]:
+        ...
+
 
 class _BoxTransformMixins:
 
     def warp(self,
-             transform: Union[ArrayLike, Callable, kwimage.Affine,
-                              skimage.transform._geometric.GeometricTransform,
-                              Any],
-             input_dims: Tuple = None,
-             output_dims: Tuple = None,
+             transform: ArrayLike | Callable | kwimage.Affine
+             | skimage.transform._geometric.GeometricTransform | Any,
+             input_dims: Tuple | None = None,
+             output_dims: Tuple | None = None,
              inplace: bool = False) -> Boxes:
         ...
 
@@ -178,15 +183,15 @@ class _BoxTransformMixins:
         ...
 
     def scale(self,
-              factor: Union[float, Tuple[float, float]],
-              about: Union[str, ArrayLike] = 'origin',
-              output_dims: Tuple = None,
+              factor: float | Tuple[float, float],
+              about: str | ArrayLike = 'origin',
+              output_dims: Tuple | None = None,
               inplace: bool = False) -> Boxes:
         ...
 
     def translate(self,
                   amount,
-                  output_dims: Tuple = None,
+                  output_dims: Tuple | None = None,
                   inplace: bool = ...) -> Boxes:
         ...
 
@@ -199,16 +204,17 @@ class _BoxTransformMixins:
         ...
 
     def resize(self,
-               width: Union[Number, ndarray, None] = None,
-               height: Union[Number, ndarray, None] = None,
-               inplace: bool = False) -> Boxes:
+               width: Number | ndarray | None = None,
+               height: Number | ndarray | None = None,
+               inplace: bool = False,
+               about: str = 'xy') -> Boxes:
         ...
 
     def pad(self,
-            x_left: Union[int, float],
-            y_top: Union[int, float],
-            x_right: Union[int, float],
-            y_bot: Union[int, float],
+            x_left: int | float,
+            y_top: int | float,
+            x_right: int | float,
+            y_bot: int | float,
             inplace: bool = ...) -> Boxes:
         ...
 
@@ -219,9 +225,9 @@ class _BoxTransformMixins:
 class _BoxDrawMixins:
 
     def draw(self,
-             color: Union[str, Any, List[Any]] = 'blue',
-             alpha: Union[float, List[float], None] = None,
-             labels: Union[List[str], None] = None,
+             color: str | Any | List[Any] = 'blue',
+             alpha: float | List[float] | None = None,
+             labels: List[str] | None = None,
              centers: bool = False,
              fill: bool = ...,
              lw: float = 2,
@@ -231,24 +237,28 @@ class _BoxDrawMixins:
         ...
 
     def draw_on(self,
-                image: ndarray = None,
-                color: Union[str, Any, List[Any]] = 'blue',
-                alpha: float = None,
-                labels: List[str] = None,
+                image: ndarray | None = None,
+                color: str | Any | List[Any] = 'blue',
+                alpha: float | None = None,
+                labels: List[str] | None = None,
                 copy: bool = False,
                 thickness: int = 2,
+                edgecolor: str | tuple | None = None,
+                facecolor: str | tuple | None = None,
+                fill: bool = False,
+                border: bool = True,
                 label_loc: str = 'top_left') -> ndarray:
         ...
 
 
 class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             _BoxDrawMixins, ub.NiceRepr):
-    data: Union[ndarray, Tensor, Boxes]
+    data: ndarray | Tensor | Boxes
     format: str
 
     def __init__(self,
-                 data: Union[ndarray, Tensor, Boxes],
-                 format: str = None,
+                 data: ndarray | Tensor | Boxes,
+                 format: str | None = None,
                  check: bool = True) -> None:
         ...
 
@@ -267,12 +277,12 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     @classmethod
     def random(Boxes,
                num: int = 1,
-               scale: Union[float, Tuple[float, float]] = 1.0,
+               scale: float | Tuple[float, float] = 1.0,
                format: str = ...,
-               anchors: ndarray = None,
+               anchors: ndarray | None = None,
                anchor_std: float = ...,
                tensor: bool = False,
-               rng: Union[None, int, RandomState] = None) -> Boxes:
+               rng: None | int | RandomState = None) -> Boxes:
         ...
 
     def copy(self) -> Boxes:
@@ -313,14 +323,14 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     def numpy(self) -> Boxes:
         ...
 
-    def tensor(self, device: Union[int, None, torch.device] = ...) -> Boxes:
+    def tensor(self, device: int | None | torch.device = ...) -> Boxes:
         ...
 
     def ious(self,
              other: Boxes,
              bias: int = 0,
              impl: str = 'auto',
-             mode: str = None) -> ndarray:
+             mode: str | None = None) -> ndarray:
         ...
 
     def iooas(self, other: Boxes, bias: int = 0) -> ndarray:

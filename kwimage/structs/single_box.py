@@ -431,5 +431,5 @@ def _transfer_docstrings():
                         'In the meantime we will show the docstring from Boxes\n'
                     ) + v2.__doc__
 
-if 1:
+if 0:
     _transfer_docstrings()
