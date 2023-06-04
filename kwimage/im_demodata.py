@@ -231,6 +231,30 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
     return image
 
 
+# def _test_if_urls_are_alive():
+#     from kwimage.im_demodata import _TEST_IMAGES
+#     for key, item in _TEST_IMAGES.items():
+#         ub.download(item['url'])
+
+
+def _grabdata_with_mirrors(url, mirror_urls, grabkw):
+    fpath = None
+    try:
+        fpath = ub.grabdata(url, **grabkw)
+    except Exception as main_ex:
+        # urllib.error.HTTPError
+        for mirror_url in mirror_urls:
+            try:
+                fpath = ub.grabdata(mirror_url, **grabkw)
+            except Exception:
+                ...
+            else:
+                break
+        if fpath is None:
+            raise main_ex
+    return fpath
+
+
 def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
     """
     Ensures that the test image exists (this might use the network) and returns
@@ -301,7 +325,21 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
     if 'fname' in item:
         grabkw['fname'] = item['fname']
 
-    fpath = ub.grabdata(item['url'], **grabkw)
+    ipfs_gateways = [
+        'https://ipfs.io/ipfs',
+        'https://dweb.link/ipfs',
+        # 'https://gateway.pinata.cloud/ipfs',
+    ]
+    url = item['url']
+    mirror_urls = []
+    if 'mirrors' in item:
+        mirror_urls += item['mirrors']
+    if 'ipfs_cids' in item:
+        for cid in item['ipfs_cids']:
+            for gateway in ipfs_gateways:
+                ipfs_url = gateway + '/' + cid
+                mirror_urls.append(ipfs_url)
+    fpath = _grabdata_with_mirrors(url, mirror_urls, grabkw)
 
     augment_params = {
         'dsize': dsize,

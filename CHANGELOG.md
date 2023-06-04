@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.19 - Unreleased
 
+### Changed
+* `grab_test_image` now falls back to mirrors if the first URL returns an error
+
 ### Fixed
 * Fixed compatibility with new scikit-image
 * Mixin methods are now shown in the docs
