@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * `grab_test_image` now falls back to mirrors if the first URL returns an error
+* Allow `format` to be positional in `kwimage.Box.coerce` and `kwimage.Boxes.coerce`
 
 ### Fixed
 * Fixed compatibility with new scikit-image

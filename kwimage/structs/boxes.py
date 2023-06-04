@@ -630,17 +630,18 @@ class _BoxConversionMixins(object):
         return self
 
     @classmethod
-    def coerce(Boxes, data, **kwargs):
+    def coerce(Boxes, data, format=None, **kwargs):
         """
         Args:
             data : can be :
                 * a Boxes object
                 * a shapely Polygon
-                * list of 4 numbers (also requires the format kwarg)
+                * list of 4 numbers (also requires the format arg)
 
-            **kwargs:
-                format (str | None) :
-                    specify the format code
+            format (str | None) :
+                specify the format code if data does not contain metadata
+
+            **kwargs: unused
 
         Returns:
             Boxes: the wrapped or converted object

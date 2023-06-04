@@ -101,7 +101,7 @@ class Box(ub.NiceRepr):
         return self
 
     @classmethod
-    def coerce(cls, data, **kwargs):
+    def coerce(cls, data, format=None, **kwargs):
         if isinstance(data, Box):
             return data
         else:
@@ -130,7 +130,6 @@ class Box(ub.NiceRepr):
                     _arr_data = np.array(data)
 
                 if _arr_data is not None:
-                    format = kwargs.get('format', None)
                     if format is None:
                         raise Exception('ambiguous, specify Box format')
                     self = Boxes(_arr_data, format=format)
