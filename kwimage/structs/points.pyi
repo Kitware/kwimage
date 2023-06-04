@@ -1,9 +1,7 @@
 from typing import Any
 from typing import Tuple
-from typing import Union
 from typing import Callable
 import kwimage
-from skimage.transform._geometric import GeometricTransform
 from numpy.typing import ArrayLike
 from numpy import ndarray
 from typing import List
@@ -12,6 +10,10 @@ import kwcoco
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+from kwimage._typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class _PointsWarpMixin:
@@ -28,22 +30,22 @@ class _PointsWarpMixin:
         ...
 
     def warp(self,
-             transform: Union[ArrayLike, Callable, kwimage.Affine,
-                              GeometricTransform, Any],
-             input_dims: Tuple = None,
-             output_dims: Tuple = None,
+             transform: ArrayLike | Callable | kwimage.Affine
+             | SKImageGeometricTransform | Any,
+             input_dims: Tuple | None = None,
+             output_dims: Tuple | None = None,
              inplace: bool = False):
         ...
 
     def scale(self,
-              factor: Union[float, Tuple[float, float]],
-              output_dims: Tuple = None,
+              factor: float | Tuple[float, float],
+              output_dims: Tuple | None = None,
               inplace: bool = ...):
         ...
 
     def translate(self,
                   offset,
-                  output_dims: Tuple = None,
+                  output_dims: Tuple | None = None,
                   inplace: bool = ...):
         ...
 
@@ -99,9 +101,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         ...
 
     def draw_on(self,
-                image: ndarray = None,
-                color: Union[str, Any, List[Any]] = 'white',
-                radius: Union[None, int] = None,
+                image: ndarray | None = None,
+                color: str | Any | List[Any] = 'white',
+                radius: None | int = None,
                 copy: bool = False):
         ...
 
@@ -133,9 +135,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     @classmethod
     def from_coco(cls,
-                  coco_kpts: Union[list, dict],
-                  class_idxs: list = None,
-                  classes: Union[list, kwcoco.CategoryTree] = None,
+                  coco_kpts: list | dict,
+                  class_idxs: list | None = None,
+                  classes: list | kwcoco.CategoryTree | None = None,
                   warn: bool = False):
         ...
 

@@ -15,21 +15,21 @@ import numbers
 import ubelt as ub
 import numpy as np
 from kwimage.structs import _generic
-# from . import _generic
 
-# try:
-#     from xdev import profile
-# except Exception:
-#     from ubelt import identity as profile
+
+__docstubs__ = """
+from kwimage._typing import SKImageGeometricTransform
+"""
 
 
 class _ShapelyMixin:
     """
-    TODO: make shapely the main "format" to reduce conversion cost
+    Extends :class:`Polygon` and :class:`MultiPolygon` with methods that
+    duck-type shapely objects.
 
     References:
-        - [WikiBoolPolygon] https://en.wikipedia.org/wiki/Boolean_operations_on_polygons
-        - [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
+        .. [WikiBoolPolygon] https://en.wikipedia.org/wiki/Boolean_operations_on_polygons
+        .. [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
 
     Example:
         >>> from kwimage.structs.polygon import *  # NOQA
@@ -208,7 +208,7 @@ class _ShapelyMixin:
         Attempt to ensure validity
 
         References:
-            https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
+            .. [SO20833344] https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
         """
         # from shapely.geometry.base import geom_factory
         # from shapely.geos import lgeos
@@ -221,6 +221,11 @@ class _ShapelyMixin:
 
 
 class _PolyArrayBackend:
+    """
+    Extends :class:`Polygon` and :class:`MultiPolygon` with methods related to
+    array representations of polygons.
+    """
+
     def is_numpy(self):
         return self._impl.is_numpy
 
@@ -282,6 +287,10 @@ class _PolyArrayBackend:
 
 
 class _PolyWarpMixin:
+    """
+    Extends :class:`Polygon` and :class:`MultiPolygon` with methods for warping
+    their geometry.
+    """
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
@@ -352,7 +361,7 @@ class _PolyWarpMixin:
         Generalized coordinate transform.
 
         Args:
-            transform (GeometricTransform | ArrayLike | Augmenter | callable):
+            transform (SKImageGeometricTransform | ArrayLike | Augmenter | callable):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -382,12 +391,12 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(3)).exterior == self.exterior)
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
-        import skimage
+        from kwimage._typing import SKImageGeometricTransform
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if transform is None:
             return new
-        elif not isinstance(transform, (np.ndarray, skimage.transform._geometric.GeometricTransform)):
+        elif not isinstance(transform, (np.ndarray, SKImageGeometricTransform)):
             try:
                 import imgaug
             except ImportError:
@@ -927,7 +936,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return ub.urepr(self.data, nl=1)
 
     @classmethod
-    def circle(cls, xy, r, resolution=64):
+    def circle(cls, xy=(0, 0), r=1.0, resolution=64):
         """
         Create a circular or elliptical polygon.
 
@@ -935,7 +944,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Args:
             xy (Iterable[Number]): x and y center coordinate
-            r (Number | Tuple[Number, Number]):
+            r (float | Number | Tuple[Number, Number]):
                 circular radius or major and minor elliptical radius
             resolution (int): number of sides
 
@@ -1653,6 +1662,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
     def to_box(self):
         """
+        ## DEPRECATED: Use :func:`box` instead.
+        ## Do we deprecate this? Should we stick to the to_ / from_ convention?
+
         Returns:
             kwimage.Box
         """
@@ -1662,11 +1674,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
         boxes = kwimage.Box.from_data(ltrb, 'ltrb')
+        # ub.schedule_deprecation(
+        #     'kwimage', 'to_box', 'method',
+        #     migration='use Polygon.box instead',
+        #     deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return boxes
 
     def bounding_box(self):
         """
         Returns an axis-aligned bounding box for the segmentation
+
+        DEPRECATED: Use singular :func:`box` instead.
 
         Returns:
             kwimage.Boxes
@@ -1677,6 +1695,31 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])[None, :]
         boxes = kwimage.Boxes(ltrb, 'ltrb')
+        ub.schedule_deprecation(
+            'kwimage', 'bounding_box', 'method',
+            migration='use Polygon.box instead',
+            deprecate='0.9.19', error='1.0.0', remove='1.1.0')
+        return boxes
+
+    def box(self):
+        """
+        Returns an axis-aligned bounding box for the segmentation
+
+        Returns:
+            kwimage.Box
+
+        Example:
+            >>> import kwimage
+            >>> poly = kwimage.Polygon.random()
+            >>> box = poly.box()
+            >>> print('box = {}'.format(ub.urepr(box, nl=1)))
+        """
+        import kwimage
+        xys = self.data['exterior'].data
+        lt = xys.min(axis=0)
+        rb = xys.max(axis=0)
+        ltrb = np.hstack([lt, rb])
+        boxes = kwimage.Box.coerce(ltrb, format='ltrb')
         return boxes
 
     def bounding_box_polygon(self):
@@ -1828,7 +1871,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    # @profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
                 edgecolor=None, facecolor=None, copy=False):
         """
@@ -2975,6 +3017,13 @@ class PolygonList(_generic.ObjectList):
 
 
 def _kwimage_from_shapely(geom):
+    """
+    Args:
+        geom (shapely.geometry.base.BaseGeometry)
+
+    Returns:
+        Polygon | MultiPolygon
+    """
     import kwimage
     if geom.geom_type == 'Polygon':
         return kwimage.Polygon.from_shapely(geom)
@@ -2986,11 +3035,16 @@ def _kwimage_from_shapely(geom):
 
 def _is_clockwise(verts):
     """
-    References:
-        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
+    Test if points are in clockwise order [SO1165647]_.
 
-    Ignore:
-        verts = poly.data['exterior'].data[::-1]
+    Args:
+        verts (ndarray):
+
+    Returns:
+        bool
+
+    References:
+        .. [SO1165647] https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
     """
     x1 = verts[:-1][:, 0]
     y1 = verts[:-1][:, 1]
@@ -3004,11 +3058,16 @@ def _is_clockwise(verts):
 
 def _order_vertices(verts):
     """
-    References:
-        https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
+    Reorder vertices to be clockwise [SO1709283]_.
 
-    Ignore:
-        verts = poly.data['exterior'].data[::-1]
+    Args:
+        verts (ndarray):
+
+    Returns:
+        ndarray
+
+    References:
+        .. [SO1709283] https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
     """
     mean_x = verts.T[0].sum() / len(verts)
     mean_y = verts.T[1].sum() / len(verts)

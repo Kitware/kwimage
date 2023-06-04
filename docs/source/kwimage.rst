@@ -18,6 +18,8 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
+   kwimage._im_color_data
+   kwimage._internal
    kwimage.im_alphablend
    kwimage.im_color
    kwimage.im_core
@@ -38,3 +40,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

@@ -1,6 +1,5 @@
 from numpy import ndarray
 from typing import Any
-from typing import Union
 from typing import Tuple
 from typing import List
 from typing import Dict
@@ -32,10 +31,14 @@ def atleast_3channels(arr: ndarray, copy: bool = True) -> ndarray:
     ...
 
 
+def exactly_1channel(image: ndarray, ndim: int = 2) -> ndarray:
+    ...
+
+
 def padded_slice(data: Any,
-                 in_slice: Union[slice, Tuple[slice, ...]],
-                 pad: List[Union[int, Tuple]] = None,
-                 padkw: Dict = None,
+                 in_slice: slice | Tuple[slice, ...],
+                 pad: List[int | Tuple] | None = None,
+                 padkw: Dict | None = None,
                  return_info: bool = False) -> Tuple[Any, Dict]:
     ...
 
@@ -48,17 +51,17 @@ def normalize(arr,
     ...
 
 
-def find_robust_normalizers(
-        data: ndarray,
-        params: Union[str, dict] = 'auto') -> Dict[str, str | float]:
+def find_robust_normalizers(data: ndarray,
+                            params: str | dict = 'auto'
+                            ) -> Dict[str, str | float]:
     ...
 
 
 def normalize_intensity(imdata: ndarray,
                         return_info: bool = False,
-                        nodata: Union[None, int] = None,
-                        axis: Union[None, int] = None,
+                        nodata: None | int = None,
+                        axis: None | int = None,
                         dtype: type = ...,
-                        params: Union[str, dict] = 'auto',
-                        mask: Union[ndarray, None] = None) -> ndarray:
+                        params: str | dict = 'auto',
+                        mask: ndarray | None = None) -> ndarray:
     ...

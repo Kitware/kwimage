@@ -606,7 +606,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
             Desired floating point scale factor. If a tuple, the dimension
             ordering is x,y.  Mutually exclusive with dsize, min_dim, max_dim.
 
-        dsize (Tuple[int | None, int | None]):
+        dsize (Tuple[int | None, int | None] | None):
             The desired width and height of the new image. If a dimension is
             None, then it is automatically computed to preserve aspect ratio.
             Mutually exclusive with scale, min_dim, max_dim.

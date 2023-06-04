@@ -1,9 +1,7 @@
 from numpy.typing import ArrayLike
 from typing import Sequence
 from typing import Tuple
-from typing import Union
 from typing import Callable
-from skimage.transform._geometric import GeometricTransform
 from typing import Any
 from numpy import ndarray
 from typing import List
@@ -12,6 +10,10 @@ import ubelt as ub
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+from kwimage._typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class Coords(_generic.Spatial, ub.NiceRepr):
@@ -55,10 +57,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                meta: Incomplete | None = ...):
         ...
 
-    def is_numpy(self):
+    def is_numpy(self) -> bool:
         ...
 
-    def is_tensor(self):
+    def is_tensor(self) -> bool:
         ...
 
     def compress(self,
@@ -102,9 +104,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         ...
 
     def warp(self,
-             transform: Union[GeometricTransform, ArrayLike, Any, Callable],
-             input_dims: Tuple = None,
-             output_dims: Tuple = None,
+             transform: SKImageGeometricTransform | ArrayLike | Any | Callable,
+             input_dims: Tuple | None = None,
+             output_dims: Tuple | None = None,
              inplace: bool = False) -> Coords:
         ...
 
@@ -116,35 +118,35 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         ...
 
     def scale(self,
-              factor: Union[float, Tuple[float, float]],
-              about: Union[Tuple, None] = None,
-              output_dims: Tuple = None,
+              factor: float | Tuple[float, float],
+              about: Tuple | None = None,
+              output_dims: Tuple | None = None,
               inplace: bool = False) -> Coords:
         ...
 
     def translate(self,
-                  offset: Union[float, Tuple[float, float]],
-                  output_dims: Tuple = None,
+                  offset: float | Tuple[float, float],
+                  output_dims: Tuple | None = None,
                   inplace: bool = False) -> Coords:
         ...
 
     def rotate(self,
                theta: float,
-               about: Union[Tuple, None] = None,
-               output_dims: Tuple = None,
+               about: Tuple | None = None,
+               output_dims: Tuple | None = None,
                inplace: bool = False) -> Coords:
         ...
 
     def fill(self,
              image,
              value,
-             coord_axes: Tuple = None,
+             coord_axes: Tuple | None = None,
              interp: str = ...) -> ndarray:
         ...
 
     def soft_fill(self,
                   image,
-                  coord_axes: Tuple = None,
+                  coord_axes: Tuple | None = None,
                   radius: int = ...) -> ndarray:
         ...
 

@@ -1,4 +1,3 @@
-from typing import Union
 from typing import Iterable
 from numpy import ndarray
 from typing import Tuple
@@ -7,15 +6,22 @@ from typing import List
 import ubelt as ub
 from _typeshed import Incomplete
 
+__todo__: str
+BASE_COLORS: Incomplete
+TABLEAU_COLORS: Incomplete
+XKCD_COLORS: Incomplete
+CSS4_COLORS: Incomplete
+KITWARE_COLORS: Incomplete
+
 
 class Color(ub.NiceRepr):
     color01: Incomplete
     space: str
 
     def __init__(self,
-                 color: Union[Color, Iterable[Union[int, float]], str],
-                 alpha: Union[float, None] = None,
-                 space: str = None,
+                 color: Color | Iterable[int | float] | str,
+                 alpha: float | None = None,
+                 space: str | None = None,
                  coerce: bool = True) -> None:
         ...
 
@@ -31,18 +37,18 @@ class Color(ub.NiceRepr):
                  space: str = 'auto') -> Tuple[Number, ...]:
         ...
 
-    def ashex(self, space: Union[None, str] = None) -> str:
+    def ashex(self, space: None | str = None) -> str:
         ...
 
     def as255(
         self,
-        space: Union[None, str] = None
+        space: None | str = None
     ) -> Tuple[int, int, int] | Tuple[int, int, int, int]:
         ...
 
     def as01(
         self,
-        space: Union[None, str] = None
+        space: None | str = None
     ) -> Tuple[float, float, float] | Tuple[float, float, float, float]:
         ...
 
@@ -61,7 +67,10 @@ class Color(ub.NiceRepr):
         ...
 
     @classmethod
-    def random(Color, pool: str = ...) -> Color:
+    def random(Color,
+               pool: str = ...,
+               with_alpha: int = ...,
+               rng: Incomplete | None = ...) -> Color:
         ...
 
     def distance(self, other: Color, space: str = 'lab') -> float:
@@ -69,14 +78,13 @@ class Color(ub.NiceRepr):
 
     def interpolate(self,
                     other: Color,
-                    alpha: Union[float, List[float]] = 0.5,
-                    ispace: Union[str, None] = None,
-                    ospace: Union[str, None] = None) -> Color | List[Color]:
+                    alpha: float | List[float] = 0.5,
+                    ispace: str | None = None,
+                    ospace: str | None = None) -> Color | List[Color]:
         ...
 
+    def to_image(self, dsize: Tuple[int, int] = ...):
+        ...
 
-BASE_COLORS: Incomplete
-TABLEAU_COLORS: Incomplete
-XKCD_COLORS: Incomplete
-CSS4_COLORS: Incomplete
-KITWARE_COLORS: Incomplete
+    def adjust(self, saturate: float = 0, lighten: float = 0):
+        ...

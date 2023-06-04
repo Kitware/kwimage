@@ -76,13 +76,16 @@ SeeAlso:
 import numpy as np
 import ubelt as ub
 import warnings
-import skimage
 import kwarray
 import numbers  # NOQA
 from kwimage.structs import _generic  # NOQA
 from kwimage import _internal
 import sys
 
+
+__docstubs__ = """
+from kwimage._typing import SKImageGeometricTransform
+"""
 
 __all__ = ['Boxes']
 
@@ -353,7 +356,8 @@ def _isect_areas(ltrb1, ltrb2, bias=0, _impl=None):
 
 class _BoxConversionMixins(object):
     """
-    Methods for converting between different bounding box formats
+    Extends :class:`Boxes` with methods for converting between different
+    bounding box formats.
     """
 
     convert_funcs = {}
@@ -626,17 +630,18 @@ class _BoxConversionMixins(object):
         return self
 
     @classmethod
-    def coerce(Boxes, data, **kwargs):
+    def coerce(Boxes, data, format=None, **kwargs):
         """
         Args:
             data : can be :
                 * a Boxes object
                 * a shapely Polygon
-                * list of 4 numbers (also requires the format kwarg)
+                * list of 4 numbers (also requires the format arg)
 
-            **kwargs:
-                format (str | None) :
-                    specify the format code
+            format (str | None) :
+                specify the format code if data does not contain metadata
+
+            **kwargs: unused
 
         Returns:
             Boxes: the wrapped or converted object
@@ -933,6 +938,10 @@ class _BoxConversionMixins(object):
 
 
 class _BoxPropertyMixins(object):
+    """
+    Extends :class:`Boxes` with properties for quick access to common
+    information.
+    """
 
     @property
     def xy_center(self):
@@ -1118,7 +1127,7 @@ class _BoxPropertyMixins(object):
 
 class _BoxTransformMixins(object):
     """
-    methods for transforming bounding boxes
+    Extends :class:`Boxes` with methods for warping their geometry.
     """
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
@@ -1164,7 +1173,7 @@ class _BoxTransformMixins(object):
         implemented).
 
         Args:
-            transform (ArrayLike | Callable | kwimage.Affine | skimage.transform._geometric.GeometricTransform | Any):
+            transform (ArrayLike | Callable | kwimage.Affine | SKImageGeometricTransform | Any):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -1182,6 +1191,7 @@ class _BoxTransformMixins(object):
 
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> import skimage
             >>> transform = skimage.transform.AffineTransform(scale=(2, 3), translation=(4, 5))
             >>> Boxes([25, 30, 15, 10], 'xywh').warp(transform)
             <Boxes(xywh, array([54., 95., 30., 30.]))>
@@ -1216,6 +1226,8 @@ class _BoxTransformMixins(object):
             >>> assert np.all(new.area == 0)
         """
         import kwimage
+        import skimage
+        from kwimage._typing import SKImageGeometricTransform
         torch = sys.modules.get('torch', None)
 
         if inplace:
@@ -1252,7 +1264,7 @@ class _BoxTransformMixins(object):
             elif isinstance(transform, skimage.transform.EuclideanTransform):
                 rotation = transform.rotation
                 translation = transform.translation
-            elif isinstance(transform, skimage.transform._geometric.GeometricTransform):
+            elif isinstance(transform, SKImageGeometricTransform):
                 matrix = transform.params
             elif _generic.isinstance_arraytypes(transform):
                 matrix = transform
@@ -1642,9 +1654,6 @@ class _BoxTransformMixins(object):
         Set the widths and/or heights of each box, while leaving a point in the
         box fixed.
 
-        the minimum
-        x/y point constant.
-
         Args:
             width (Number | ndarray | None):
                 if specified and a number, sets the width of each box to this
@@ -1829,7 +1838,8 @@ class _BoxTransformMixins(object):
 
 class _BoxDrawMixins(object):
     """
-    Non-core functions for box visualization
+    Extends :class:`Boxes` with methods for matplotlib and opencv
+    visualization.
 
     Example:
         >>> # Drawing boxes (and annotation objects in general) with kwimage is

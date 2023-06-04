@@ -12,5 +12,6 @@ def radial_fourier_mask(img_hwc: ndarray,
 def fourier_mask(img_hwc: ndarray,
                  mask: ndarray,
                  axis: Incomplete | None = ...,
-                 clip: Incomplete | None = ...):
+                 clip: Incomplete | None = ...,
+                 backend: str = ...):
     ...

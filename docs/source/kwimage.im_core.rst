@@ -5,3 +5,4 @@ kwimage.im\_core module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

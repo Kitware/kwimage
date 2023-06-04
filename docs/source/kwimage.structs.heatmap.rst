@@ -5,3 +5,4 @@ kwimage.structs.heatmap module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

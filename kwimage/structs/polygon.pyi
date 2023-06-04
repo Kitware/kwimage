@@ -1,8 +1,6 @@
-from typing import Union
 from typing import Any
 from typing import Tuple
 from typing import Callable
-from skimage.transform._geometric import GeometricTransform
 from numpy.typing import ArrayLike
 import kwimage
 from typing import List
@@ -17,6 +15,10 @@ import ubelt as ub
 from _typeshed import Incomplete
 from kwimage.structs import _generic
 from typing import Any
+
+from kwimage._typing import SKImageGeometricTransform
+
+__docstubs__: str
 
 
 class _ShapelyMixin:
@@ -88,29 +90,29 @@ class _PolyWarpMixin:
         ...
 
     def warp(self,
-             transform: Union[GeometricTransform, ArrayLike, Any, Callable],
-             input_dims: Tuple = None,
-             output_dims: Tuple = None,
+             transform: SKImageGeometricTransform | ArrayLike | Any | Callable,
+             input_dims: Tuple | None = None,
+             output_dims: Tuple | None = None,
              inplace: bool = False):
         ...
 
     def scale(self,
-              factor: Union[float, Tuple[float, float]],
-              about: Union[Tuple, None] = None,
-              output_dims: Tuple = None,
+              factor: float | Tuple[float, float],
+              about: Tuple | None = None,
+              output_dims: Tuple | None = None,
               inplace: bool = False):
         ...
 
     def translate(self,
                   offset,
-                  output_dims: Tuple = None,
+                  output_dims: Tuple | None = None,
                   inplace: bool = False):
         ...
 
     def rotate(self,
                theta: float,
-               about: Union[Tuple, None, str] = None,
-               output_dims: Tuple = None,
+               about: Tuple | None | str = None,
+               output_dims: Tuple | None = None,
                inplace: bool = ...):
         ...
 
@@ -152,9 +154,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
 
     @classmethod
     def circle(cls,
-               xy: Iterable[Number],
-               r: Union[Number, Tuple[Number, Number]],
+               xy: Iterable[Number] = ...,
+               r: float | Number | Tuple[Number, Number] = 1.0,
                resolution: int = 64) -> Polygon:
+        ...
+
+    @classmethod
+    def regular(cls, num, xy=..., r: int = ...):
+        ...
+
+    @classmethod
+    def star(cls, xy=..., r: int = ...):
         ...
 
     @classmethod
@@ -167,7 +177,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
         ...
 
     def to_mask(self,
-                dims: Tuple = None,
+                dims: Tuple | None = None,
                 pixels_are: str = 'points') -> kwimage.Mask:
         ...
 
@@ -204,8 +214,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
 
     @classmethod
     def from_coco(cls,
-                  data: Union[List[Number], Dict],
-                  dims: Union[None, Tuple[int, ...]] = None) -> Polygon:
+                  data: List[Number] | Dict,
+                  dims: None | Tuple[int, ...] = None) -> Polygon:
         ...
 
     def to_coco(self, style: str = 'orig') -> List | Dict:
@@ -221,7 +231,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
     def centroid(self) -> Tuple[Number, Number]:
         ...
 
+    def to_box(self) -> kwimage.Box:
+        ...
+
     def bounding_box(self) -> kwimage.Boxes:
+        ...
+
+    def box(self) -> kwimage.Box:
         ...
 
     def bounding_box_polygon(self) -> kwimage.Polygon:
@@ -235,41 +251,44 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin,
 
     def fill(self,
              image: ndarray,
-             value: Union[int, Tuple[int]] = 1,
-             pixels_are: str = 'points') -> ndarray:
+             value: int | Tuple[int] = 1,
+             pixels_are: str = 'points',
+             assert_inplace: bool = False) -> ndarray:
         ...
 
     def draw_on(self,
                 image: ndarray,
-                color: Union[str, tuple] = 'blue',
+                color: str | tuple = 'blue',
                 fill: bool = True,
                 border: bool = False,
                 alpha: float = 1.0,
-                edgecolor: Union[str, tuple] = None,
-                facecolor: Union[str, tuple] = None,
+                edgecolor: str | tuple | None = None,
+                facecolor: str | tuple | None = None,
                 copy: bool = False) -> np.ndarray:
         ...
 
-    def draw(self,
-             color: Union[str, Tuple] = 'blue',
-             ax: Incomplete | None = ...,
-             alpha: float = 1.0,
-             radius: int = ...,
-             setlim: bool = False,
-             border: bool = None,
-             linewidth: bool = None,
-             edgecolor: Union[None, Any] = None,
-             facecolor: Union[None, Any] = None,
-             fill: bool = True,
-             vertex: float = False,
-             vertexcolor: Any = None) -> matplotlib.patches.PathPatch | None:
+    def draw(
+            self,
+            color: str | Tuple = 'blue',
+            ax: Incomplete | None = ...,
+            alpha: float = 1.0,
+            radius: int = ...,
+            setlim: bool | str = False,
+            border: bool | None = None,
+            linewidth: bool | None = None,
+            edgecolor: None | Any = None,
+            facecolor: None | Any = None,
+            fill: bool = True,
+            vertex: float = False,
+            vertexcolor: Any | None = None
+    ) -> matplotlib.patches.PathPatch | None:
         ...
 
     def interpolate(self, other, alpha):
         ...
 
     def morph(self, other: kwimage.Polygon,
-              alpha: Union[float, List[float]]) -> Polygon | List[Polygon]:
+              alpha: float | List[float]) -> Polygon | List[Polygon]:
         ...
 
 
@@ -285,14 +304,18 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
     def fill(self,
              image: ndarray,
-             value: Union[int, Tuple[int, ...]] = 1,
-             pixels_are: str = ...) -> ndarray:
+             value: int | Tuple[int, ...] = 1,
+             pixels_are: str = ...,
+             assert_inplace: bool = ...) -> ndarray:
         ...
 
     def to_multi_polygon(self) -> MultiPolygon:
         ...
 
     def to_boxes(self) -> kwimage.Boxes:
+        ...
+
+    def to_box(self) -> kwimage.Box:
         ...
 
     def bounding_box(self) -> kwimage.Boxes:
@@ -317,8 +340,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
     @classmethod
     def from_shapely(
-        MultiPolygon, geom: Union[shapely.geometry.MultiPolygon,
-                                  shapely.geometry.Polygon]
+        MultiPolygon,
+        geom: shapely.geometry.MultiPolygon | shapely.geometry.Polygon
     ) -> MultiPolygon:
         ...
 
@@ -331,8 +354,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
     @classmethod
     def from_coco(cls,
-                  data: List[Union[List[Number], Dict]],
-                  dims: Union[None, Tuple[int, ...]] = None) -> MultiPolygon:
+                  data: List[List[Number] | Dict],
+                  dims: None | Tuple[int, ...] = None) -> MultiPolygon:
         ...
 
     def to_coco(self, style: str = 'orig'):
@@ -366,8 +389,9 @@ class PolygonList(_generic.ObjectList):
 
     def fill(self,
              image: ndarray,
-             value: Union[int, Tuple[int, ...]] = 1,
-             pixels_are: str = ...) -> ndarray:
+             value: int | Tuple[int, ...] = 1,
+             pixels_are: str = ...,
+             assert_inplace: bool = ...) -> ndarray:
         ...
 
     def draw_on(self, *args, **kw):

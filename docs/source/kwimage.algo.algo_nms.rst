@@ -5,3 +5,4 @@ kwimage.algo.algo\_nms module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

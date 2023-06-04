@@ -7,6 +7,7 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
+   kwimage.structs._generic
    kwimage.structs.boxes
    kwimage.structs.coords
    kwimage.structs.detections
@@ -24,3 +25,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

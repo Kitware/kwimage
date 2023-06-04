@@ -5,3 +5,4 @@ kwimage.structs.detections module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

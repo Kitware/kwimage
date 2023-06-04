@@ -9,6 +9,11 @@ import warnings
 from kwimage.structs import _generic
 
 
+__docstubs__ = """
+from kwimage._typing import SKImageGeometricTransform
+"""
+
+
 class _PointsWarpMixin:
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
@@ -83,7 +88,7 @@ class _PointsWarpMixin:
         Generalized coordinate transform.
 
         Args:
-            transform (ArrayLike | Callable | kwimage.Affine | GeometricTransform | Augmenter):
+            transform (ArrayLike | Callable | kwimage.Affine | SKImageGeometricTransform | Augmenter):
                 scikit-image tranform, a 3x3 transformation matrix,
                 an imgaug Augmenter, or generic callable which transforms
                 an NxD ndarray.
@@ -110,12 +115,13 @@ class _PointsWarpMixin:
         """
         import kwimage
         import skimage
+        from kwimage._typing import SKImageGeometricTransform
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         if transform is None:
             return new
 
         if not isinstance(transform, (np.ndarray,
-                                      skimage.transform._geometric.GeometricTransform,
+                                      SKImageGeometricTransform,
                                       kwimage.Affine)):
             try:
                 import imgaug

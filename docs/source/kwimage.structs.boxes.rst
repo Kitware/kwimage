@@ -5,3 +5,4 @@ kwimage.structs.boxes module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:
