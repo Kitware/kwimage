@@ -403,3 +403,33 @@ class Box(ub.NiceRepr):
         return self.boxes.draw(color=color, alpha=alpha, labels=labels,
                                centers=centers, fill=fill, lw=lw, ax=ax,
                                setlim=setlim, **kwargs)
+
+
+def _transfer_docstrings():
+    """
+    Helper to populate Box docstrings from Boxes. In the future we should may
+    want to autogenerate better docstrings statically, but for now lets at
+    least add some introspection.
+    """
+    from kwimage.structs import Boxes
+    import types
+    for k in dir(Box):
+        if not k.startswith('_') and hasattr(Boxes, k):
+            v1 = getattr(Box, k)
+            if isinstance(v1, types.MethodType):
+                v1 = v1.__func__
+            if isinstance(v1, property):
+                v1 = v1.fget
+            if hasattr(v1, '__doc__') and v1.__doc__ is None:
+                v2 = getattr(Boxes, k)
+                if isinstance(v2, property):
+                    v2 = v2.fget
+                if v2.__doc__ is not None:
+                    v1.__doc__ = (
+                        '\n        This function wraps one of the same name in '
+                        'kwimage.Boxes, but does not have a docstring of its own. '
+                        'In the meantime we will show the docstring from Boxes\n'
+                    ) + v2.__doc__
+
+if 1:
+    _transfer_docstrings()

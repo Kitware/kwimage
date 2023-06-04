@@ -1642,9 +1642,6 @@ class _BoxTransformMixins(object):
         Set the widths and/or heights of each box, while leaving a point in the
         box fixed.
 
-        the minimum
-        x/y point constant.
-
         Args:
             width (Number | ndarray | None):
                 if specified and a number, sets the width of each box to this
