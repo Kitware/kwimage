@@ -1,6 +1,6 @@
 # Helpers for typing
 
-import skimage.transform import _geometric
+from skimage.transform import _geometric
 
 try:
     SKImageGeometricTransform = _geometric._GeometricTransform
