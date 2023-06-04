@@ -5,3 +5,4 @@ kwimage.util\_warp module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

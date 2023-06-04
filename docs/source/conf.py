@@ -16,7 +16,7 @@ Notes:
 
     # need to edit the conf.py
     cd ~/code/kwimage/docs
-    sphinx-apidoc -f -o ~/code/kwimage/docs/source ~/code/kwimage/kwimage --separate
+    sphinx-apidoc --private -f -o ~/code/kwimage/docs/source ~/code/kwimage/kwimage --separate
     make html
 
     Also:

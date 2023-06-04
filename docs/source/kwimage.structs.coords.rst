@@ -5,3 +5,4 @@ kwimage.structs.coords module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

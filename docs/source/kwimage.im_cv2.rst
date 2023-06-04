@@ -5,3 +5,4 @@ kwimage.im\_cv2 module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

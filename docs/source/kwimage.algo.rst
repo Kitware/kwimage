@@ -1,6 +1,14 @@
 kwimage.algo package
 ====================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   kwimage.algo._nms_backend
+
 Submodules
 ----------
 
@@ -16,3 +24,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:
