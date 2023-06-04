@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 import scriptconfig as scfg
 import ubelt as ub
@@ -15,6 +14,7 @@ def main(cmdline=1, **kwargs):
     """
     Example:
         >>> # xdoctest: +SKIP
+        >>> # xdoctest: +REQUIRES(module:scriptconfig)
         >>> cmdline = 0
         >>> kwargs = dict(
         >>> )
