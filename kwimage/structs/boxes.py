@@ -353,7 +353,8 @@ def _isect_areas(ltrb1, ltrb2, bias=0, _impl=None):
 
 class _BoxConversionMixins(object):
     """
-    Methods for converting between different bounding box formats
+    Extends :class:`Boxes` with methods for converting between different
+    bounding box formats.
     """
 
     convert_funcs = {}
@@ -933,6 +934,10 @@ class _BoxConversionMixins(object):
 
 
 class _BoxPropertyMixins(object):
+    """
+    Extends :class:`Boxes` with properties for quick access to common
+    information.
+    """
 
     @property
     def xy_center(self):
@@ -1118,7 +1123,7 @@ class _BoxPropertyMixins(object):
 
 class _BoxTransformMixins(object):
     """
-    methods for transforming bounding boxes
+    Extends :class:`Boxes` with methods for warping their geometry.
     """
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
@@ -1826,7 +1831,8 @@ class _BoxTransformMixins(object):
 
 class _BoxDrawMixins(object):
     """
-    Non-core functions for box visualization
+    Extends :class:`Boxes` with methods for matplotlib and opencv
+    visualization.
 
     Example:
         >>> # Drawing boxes (and annotation objects in general) with kwimage is

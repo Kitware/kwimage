@@ -15,21 +15,16 @@ import numbers
 import ubelt as ub
 import numpy as np
 from kwimage.structs import _generic
-# from . import _generic
-
-# try:
-#     from xdev import profile
-# except Exception:
-#     from ubelt import identity as profile
 
 
 class _ShapelyMixin:
     """
-    TODO: make shapely the main "format" to reduce conversion cost
+    Extends :class:`Polygon` and :class:`MultiPolygon` with methods that
+    duck-type shapely objects.
 
     References:
-        - [WikiBoolPolygon] https://en.wikipedia.org/wiki/Boolean_operations_on_polygons
-        - [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
+        .. [WikiBoolPolygon] https://en.wikipedia.org/wiki/Boolean_operations_on_polygons
+        .. [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
 
     Example:
         >>> from kwimage.structs.polygon import *  # NOQA
@@ -208,7 +203,7 @@ class _ShapelyMixin:
         Attempt to ensure validity
 
         References:
-            https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
+            .. [SO20833344] https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
         """
         # from shapely.geometry.base import geom_factory
         # from shapely.geos import lgeos
@@ -221,6 +216,11 @@ class _ShapelyMixin:
 
 
 class _PolyArrayBackend:
+    """
+    Extends :class:`Polygon` and :class:`MultiPolygon` with methods related to
+    array representations of polygons.
+    """
+
     def is_numpy(self):
         return self._impl.is_numpy
 
@@ -282,6 +282,10 @@ class _PolyArrayBackend:
 
 
 class _PolyWarpMixin:
+    """
+    Extends :class:`Polygon` and :class:`MultiPolygon` with methods for warping
+    their geometry.
+    """
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
@@ -1862,7 +1866,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    # @profile
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
                 edgecolor=None, facecolor=None, copy=False):
         """
@@ -3009,6 +3012,13 @@ class PolygonList(_generic.ObjectList):
 
 
 def _kwimage_from_shapely(geom):
+    """
+    Args:
+        geom (shapely.geometry.base.BaseGeometry)
+
+    Returns:
+        Polygon | MultiPolygon
+    """
     import kwimage
     if geom.geom_type == 'Polygon':
         return kwimage.Polygon.from_shapely(geom)
@@ -3020,11 +3030,16 @@ def _kwimage_from_shapely(geom):
 
 def _is_clockwise(verts):
     """
-    References:
-        https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
+    Test if points are in clockwise order [SO1165647]_.
 
-    Ignore:
-        verts = poly.data['exterior'].data[::-1]
+    Args:
+        verts (ndarray):
+
+    Returns:
+        bool
+
+    References:
+        .. [SO1165647] https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
     """
     x1 = verts[:-1][:, 0]
     y1 = verts[:-1][:, 1]
@@ -3038,11 +3053,16 @@ def _is_clockwise(verts):
 
 def _order_vertices(verts):
     """
-    References:
-        https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
+    Reorder vertices to be clockwise [SO1709283]_.
 
-    Ignore:
-        verts = poly.data['exterior'].data[::-1]
+    Args:
+        verts (ndarray):
+
+    Returns:
+        ndarray
+
+    References:
+        .. [SO1709283] https://stackoverflow.com/questions/1709283/how-can-i-sort-a-coordinate-list-for-a-rectangle-counterclockwise
     """
     mean_x = verts.T[0].sum() / len(verts)
     mean_y = verts.T[1].sum() / len(verts)
