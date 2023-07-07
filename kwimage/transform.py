@@ -55,6 +55,8 @@ class Matrix(Transform):
         prefix = '<{}('.format(self.__class__.__name__)
         if isinstance(self.matrix, np.ndarray):
             return np.array2string(self.matrix, separator=', ', prefix=prefix)
+        elif self.matrix is None:
+            return 'eye'
         else:
             return ub.urepr(self.matrix.tolist(), nl=1)
 
@@ -755,7 +757,7 @@ class Projective(Linear):
             else:
                 known_params = {'uv', 'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
                 params = {key: data[key] for key in known_params if key in data}
-                if len(known_params & keys):
+                if len(keys - known_params) == 0:
                     type_ = params.pop('type', None)  # NOQA
                     # if len(keys) == 1:
                     #     # Special cases for speed
@@ -1250,14 +1252,17 @@ class Affine(Projective):
 
         Example:
             >>> import kwimage
+            >>> import skimage.transform
             >>> kwimage.Affine.coerce({'type': 'affine', 'matrix': [[1, 0, 0], [0, 1, 0]]})
             >>> kwimage.Affine.coerce({'scale': 2})
             >>> kwimage.Affine.coerce({'offset': 3})
             >>> kwimage.Affine.coerce(np.eye(3))
             >>> kwimage.Affine.coerce(None)
+            >>> kwimage.Affine.coerce({})
             >>> kwimage.Affine.coerce(skimage.transform.AffineTransform(scale=30))
         """
         if data is None and not kwargs:
+            # Just use a real eye matrix here.
             return cls(matrix=None)
         if data is None:
             data = kwargs
@@ -1281,7 +1286,7 @@ class Affine(Projective):
             else:
                 known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
                 params = {key: data[key] for key in known_params if key in data}
-                if len(known_params & keys):
+                if len(keys - known_params) == 0:
                     params.pop('type', None)
                     _nkeys = len(keys)
                     if _nkeys == 1:

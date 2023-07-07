@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.20 - Unreleased
 
+### Fixed
+* Fixed issue when giving Affine.coerce an empty dictionary
+
 
 ## Version 0.9.19 - Released 2023-06-04
 
