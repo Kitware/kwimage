@@ -2140,19 +2140,19 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             edgecolor (None | Any):
                 if None, uses the value of ``color``.
                 Otherwise the color of the border when linewidth > 0.
-                Extended types Coercable[kwimage.Color].
+                Extended types Coercible[kwimage.Color].
 
             facecolor (None | Any):
                 if None, uses the value of ``color``.
                 Otherwise, color of the border when fill=True.
-                Extended types Coercable[kwimage.Color].
+                Extended types Coercible[kwimage.Color].
 
             vertex (float):
                 if non-zero, draws vertexes on the polygon with this radius.
 
             vertexcolor (Any):
                 color of vertexes
-                Extended types Coercable[kwimage.Color].
+                Extended types Coercible[kwimage.Color].
 
         Returns:
             matplotlib.patches.PathPatch | None :
