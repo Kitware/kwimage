@@ -1719,8 +1719,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         lt = xys.min(axis=0)
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
-        boxes = kwimage.Box.coerce(ltrb, format='ltrb')
-        return boxes
+        box = kwimage.Box.coerce(ltrb, format='ltrb')
+        return box
 
     def bounding_box_polygon(self):
         """
@@ -2564,6 +2564,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         """
         Return the bounding box of the multi polygon
 
+        DEPRECATED: Use singular :func:`box` instead.
+
         Returns:
             kwimage.Boxes: a Boxes object with one box that encloses all
                 polygons
@@ -2587,6 +2589,33 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         ltrb = np.hstack([lt, rb])[None, :]
         boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
+
+    def box(self):
+        """
+        Returns an axis-aligned bounding box for the segmentation
+
+        Returns:
+            kwimage.Box
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = MultiPolygon.random(rng=0, n=10)
+            >>> boxes = self.box()
+            >>> sub_boxes = [d.box() for d in self.data]
+            >>> areas1 = np.array([s.intersection(boxes).area for s in sub_boxes])
+            >>> areas2 = np.array([s.area for s in sub_boxes])
+            >>> assert np.allclose(areas1, areas2)
+        """
+        import kwimage
+        lt = np.array([np.inf, np.inf])
+        rb = np.array([-np.inf, -np.inf])
+        for data in self.data:
+            xys = data.data['exterior'].data
+            lt = np.minimum(lt, xys.min(axis=0))
+            rb = np.maximum(rb, xys.max(axis=0))
+        ltrb = np.hstack([lt, rb])[None, :]
+        box = kwimage.Box.coerce(ltrb, format='ltrb')
+        return box
 
     def to_mask(self, dims=None, pixels_are='points'):
         """

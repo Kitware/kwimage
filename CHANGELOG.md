@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Fixed issue when giving Affine.coerce an empty dictionary
+* Issue in box intersection / union_hull with integer data
+
+### Added
+* intersection to Box class.
 
 
 ## Version 0.9.19 - Released 2023-06-04

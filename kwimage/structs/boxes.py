@@ -3172,7 +3172,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 (must be of same length)
 
         Returns:
-            Boxes: the intersection geometry
+            Boxes: the component-wise intersection geometry
 
         Examples:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -3198,7 +3198,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         is_bad = np.any(tl > br, axis=1)
         ltrb = np.concatenate([tl, br], axis=-1)
 
-        ltrb[is_bad] = np.nan
+        if is_bad.any():
+            if ltrb.kind != 'f':
+                ltrb = ltrb.to(float)
+            ltrb[is_bad] = np.nan
 
         isect = Boxes(ltrb, 'ltrb')
 
@@ -3238,7 +3241,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         is_bad = np.any(tl > br, axis=1)
         ltrb = np.concatenate([tl, br], axis=-1)
 
-        ltrb[is_bad] = np.nan
+        if is_bad.any():
+            if ltrb.kind != 'f':
+                ltrb = ltrb.to(float)
+            ltrb[is_bad] = np.nan
 
         isect = Boxes(ltrb, 'ltrb')
 

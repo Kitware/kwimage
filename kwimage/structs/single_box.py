@@ -186,6 +186,32 @@ class Box(ub.NiceRepr):
         new = self.__class__(new_boxes)
         return new
 
+    def intersection(self, other):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Box.coerce([0, 0, 10, 10], 'xywh')
+            >>> other = kwimage.Box.coerce([3, 3, 10, 10], 'xywh')
+            >>> print(str(self.intersection(other)))
+            <Box(ltrb, [3, 3, 10, 10])>
+        """
+        new_boxes = self.boxes.intersection(other.boxes)
+        new = self.__class__(new_boxes)
+        return new
+
+    def union_hull(self, other):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Box.coerce([0, 0, 10, 10], 'xywh')
+            >>> other = kwimage.Box.coerce([3, 3, 10, 10], 'xywh')
+            >>> print(str(self.union_hull(other)))
+            <Box(ltrb, [0, 0, 13, 13])>
+        """
+        new_boxes = self.boxes.union_hull(other.boxes)
+        new = self.__class__(new_boxes)
+        return new
+
     def to_ltrb(self, *args, **kwargs):
         """
         Example:
