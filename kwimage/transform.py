@@ -1,5 +1,7 @@
 """
 Objects for representing and manipulating image transforms.
+
+XDEV_PROFILE=1 xdoctest ~/code/kwimage/kwimage/transform.py
 """
 import ubelt as ub
 import numpy as np

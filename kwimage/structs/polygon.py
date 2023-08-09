@@ -1689,6 +1689,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             kwimage.Boxes
         """
+        ub.schedule_deprecation(
+            'kwimage', 'Polygon.bounding_box', 'function',
+            migration='Use the box method instead.', deprecate='0.9.20',
+            error='1.0.0', remove='1.1.0')
         import kwimage
         xys = self.data['exterior'].data
         lt = xys.min(axis=0)
@@ -1793,7 +1797,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> # xdoctest: +REQUIRES(module:rasterio)
             >>> import kwimage
-            >>> mask = kwimage.Mask.random()
+            >>> mask = kwimage.Mask.random(rng=0)
             >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
             >>> image = np.zeros_like(mask.data)
             >>> self.fill(image, pixels_are='areas')
@@ -2579,6 +2583,10 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             >>> areas2 = np.array([s.area[0] for s in sub_boxes])
             >>> assert np.allclose(areas1, areas2)
         """
+        ub.schedule_deprecation(
+            'kwimage', 'MultiPolygon.bounding_box', 'function',
+            migration='Use the box method instead.', deprecate='0.9.20',
+            error='1.0.0', remove='1.1.0')
         import kwimage
         lt = np.array([np.inf, np.inf])
         rb = np.array([-np.inf, -np.inf])

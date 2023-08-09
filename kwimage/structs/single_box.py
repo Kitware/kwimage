@@ -374,7 +374,7 @@ class Box(ub.NiceRepr):
         return self.boxes.to_polygons()[0]
 
     def to_coco(self):
-        return self.boxes.to_coco()[0]
+        return list(self.boxes.to_coco())[0]
 
     def draw_on(self, image=None, color='blue', alpha=None, label=None,
                 copy=False, thickness=2, label_loc='top_left'):

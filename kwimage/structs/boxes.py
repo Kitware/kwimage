@@ -3199,7 +3199,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         ltrb = np.concatenate([tl, br], axis=-1)
 
         if is_bad.any():
-            if ltrb.kind != 'f':
+            if ltrb.dtype.kind != 'f':
                 ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
@@ -3209,16 +3209,21 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     def union_hull(self, other):
         """
-        Componentwise hull union between two sets of Boxes
+        Componentwise bounds of the union between two sets of Boxes
 
         NOTE: convert to polygon to do a real union.
+
+        Note:
+            This is not a real hull. A better name for this might be
+            union_bounds because we are returning the axis-aligned bounds of
+            the convex hull of the union.
 
         Args:
             other (Boxes): boxes to union with this object.
                 (must be of same length)
 
         Returns:
-            Boxes: unioned boxes
+            Boxes: bounding box of the unioned boxes
 
         Examples:
             >>> # xdoctest: +IGNORE_WHITESPACE
@@ -3242,7 +3247,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         ltrb = np.concatenate([tl, br], axis=-1)
 
         if is_bad.any():
-            if ltrb.kind != 'f':
+            if ltrb.dtype.kind != 'f':
                 ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
