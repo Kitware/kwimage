@@ -371,7 +371,7 @@ class Box(ub.NiceRepr):
         """
         Example:
             >>> import kwimage
-            >>> kwimage.Box.random().to_polygon()
+            >>> kwimage.Box.random().to_shapely()
         """
         return self.boxes.to_shapely()[0]
 
