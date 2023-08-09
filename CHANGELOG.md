@@ -4,7 +4,18 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.19 - Unreleased
+## Version 0.9.20 - Unreleased
+
+### Fixed
+* Fixed issue when giving Affine.coerce an empty dictionary
+* Issue in box intersection / union_hull with integer data
+* Fixed `Box.to_coco()`
+
+### Added
+* intersection to Box class.
+
+
+## Version 0.9.19 - Released 2023-06-04
 
 ### Changed
 * `grab_test_image` now falls back to mirrors if the first URL returns an error

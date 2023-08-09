@@ -186,6 +186,32 @@ class Box(ub.NiceRepr):
         new = self.__class__(new_boxes)
         return new
 
+    def intersection(self, other):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Box.coerce([0, 0, 10, 10], 'xywh')
+            >>> other = kwimage.Box.coerce([3, 3, 10, 10], 'xywh')
+            >>> print(str(self.intersection(other)))
+            <Box(ltrb, [3, 3, 10, 10])>
+        """
+        new_boxes = self.boxes.intersection(other.boxes)
+        new = self.__class__(new_boxes)
+        return new
+
+    def union_hull(self, other):
+        """
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Box.coerce([0, 0, 10, 10], 'xywh')
+            >>> other = kwimage.Box.coerce([3, 3, 10, 10], 'xywh')
+            >>> print(str(self.union_hull(other)))
+            <Box(ltrb, [0, 0, 13, 13])>
+        """
+        new_boxes = self.boxes.union_hull(other.boxes)
+        new = self.__class__(new_boxes)
+        return new
+
     def to_ltrb(self, *args, **kwargs):
         """
         Example:
@@ -342,13 +368,28 @@ class Box(ub.NiceRepr):
         return self.boxes.to_slices(endpoint=endpoint)[0]
 
     def to_shapely(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> kwimage.Box.random().to_shapely()
+        """
         return self.boxes.to_shapely()[0]
 
     def to_polygon(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> kwimage.Box.random().to_polygon()
+        """
         return self.boxes.to_polygons()[0]
 
     def to_coco(self):
-        return self.boxes.to_coco()[0]
+        """
+        Example:
+            >>> import kwimage
+            >>> kwimage.Box.random().to_coco()
+        """
+        return list(self.boxes.to_coco())[0]
 
     def draw_on(self, image=None, color='blue', alpha=None, label=None,
                 copy=False, thickness=2, label_loc='top_left'):
