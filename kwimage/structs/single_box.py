@@ -368,12 +368,27 @@ class Box(ub.NiceRepr):
         return self.boxes.to_slices(endpoint=endpoint)[0]
 
     def to_shapely(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> kwimage.Box.random().to_polygon()
+        """
         return self.boxes.to_shapely()[0]
 
     def to_polygon(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> kwimage.Box.random().to_polygon()
+        """
         return self.boxes.to_polygons()[0]
 
     def to_coco(self):
+        """
+        Example:
+            >>> import kwimage
+            >>> kwimage.Box.random().to_coco()
+        """
         return list(self.boxes.to_coco())[0]
 
     def draw_on(self, image=None, color='blue', alpha=None, label=None,
