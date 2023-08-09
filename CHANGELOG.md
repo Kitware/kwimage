@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.20 - Unreleased
+## Version 0.9.21 - Unreleased
+
+
+## Version 0.9.20 - Released 2023-08-09
 
 ### Fixed
 * Fixed issue when giving Affine.coerce an empty dictionary
