@@ -1010,8 +1010,9 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
     return image
 
 
-def draw_header_text(image, text, fit=False, color='strawberry', halign='center',
-                     stack='auto', bg_color='black', **kwargs):
+def draw_header_text(image=None, text=None, fit=False, color='strawberry',
+                     halign='center', stack='auto', bg_color='black',
+                     **kwargs):
     """
     Places a black bar on top of an image and writes text in it
 
@@ -1071,6 +1072,9 @@ def draw_header_text(image, text, fit=False, color='strawberry', halign='center'
     """
     # import cv2
     import kwimage
+
+    if text is None:
+        raise ValueError('text must be provided')
 
     if stack == 'auto':
         stack = isinstance(image, np.ndarray)

@@ -214,25 +214,27 @@ class _DetDrawMixin:
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
-        segmentations = self.data.get('segmentations', None)
-        if sseg and segmentations is not None:
-            if ssegkw is None:
-                ssegkw = {
-                    'alpha': 0.4,
-                    'color': color,
-                }
-            image = segmentations.draw_on(image, **ssegkw)
+        if len(self):
 
-        if boxes:
-            image = self.boxes.draw_on(image, color=color, alpha=alpha,
-                                       labels=labels, label_loc=label_loc,
-                                       thickness=thickness)
+            segmentations = self.data.get('segmentations', None)
+            if sseg and segmentations is not None:
+                if ssegkw is None:
+                    ssegkw = {
+                        'alpha': 0.4,
+                        'color': color,
+                    }
+                image = segmentations.draw_on(image, **ssegkw)
 
-        keypoints = self.data.get('keypoints', None)
-        if kpts and keypoints is not None:
-            # image = kwimage.ensure_float01(image)
-            image = keypoints.draw_on(image, radius=radius, color=color)
-            # kwimage.ensure_float01(image)
+            if boxes:
+                image = self.boxes.draw_on(image, color=color, alpha=alpha,
+                                           labels=labels, label_loc=label_loc,
+                                           thickness=thickness)
+
+            keypoints = self.data.get('keypoints', None)
+            if kpts and keypoints is not None:
+                # image = kwimage.ensure_float01(image)
+                image = keypoints.draw_on(image, radius=radius, color=color)
+                # kwimage.ensure_float01(image)
 
         image = dtype_fixer(image, copy=False)
         return image
