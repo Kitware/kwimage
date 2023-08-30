@@ -1,7 +1,6 @@
 from typing import Sequence
 from numpy import ndarray
 import numpy as np
-import numpy as np
 
 
 def overlay_alpha_layers(layers: Sequence[ndarray],

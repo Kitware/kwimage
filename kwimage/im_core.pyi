@@ -4,7 +4,6 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from _typeshed import Incomplete
-from typing import Any
 
 
 def num_channels(img: ndarray) -> int:

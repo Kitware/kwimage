@@ -17,7 +17,6 @@ from numpy.random import RandomState
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
-from typing import Any
 
 
 class _DetDrawMixin:

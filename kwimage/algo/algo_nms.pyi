@@ -5,7 +5,6 @@ from typing import Any
 from nptyping import Int64
 from nptyping import Shape
 from _typeshed import Incomplete
-from typing import Any
 
 
 def daq_spatial_nms(ltrb: ndarray,

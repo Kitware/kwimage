@@ -9,7 +9,6 @@ from typing import Dict
 import kwcoco
 from _typeshed import Incomplete
 from kwimage.structs import _generic
-from typing import Any
 
 from kwimage._typing import SKImageGeometricTransform
 

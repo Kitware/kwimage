@@ -17,7 +17,6 @@ import torch
 import ubelt as ub
 from _typeshed import Incomplete
 from collections.abc import Generator
-from typing import Any
 
 from kwimage._typing import SKImageGeometricTransform
 
@@ -83,7 +82,7 @@ class _BoxConversionMixins:
         ...
 
     @classmethod
-    def coerce(Boxes, data, **kwargs) -> Boxes:
+    def coerce(Boxes, data, format: str | None = None, **kwargs) -> Boxes:
         ...
 
     @classmethod

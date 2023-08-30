@@ -8,7 +8,6 @@ from nptyping import Float32
 from typing import Any
 import numpy as np
 from numbers import Number
-import numpy as np
 from _typeshed import Incomplete
 
 
@@ -89,8 +88,8 @@ def draw_vector_field(image: ndarray,
     ...
 
 
-def draw_header_text(image: ndarray | dict | None,
-                     text: str,
+def draw_header_text(image: ndarray | dict | None = None,
+                     text: str | None = None,
                      fit: bool | str = False,
                      color: str | Tuple = 'strawberry',
                      halign: str = 'center',

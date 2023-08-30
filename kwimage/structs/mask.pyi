@@ -8,7 +8,6 @@ from typing import Any
 import ubelt as ub
 from . import _generic
 from _typeshed import Incomplete
-from typing import Any
 
 
 class _Mask_Backends:

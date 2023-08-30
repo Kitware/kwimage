@@ -40,7 +40,7 @@ class Box(ub.NiceRepr):
         ...
 
     @classmethod
-    def coerce(cls, data, **kwargs):
+    def coerce(cls, data, format: Incomplete | None = ..., **kwargs):
         ...
 
     @property
@@ -72,6 +72,12 @@ class Box(ub.NiceRepr):
         ...
 
     def resize(self, *args, **kwargs):
+        ...
+
+    def intersection(self, other):
+        ...
+
+    def union_hull(self, other):
         ...
 
     def to_ltrb(self, *args, **kwargs):
