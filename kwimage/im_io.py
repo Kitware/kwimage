@@ -1,7 +1,7 @@
 """
-This module provides functions ``imread`` and ``imwrite`` which are wrappers
-around concrete readers/writers provided by other libraries. This allows us to
-support a wider array of formats than any of individual backends.
+This module provides functions :func:`imread` and :func:`imwrite` which are
+wrappers around concrete readers/writers provided by other libraries. This
+allows us to support a wider array of formats than any of individual backends.
 """
 import os
 import numpy as np
@@ -1140,6 +1140,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                         'kwimage failed to write with opencv backend. '
                         'Reason: destination fpath {!r} is in a directory that '
                         'does not exist.').format(fpath))
+                elif image.size > 4e10:
+                    raise IOError(
+                        'kwimage failed to write with opencv backend. '
+                        f'Reason: unknown, but could image with shape {image.shape} is too big.')
                 else:
                     raise IOError(
                         'kwimage failed to write with opencv backend. '

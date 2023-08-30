@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.21 - Unreleased
 
+### Added
+* Added a too-big check in imwrite for better error messages.
+
 
 ## Version 0.9.20 - Released 2023-08-09
 
