@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Added a too-big check in imwrite for better error messages.
 
+### Changed
+* Modified paths of augmented demodata to remove bad path characters.
+
 
 ## Version 0.9.20 - Released 2023-08-09
 

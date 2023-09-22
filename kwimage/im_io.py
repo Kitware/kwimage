@@ -744,8 +744,14 @@ def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
             else:
                 raise KeyError(overview)
         if overview < 0:
-            warnings.warn('Using negative overviews is deprecated. '
-                          'Use coarset to get the lowest resolution overview')
+            ub.schedule_deprecation(
+                'kwimage', name='overviews',
+                type='as a negative integer argument to kwimage.imread',
+                migration='Use overviews="coarsest" to get the lowest resolution overview',
+                deprecate='0.9.21', error='1.0.0', remove='1.1.0',
+            )
+            # warnings.warn('Using negative overviews is deprecated. '
+            #               'Use coarsest to get the lowest resolution overview')
             overview = max(overview_count + overview, 0)
         if overview > overview_count:
             raise ValueError('Image has no overview={}'.format(overview))

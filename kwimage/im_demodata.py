@@ -394,6 +394,10 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
     if augment_params:
         import os
         stem_suffix = '_' + ub.urepr(augment_params, compact=True)
+        # Make paths nicer
+        stem_suffix = stem_suffix.replace('(', '_')
+        stem_suffix = stem_suffix.replace(')', '_')
+        stem_suffix = stem_suffix.replace(',', '_')
 
         ext = None
         if 'overviews' in augment_params:
