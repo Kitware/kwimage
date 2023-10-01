@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Modified paths of augmented demodata to remove bad path characters.
+* `Boxes.from_slice` now allows the left coordinate to be bigger than the right in the case you are clipping.
 
 
 ## Version 0.9.20 - Released 2023-08-09
