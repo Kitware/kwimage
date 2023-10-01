@@ -10,6 +10,7 @@ mod_name = "kwimage"
 author = 'Jon Crall'
 author_email = 'jon.crall@kitware.com'
 repo_name = "kwimage"
+ci_cpython_versions = ['3.6', '3.7', '3.8', '3.9', '3.10', '3.11']
 min_python = "3.6"
 url = 'https://gitlab.kitware.com/computer-vision/kwimage'
 dev_status = "beta"

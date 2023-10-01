@@ -43,7 +43,7 @@ from . import _generic
 #     torch = None
 
 # try:
-#     from xdev import profile  # NOQA
+#     from line_profiler import profile  # NOQA
 # except Exception:
 #     from ubelt import identity as profile  # NOQA
 

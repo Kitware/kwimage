@@ -14,7 +14,7 @@ except ImportError:
     from distutils.version import LooseVersion
 
 # try:
-#     from xdev import profile
+#     from line_profiler import profile
 # except Exception:
 #     from ubelt import identity as profile
 

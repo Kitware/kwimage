@@ -8,7 +8,6 @@ from typing import Any
 import kwimage
 import numpy
 from _typeshed import Incomplete
-from typing import Any
 
 
 def imscale(img,

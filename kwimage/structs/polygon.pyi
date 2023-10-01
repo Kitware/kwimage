@@ -14,7 +14,6 @@ import matplotlib
 import ubelt as ub
 from _typeshed import Incomplete
 from kwimage.structs import _generic
-from typing import Any
 
 from kwimage._typing import SKImageGeometricTransform
 
@@ -319,6 +318,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         ...
 
     def bounding_box(self) -> kwimage.Boxes:
+        ...
+
+    def box(self) -> kwimage.Box:
         ...
 
     def to_mask(self,

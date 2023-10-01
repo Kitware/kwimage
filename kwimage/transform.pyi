@@ -8,7 +8,6 @@ from _typeshed import Incomplete
 import affine
 
 __docstubs__: str
-profile: Incomplete
 
 
 class Transform(ub.NiceRepr):

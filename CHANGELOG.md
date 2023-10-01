@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.20 - Unreleased
+## Version 0.9.21 - Unreleased
+
+### Added
+* Added a too-big check in imwrite for better error messages.
+
+### Changed
+* Modified paths of augmented demodata to remove bad path characters.
+* `Boxes.from_slice` now allows the left coordinate to be bigger than the right in the case you are clipping.
+
+
+## Version 0.9.20 - Released 2023-08-09
 
 ### Fixed
 * Fixed issue when giving Affine.coerce an empty dictionary

@@ -1,7 +1,7 @@
 """
-This module provides functions ``imread`` and ``imwrite`` which are wrappers
-around concrete readers/writers provided by other libraries. This allows us to
-support a wider array of formats than any of individual backends.
+This module provides functions :func:`imread` and :func:`imwrite` which are
+wrappers around concrete readers/writers provided by other libraries. This
+allows us to support a wider array of formats than any of individual backends.
 """
 import os
 import numpy as np
@@ -744,8 +744,14 @@ def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
             else:
                 raise KeyError(overview)
         if overview < 0:
-            warnings.warn('Using negative overviews is deprecated. '
-                          'Use coarset to get the lowest resolution overview')
+            ub.schedule_deprecation(
+                'kwimage', name='overviews',
+                type='as a negative integer argument to kwimage.imread',
+                migration='Use overviews="coarsest" to get the lowest resolution overview',
+                deprecate='0.9.21', error='1.0.0', remove='1.1.0',
+            )
+            # warnings.warn('Using negative overviews is deprecated. '
+            #               'Use coarsest to get the lowest resolution overview')
             overview = max(overview_count + overview, 0)
         if overview > overview_count:
             raise ValueError('Image has no overview={}'.format(overview))
@@ -1140,6 +1146,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                         'kwimage failed to write with opencv backend. '
                         'Reason: destination fpath {!r} is in a directory that '
                         'does not exist.').format(fpath))
+                elif image.size > 4e10:
+                    raise IOError(
+                        'kwimage failed to write with opencv backend. '
+                        f'Reason: unknown, but could image with shape {image.shape} is too big.')
                 else:
                     raise IOError(
                         'kwimage failed to write with opencv backend. '

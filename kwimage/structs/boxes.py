@@ -844,10 +844,22 @@ class _BoxConversionMixins(object):
             rb_x = rb_x - 1
             rb_y = rb_y - 1
 
+        ALLOW_CLIPPING_INVALID_SLICES = 1
+
         if tl_x > rb_x:
-            raise ValueError(f'Invalid x slice tl_x={tl_x}, rb_x={rb_x}')
+            if clip and ALLOW_CLIPPING_INVALID_SLICES:
+                # Agree with the behavior of [1, 2, 3, 4][3:1] == []
+                # This behavior is somwhat dubious, there is nothing that
+                # suggests we should choose the left to be the "main"
+                # coordinate in this case.
+                rb_x = tl_x
+            else:
+                raise ValueError(f'Invalid x slice tl_x={tl_x}, rb_x={rb_x}')
         if tl_y > rb_y:
-            raise ValueError(f'Invalid y slice tl_y={tl_y}, rb_y={rb_y}')
+            if clip and ALLOW_CLIPPING_INVALID_SLICES:
+                rb_y = tl_y
+            else:
+                raise ValueError(f'Invalid y slice tl_y={tl_y}, rb_y={rb_y}')
 
         ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
         box = Boxes(ltrb, 'ltrb')

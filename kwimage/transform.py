@@ -20,8 +20,7 @@ import affine
 """
 
 try:
-    import xdev
-    profile = xdev.profile
+    from line_profiler import profile
 except Exception:
     profile = ub.identity
 
@@ -1288,7 +1287,8 @@ class Affine(Projective):
             else:
                 known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
                 params = {key: data[key] for key in known_params if key in data}
-                if len(keys - known_params) == 0:
+                unknown_params = keys - known_params
+                if len(unknown_params) == 0:
                     params.pop('type', None)
                     _nkeys = len(keys)
                     if _nkeys == 1:
@@ -1308,7 +1308,10 @@ class Affine(Projective):
                     else:
                         self = cls.affine(**params)
                 else:
-                    raise KeyError(', '.join(list(data.keys())))
+                    got_known_parms = set(params) - unknown_params
+                    raise KeyError(
+                        'Got known params: ' + ', '.join(list(got_known_parms)) + ' '
+                        'Got unknown params: ' + ', '.join(list(unknown_params)))
         else:
             raise TypeError(type(data))
         return self
