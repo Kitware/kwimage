@@ -1678,8 +1678,8 @@ def subpixel_setvalue(img, pts, value, coord_axes=None,
 def _bilinear_coords(ptsT, impl, img, coord_axes):
     i, j = coord_axes
 
-    r_extent = coord_axes[i]
-    c_extent = coord_axes[j]
+    r_extent = img.shape[i]
+    c_extent = img.shape[j]
 
     # height, width = img.shape[0:2]
     ndims = len(img.shape)
