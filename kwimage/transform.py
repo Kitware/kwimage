@@ -2121,8 +2121,8 @@ class Affine(Projective):
             >>> image1 = kwimage.grab_test_image('astro', dsize=(S, S))[:H, :W]
             >>> pnum_ = kwplot.PlotNums(nCols=4, nSubplots=len(results))
             >>> for result in results:
-            >>>     #image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize=(S, S))  # fixme dsize=positive should work here
-            >>>     image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize='positive')  # fixme dsize=positive should work here
+            >>>     image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize=(S, S))  # fixme dsize=positive should work here
+            >>>     #image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize='positive')  # fixme dsize=positive should work here
             >>>     image3 = kwimage.warp_affine(image2.copy(), result['tf'].inv(), dsize=(S, S))
             >>>     annot2 = result['annot2']
             >>>     annot3 = result['annot3']
