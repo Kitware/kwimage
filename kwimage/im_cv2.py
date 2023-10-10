@@ -1354,6 +1354,11 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             the warped image, or if return info is True, the warped image and
             the info dictionary.
 
+    TODO:
+        - [ ] When dsize='positive' but the transform contains an axis flip,
+              the width / height of the box will become negative.  Should we
+              adjust for this?
+
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> import kwimage
@@ -1568,6 +1573,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = box.warp(transform)
+        if 0:
+            # TODO: should we enable this?
+            warped_box._ensure_nonnegative_extent(inplace=True)
         max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
         new_origin = warped_box.to_ltrb().data[0, 0:2]
     else:
@@ -1595,7 +1603,6 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         'dsize': dsize,
         'antialias_info': None,
     }
-
     _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
                            borderMode, borderValue)
 

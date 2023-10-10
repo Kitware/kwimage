@@ -489,6 +489,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             maxy, maxx = image
             image = np.zeros((maxx, maxy, 3), dtype=np.float32)
 
+        if 0 in image.shape[0:2]:
+            # Cannot draw on this image without width and height, return it as is
+            return image
+
         dtype_fixer = _generic._consistent_dtype_fixer(image)
 
         single_color = False

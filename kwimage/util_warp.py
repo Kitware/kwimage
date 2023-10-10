@@ -1677,7 +1677,11 @@ def subpixel_setvalue(img, pts, value, coord_axes=None,
 
 def _bilinear_coords(ptsT, impl, img, coord_axes):
     i, j = coord_axes
-    height, width = img.shape[0:2]
+
+    r_extent = coord_axes[i]
+    c_extent = coord_axes[j]
+
+    # height, width = img.shape[0:2]
     ndims = len(img.shape)
 
     r, c = ptsT
@@ -1688,10 +1692,10 @@ def _bilinear_coords(ptsT, impl, img, coord_axes):
 
     # Make sure the values do not go past the boundary
     # Note: this is equivalent to bordermode=edge
-    c0 = impl.clip(c0, 0, width - 1, out=c0)
-    c1 = impl.clip(c1, 0, width - 1, out=c1)
-    r0 = impl.clip(r0, 0, height - 1, out=r0)
-    r1 = impl.clip(r1, 0, height - 1, out=r1)
+    c0 = impl.clip(c0, 0, c_extent - 1, out=c0)
+    c1 = impl.clip(c1, 0, c_extent - 1, out=c1)
+    r0 = impl.clip(r0, 0, r_extent - 1, out=r0)
+    r1 = impl.clip(r1, 0, r_extent - 1, out=r1)
 
     # Find bilinear weights
     alpha0 = (c - c0)

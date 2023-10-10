@@ -6,6 +6,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.22 - Unreleased
 
+### Added
+
+* kwimage.Affine.fliprot - a constructor that creates a transform equivalent to a flip and rotation with the positive image quadrant
+* kwimage.Boxes._ensure_nonnegative_extent - experimental box method to fix negative width/heights
+
+
+### Fixed
+
+* `draw_on` methods for `Boxes`, `Polygon`, and `Points` no longer crashes if you pass it an image with 0 width or height.
+* Fixed error in `subpixel_setvalue` where the coordinate extents did not
+  always match the requested axes (e.g. sometimes the y axis would be clipped by width)
+
 
 ## Version 0.9.21 - Released 2023-10-01
 

@@ -2007,6 +2007,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 image = image.copy()
             return image
 
+        if 0 in image.shape[0:2]:
+            # Cannot draw on this image without width and height, return it as is
+            return image
+
         # Note: opencv#5473
         # https://github.com/opencv/opencv/issues/5473
         # https://stackoverflow.com/questions/37392128/wrong-result-using-function-fillpoly-in-opencv-for-very-large-images
