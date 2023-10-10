@@ -1573,7 +1573,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = box.warp(transform)
-        if 0:
+        if 1:
             # TODO: should we enable this?
             warped_box._ensure_nonnegative_extent(inplace=True)
         max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
