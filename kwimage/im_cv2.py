@@ -1572,17 +1572,30 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     if isinstance(dsize, str) or large_warp_dim is not None:
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
+        # import rich
+        # print('---------')
+        # rich.print(f'box={box}')
         warped_box = box.warp(transform)
+        # rich.print(transform)
+        # rich.print(f'warped_box={warped_box}')
         if 1:
             # TODO: should we enable this?
             warped_box._ensure_nonnegative_extent(inplace=True)
-        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
+        # rich.print(f'warped_box={warped_box}')
+        warped_box = warped_box.to_ltrb()
+        # rich.print(f'warped_box={warped_box}')
+        warped_box = warped_box.to_xywh().quantize()
+        # rich.print(f'warped_box={warped_box}')
+        max_dsize = tuple(map(int, warped_box.data[0, 2:4]))
+        # print('warped_box = {}'.format(ub.urepr(warped_box, nl=1)))
+        # print('max_dsize = {}'.format(ub.urepr(max_dsize, nl=1)))
         new_origin = warped_box.to_ltrb().data[0, 0:2]
     else:
         max_dsize = None
         new_origin = None
 
     transform_ = transform
+    affine_params = None
 
     if dsize is None:
         # If unspecified, leave the canvas size unchanged
@@ -1590,7 +1603,21 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     elif isinstance(dsize, str):
         # Handle special "auto-compute" dsize keys
         if dsize in {'positive', 'auto'}:
+            # corners = warped_box.to_xywh().quantize().corners()
+            # print(f'corners={corners}')
+            # dsize = corners.max(axis=0)
             dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
+            if 0:
+                # rich.print('affine_params = {}'.format(ub.urepr(affine_params, nl=1)))
+                if affine_params is None:
+                    affine_params = transform_.decompose()
+                sx, sy = affine_params['scale']
+                new_w, new_h = dsize
+                if sx < 0:
+                    new_w += 1
+                if sy < 0:
+                    new_h += 1
+                dsize = (new_w, new_h)
         elif dsize in {'content', 'max'}:
             dsize = max_dsize
             transform_ = Affine.translate(-new_origin) @ transform
@@ -1638,8 +1665,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             result_mask = _try_warp_affine(mask, transform_, *_try_warp_tail_args)
     else:
         # Decompose the affine matrix into its 6 core parameters
-        params = transform_.decompose()
-        sx, sy = params['scale']
+        if affine_params is None:
+            affine_params = transform_.decompose()
+        sx, sy = affine_params['scale']
 
         if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
@@ -1658,7 +1686,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             """
 
             # Compute the transform with all scaling removed
-            noscale_warp = Affine.affine(**ub.dict_diff(params, {'scale'}))
+            noscale_warp = Affine.affine(**ub.dict_diff(affine_params, {'scale'}))
 
             # Execute part of the downscale with iterative pyramid downs
             downscaled, residual_sx, residual_sy = _prepare_downscale(
