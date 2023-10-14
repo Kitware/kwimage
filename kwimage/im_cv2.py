@@ -1574,25 +1574,27 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = box.warp(transform)
-        # import rich
-        # print('---------')
-        # rich.print(f'box={box}')
-        # rich.print(transform)
-        # rich.print(f'warped_box={warped_box}')
         if 0:
+            # import rich
+            # print('---------')
+            # rich.print(f'box={box}')
+            # rich.print(transform)
+            # rich.print(f'warped_box={warped_box}')
             # TODO: should we enable this?  This seems to break if there is an
             # axis or orientation flip because the Boxes was designed with
             # slices in mind, so we need to maintain orientation information to
             # handle this correctly.
             warped_box._ensure_nonnegative_extent(inplace=True)
-        # rich.print(f'warped_box={warped_box}')
-        warped_box = warped_box.to_ltrb()
-        # rich.print(f'warped_box={warped_box}')
-        warped_box = warped_box.to_xywh().quantize()
-        # rich.print(f'warped_box={warped_box}')
-        max_dsize = tuple(map(int, warped_box.data[0, 2:4]))
-        # print('warped_box = {}'.format(ub.urepr(warped_box, nl=1)))
-        # print('max_dsize = {}'.format(ub.urepr(max_dsize, nl=1)))
+            # rich.print(f'warped_box={warped_box}')
+            warped_box = warped_box.to_ltrb()
+            # rich.print(f'warped_box={warped_box}')
+            warped_box = warped_box.to_xywh().quantize()
+            # rich.print(f'warped_box={warped_box}')
+            max_dsize = tuple(map(int, warped_box.data[0, 2:4]))
+            # print('warped_box = {}'.format(ub.urepr(warped_box, nl=1)))
+            # print('max_dsize = {}'.format(ub.urepr(max_dsize, nl=1)))
+
+        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
         new_origin = warped_box.to_ltrb().data[0, 0:2]
     else:
         max_dsize = None

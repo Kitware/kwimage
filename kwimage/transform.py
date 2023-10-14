@@ -2058,8 +2058,16 @@ class Affine(Projective):
                 The affine matrix representing the canvas-aligned flip and
                 rotation.
 
+        Note:
+            Requiring that the image size is known makes this a place that
+            errors could occur depending on your interpretation of pixels as
+            points or areas. There is probably a better way to describe the
+            issue, but the second doctest shows the issue when trying to use
+            warp-affine's auto-dsize feature. See [MR81]_ for details.
+
         References:
             .. [SO57863376] https://stackoverflow.com/questions/57863376/flip-image-affine
+            .. [MR81] https://gitlab.kitware.com/computer-vision/kwimage/-/merge_requests/81
 
         CommandLine:
             xdoctest -m kwimage.transform Affine.fliprot:0 --show
@@ -2205,8 +2213,10 @@ class Affine(Projective):
             >>> image1[3, :, 0] = 0.5
             >>> image1[:, 7, 1] = 0.5
             >>> pnum_ = kwplot.PlotNums(nCols=4, nSubplots=len(results))
+            >>> # NOTE: setting new_dsize='positive' illustrates an issuew with
+            >>> # the pixel interpretation.
             >>> new_dsize = (S, S)
-            >>> new_dsize = 'positive'
+            >>> #new_dsize = 'positive'
             >>> for result in results:
             >>>     image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize=new_dsize)
             >>>     image3 = kwimage.warp_affine(image2.copy(), result['tf'].inv(), dsize=new_dsize)
