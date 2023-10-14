@@ -2,10 +2,20 @@ The Kitware Image Module
 ========================
 
 
-.. # TODO Get CI services running on gitlab 
-.. # 
+.. # TODO Get CI services running on gitlab
+.. #
 
 |GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| |ReadTheDocs|
+
++------------------+-------------------------------------------------------+
+| Read the docs    | https://kwimage.readthedocs.io                        |
++------------------+-------------------------------------------------------+
+| Gitlab (main)    | https://gitlab.kitware.com/computer-vision/kwimage    |
++------------------+-------------------------------------------------------+
+| Github (mirror)  | https://github.com/Kitware/kwimage                    |
++------------------+-------------------------------------------------------+
+| Pypi             | https://pypi.org/project/kwimage                      |
++------------------+-------------------------------------------------------+
 
 The main webpage for this project is: https://gitlab.kitware.com/computer-vision/kwimage
 
@@ -26,7 +36,7 @@ structures, which provide efficient ways to interoperate between different
 common annotation formats (e.g. different bounding box / polygon / point
 formats).  These data structures have both a ``.draw`` and ``.draw_on`` method
 for overlaying visualizations on matplotlib axes or numpy image matrices
-respectively. 
+respectively.
 
 
 Read the docs at: http://kwimage.readthedocs.io/en/main/
@@ -78,7 +88,7 @@ The most notable feature of the ``kwimage`` module are the ``kwimage.structs``
 objects. This includes the primitive ``Boxes``, ``Mask``, and ``Coords`` objects, The
 semi-primitive ``Points``, ``Polygon`` structures, and the composite ``Heatmap`` and
 ``Detections`` structures (note: ``Heatmap`` is just a composite of array-like
-structures). 
+structures).
 
 The primitive and semi-primitive objects store and manipulate annotation
 geometry, and the composite structures combine primitives into a single
@@ -105,8 +115,8 @@ peaks in the heatmap, and running non-maximum suppression.
 This module contains data structures for three image annotation primitives:
 
     * Boxes  # technically this could be made out of Coords, probably not for efficiency and decoupling
-    * Mask   # likewise this could be renamed to Raster 
-    * Coords # 
+    * Mask   # likewise this could be renamed to Raster
+    * Coords #
 
 These primative structures are used to define these metadata-containing composites:
 
@@ -121,13 +131,13 @@ All of these structures have a ``self.data`` attribute that holds a pointer to
 the underlying data representation.
 
 Some of these structures have a ``self.format`` attribute describing the
-underlying data representation. 
+underlying data representation.
 
 Most of the compositie strucutres also have a ``self.meta`` attribute, which
 holds user-level metadata (e.g. info about the classes).
 
 
-Installation 
+Installation
 ------------
 
 There are a few small quirks with installing kwimage. There is an issue with
@@ -145,14 +155,14 @@ with one of the following "extra install" tags:
 
     # OR
 
-    # If other parts of your system depend on the opencv qt libs 
+    # If other parts of your system depend on the opencv qt libs
     # (NOT RECOMMENDED: this can conflict with pyqt5)
     pip install kwimage[graphics]
 
 
 Some features also require the ``kwimage_ext`` package to be installed, which
 contains binary extensions that used to be distributed with this package in
-older versions. These extension can be obtained by explicitly 
+older versions. These extension can be obtained by explicitly
 ``pip install kwimage_ext`` or via ``pip install kwimage[optional]`` (which also
 brings in other optional libraries). You can disable loading of c-extensions at
 runtime by setting the environment variable: `KWIMAGE_DISABLE_C_EXTENSIONS=1`.
@@ -171,7 +181,7 @@ linux systems:
     pip install --find-links https://girder.github.io/large_image_wheels GDAL
 
 
-    
+
 .. |Pypi| image:: https://img.shields.io/pypi/v/kwimage.svg
    :target: https://pypi.python.org/pypi/kwimage
 

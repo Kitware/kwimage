@@ -1547,7 +1547,7 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
         tensor([4., 8., 7.])
 
     References:
-        stackoverflow.com/uestions/12729228/simple-binlin-interp-images-numpy
+        .. [SO12729228] stackoverflow.com/questions/12729228/simple-binlin-interp-images-numpy
 
     SeeAlso:
         cv2.getRectSubPix(image, patchSize, center[, patch[, patchType]])
@@ -1677,7 +1677,11 @@ def subpixel_setvalue(img, pts, value, coord_axes=None,
 
 def _bilinear_coords(ptsT, impl, img, coord_axes):
     i, j = coord_axes
-    height, width = img.shape[0:2]
+
+    r_extent = img.shape[i]
+    c_extent = img.shape[j]
+
+    # height, width = img.shape[0:2]
     ndims = len(img.shape)
 
     r, c = ptsT
@@ -1688,10 +1692,10 @@ def _bilinear_coords(ptsT, impl, img, coord_axes):
 
     # Make sure the values do not go past the boundary
     # Note: this is equivalent to bordermode=edge
-    c0 = impl.clip(c0, 0, width - 1, out=c0)
-    c1 = impl.clip(c1, 0, width - 1, out=c1)
-    r0 = impl.clip(r0, 0, height - 1, out=r0)
-    r1 = impl.clip(r1, 0, height - 1, out=r1)
+    c0 = impl.clip(c0, 0, c_extent - 1, out=c0)
+    c1 = impl.clip(c1, 0, c_extent - 1, out=c1)
+    r0 = impl.clip(r0, 0, r_extent - 1, out=r0)
+    r1 = impl.clip(r1, 0, r_extent - 1, out=r1)
 
     # Find bilinear weights
     alpha0 = (c - c0)

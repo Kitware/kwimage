@@ -2033,6 +2033,285 @@ class Affine(Projective):
         ])
         return Affine(mat)
 
+    @classmethod
+    def fliprot(cls, flip_axis=None, rot_k=0, axes=(0, 1), canvas_dsize=None):
+        """
+        Creates a flip/rotation transform with respect to an image of a given
+        size in the positive quadrent. (i.e. warped data within the specified
+        canvas size will stay in the positive quadrant)
+
+        Args:
+            flip_axis (int): the axis dimension to flip.
+                I.e. 0 flips the y-axis and 1-flips the x-axis.
+
+            rot_k (int): number of counterclockwise 90 degree rotations that
+                occur after the flips.
+
+            axes (Tuple[int, int]):
+                The axis ordering. Unhandled in this version. Dont change this.
+
+            canvas_dsize (Tuple[int, int]):
+                The width / height of the canvas the fliprot is applied in.
+
+        Returns:
+            Affine:
+                The affine matrix representing the canvas-aligned flip and
+                rotation.
+
+        Note:
+            Requiring that the image size is known makes this a place that
+            errors could occur depending on your interpretation of pixels as
+            points or areas. There is probably a better way to describe the
+            issue, but the second doctest shows the issue when trying to use
+            warp-affine's auto-dsize feature. See [MR81]_ for details.
+
+        References:
+            .. [SO57863376] https://stackoverflow.com/questions/57863376/flip-image-affine
+            .. [MR81] https://gitlab.kitware.com/computer-vision/kwimage/-/merge_requests/81
+
+        CommandLine:
+            xdoctest -m kwimage.transform Affine.fliprot:0 --show
+            xdoctest -m kwimage.transform Affine.fliprot:1 --show
+
+        Example:
+            >>> import kwimage
+            >>> H, W = 64, 128
+            >>> canvas_dsize = (W, H)
+            >>> box1 = kwimage.Boxes.random(1).scale((W, H)).quantize()
+            >>> ltrb = box1.data
+            >>> rot_k = 4
+            >>> annot = box1
+            >>> annot = box1.to_polygons()[0]
+            >>> annot1 = annot.copy()
+            >>> # The first 8 are the cannonically unique group elements
+            >>> fliprot_params = [
+            >>>     {'rot_k': 0, 'flip_axis': None},
+            >>>     {'rot_k': 1, 'flip_axis': None},
+            >>>     {'rot_k': 2, 'flip_axis': None},
+            >>>     {'rot_k': 3, 'flip_axis': None},
+            >>>     {'rot_k': 0, 'flip_axis': (0,)},
+            >>>     {'rot_k': 1, 'flip_axis': (0,)},
+            >>>     {'rot_k': 2, 'flip_axis': (0,)},
+            >>>     {'rot_k': 3, 'flip_axis': (0,)},
+            >>>     # The rest of these dont result in any different data, but we need to test them
+            >>>     {'rot_k': 0, 'flip_axis': (1,)},
+            >>>     {'rot_k': 1, 'flip_axis': (1,)},
+            >>>     {'rot_k': 2, 'flip_axis': (1,)},
+            >>>     {'rot_k': 3, 'flip_axis': (1,)},
+            >>>     {'rot_k': 0, 'flip_axis': (0, 1)},
+            >>>     {'rot_k': 1, 'flip_axis': (0, 1)},
+            >>>     {'rot_k': 2, 'flip_axis': (0, 1)},
+            >>>     {'rot_k': 3, 'flip_axis': (0, 1)},
+            >>> ]
+            >>> results = []
+            >>> for params in fliprot_params:
+            >>>     tf = kwimage.Affine.fliprot(canvas_dsize=canvas_dsize, **params)
+            >>>     annot2 = annot.warp(tf)
+            >>>     annot3 = annot2.warp(tf.inv())
+            >>>     #annot3 = inv_fliprot_annot(annot2, canvas_dsize=canvas_dsize, **params)
+            >>>     results.append({
+            >>>         'annot2': annot2,
+            >>>         'annot3': annot3,
+            >>>         'params': params,
+            >>>         'tf': tf,
+            >>>         'canvas_dsize': canvas_dsize,
+            >>>     })
+            >>> box = kwimage.Box.coerce([0, 0, W, H], format='xywh')
+            >>> for result in results:
+            >>>     params = result['params']
+            >>>     warped = box.warp(result['tf'])
+            >>>     print('---')
+            >>>     print('params = {}'.format(ub.urepr(params, nl=1)))
+            >>>     print('box = {}'.format(ub.urepr(box, nl=1)))
+            >>>     print('warped = {}'.format(ub.urepr(warped, nl=1)))
+            >>>     print(ub.hzcat(['tf = ', ub.urepr(result['tf'], nl=1)]))
+
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> S = max(W, H)
+            >>> image1 = kwimage.grab_test_image('astro', dsize=(S, S))[:H, :W]
+            >>> pnum_ = kwplot.PlotNums(nCols=4, nSubplots=len(results))
+            >>> for result in results:
+            >>>     #image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize=(S, S))  # fixme dsize=positive should work here
+            >>>     image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize='positive')  # fixme dsize=positive should work here
+            >>>     #image3 = kwimage.warp_affine(image2.copy(), result['tf'].inv(), dsize=(S, S))
+            >>>     image3 = kwimage.warp_affine(image2.copy(), result['tf'].inv(), dsize='positive')
+            >>>     annot2 = result['annot2']
+            >>>     annot3 = result['annot3']
+            >>>     canvas1 = annot1.draw_on(image1.copy(), edgecolor='kitware_blue', fill=False)
+            >>>     canvas2 = annot2.draw_on(image2.copy(), edgecolor='kitware_green', fill=False)
+            >>>     canvas3 = annot3.draw_on(image3.copy(), edgecolor='kitware_red', fill=False)
+            >>>     canvas = kwimage.stack_images([canvas1, canvas2, canvas3], axis=1, pad=10, bg_value='green')
+            >>>     kwplot.imshow(canvas, pnum=pnum_(), title=ub.urepr(result['params'], nl=0, compact=1, nobr=1))
+            >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # Second similar test with a very small image to catch small errors
+            >>> import kwimage
+            >>> H, W = 4, 8
+            >>> canvas_dsize = (W, H)
+            >>> box1 = kwimage.Boxes.random(1).scale((W, H)).quantize()
+            >>> ltrb = box1.data
+            >>> rot_k = 4
+            >>> annot = box1
+            >>> annot = box1.to_polygons()[0]
+            >>> annot1 = annot.copy()
+            >>> # The first 8 are the cannonically unique group elements
+            >>> fliprot_params = [
+            >>>     {'rot_k': 0, 'flip_axis': None},
+            >>>     {'rot_k': 1, 'flip_axis': None},
+            >>>     {'rot_k': 2, 'flip_axis': None},
+            >>>     {'rot_k': 3, 'flip_axis': None},
+            >>>     {'rot_k': 0, 'flip_axis': (0,)},
+            >>>     {'rot_k': 1, 'flip_axis': (0,)},
+            >>>     {'rot_k': 2, 'flip_axis': (0,)},
+            >>>     {'rot_k': 3, 'flip_axis': (0,)},
+            >>>     # The rest of these dont result in any different data, but we need to test them
+            >>>     {'rot_k': 0, 'flip_axis': (1,)},
+            >>>     {'rot_k': 1, 'flip_axis': (1,)},
+            >>>     {'rot_k': 2, 'flip_axis': (1,)},
+            >>>     {'rot_k': 3, 'flip_axis': (1,)},
+            >>>     {'rot_k': 0, 'flip_axis': (0, 1)},
+            >>>     {'rot_k': 1, 'flip_axis': (0, 1)},
+            >>>     {'rot_k': 2, 'flip_axis': (0, 1)},
+            >>>     {'rot_k': 3, 'flip_axis': (0, 1)},
+            >>> ]
+            >>> results = []
+            >>> for params in fliprot_params:
+            >>>     tf = kwimage.Affine.fliprot(canvas_dsize=canvas_dsize, **params)
+            >>>     annot2 = annot.warp(tf)
+            >>>     annot3 = annot2.warp(tf.inv())
+            >>>     #annot3 = inv_fliprot_annot(annot2, canvas_dsize=canvas_dsize, **params)
+            >>>     results.append({
+            >>>         'annot2': annot2,
+            >>>         'annot3': annot3,
+            >>>         'params': params,
+            >>>         'tf': tf,
+            >>>         'canvas_dsize': canvas_dsize,
+            >>>     })
+            >>> box = kwimage.Box.coerce([0, 0, W, H], format='xywh')
+            >>> print('box = {}'.format(ub.urepr(box, nl=1)))
+            >>> for result in results:
+            >>>     params = result['params']
+            >>>     warped = box.warp(result['tf'])
+            >>>     print('---')
+            >>>     print('params = {}'.format(ub.urepr(params, nl=1)))
+            >>>     print('warped = {}'.format(ub.urepr(warped, nl=1)))
+            >>>     print(ub.hzcat(['tf = ', ub.urepr(result['tf'], nl=1)]))
+
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> S = max(W, H)
+            >>> image1 = np.linspace(.1, .9, W * H).reshape((H, W))
+            >>> image1 = kwimage.atleast_3channels(image1)
+            >>> image1[0, :, 0] = 1
+            >>> image1[:, 0, 2] = 1
+            >>> image1[1, :, 1] = 1
+            >>> image1[:, 1, 1] = 1
+            >>> image1[3, :, 0] = 0.5
+            >>> image1[:, 7, 1] = 0.5
+            >>> pnum_ = kwplot.PlotNums(nCols=4, nSubplots=len(results))
+            >>> # NOTE: setting new_dsize='positive' illustrates an issuew with
+            >>> # the pixel interpretation.
+            >>> new_dsize = (S, S)
+            >>> #new_dsize = 'positive'
+            >>> for result in results:
+            >>>     image2 = kwimage.warp_affine(image1.copy(), result['tf'], dsize=new_dsize)
+            >>>     image3 = kwimage.warp_affine(image2.copy(), result['tf'].inv(), dsize=new_dsize)
+            >>>     annot2 = result['annot2']
+            >>>     annot3 = result['annot3']
+            >>>     #canvas1 = annot1.draw_on(image1.copy(), edgecolor='kitware_blue', fill=False)
+            >>>     #canvas2 = annot2.draw_on(image2.copy(), edgecolor='kitware_green', fill=False)
+            >>>     #canvas3 = annot3.draw_on(image3.copy(), edgecolor='kitware_red', fill=False)
+            >>>     canvas = kwimage.stack_images([image1, image2, image3], axis=1, pad=1, bg_value='green')
+            >>>     kwplot.imshow(canvas, pnum=pnum_(), title=ub.urepr(result['params'], nl=0, compact=1, nobr=1))
+            >>> kwplot.show_if_requested()
+        """
+        import kwimage
+        rot_k = rot_k % 4  # only 4 cases
+        tf = None
+
+        HALF_OFFSET = 1
+        if HALF_OFFSET:
+            half1 = kwimage.Affine.translate((.5, .5))
+            tf = half1
+        else:
+            tf = kwimage.Affine.eye()
+
+        if flip_axis is not None:
+            canvas_w, canvas_h = canvas_dsize
+            canvas_dims = (canvas_h, canvas_w)
+            yx2 = [0, 0]
+
+            # Make the flip matrix
+            F = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+            for axis in flip_axis:
+                mdim = 1 - axis
+                F[mdim, mdim] *= -1
+                # When an axis is flipped we have to translate it to adjust it
+                # back to the first quadrent
+                dim = axes[axis]
+                yx2[dim] = canvas_dims[dim]
+
+            x2, y2 = yx2[::-1]
+            T2 = kwimage.Affine.translate((x2, y2))
+            tf_flip = T2 @ F
+            if tf is None:
+                tf = tf_flip
+            else:
+                tf = tf_flip @ tf
+
+        if rot_k != 0:
+            # Construct the rotation
+            # Should we add this as a rotate90 function that doesn't contain pi
+            # approximations?
+            # tau = np.pi * 2
+            # theta = -(rot_k * tau / 4)
+            # R = kwimage.Affine.rotate(theta=theta)
+            if rot_k == 1:
+                R = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
+            elif rot_k == 2:
+                R = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
+            elif rot_k == 3:
+                R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+            else:
+                raise AssertionError
+
+            # The rotation will be about (0, 0), so to ensure the results stays
+            # in the positive quadrent
+            canvas_w, canvas_h = canvas_dsize
+            if rot_k == 1:
+                x2 = 0
+                y2 = canvas_w
+            elif rot_k == 2:
+                x2 = canvas_w
+                y2 = canvas_h
+            elif rot_k == 3:
+                x2 = canvas_h
+                y2 = 0
+            else:
+                raise AssertionError
+            T2 = kwimage.Affine.translate((x2, y2))
+
+            # Rotate and translate the data back into the first quadrent
+            tf_rot = T2 @ R
+
+            if tf is None:
+                tf = tf_rot
+            else:
+                tf = tf_rot @ tf
+
+        if tf is None:
+            tf = Affine.eye()
+        else:
+            if HALF_OFFSET:
+                half2 = kwimage.Affine.translate((-.5, -.5))
+                tf = half2 @ tf
+
+        return tf
+
 
 try:
     import sympy

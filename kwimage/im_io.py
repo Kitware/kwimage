@@ -666,8 +666,8 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
 
         if nodata_method is not None:
             if isinstance(nodata_method, str):
-                if nodata_method not in {'ma', 'float'}:
-                    raise KeyError('nodata_method={} must be ma, float, or None'.format(nodata_method))
+                if nodata_method not in {'ma', 'nan', 'float'}:
+                    raise KeyError('nodata_method={} must be ma, nan, (or float), or None'.format(nodata_method))
             else:
                 raise TypeError(type(nodata_method))
 

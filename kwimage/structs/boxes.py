@@ -2085,6 +2085,10 @@ class _BoxDrawMixins(object):
         dtype_fixer = _generic._consistent_dtype_fixer(image)
         h, w = image.shape[0:2]
 
+        if h == 0 or w == 0:
+            # Cant draw on a zero extent image, return as-is
+            return image
+
         # Get the color that is compatible with the input image encoding
         # rect_color = kwimage.Color(color)._forimage(image)
 
@@ -3349,6 +3353,61 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         data_ = _view(self.data, *shape)
         return self.__class__(data_, self.format)
+
+    def _ensure_nonnegative_extent(self, inplace=False):
+        """
+        Experimental. If the box has a negative width / height
+        make them positive and adjust the tlxy point.
+
+        Need a better name for this function.
+
+        FIXME:
+            - [ ] Slice semantics (i.e. start/stop) of boxes break under
+                  rotations and reflections. This function needs to be thought
+                  out a bit more before becoming non-experimental.
+
+        Returns:
+            Boxes
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Boxes(np.array([
+            >>>     [20, 30, -10, -20],
+            >>>     [0, 0, 10, 20],
+            >>>     [0, 0, -10, 20],
+            >>>     [0, 0, 10, -20],
+            >>> ]), 'xywh')
+            >>> new = self._ensure_nonnegative_extent(inplace=0)
+            >>> assert np.any(self.width < 0)
+            >>> assert not np.any(new.width < 0)
+            >>> assert np.any(self.height < 0)
+            >>> assert not np.any(new.height < 0)
+
+            >>> import kwimage
+            >>> self = kwimage.Boxes(np.array([
+            >>>     [0, 3, 8, -4],
+            >>> ]), 'xywh')
+            >>> new = self._ensure_nonnegative_extent(inplace=0)
+            >>> print('self = {}'.format(ub.urepr(self, nl=1)))
+            >>> print('new  = {}'.format(ub.urepr(new, nl=1)))
+            >>> assert not np.any(self.width < 0)
+            >>> assert not np.any(new.width < 0)
+            >>> assert np.any(self.height < 0)
+            >>> assert not np.any(new.height < 0)
+        """
+        if self.format != 'xywh':
+            # Probably want a ltrb inplace implementation as well.
+            self = self.to_xywh()
+        assert self.format == 'xywh'
+        new = self if inplace else self.__class__(self.data.copy(), self.format)
+        is_neg_w = new.data[..., 2] < 0
+        is_neg_h = new.data[..., 3] < 0
+        new_data = new.data
+        new_data[..., 0][is_neg_w] += new_data[..., 2][is_neg_w]
+        new_data[..., 1][is_neg_h] += new_data[..., 3][is_neg_h]
+        new_data[..., 2][is_neg_w] *= -1
+        new_data[..., 3][is_neg_h] *= -1
+        return new
 
 
 def _copy(data):
