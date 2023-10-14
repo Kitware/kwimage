@@ -1547,7 +1547,7 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
         tensor([4., 8., 7.])
 
     References:
-        stackoverflow.com/uestions/12729228/simple-binlin-interp-images-numpy
+        .. [SO12729228] stackoverflow.com/questions/12729228/simple-binlin-interp-images-numpy
 
     SeeAlso:
         cv2.getRectSubPix(image, patchSize, center[, patch[, patchType]])

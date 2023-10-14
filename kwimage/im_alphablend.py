@@ -2,9 +2,13 @@
 Numpy implementation of alpha blending based on information in [SO25182421]_
 and [WikiAlphaBlend]_.
 
+For more types of blending see [PypiBlendModes]_ and [WikiAlphaBlend]_.
+
 References:
     .. [SO25182421] http://stackoverflow.com/questions/25182421/overlay-numpy-alpha
     .. [WikiAlphaBlend] https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
+    .. [WikiBlendModes] https://en.wikipedia.org/wiki/Blend_modes
+    .. [PypiBlendModes] https://pypi.org/project/blend-modes/
 """
 
 import numpy as np
