@@ -3361,6 +3361,11 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
         Need a better name for this function.
 
+        FIXME:
+            - [ ] Slice semantics (i.e. start/stop) of boxes break under
+                  rotations and reflections. This function needs to be thought
+                  out a bit more before becoming non-experimental.
+
         Returns:
             Boxes
 
@@ -3385,7 +3390,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> new = self._ensure_nonnegative_extent(inplace=0)
             >>> print('self = {}'.format(ub.urepr(self, nl=1)))
             >>> print('new  = {}'.format(ub.urepr(new, nl=1)))
-            >>> assert np.any(self.width < 0)
+            >>> assert not np.any(self.width < 0)
             >>> assert not np.any(new.width < 0)
             >>> assert np.any(self.height < 0)
             >>> assert not np.any(new.height < 0)

@@ -1312,7 +1312,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             coordinates of the warped image will fit in the new canvas. In this
             case, any pixel that maps to a negative coordinate will be clipped.
             This has the property that the input transformation is not
-            modified.
+            modified. NOTE: there are issues with this when the transformation
+            includes rotation of reflections.
 
             If 'content' (or 'max'), the transform is modified with an extra
             translation such that both the positive and negative coordinates of
@@ -1572,14 +1573,17 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     if isinstance(dsize, str) or large_warp_dim is not None:
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
+        warped_box = box.warp(transform)
         # import rich
         # print('---------')
         # rich.print(f'box={box}')
-        warped_box = box.warp(transform)
         # rich.print(transform)
         # rich.print(f'warped_box={warped_box}')
-        if 1:
-            # TODO: should we enable this?
+        if 0:
+            # TODO: should we enable this?  This seems to break if there is an
+            # axis or orientation flip because the Boxes was designed with
+            # slices in mind, so we need to maintain orientation information to
+            # handle this correctly.
             warped_box._ensure_nonnegative_extent(inplace=True)
         # rich.print(f'warped_box={warped_box}')
         warped_box = warped_box.to_ltrb()
