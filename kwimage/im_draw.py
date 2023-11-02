@@ -3,8 +3,8 @@ import numpy as np
 import cv2
 
 
-def _draw_text_on_image_pil(img, text, org=None):
-    """
+def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
+    r"""
     PIL backend.
 
     TODO:
@@ -21,8 +21,8 @@ def _draw_text_on_image_pil(img, text, org=None):
         from kwimage.im_draw import _draw_text_on_image_pil, _text_sizes, _broadcast_colors, _masked_checkerboard
         img = np.zeros((128, 128, 3), dtype=np.uint8)
         text = 'hello\n⬍\nworld'
-        org = (1, 1)
-        new_img = _draw_text_on_image_pil(img, text, org)
+        org = (10, 10)
+        new_img = _draw_text_on_image_pil(None, text, org)
         import kwplot
         kwplot.autompl()
         kwplot.imshow(new_img)
@@ -32,19 +32,31 @@ def _draw_text_on_image_pil(img, text, org=None):
     from PIL import Image, ImageDraw, ImageFont
     # fontpath = "./simsun.ttc"
     # unicode_font = ImageFont.truetype("DejaVuSans.ttf", font_size)
-    fontpath = "DejaVuSans.ttf"
-    font = ImageFont.truetype(fontpath, 32)
-    img_pil = Image.fromarray(img)
-    draw = ImageDraw.Draw(img_pil)
-    from kwimage import Color
-    color = Color.coerce('white').as255()
+    if fontpath is None:
+        fontpath = "DejaVuSans.ttf"
+    # fontpath = "arial.ttf"
+    # fontpath = '/home/joncrall/Downloads/Arial.ttf'
+    font = ImageFont.truetype(fontpath, fontsize)
+
     if org is None:
         org = (1, 1)
 
-    bbox = draw.textbbox(org, text, font=font)
+    if img is None:
+        dummy_img = np.empty((8, 8, 3), dtype=np.uint8)
+        dummy_img_pil = Image.fromarray(dummy_img)
+        dummy_draw = ImageDraw.Draw(dummy_img_pil)
+        bbox = dummy_draw.textbbox(org, text, font=font)
+        rb_x = bbox[2]
+        rb_y = bbox[3]
+        img = np.full((rb_y + 1, rb_x + 1, 3), fill_value=255, dtype=np.uint8)
     # size = draw.textlength(text, font=font)
-    print(f'bbox={bbox}')
+    # print(f'bbox={bbox}')
     # print(f'size={size}')
+
+    img_pil = Image.fromarray(img)
+    draw = ImageDraw.Draw(img_pil)
+    from kwimage import Color
+    color = Color.coerce('black').as255()
 
     draw.text(org, text, font=font, fill=color)
     new_img = np.array(img_pil)
