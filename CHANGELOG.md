@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.23 - Unreleased
 
+### Added:
+
+* Add `drop_non_polygons` argument to `_ShapelyMixin.fix`.
+
+* Changed: argument to `grab_test_image_fpath` can now be an existing path and
+  it will return that. (allows users to substitute custom images for demodata).
+
 
 ## Version 0.9.22 - Released 2023-10-13
 

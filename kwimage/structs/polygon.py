@@ -203,7 +203,7 @@ class _ShapelyMixin:
         else:
             return True
 
-    def fix(self):
+    def fix(self, drop_non_polygons=True):
         """
         Attempt to ensure validity
 
@@ -217,6 +217,20 @@ class _ShapelyMixin:
         if not a.is_valid:
             a = make_valid(a)
             # a = geom_factory(lgeos.GEOSMakeValid(a._geom))
+
+        if drop_non_polygons:
+            import shapely
+            if isinstance(a, shapely.geometry.GeometryCollection):
+                poly_parts = [
+                    p for p in a.geoms
+                    if isinstance(p, (shapely.geometry.Polygon, shapely.geometry.MultiPolygon))
+                ]
+                if len(poly_parts) == 1:
+                    a = poly_parts[0]
+                if len(poly_parts) > 1:
+                    a = shapely.geometry.MultiPolygon(poly_parts)
+                else:
+                    raise Exception('null geometry')
         return _kwimage_from_shapely(a)
 
 
@@ -1429,6 +1443,22 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> import kwimage
             >>> data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
+            >>> self = kwimage.Polygon.from_wkt(data)
+            >>> assert len(self.exterior) == 4
+
+        Example:
+            >>> import kwimage
+            >>> # Test an invalid polygon
+            >>> data = ub.paragraph(
+                '''
+                POLYGON ((
+                    120.6100123755511 1024,
+                    112.7743806311923 1012.527290341959,
+                    146.075815544717 990.1086772955989,
+                    166.3178642176437 1024,
+                    120.3923559382077 1024,
+                    120.6100123755511 1024))
+                ''')
             >>> self = kwimage.Polygon.from_wkt(data)
             >>> assert len(self.exterior) == 4
         """

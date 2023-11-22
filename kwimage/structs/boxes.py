@@ -799,7 +799,7 @@ class _BoxConversionMixins(object):
 
         if rb_x is None:
             if width is None:
-                raise Exception('shape required for unbounded slices')
+                raise Exception(f'shape required for unbounded slices={slices}')
             rb_x = width
         # elif rb_x < 0:
         #     if clip:
@@ -810,7 +810,7 @@ class _BoxConversionMixins(object):
 
         if rb_y is None:
             if height is None:
-                raise Exception('shape required for unbounded slices')
+                raise Exception(f'shape required for unbounded slices={slices}')
             rb_y = height
         # elif rb_y < 0:
         #     if not clip:
@@ -821,19 +821,19 @@ class _BoxConversionMixins(object):
         if wrap:
             if rb_x < 0:
                 if width is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 rb_x = width + rb_x
             if tl_x < 0:
                 if width is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 tl_x = width + tl_x
             if rb_y < 0:
                 if height is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 rb_y = height + rb_y
             if tl_y < 0:
                 if height is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 tl_y = height + tl_y
 
         if clip:
@@ -892,7 +892,7 @@ class _BoxConversionMixins(object):
 
         Returns:
             List[Tuple[slice, slice]]:
-                a list of slices corresponding to each box.
+                a list of slices (y, x ordered) corresponding to each box.
         """
         slices_list = []
         for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
@@ -1757,6 +1757,7 @@ class _BoxTransformMixins(object):
                 new = self.to_cxywh(copy=True)
         else:
             raise ValueError(about)
+
         if width is not None:
             new.data[..., 2] = width
         if height is not None:

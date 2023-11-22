@@ -308,6 +308,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
             carl - Carl Sagan
             paraview - ParaView logo
             stars - picture of stars in the sky
+            OR can be an existing path to an image
 
         dsize (None | Tuple[int, int]):
             if specified, we will return a variant of the data with the
@@ -347,9 +348,13 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
         item = _TEST_IMAGES[key]
     except KeyError:
         valid_keys = sorted(_TEST_IMAGES.keys())
-        raise KeyError(
-            'Unknown key={!r}. Valid keys are {!r}'.format(
-                key, valid_keys))
+        cand = ub.Path(key)
+        if cand.exists() and cand.is_file():
+            return cand
+        else:
+            raise KeyError(
+                'Unknown key={!r}. Valid keys are {!r}'.format(
+                    key, valid_keys))
     if not isinstance(item, dict):
         item = {'url': item}
 

@@ -23,6 +23,10 @@ Goals:
     It is not there yet, and the API is subject to change in order to better
     accomplish these goals.
 
+TODO:
+    - [ ] * Create two different classes: MultiLabelMask and BinaryMask
+            both can inherit from Mask.
+
 Note:
     IN THIS FILE ONLY: size corresponds to a h/w tuple to be compatible with
     the coco semantics. Everywhere else in this repo, size uses opencv
@@ -1974,22 +1978,62 @@ def _find_contours(binary_mask, pixels_are='points'):
     return polys
 
 
-def _rasterio_find_contours(binary_mask):
+def _write_img_in_terminal(binary_mask):
+    """
+    Could be slightly more sophisticated with this feature and have masks able
+    to be inspected at lower resolution in the terminal. It's a nice-to-have
+    and likely not necessary for production.
+
+    References:
+        https://dev.to/pranavbaburaj/print-images-to-console-using-python-23k6
+        https://github.com/lainq/img/blob/main/image.py
+        https://github.com/eddieantonio/imgcat
+        https://github.com/stefanhaustein/TerminalImageViewer
+    """
+    import kwarray
+    block = "\u2584"
+    lines = []
+    for row in binary_mask:
+        line_parts = []
+        groups = kwarray.group_consecutive(row, offset=0)
+        for group in groups:
+            value = group[0]
+            if value:
+                line_parts.extend(ub.color_text(block * len(group), 'white'))
+            else:
+                line_parts.extend(ub.color_text(block * len(group), 'black'))
+        line = ''.join(line_parts)
+        lines.append(line)
+    text = '\n'.join(lines)
+    print(text)
+
+
+def _rasterio_find_contours(label_img):
+    """
+    Note:
+        The :func:`rasterio.features.shapes` is capable of multi-label polygon
+        extraction.
+
+    Ignore:
+        label_img = kwimage.Mask.demo().data
+        label_img[:, 0:5][binary_mask[:, 0:5] > 0] = 2
+    """
+    import numpy as np
     from rasterio import features
-    if binary_mask.size == 0:
-        return []
-    shapes = list(features.shapes(binary_mask, connectivity=8))
-    translate = np.array([-0.5, -0.5]).ravel()[None, :]
     polys = []
-    for shape, value in shapes:
-        if value > 0:
-            coords = shape['coordinates']
-            exterior = np.array(coords[0]) + translate
-            interiors = [np.array(p) + translate for p in coords[1:]]
-            polys.append({
-                'exterior': exterior,
-                'interiors': interiors,
-            })
+    if label_img.size > 0:
+        shapes = list(features.shapes(label_img, connectivity=8))
+        translate = np.array([-0.5, -0.5]).ravel()[None, :]
+        for shape, value in shapes:
+            if value > 0:
+                coords = shape['coordinates']
+                exterior = np.array(coords[0]) + translate
+                interiors = [np.array(p) + translate for p in coords[1:]]
+                polys.append({
+                    'exterior': exterior,
+                    'interiors': interiors,
+                    # 'value': value,
+                })
     return polys
 
 
