@@ -66,7 +66,8 @@ class Box(ub.NiceRepr):
         return self
 
     @classmethod
-    def from_slice(self, slice_):
+    def from_slice(self, slice_, shape=None, clip=True, endpoint=True,
+                   wrap=False):
         """
         Example:
             >>> import kwimage
@@ -74,7 +75,8 @@ class Box(ub.NiceRepr):
             >>> new = kwimage.Box.from_slice(slice_)
         """
         import kwimage
-        boxes = kwimage.Boxes.from_slice(slice_)
+        boxes = kwimage.Boxes.from_slice(slice_, shape=shape, clip=clip,
+                                         endpoint=endpoint, wrap=wrap)
         self = Box(boxes, _check=False)
         return self
 
