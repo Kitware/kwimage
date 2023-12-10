@@ -14,10 +14,10 @@ Notes:
     w_earth_meter = 12.742e6  # meters
     106 million GSD
 
-This 4 pixel image has a resolution of 106 million GSD.  You may ask: how can a
-GSD be 106 million when the earth diameter is only ~12.7 million meters? The
-answer is that Earth is only ~0.12 pixels wide somewhere in this image, but it
-likely is somewhere in the lower center left. Not sure if it's possible to
+This 4 pixel image has a resolution of 106 million meter GSD.  You may ask: how
+can a GSD be 106 million when the earth diameter is only ~12.7 million meters?
+The answer is that Earth is only ~0.12 pixels wide somewhere in this image, but
+it likely is somewhere in the lower center left. Not sure if it's possible to
 calculate a spread on its position.
 
 References:
