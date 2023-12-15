@@ -42,13 +42,13 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
         org = (1, 1)
 
     if img is None:
-        dummy_img = np.empty((8, 8, 3), dtype=np.uint8)
+        dummy_img = np.empty((8, 8, 4), dtype=np.uint8)
         dummy_img_pil = Image.fromarray(dummy_img)
         dummy_draw = ImageDraw.Draw(dummy_img_pil)
         bbox = dummy_draw.textbbox(org, text, font=font)
         rb_x = bbox[2]
         rb_y = bbox[3]
-        img = np.full((rb_y + 1, rb_x + 1, 3), fill_value=255, dtype=np.uint8)
+        img = np.full((rb_y + 1, rb_x + 1, 4), fill_value=0, dtype=np.uint8)
     # size = draw.textlength(text, font=font)
     # print(f'bbox={bbox}')
     # print(f'size={size}')
@@ -58,6 +58,7 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
     from kwimage import Color
     color = Color.coerce('black').as255()
 
+    # anchor - https://pillow.readthedocs.io/en/stable/handbook/text-anchors.html#text-anchors
     draw.text(org, text, font=font, fill=color)
     new_img = np.array(img_pil)
     return new_img
@@ -1109,6 +1110,16 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
     if 'bg_value' in kwargs:
         bg_color = kwargs.pop('bg_value')
 
+    draw_keys = [
+        'fontScale',
+        'fontFace',
+        'thickness',
+    ]
+    import ubelt as ub
+    kwargs = ub.udict(kwargs)
+    draw_kw = ub.udict(kwargs) & draw_keys
+    kwargs -= draw_keys
+
     if kwargs:
         raise ValueError('Unexpected kwargs = {}'.format(kwargs))
 
@@ -1120,11 +1131,11 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
             # needs new kwimage to work
             header = kwimage.draw_text_on_image(
                 bginfo, text, org=None,
-                valign='top', halign=halign, color=color)
+                valign='top', halign=halign, color=color, **draw_kw)
         except Exception:
             header = kwimage.draw_text_on_image(
                 bginfo, text, org=(1, 1),
-                valign='top', halign='left', color=color)
+                valign='top', halign='left', color=color, **draw_kw)
 
         if fit == 'shrink':
             if header.shape[1] > width:
