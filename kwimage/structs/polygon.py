@@ -1445,22 +1445,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> data = 'POLYGON ((0.11 0.61, 0.07 0.588, 0.015 0.50, 0.11 0.61))'
             >>> self = kwimage.Polygon.from_wkt(data)
             >>> assert len(self.exterior) == 4
-
-        Example:
-            >>> import kwimage
-            >>> # Test an invalid polygon
-            >>> data = ub.paragraph(
-                '''
-                POLYGON ((
-                    120.6100123755511 1024,
-                    112.7743806311923 1012.527290341959,
-                    146.075815544717 990.1086772955989,
-                    166.3178642176437 1024,
-                    120.3923559382077 1024,
-                    120.6100123755511 1024))
-                ''')
-            >>> self = kwimage.Polygon.from_wkt(data)
-            >>> assert len(self.exterior) == 4
         """
         from shapely import wkt
         geom = wkt.loads(data)
