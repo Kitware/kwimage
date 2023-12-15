@@ -13,6 +13,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Changed: argument to `grab_test_image_fpath` can now be an existing path and
   it will return that. (allows users to substitute custom images for demodata).
 
+* Added `clip`, `shape`, `endpoint`, and `wrap` argument to `Box.from_slice`
+
 
 ## Version 0.9.22 - Released 2023-10-13
 
