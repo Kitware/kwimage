@@ -249,8 +249,8 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>>     imdata = kwimage.grab_test_image(key, dsize=(256, None))
         >>>     key_to_image[key] = imdata
         >>>     print('grabbed key = {!r}'.format(key))
-        >>> # xdoc: +REQUIRES(--show)
-        >>> # xdoc: +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> kwplot.autoplt()
         >>> to_stack = [kwimage.draw_header_text(
@@ -478,8 +478,8 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         >>> import kwimage
         >>> img = kwimage.checkerboard(
         >>>     dsize=(64, 64), on_value='kw_green', off_value='kw_blue')
-        >>> # xdoc: +REQUIRES(--show)
-        >>> # xdoc: +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> kwplot.autoplt()
         >>> kwplot.imshow(img)

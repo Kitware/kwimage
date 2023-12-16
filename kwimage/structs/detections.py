@@ -52,18 +52,18 @@ class _DetDrawMixin:
         Draws boxes using matplotlib
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> self = Detections.random(num=10, scale=512.0, rng=0, classes=['a', 'b', 'c'])
             >>> self.boxes.translate((-128, -128), inplace=True)
             >>> image = (np.random.rand(256, 256) * 255).astype(np.uint8)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(image)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> self.draw(color='blue', alpha=None)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
@@ -141,48 +141,48 @@ class _DetDrawMixin:
             xdoctest -m kwimage.structs.detections _DetDrawMixin.draw_on:1 --profile --show
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwimage
             >>> import kwplot
             >>> self = kwimage.Detections.random(num=10, scale=512, rng=0)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color='blue')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.imshow(image2)
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwimage
             >>> from kwimage.structs.detections import *  # NOQA
             >>> import kwplot
             >>> self = kwimage.Detections.random(num=10, scale=512, rng=0)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color='classes')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.imshow(image2)
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> # xdoc: +REQUIRES(--profile)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--profile)
             >>> import kwimage
             >>> import kwplot
             >>> self = kwimage.Detections.random(num=100, scale=512, rng=0, keypoints=True, segmentations=True)
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color='blue')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
             >>> kwplot.imshow(image2)
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> # Test that boxes with tiny scores are drawn correctly
             >>> import kwimage
             >>> import kwplot
@@ -190,15 +190,15 @@ class _DetDrawMixin:
             >>> self.data['scores'][:] = 1.23e-8
             >>> image = (np.random.rand(512, 512) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image, color='blue')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.imshow(image2)
             >>> kwplot.show_if_requested()
 
         Ignore:
-            # xdoc: +REQUIRES(module:kwplot)
-            # xdoc: +REQUIRES(--profile)
+            # xdoctest: +REQUIRES(module:kwplot)
+            # xdoctest: +REQUIRES(--profile)
             import kwplot
 
             import kwimage
@@ -207,7 +207,7 @@ class _DetDrawMixin:
             self = self.scale(2e6)
             image2 = self.draw_on(image, color='blue')
 
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
             >>> kwplot.imshow(image2)

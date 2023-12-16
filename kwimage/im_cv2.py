@@ -1079,7 +1079,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> gausspatch = gaussian_patch(shape, sigma)
         >>> sum_ = gausspatch.sum()
         >>> assert np.all(np.isclose(sum_, 1.0))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
@@ -1093,7 +1093,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> gausspatch = gaussian_patch(shape, sigma)
         >>> sum_ = gausspatch.sum()
         >>> assert np.all(np.isclose(sum_, 1.0))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
@@ -1241,7 +1241,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         >>> blurred2 = kwimage.gaussian_blur(image, kernel=9)
         >>> blurred3 = kwimage.gaussian_blur(image, sigma=2)
         >>> blurred4 = kwimage.gaussian_blur(image, sigma=(2, 5), kernel=5)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nRows=4, nCols=1)
@@ -2091,7 +2091,7 @@ def _morph_kernel(kernel, element='rect'):
         >>> results = {}
         >>> for element in _CV2_STRUCT_ELEMENTS.keys():
         ...     results[element] = _morph_kernel(kernel, element)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
@@ -2163,7 +2163,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         ...     if params['kernel'] == 'random':
         ...         params['kernel'] = np.random.rand(5, 5)
         ...     results[key] = morphology(image, **params)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> to_stack = []
@@ -2198,7 +2198,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         ...     for element in _CV2_STRUCT_ELEMENTS.keys():
         ...         results[f'{mode}+{element}'] = morphology(data, mode, kernel=kernel, element=element, iterations=2)
         >>> results['raw'] = data
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nCols=3, nSubplots=len(results))
@@ -2288,7 +2288,7 @@ def connected_components(image, connectivity=8, ltype=np.int32,
         >>> mask = kwimage.Mask.demo()
         >>> image = mask.data
         >>> labels, info = connected_components(image)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> canvas0 = kwimage.atleast_3channels(mask.data * 255)

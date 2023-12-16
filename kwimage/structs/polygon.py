@@ -326,7 +326,7 @@ class _PolyWarpMixin:
             >>> assert np.allclose(self.data['exterior'].data[:, 1], new.data['exterior'].data[:, 1])
             >>> assert np.allclose(input_dims[0] - self.data['exterior'].data[:, 0], new.data['exterior'].data[:, 0])
 
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -460,7 +460,7 @@ class _PolyWarpMixin:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).translate((0.5))
             >>> new = self.scale(1.5, about='centroid')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
@@ -519,7 +519,7 @@ class _PolyWarpMixin:
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.rotate(np.pi / 2, about='center')
             >>> new2 = self.rotate(np.pi / 2)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
@@ -789,7 +789,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         >>> import kwimage
         >>> poly1 = kwimage.Polygon(exterior=[[ 5., 10.], [ 1.,  8.], [ 3.,  4.], [ 5.,  3.], [ 8.,  9.], [ 6., 10.]])
         >>> poly2 = kwimage.Polygon.random(rng=34214, n_holes=2).scale(10).round()
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.figure(doclf=True)
@@ -808,7 +808,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         >>>                   [24, 12], [14, 12], [13, 11]])]
         >>> }
         >>> self = kwimage.Polygon(**data)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> self.draw(setlim=1.4, vertex=0.2, vertexcolor='kw_orange', color='kw_blue', edgecolor='kw_green')
@@ -824,7 +824,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         >>>                   [24, 12], [14, 12], [13, 11]])]
         >>> }
         >>> self = kwimage.Polygon(**data)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> self.draw(setlim=1.4, vertex=0.2, vertexcolor='kw_orange', color='kw_blue', edgecolor='kw_green')
@@ -847,7 +847,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                                     [0.28778562, 0.74758761],
                                     [0.30341266, 0.93748088]]))>],
         })>
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> self.draw(setlim=True)
@@ -863,7 +863,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         >>> kwimage.Polygon.from_geojson(geos)
         >>> geom = self.to_shapely()
         >>> kwimage.Polygon.from_shapely(geom)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> self.draw(setlim=True)
@@ -1129,7 +1129,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> import kwimage
             >>> self = kwimage.Polygon.random(n=4, rng=None, n_holes=2, convex=1)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -1291,7 +1291,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> mask = self.to_mask((128, 128))
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -1322,7 +1322,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> self = Polygon.random().scale(8).translate(100, 100)
             >>> mask = self.to_relative_mask()
             >>> assert mask.shape <= (8, 8)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -1528,8 +1528,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             shapely.geometry.polygon.Polygon
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> # xdoc: +REQUIRES(module:shapely)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:shapely)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1)
             >>> self = self.scale(100)
@@ -1775,7 +1775,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> from kwimage.structs.polygon import *
             >>> self = Polygon.random().scale(10).translate(-1)
             >>> self2 = self.clip(1, 1, 3, 3)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> self2.draw(setlim=True)
@@ -1924,18 +1924,18 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             be drawn on it. In the case where alpha < 1.0,
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> image_in = np.zeros((128, 128), dtype=np.float32)
             >>> image_out = self.draw_on(image_in)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(image_out, fnum=1)
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> # Demo drawing on a RGBA canvas
             >>> # If you initialize an zero rgba canvas, the alpha values are
             >>> # filled correctly.
@@ -1978,11 +1978,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     outputs[k] = self.draw_on(im, color=color, **kw)
             >>>     inplace = outputs[k] is im
             >>>     rows.append({'key': k, 'inplace': inplace})
-            >>> # xdoc: +REQUIRES(module:pandas)
+            >>> # xdoctest: +REQUIRES(module:pandas)
             >>> import pandas as pd
             >>> df = pd.DataFrame(rows).sort_values('inplace')
             >>> print(df.to_string())
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2, doclf=True)
             >>> kwplot.autompl()
@@ -2184,11 +2184,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             - [ ] Rework arguments in favor of matplotlib standards
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1)
             >>> self = self.scale(100)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> kwargs = dict(edgecolor='orangered', facecolor='dodgerblue', linewidth=10)
             >>> self.draw(**kwargs)
             >>> import kwplot
@@ -2198,8 +2198,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> self.draw(setlim=True, **kwargs)
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1, rng=33202)
             >>> import textwrap
@@ -2398,7 +2398,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> self = kwimage.Polygon.random(3, convex=0)
             >>> other = kwimage.Polygon.random(4, convex=0).translate((2, 2))
             >>> results = self.morph(other, np.linspace(0, 1, 5))
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> kwplot.figure(doclf=1)
@@ -2656,8 +2656,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             >>> self = MultiPolygon.random(rng=0).scale(s)
             >>> dims = (s, s)
             >>> mask = self.to_mask(dims)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -2746,8 +2746,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             shapely.geometry.MultiPolygon
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> # xdoc: +REQUIRES(module:shapely)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:shapely)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = MultiPolygon.random(rng=0)
             >>> geom = self.to_shapely()
@@ -3034,7 +3034,7 @@ class PolygonList(_generic.ObjectList):
         """
         Ignore:
             >>> # Test that we can draw a lot of polygons quickly by default
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> # xdoctest: +REQUIRES(--slow)
             >>> import kwimage
             >>> s = 512
@@ -3050,7 +3050,7 @@ class PolygonList(_generic.ObjectList):
             >>> # Disabling fast-draw will make drawing multiples much slower
             >>> with ub.Timer('alpha draw, nofast'):
             >>>     out_canvas3 = self.draw_on(canvas.copy(), alpha=0.5, fastdraw=False, fill=1, border=1, edgecolor='red')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)

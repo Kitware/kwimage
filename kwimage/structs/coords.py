@@ -610,7 +610,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.allclose(self.data[:, 1], new.data[:, 1])
             >>> assert np.allclose(input_dims[0] - self.data[:, 0], new.data[:, 0])
 
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -638,7 +638,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.allclose(diff, 0, atol=1e-6, rtol=1e-4)
             >>> #assert np.allclose(self.data[:, 1], new.data[:, 1])
             >>> #assert np.allclose(input_dims[0] - self.data[:, 0], new.data[:, 0])
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwimage
             >>> im = kwimage.imresize(kwimage.grab_test_image(), dsize=input_dims[::-1])
             >>> new_im = augmenter.augment_image(im)
@@ -884,8 +884,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> # Rotate about the center of mass
             >>> about = self.data.mean(axis=0)
             >>> new4 = self.rotate(theta, about=about)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> plt = kwplot.autoplt()
@@ -1039,8 +1039,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> radius = 3.0
             >>> image2 = np.zeros((s, s))
             >>> self.soft_fill(image2, coord_axes=coord_axes, radius=radius)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(image1, pnum=(1, 2, 1))
@@ -1154,7 +1154,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             ndarray: image with coordinates drawn on it
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> s = 256
             >>> self = Coords.random(10, meta={'shape': (s, s)}).scale(s)
@@ -1166,8 +1166,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> # image = self.draw_on(image, fill_value, coord_axes=[0, 1], interp='nearest')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='bilinear')
             >>> # image = self.draw_on(image, fill_value, coord_axes=[1, 0], interp='nearest')
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -1204,10 +1204,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             List[mpl.collections.PatchCollection]: drawn matplotlib objects
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.coords import *  # NOQA
             >>> self = Coords.random(10)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> self.draw(radius=0.05, alpha=0.8)

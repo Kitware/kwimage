@@ -134,7 +134,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> img2 = kwimage.draw_text_on_image(img.copy(), 'FOOBAR', org=(0, 0), valign='top')
         >>> assert img2.shape == img.shape
         >>> assert np.any(img2 != img)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img2)
@@ -151,7 +151,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> img2 = kwimage.draw_text_on_image(img, 'HALIGN-right\nbazbiz\nspam', org=(250, 300), halign='right', border=2)
         >>> img2 = kwimage.draw_text_on_image(img, 'HALIGN-center\nbazbiz\nspam', org=(250, 400), halign='center', border=2)
         >>> img2 = kwimage.draw_text_on_image(img, 'HALIGN-left\nbazbiz\nspam', org=(250, 500), halign='left', border=2)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img2)
@@ -176,7 +176,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> img = kwimage.draw_text_on_image(None, 'Battery\nFraction', org=(100, 100), valign='top', halign='center', border={'color': 'green', 'thickness': 9})
         >>> #img = kwimage.draw_text_on_image(None, 'hello\neveryone', org=(0, 0), valign='top')
         >>> #img = kwimage.draw_text_on_image(None, 'hello', org=(0, 60), valign='top', halign='center', border=0)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img)
@@ -187,7 +187,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> import kwimage
         >>> img = kwimage.draw_text_on_image({'width': 300}, 'Arbitrary\nText', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
         >>> print('img.shape = {!r}'.format(img.shape))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img)
@@ -200,7 +200,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> canvases.append(kwimage.draw_text_on_image(None, 'FontScale=1.0', fontScale=1.0))
         >>> canvases.append(kwimage.draw_text_on_image(None, 'FontScale=2.0', fontScale=2.0))
         >>> canvases.append(kwimage.draw_text_on_image(None, 'FontScale=3.0', fontScale=3.0))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> canvas = kwimage.stack_images_grid(canvases, pad=10, bg_value=(255, 255, 255))
         >>> import kwplot
         >>> kwplot.autompl()
@@ -221,7 +221,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>>     header = kwimage.draw_text_on_image({}, ub.urepr(kw, compact=1), color='blue')
         >>>     canvas = kwimage.draw_text_on_image({'color': 'white'}, text, org=None, **kw)
         >>>     canvases.append(kwimage.stack_images([header, canvas], axis=0, bg_value=(255, 255, 255), pad=5))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> canvas = kwimage.stack_images_grid(canvases, pad=10, bg_value=(255, 255, 255))
         >>> import kwplot
         >>> kwplot.autompl()
@@ -549,9 +549,9 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         >>> boxes = kwimage.Boxes([[1, 1, 8, 8]], 'ltrb')
         >>> img2 = draw_boxes_on_image(img, boxes, color, thickness)
         >>> assert tuple(img2[1, 1]) == (30, 144, 255)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
-        >>> kwplot.autompl()  # xdoc: +SKIP
+        >>> kwplot.autompl()  # xdoctest: +SKIP
         >>> kwplot.figure(doclf=True, fnum=1)
         >>> kwplot.imshow(img2)
     """
@@ -601,23 +601,23 @@ def draw_line_segments_on_image(
         >>> color = 'blue'
         >>> colorspace = 'rgb'
         >>> img2 = draw_line_segments_on_image(img, pts1, pts2, thickness=2)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
-        >>> kwplot.autompl()  # xdoc: +SKIP
+        >>> kwplot.autompl()  # xdoctest: +SKIP
         >>> kwplot.figure(doclf=True, fnum=1)
         >>> kwplot.imshow(img2)
 
     Example:
         >>> import kwimage
-        >>> # xdoc: +REQUIRES(module:matplotlib)
+        >>> # xdoctest: +REQUIRES(module:matplotlib)
         >>> pts1 = kwimage.Points.random(10).scale(512).xy
         >>> pts2 = kwimage.Points.random(10).scale(512).xy
         >>> img = np.ones((512, 512, 3), dtype=np.uint8) * 255
         >>> color = kwimage.Color.distinct(10)
         >>> img2 = kwimage.draw_line_segments_on_image(img, pts1, pts2, color=color)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
-        >>> kwplot.autompl()  # xdoc: +SKIP
+        >>> kwplot.autompl()  # xdoctest: +SKIP
         >>> kwplot.figure(doclf=True, fnum=1)
         >>> kwplot.imshow(img2)
     """
@@ -703,11 +703,11 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
         kwimage.overlay_alpha_images
 
     Example:
-        >>> # xdoc: +REQUIRES(module:matplotlib)
+        >>> # xdoctest: +REQUIRES(module:matplotlib)
         >>> from kwimage.im_draw import *  # NOQA
         >>> probs = np.tile(np.linspace(0, 1, 10), (10, 1))
         >>> heatmask = make_heatmask(probs, with_alpha=0.8, dsize=(100, 100))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(heatmask, fnum=1, doclf=True, colorspace='rgb',
@@ -756,14 +756,14 @@ def make_orimask(radians, mag=None, alpha=1.0):
         kwimage.overlay_alpha_images
 
     Example:
-        >>> # xdoc: +REQUIRES(module:matplotlib)
+        >>> # xdoctest: +REQUIRES(module:matplotlib)
         >>> from kwimage.im_draw import *  # NOQA
         >>> x, y = np.meshgrid(np.arange(64), np.arange(64))
         >>> dx, dy = x - 32, y - 32
         >>> radians = np.arctan2(dx, dy)
         >>> mag = np.sqrt(dx ** 2 + dy ** 2)
         >>> orimask = make_orimask(radians, mag)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(orimask, fnum=1, doclf=True,
@@ -1269,7 +1269,7 @@ def fill_nans_with_checkers(canvas, square_shape=8,
         >>> input_img = img.copy()
         >>> canvas = fill_nans_with_checkers(input_img, on_value=0.3)
         >>> assert input_img is canvas
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img, pnum=(1, 2, 1), title='matplotlib treats nans as zeros')
@@ -1288,7 +1288,7 @@ def fill_nans_with_checkers(canvas, square_shape=8,
         >>> img = kwimage.convert_colorspace(img, 'rgb', 'gray')
         >>> canvas = img.copy()
         >>> canvas = fill_nans_with_checkers(canvas)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img, pnum=(1, 2, 1))
@@ -1404,7 +1404,7 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         >>> kwimage.draw_text_on_image(canvas, 'kwimage.nodata_checkerboard',    (256, 5), halign='center', valign='top', border=2)
         >>> kwimage.draw_text_on_image(canvas, '(pip install kwimage)', (512, 512 - 10), halign='right', valign='bottom', border=2, fontScale=0.8)
         >>> result = kwimage.nodata_checkerboard(canvas, on_value=0.5)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(result)
@@ -1421,7 +1421,7 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         >>> canvas = img.copy()
         >>> result = kwimage.nodata_checkerboard(canvas)
         >>> canvas.data is result.data
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(result, title='nodata_checkers with masked uint8')

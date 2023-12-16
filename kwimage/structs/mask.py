@@ -581,7 +581,7 @@ class _MaskTransformMixin(object):
             >>> transform = np.array([[5., 0, 0], [0, 5, 0], [0, 0, 1]])
             >>> output_dims = np.array(self.shape) * 6
             >>> new = self.warp(transform, output_dims=output_dims)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, pnum=(1, 2, 1))
@@ -602,7 +602,7 @@ class _MaskTransformMixin(object):
             >>> poly1 = mask1.to_multi_polygon()
             >>> mask2 = mask1.warp(transform.matrix, output_dims=output_dims)
             >>> poly2 = poly1.warp(transform.matrix)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> canvas1_m = np.zeros((*input_dims, 3))
@@ -753,7 +753,7 @@ class _MaskDrawMixin(object):
             >>> image = kwimage.grab_test_image()
             >>> self = Mask.random(shape=image.shape[0:2])
             >>> canvas = self.draw_on(image)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(canvas)
@@ -790,7 +790,7 @@ class _MaskDrawMixin(object):
             >>> for k, v in inputs.items():
             >>>     im, kw = v
             >>>     outputs[k] = self.draw_on(im, color=color, **kw)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2, doclf=True)
             >>> kwplot.autompl()
@@ -902,7 +902,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         * f_mask - fortran-style binary mask
 
     Example:
-        >>> # xdoc: +REQUIRES(--mask)
+        >>> # xdoctest: +REQUIRES(--mask)
         >>> # a ms-coco style compressed bytes rle segmentation
         >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
         >>> mask = Mask(segmentation, 'bytes_rle')
@@ -948,7 +948,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Example:
             >>> import kwimage
             >>> mask = kwimage.Mask.random()
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> mask.draw()
@@ -1113,7 +1113,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask: the unioned mask
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(2)]
             >>> mask = Mask.union(*masks)
@@ -1265,7 +1265,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         Extract the patch with non-zero data
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_patch()
@@ -1287,7 +1287,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 a general singular version does not yet exist.
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_xywh().tolist()
             >>> self = Mask.random(rng=0).translate((10, 10))
@@ -1408,7 +1408,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_polygon()
@@ -1416,7 +1416,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> polygons = self.get_polygon()
             >>> self = self.to_bytes_rle()
             >>> other = Mask.from_polygons(polygons, self.shape)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> image = np.ones(self.shape)
@@ -1552,17 +1552,17 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             - [ ] Polygons and Masks should keep track of what "pixels_are"
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.demo()
             >>> self = self.scale(5)
             >>> multi_poly = self.to_multi_polygon()
-            >>> # xdoc: +REQUIRES(module:kwplot)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> self.draw(color='red')
             >>> multi_poly.scale(1.1).draw(color='blue')
 
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> image = np.ones(self.shape)
@@ -1664,7 +1664,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> dims = self.shape[0:2]
             >>> multi_poly1 = self.to_multi_polygon(pixels_are='points')
             >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> pretty_data = kwplot.make_heatmask(self.data/1.0, cmap='magma')[..., 0:3]
@@ -1727,7 +1727,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             pixel thick.
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_convex_hull()
             >>> print('polygons = ' + ub.urepr(polygons))
@@ -1751,7 +1751,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             xdoctest -m kwimage.structs.mask Mask.iou
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> self = Mask.demo()
             >>> other = self.translate(1)
             >>> iou = self.iou(other)
@@ -1786,7 +1786,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask: the constructed mask object
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> segmentation = {'size': [5, 9], 'counts': ';?1B10O30O4'}
             >>> polygon = [
             >>>     [np.array([[3, 0],[2, 1],[2, 4],[4, 4],[4, 3],[7, 0]])],
@@ -1862,7 +1862,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 does array-style run length encoding.
 
         Example:
-            >>> # xdoc: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(--mask)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> self = Mask.demo()
             >>> coco_data1 = self.toformat('array_rle').to_coco()
