@@ -1150,7 +1150,6 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
     else:
         width = image.shape[1]
 
-    print(f'image={image}')
     if stack and image is not None:
         # Handle very small image case
         h, w = image.shape[0:2]
