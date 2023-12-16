@@ -16,6 +16,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Added `clip`, `shape`, `endpoint`, and `wrap` argument to `Box.from_slice`
 
 
+### Changed
+
+* Can now call `draw_header_text` without an image argument.
+
+
 ## Version 0.9.22 - Released 2023-10-13
 
 ### Added

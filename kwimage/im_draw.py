@@ -143,14 +143,14 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     Example:
         >>> import kwimage
         >>> # Test valign
-        >>> img = kwimage.grab_test_image(space='rgb', dsize=(500, 500))
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(150, 0), valign='center', border=2)
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(300, 0), valign='bottom', border=2)
+        >>> img = kwimage.grab_test_image(space='rgb', dsize=(640, 640))
+        >>> img2 = kwimage.draw_text_on_image(img, 'VALIGN-top\nbazbiz\nspam', org=(0, 100), valign='top', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'VALIGN-center\nbazbiz\nspam', org=(200, 100), valign='center', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'VALIGN-bottom\nbazbiz\nspam', org=(450, 100), valign='bottom', border=2)
         >>> # Test halign
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(250, 100), halign='right', border=2)
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(250, 250), halign='center', border=2)
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(250, 400), halign='left', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'HALIGN-right\nbazbiz\nspam', org=(250, 300), halign='right', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'HALIGN-center\nbazbiz\nspam', org=(250, 400), halign='center', border=2)
+        >>> img2 = kwimage.draw_text_on_image(img, 'HALIGN-left\nbazbiz\nspam', org=(250, 500), halign='left', border=2)
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -162,7 +162,13 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> import kwimage
         >>> img = kwimage.grab_test_image(space='rgb')
         >>> img = kwimage.ensure_float01(img)
-        >>> img2 = kwimage.draw_text_on_image(img, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2)
+        >>> img2 = img.copy()
+        >>> img2 = kwimage.draw_text_on_image(img2, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2, fontScale=1.0)
+        >>> img2 = kwimage.draw_text_on_image(img2, 'FOOBAR\nbazbiz\nspam', org=(0, 200), valign='top', border=2, fontScale=2.0)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img2)
+        >>> kwplot.show_if_requested()
 
     Example:
         >>> # Test dictionary border
@@ -179,12 +185,26 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     Example:
         >>> # Test dictionary image
         >>> import kwimage
-        >>> img = kwimage.draw_text_on_image({'width': 300}, 'Unscrew\nGetting', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
+        >>> img = kwimage.draw_text_on_image({'width': 300}, 'Arbitrary\nText', org=(150, 0), valign='top', halign='center', border={'color': 'green', 'thickness': 0})
         >>> print('img.shape = {!r}'.format(img.shape))
         >>> # xdoc: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img)
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Test fontScale
+        >>> import kwimage
+        >>> canvases = []
+        >>> canvases.append(kwimage.draw_text_on_image(None, 'FontScale=1.0', fontScale=1.0))
+        >>> canvases.append(kwimage.draw_text_on_image(None, 'FontScale=2.0', fontScale=2.0))
+        >>> canvases.append(kwimage.draw_text_on_image(None, 'FontScale=3.0', fontScale=3.0))
+        >>> # xdoc: +REQUIRES(--show)
+        >>> canvas = kwimage.stack_images_grid(canvases, pad=10, bg_value=(255, 255, 255))
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(canvas)
         >>> kwplot.show_if_requested()
 
     Example:
@@ -1054,8 +1074,12 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
             header. If 'auto', will only stack if an image is given as an
             ndarray.
 
-        **kwargs: used only for parameter aliases. Currently accepts
-            bg_value as an alias for bg_color.
+        **kwargs: used only for parameter aliases.
+            Currently accepts:
+                * bg_value as an alias for bg_color.
+                * fontScale
+                * fontFace
+                * thickness
 
     Returns:
         ndarray
@@ -1082,9 +1106,34 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
         >>> for c in canvases:
         >>>     kwplot.imshow(c, pnum=pnum_())
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # Test fontScale
+        >>> from kwimage.im_draw import *  # NOQA
+        >>> import kwimage
+        >>> test_image = kwimage.grab_test_image(dsize=(900, 120))
+        >>> canvases = []
+        >>> for image in [test_image, None]:
+        >>>     canvases += [draw_header_text(image=image, text='Scale=1.0 Fit=False', fit=False, fontScale=1.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=2.0 Fit=False', fit=False, fontScale=2.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=6.0 Fit=False', fit=False, fontScale=6.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=1.0 Fit=True', fit=True, fontScale=1.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=2.0 Fit=True', fit=True, fontScale=2.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=6.0 Fit=True', fit=True, fontScale=6.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=1.0 Fit=shrink', fit='shrink', fontScale=1.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=2.0 Fit=shrink', fit='shrink', fontScale=2.0)]
+        >>>     canvases += [draw_header_text(image=image, text='Scale=6.0 Fit=shrink', fit='shrink', fontScale=6.0)]
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nCols=3, nSubplots=len(canvases))
+        >>> for c in canvases:
+        >>>     kwplot.imshow(c, pnum=pnum_(), title=str(c.shape))
+        >>> kwplot.show_if_requested()
     """
     # import cv2
     import kwimage
+    import ubelt as ub
 
     if text is None:
         raise ValueError('text must be provided')
@@ -1092,14 +1141,17 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
     if stack == 'auto':
         stack = isinstance(image, np.ndarray)
 
-    if isinstance(image, dict):
+    if image is None:
+        width = None
+    elif isinstance(image, dict):
         width = image['width']
         if stack:
             raise ValueError('Must pass in the actual image if stack is True')
     else:
         width = image.shape[1]
 
-    if stack:
+    print(f'image={image}')
+    if stack and image is not None:
         # Handle very small image case
         h, w = image.shape[0:2]
         min_pixels = 32
@@ -1115,9 +1167,14 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
         'fontFace',
         'thickness',
     ]
-    import ubelt as ub
     kwargs = ub.udict(kwargs)
-    draw_kw = ub.udict(kwargs) & draw_keys
+    default_draw_kw = ub.udict({
+        'valign': 'top',
+        'halign': halign,
+        'org': None,
+        'color': color,
+    })
+    draw_kw = default_draw_kw | (ub.udict(kwargs) & draw_keys)
     kwargs -= draw_keys
 
     if kwargs:
@@ -1129,38 +1186,38 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
         # TODO: allow a shrink-to-fit only option
         try:
             # needs new kwimage to work
-            header = kwimage.draw_text_on_image(
-                bginfo, text, org=None,
-                valign='top', halign=halign, color=color, **draw_kw)
+            draw_kw['org'] = None
+            header = kwimage.draw_text_on_image(bginfo, text, **draw_kw)
         except Exception:
-            header = kwimage.draw_text_on_image(
-                bginfo, text, org=(1, 1),
-                valign='top', halign='left', color=color, **draw_kw)
+            draw_kw['halign'] = 'left'
+            draw_kw['org'] = (1, 1)
+            header = kwimage.draw_text_on_image(bginfo, text, **draw_kw)
 
         if fit == 'shrink':
-            if header.shape[1] > width:
-                header = kwimage.imresize(header, dsize=(width, None))
-            elif header.shape[1] < width:
-                header = np.pad(header, [(0, 0), ((width - header.shape[1]) // 2, 0), (0, 0)])
-            else:
-                pass
+            if width is not None:
+                if header.shape[1] > width:
+                    header = kwimage.imresize(header, dsize=(width, None))
+                elif header.shape[1] < width:
+                    header = np.pad(header, [(0, 0), ((width - header.shape[1]) // 2, 0), (0, 0)])
+                else:
+                    pass
         else:
             header = kwimage.imresize(header, dsize=(width, None))
     else:
         # Allows for however much height is needed
         if halign == 'left':
-            org = (1, 1)
+            draw_kw['org'] = (1, 1)
         elif halign == 'center':
-            org = (width // 2, 1)
+            if width is not None:
+                draw_kw['org'] = (width // 2, 1)
         elif halign == 'right':
-            org = (width - 1, 1)
+            if width is not None:
+                draw_kw['org'] = (width - 1, 1)
         else:
             raise KeyError(halign)
 
         bginfo['width'] = width
-        header = kwimage.draw_text_on_image(
-            bginfo, text, org=org,
-            valign='top', halign=halign, color=color)
+        header = kwimage.draw_text_on_image(bginfo, text, **draw_kw)
 
     if stack:
         stacked = kwimage.stack_images([header, image], axis=0, overlap=-1)
