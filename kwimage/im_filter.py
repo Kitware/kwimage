@@ -25,7 +25,7 @@ def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
         >>> img_hwc = kwimage.grab_test_image()
         >>> img_hwc = kwimage.ensure_float01(img_hwc)
         >>> out_hwc = radial_fourier_mask(img_hwc, radius=11)
-        >>> # xdoc: REQUIRES(--show)
+        >>> # xdoctest: REQUIRES(--show)
         >>> import kwplot
         >>> plt = kwplot.autoplt()
         >>> def keepdim(func):
@@ -137,7 +137,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> mask = (kwimage.gaussian_blur(mask) > 0.5)
         >>> out_hwc_cv2 = fourier_mask(img_hwc, mask, backend='numpy')
         >>> out_hwc_np = fourier_mask(img_hwc, mask, backend='cv2')
-        >>> # xdoc: REQUIRES(--show)
+        >>> # xdoctest: REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img_hwc, pnum=(1, 4, 1), fnum=1, title='input')
@@ -154,7 +154,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> mask = (mask / mask.max()) ** 32
         >>> out_hwc_cv2 = fourier_mask(img_hwc, mask, backend='numpy')
         >>> out_hwc_np = fourier_mask(img_hwc, mask, backend='cv2')
-        >>> # xdoc: REQUIRES(--show)
+        >>> # xdoctest: REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img_hwc, pnum=(1, 4, 1), fnum=1, title='input')
@@ -171,7 +171,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> mask = 1 - (mask / mask.max()) ** 32
         >>> out_hwc_cv2 = fourier_mask(img_hwc, mask, backend='numpy')
         >>> out_hwc_np = fourier_mask(img_hwc, mask, backend='cv2')
-        >>> # xdoc: REQUIRES(--show)
+        >>> # xdoctest: REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img_hwc, pnum=(1, 4, 1), fnum=1, title='input')

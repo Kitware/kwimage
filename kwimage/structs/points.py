@@ -38,7 +38,7 @@ class _PointsWarpMixin:
             >>> augmenter = imgaug.augmenters.Fliplr(p=1)
             >>> new = self._warp_imgaug(augmenter, input_dims)
 
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> kwplot.figure(fnum=1, doclf=True)
@@ -388,13 +388,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             xdoctest -m ~/code/kwimage/kwimage/structs/points.py Points.draw_on --show
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> s = 128
             >>> image = np.zeros((s, s))
             >>> self = Points.random(10).scale(s)
             >>> image = self.draw_on(image)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
@@ -403,13 +403,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> s = 128
             >>> image = np.zeros((s, s))
             >>> self = Points.random(10).scale(s)
             >>> image = self.draw_on(image, radius=3, color='distinct')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.autompl()
@@ -437,7 +437,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> for k, v in inputs.items():
             >>>     im, kw = v
             >>>     outputs[k] = self.draw_on(im, color=color, **kw)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2, doclf=True)
             >>> plt = kwplot.autoplt()
@@ -448,18 +448,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> self = Points.random(10).scale(32)
             >>> image = self.draw_on(radius=3, color='distinct')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.imshow(image)
             >>> kwplot.show_if_requested()
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> # Test cases where single and multiple colors are given
             >>> # with radius=None and radius=scalar
             >>> from kwimage.structs.points import *  # NOQA
@@ -469,7 +469,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> image2 = self.draw_on(radius=None, color='blue')
             >>> image3 = self.draw_on(radius=2, color='distinct')
             >>> image4 = self.draw_on(radius=None, color='distinct')
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> canvas = kwimage.stack_images_grid(
             >>>     [image1, image2, image3, image4],
@@ -563,10 +563,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         TODO: can use kwplot.draw_points
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.points import *  # NOQA
             >>> pts = Points.random(10)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(doclf=1)
             >>> pts.draw(radius=0.01)

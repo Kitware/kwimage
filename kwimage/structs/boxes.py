@@ -54,8 +54,8 @@ Example:
               [0.  , 0.02, 1.  , 0.  ],
               [0.  , 0.02, 0.  , 1.  ]])
     >>> # OpenCV and Matplotlib have first class visualization support
-    >>> # xdoc: +REQUIRES(--show)
-    >>> # xdoc: +REQUIRES(module:kwplot)
+    >>> # xdoctest: +REQUIRES(--show)
+    >>> # xdoctest: +REQUIRES(module:kwplot)
     >>> import kwplot
     >>> plt = kwplot.autoplt()
     >>> # opencv "draw_on" method
@@ -799,7 +799,7 @@ class _BoxConversionMixins(object):
 
         if rb_x is None:
             if width is None:
-                raise Exception('shape required for unbounded slices')
+                raise Exception(f'shape required for unbounded slices={slices}')
             rb_x = width
         # elif rb_x < 0:
         #     if clip:
@@ -810,7 +810,7 @@ class _BoxConversionMixins(object):
 
         if rb_y is None:
             if height is None:
-                raise Exception('shape required for unbounded slices')
+                raise Exception(f'shape required for unbounded slices={slices}')
             rb_y = height
         # elif rb_y < 0:
         #     if not clip:
@@ -821,19 +821,19 @@ class _BoxConversionMixins(object):
         if wrap:
             if rb_x < 0:
                 if width is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 rb_x = width + rb_x
             if tl_x < 0:
                 if width is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 tl_x = width + tl_x
             if rb_y < 0:
                 if height is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 rb_y = height + rb_y
             if tl_y < 0:
                 if height is None:
-                    raise Exception('shape required to wrap unbounded slices')
+                    raise Exception(f'shape required to wrap unbounded slices={slices}')
                 tl_y = height + tl_y
 
         if clip:
@@ -892,7 +892,7 @@ class _BoxConversionMixins(object):
 
         Returns:
             List[Tuple[slice, slice]]:
-                a list of slices corresponding to each box.
+                a list of slices (y, x ordered) corresponding to each box.
         """
         slices_list = []
         for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
@@ -1757,6 +1757,7 @@ class _BoxTransformMixins(object):
                 new = self.to_cxywh(copy=True)
         else:
             raise ValueError(about)
+
         if width is not None:
             new.data[..., 2] = width
         if height is not None:
@@ -1792,8 +1793,8 @@ class _BoxTransformMixins(object):
             >>> padded = self.pad(1, 2, 3, 4)
             >>> print('padded = {}'.format(ub.urepr(padded, nl=1)))
             >>> assert np.all(padded.data == [[-1, -2, 13, 14]])
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> plt = kwplot.autoplt()
             >>> kwplot.figure(fnum=1, doclf=1)
@@ -1923,20 +1924,20 @@ class _BoxDrawMixins(object):
                 if True will set the limit of the axes to show the drawn boxes.
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> from kwimage.structs.boxes import *  # NOQA
             >>> self = Boxes.random(num=10, scale=512.0, rng=0, format='ltrb')
             >>> self.translate((-128, -128), inplace=True)
             >>> self.data[0][:] = [3, 3, 253, 253]
             >>> #image = (np.random.rand(256, 256) * 255).astype(np.uint8)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
             >>> #kwplot.imshow(image)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> self.draw(color='blue', setlim=1.2)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
@@ -2011,8 +2012,8 @@ class _BoxDrawMixins(object):
             >>> color = 'blue'
             >>> image = (np.random.rand(256, 256, 3) * 255).astype(np.uint8)
             >>> image2 = self.draw_on(image.copy(), color=color)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
@@ -2043,7 +2044,7 @@ class _BoxDrawMixins(object):
             >>> for k, v in inputs.items():
             >>>     im, kw = v
             >>>     outputs[k] = self.draw_on(im, color=color, **kw)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.figure(fnum=2, doclf=True)
             >>> kwplot.autompl()
@@ -2057,8 +2058,8 @@ class _BoxDrawMixins(object):
             >>> import kwimage
             >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> image = self.draw_on()
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()

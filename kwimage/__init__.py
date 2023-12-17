@@ -2,6 +2,16 @@
 The Kitware Image Module (kwimage) contains functions to accomplish lower-level
 image operations via a high level API.
 
++------------------+-------------------------------------------------------+
+| Read the docs    | https://kwimage.readthedocs.io                        |
++------------------+-------------------------------------------------------+
+| Gitlab (main)    | https://gitlab.kitware.com/computer-vision/kwimage    |
++------------------+-------------------------------------------------------+
+| Github (mirror)  | https://github.com/Kitware/kwimage                    |
++------------------+-------------------------------------------------------+
+| Pypi             | https://pypi.org/project/kwimage                      |
++------------------+-------------------------------------------------------+
+
 Module features:
 
     * Image reader / writer functions with multiple backends
@@ -55,7 +65,7 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.9.22'
+__version__ = '0.9.23'
 
 from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
 from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,

@@ -4,7 +4,24 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.22 - Unreleased
+## Version 0.9.23 - Unreleased
+
+### Added:
+
+* Add `drop_non_polygons` argument to `_ShapelyMixin.fix`.
+
+* Changed: argument to `grab_test_image_fpath` can now be an existing path and
+  it will return that. (allows users to substitute custom images for demodata).
+
+* Added `clip`, `shape`, `endpoint`, and `wrap` argument to `Box.from_slice`
+
+
+### Changed
+
+* Can now call `draw_header_text` without an image argument.
+
+
+## Version 0.9.22 - Released 2023-10-13
 
 ### Added
 

@@ -249,8 +249,8 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
         >>>     imdata = kwimage.grab_test_image(key, dsize=(256, None))
         >>>     key_to_image[key] = imdata
         >>>     print('grabbed key = {!r}'.format(key))
-        >>> # xdoc: +REQUIRES(--show)
-        >>> # xdoc: +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> kwplot.autoplt()
         >>> to_stack = [kwimage.draw_header_text(
@@ -308,6 +308,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
             carl - Carl Sagan
             paraview - ParaView logo
             stars - picture of stars in the sky
+            OR can be an existing path to an image
 
         dsize (None | Tuple[int, int]):
             if specified, we will return a variant of the data with the
@@ -347,9 +348,13 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
         item = _TEST_IMAGES[key]
     except KeyError:
         valid_keys = sorted(_TEST_IMAGES.keys())
-        raise KeyError(
-            'Unknown key={!r}. Valid keys are {!r}'.format(
-                key, valid_keys))
+        cand = ub.Path(key)
+        if cand.exists() and cand.is_file():
+            return cand
+        else:
+            raise KeyError(
+                'Unknown key={!r}. Valid keys are {!r}'.format(
+                    key, valid_keys))
     if not isinstance(item, dict):
         item = {'url': item}
 
@@ -473,8 +478,8 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         >>> import kwimage
         >>> img = kwimage.checkerboard(
         >>>     dsize=(64, 64), on_value='kw_green', off_value='kw_blue')
-        >>> # xdoc: +REQUIRES(--show)
-        >>> # xdoc: +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> kwplot.autoplt()
         >>> kwplot.imshow(img)

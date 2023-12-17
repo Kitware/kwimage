@@ -1079,7 +1079,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> gausspatch = gaussian_patch(shape, sigma)
         >>> sum_ = gausspatch.sum()
         >>> assert np.all(np.isclose(sum_, 1.0))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
@@ -1093,7 +1093,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> gausspatch = gaussian_patch(shape, sigma)
         >>> sum_ = gausspatch.sum()
         >>> assert np.all(np.isclose(sum_, 1.0))
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> norm = (gausspatch - gausspatch.min()) / (gausspatch.max() - gausspatch.min())
@@ -1241,7 +1241,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         >>> blurred2 = kwimage.gaussian_blur(image, kernel=9)
         >>> blurred3 = kwimage.gaussian_blur(image, sigma=2)
         >>> blurred4 = kwimage.gaussian_blur(image, sigma=(2, 5), kernel=5)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nRows=4, nCols=1)
@@ -1639,78 +1639,93 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
                            borderMode, borderValue)
 
-    if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
-        # Handle case where the input image has no size or the destination
-        # canvas has no size. In either case we just return empty data
-        output_shape = (dsize[1], dsize[0]) + image.shape[2:]
+    try:
+        if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
+            # Handle case where the input image has no size or the destination
+            # canvas has no size. In either case we just return empty data
+            output_shape = (dsize[1], dsize[0]) + image.shape[2:]
 
-        # Temporary workaround to prevent a hang due to incompatible shapes the
-        # length of borderValue (when iterable) is limited to 4, but we can fix
-        # this in some cases if all of the value are the same by converting to
-        # a scalar.
-        if not ub.iterable(borderValue):
-            fill_value = borderValue
-        elif len(image.shape[2:]) != len(borderValue):
-            if ub.allsame(borderValue):
-                fill_value = borderValue[0]
-            elif all(np.isnan(v) for v in borderValue):
-                fill_value = borderValue[0]
+            # Temporary workaround to prevent a hang due to incompatible shapes the
+            # length of borderValue (when iterable) is limited to 4, but we can fix
+            # this in some cases if all of the value are the same by converting to
+            # a scalar.
+            if not ub.iterable(borderValue):
+                fill_value = borderValue
+            elif len(image.shape[2:]) != len(borderValue):
+                if ub.allsame(borderValue):
+                    fill_value = borderValue[0]
+                elif all(np.isnan(v) for v in borderValue):
+                    fill_value = borderValue[0]
+                else:
+                    fill_value = borderValue
             else:
                 fill_value = borderValue
-        else:
-            fill_value = borderValue
 
-        result = np.full(
-            shape=output_shape, fill_value=fill_value, dtype=image.dtype)
-        if is_masked:
-            result_mask = np.full(
-                shape=output_shape, fill_value=False, dtype=mask.dtype)
-    elif not antialias:
-        result = _try_warp_affine(image, transform_, *_try_warp_tail_args)
-        if is_masked:
-            result_mask = _try_warp_affine(mask, transform_, *_try_warp_tail_args)
-    else:
-        # Decompose the affine matrix into its 6 core parameters
-        if affine_params is None:
-            affine_params = transform_.decompose()
-        sx, sy = affine_params['scale']
-
-        if sx > 1 and sy > 1:
-            # No downsampling detected, no need to antialias
+            result = np.full(
+                shape=output_shape, fill_value=fill_value, dtype=image.dtype)
+            if is_masked:
+                result_mask = np.full(
+                    shape=output_shape, fill_value=False, dtype=mask.dtype)
+        elif not antialias:
             result = _try_warp_affine(image, transform_, *_try_warp_tail_args)
             if is_masked:
                 result_mask = _try_warp_affine(mask, transform_, *_try_warp_tail_args)
         else:
-            # At least one dimension is downsampled
-            """
-            Variations that could change in the future:
+            # Decompose the affine matrix into its 6 core parameters
+            if affine_params is None:
+                affine_params = transform_.decompose()
+            sx, sy = affine_params['scale']
 
-                * In _gauss_params I'm not sure if we want to compute integer or
-                    fractional "number of downsamples".
+            if sx > 1 and sy > 1:
+                # No downsampling detected, no need to antialias
+                result = _try_warp_affine(image, transform_, *_try_warp_tail_args)
+                if is_masked:
+                    result_mask = _try_warp_affine(mask, transform_, *_try_warp_tail_args)
+            else:
+                # At least one dimension is downsampled
+                """
+                Variations that could change in the future:
 
-                * The fudge factor bothers me, but seems necessary
-            """
+                    * In _gauss_params I'm not sure if we want to compute integer or
+                        fractional "number of downsamples".
 
-            # Compute the transform with all scaling removed
-            noscale_warp = Affine.affine(**ub.dict_diff(affine_params, {'scale'}))
+                    * The fudge factor bothers me, but seems necessary
+                """
 
-            # Execute part of the downscale with iterative pyramid downs
-            downscaled, residual_sx, residual_sy = _prepare_downscale(
-                image, sx, sy)
+                # Compute the transform with all scaling removed
+                noscale_warp = Affine.affine(**ub.dict_diff(affine_params, {'scale'}))
 
-            # Compute the transform from the downsampled image to the destination
-            rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
+                # Execute part of the downscale with iterative pyramid downs
+                downscaled, residual_sx, residual_sy = _prepare_downscale(
+                    image, sx, sy)
 
-            info['antialias_info'] = {
-                'noscale_warp': noscale_warp,
-                'rest_warp': rest_warp,
-            }
+                # Compute the transform from the downsampled image to the destination
+                rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
 
-            result = _try_warp_affine(downscaled, rest_warp, *_try_warp_tail_args)
+                info['antialias_info'] = {
+                    'noscale_warp': noscale_warp,
+                    'rest_warp': rest_warp,
+                }
 
-            if is_masked:
-                downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
-                result_mask = _try_warp_affine(downscaled_mask, rest_warp, *_try_warp_tail_args)
+                result = _try_warp_affine(downscaled, rest_warp, *_try_warp_tail_args)
+
+                if is_masked:
+                    downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
+                    result_mask = _try_warp_affine(downscaled_mask, rest_warp, *_try_warp_tail_args)
+    except Exception as ex:
+        print('Error in warp_affine: ex = {}'.format(ub.urepr(ex, nl=1)))
+        print(f'type(image) = {type(image)}')
+        print(f'type(transform) = {type(transform)}')
+        print(f'type(dsize) = {type(dsize)}')
+        if isinstance(image, np.ndarray):
+            print(f'image.shape={image.shape}')
+        print(f'dsize={dsize}')
+        print(f'interpolation={interpolation}')
+        print(f'border_value={border_value}')
+        print(f'border_mode={border_mode}')
+        print(f'large_warp_dim={large_warp_dim}')
+        print(f'return_info={return_info}')
+        raise
 
     if is_masked:
         result_mask = result_mask.astype(orig_mask_dtype)
@@ -2076,7 +2091,7 @@ def _morph_kernel(kernel, element='rect'):
         >>> results = {}
         >>> for element in _CV2_STRUCT_ELEMENTS.keys():
         ...     results[element] = _morph_kernel(kernel, element)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
@@ -2148,7 +2163,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         ...     if params['kernel'] == 'random':
         ...         params['kernel'] = np.random.rand(5, 5)
         ...     results[key] = morphology(image, **params)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> to_stack = []
@@ -2183,7 +2198,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         ...     for element in _CV2_STRUCT_ELEMENTS.keys():
         ...         results[f'{mode}+{element}'] = morphology(data, mode, kernel=kernel, element=element, iterations=2)
         >>> results['raw'] = data
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nCols=3, nSubplots=len(results))
@@ -2273,7 +2288,7 @@ def connected_components(image, connectivity=8, ltype=np.int32,
         >>> mask = kwimage.Mask.demo()
         >>> image = mask.data
         >>> labels, info = connected_components(image)
-        >>> # xdoc: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> canvas0 = kwimage.atleast_3channels(mask.data * 255)

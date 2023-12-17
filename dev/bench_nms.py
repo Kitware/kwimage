@@ -1,8 +1,16 @@
+"""
+Timed best=408.694 µs, mean=412.551 ± 3.9 µs for impl=cython_cpu,type=ndarray
+Timed best=599.641 µs, mean=943.981 ± 418.9 µs for impl=cython_cpu,type=tensor0
+Timed best=2.426 ms, mean=2.539 ± 0.1 ms for impl=torch,type=tensor0
+Timed best=4.455 ms, mean=4.686 ± 0.2 ms for impl=torch,type=ndarray
+Timed best=12.725 ms, mean=13.007 ± 0.2 ms for impl=numpy,type=ndarray
+"""
 import torch
 import numpy as np
 import kwimage
 import copy
 import ubelt as ub
+import timerit
 import itertools as it
 # from kwimage.algo._nms_backend.torch_nms import torch_nms
 
@@ -163,7 +171,7 @@ def benchamrk_det_nms():
 
         outputs = {}
 
-        ti = ub.Timerit(N, bestof=bestof, verbose=1)
+        ti = timerit.Timerit(N, bestof=bestof, verbose=1)
 
         # Build random test boxes and scores
         np_dets1 = kwimage.Detections.random(num // 2, scale=1000.0, rng=0)

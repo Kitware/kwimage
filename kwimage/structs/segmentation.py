@@ -60,7 +60,7 @@ class Segmentation(_WrapperObject):
         Example:
             >>> self = Segmentation.random()
             >>> print('self = {!r}'.format(self))
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=1, doclf=True)

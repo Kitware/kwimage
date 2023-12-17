@@ -66,7 +66,8 @@ class Box(ub.NiceRepr):
         return self
 
     @classmethod
-    def from_slice(self, slice_):
+    def from_slice(self, slice_, shape=None, clip=True, endpoint=True,
+                   wrap=False):
         """
         Example:
             >>> import kwimage
@@ -74,7 +75,8 @@ class Box(ub.NiceRepr):
             >>> new = kwimage.Box.from_slice(slice_)
         """
         import kwimage
-        boxes = kwimage.Boxes.from_slice(slice_)
+        boxes = kwimage.Boxes.from_slice(slice_, shape=shape, clip=clip,
+                                         endpoint=endpoint, wrap=wrap)
         self = Box(boxes, _check=False)
         return self
 
@@ -401,8 +403,8 @@ class Box(ub.NiceRepr):
             >>> self = kwimage.Box.random(scale=256, rng=10, format='ltrb')
             >>> canvas = np.zeros((256, 256, 3), dtype=np.uint8)
             >>> image = self.draw_on(canvas)
-            >>> # xdoc: +REQUIRES(--show)
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
@@ -419,19 +421,19 @@ class Box(ub.NiceRepr):
         Draws a box directly on an image using OpenCV
 
         Example:
-            >>> # xdoc: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwimage
             >>> self = kwimage.Box.random(scale=512.0, rng=0, format='ltrb')
             >>> self.translate((-128, -128), inplace=True)
             >>> #image = (np.random.rand(256, 256) * 255).astype(np.uint8)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> fig = kwplot.figure(fnum=1, doclf=True)
             >>> #kwplot.imshow(image)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> self.draw(color='blue', setlim=1.2)
-            >>> # xdoc: +REQUIRES(--show)
+            >>> # xdoctest: +REQUIRES(--show)
             >>> for o in fig.findobj():  # http://matplotlib.1069221.n5.nabble.com/How-to-turn-off-all-clipping-td1813.html
             >>>     o.set_clip_on(False)
             >>> kwplot.show_if_requested()
