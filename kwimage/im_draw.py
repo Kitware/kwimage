@@ -165,6 +165,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> img2 = img.copy()
         >>> img2 = kwimage.draw_text_on_image(img2, 'FOOBAR\nbazbiz\nspam', org=(0, 0), valign='top', border=2, fontScale=1.0)
         >>> img2 = kwimage.draw_text_on_image(img2, 'FOOBAR\nbazbiz\nspam', org=(0, 200), valign='top', border=2, fontScale=2.0)
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(img2)
