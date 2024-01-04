@@ -198,5 +198,5 @@ linux systems:
 .. |GitlabCIPipeline| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/pipeline.svg
    :target: https://gitlab.kitware.com/computer-vision/kwimage/-/jobs
 
-.. |GitlabCICoverage| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/coverage.svg?job=coverage
+.. |GitlabCICoverage| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/coverage.svg
     :target: https://gitlab.kitware.com/computer-vision/kwimage/commits/main
