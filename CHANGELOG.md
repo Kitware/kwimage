@@ -28,8 +28,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-* kwimage.Affine.fliprot - a constructor that creates a transform equivalent to a flip and rotation with the positive image quadrant
-* kwimage.Boxes._ensure_nonnegative_extent - experimental box method to fix negative width/heights
+* `kwimage.Affine.fliprot` - a constructor that creates a transform equivalent to a flip and rotation with the positive image quadrant
+* `kwimage.Boxes._ensure_nonnegative_extent` - experimental box method to fix negative width/heights
 
 
 ### Fixed
@@ -42,7 +42,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.21 - Released 2023-10-01
 
 ### Added
-* Added a too-big check in imwrite for better error messages.
+* Added a too-big check in `imwrite` for better error messages.
 
 ### Changed
 * Modified paths of augmented demodata to remove bad path characters.
@@ -52,8 +52,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.9.20 - Released 2023-08-09
 
 ### Fixed
-* Fixed issue when giving Affine.coerce an empty dictionary
-* Issue in box intersection / union_hull with integer data
+* Fixed issue when giving `Affine.coerce` an empty dictionary
+* Issue in box `intersection` / `union_hull` with integer data
 * Fixed `Box.to_coco()`
 
 ### Added

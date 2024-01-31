@@ -1687,12 +1687,12 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         lt = xys.min(axis=0)
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
-        boxes = kwimage.Box.from_data(ltrb, 'ltrb')
+        box = kwimage.Box.from_data(ltrb, 'ltrb')
         # ub.schedule_deprecation(
         #     'kwimage', 'to_box', 'method',
         #     migration='use Polygon.box instead',
         #     deprecate='0.9.19', error='1.0.0', remove='1.1.0')
-        return boxes
+        return box
 
     def bounding_box(self):
         """

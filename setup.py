@@ -78,7 +78,7 @@ def parse_requirements(fname="requirements.txt", versions=False):
         List[str]: list of requirements items
 
     CommandLine:
-        python -c "import setup; print(setup.parse_requirements())"
+        python -c "import setup, ubelt; print(ubelt.urepr(setup.parse_requirements()))"
     """
     require_fpath = fname
 
@@ -207,27 +207,41 @@ if __name__ == "__main__":
     )
     setupkw["extras_require"] = {
         "all": parse_requirements("requirements.txt", versions="loose"),
-        "tests": parse_requirements("requirements/tests.txt", versions="loose"),
-        "optional": parse_requirements("requirements/optional.txt", versions="loose"),
         "headless": parse_requirements("requirements/headless.txt", versions="loose"),
         "graphics": parse_requirements("requirements/graphics.txt", versions="loose"),
-        # Strict versions
+        "build": parse_requirements("requirements/build.txt", versions="loose"),
+        "docs": parse_requirements("requirements/docs.txt", versions="loose"),
+        "gdal-strict": parse_requirements("requirements/gdal.txt", versions="strict"),
+        "gdal": parse_requirements("requirements/gdal.txt", versions="loose"),
+        "optional": parse_requirements("requirements/optional.txt", versions="loose"),
+        "problematic": parse_requirements(
+            "requirements/problematic.txt", versions="loose"
+        ),
+        "runtime": parse_requirements("requirements/runtime.txt", versions="loose"),
+        "tests": parse_requirements("requirements/tests.txt", versions="loose"),
+        "all-strict": parse_requirements("requirements.txt", versions="strict"),
         "headless-strict": parse_requirements(
             "requirements/headless.txt", versions="strict"
         ),
         "graphics-strict": parse_requirements(
             "requirements/graphics.txt", versions="strict"
         ),
-        "all-strict": parse_requirements("requirements.txt", versions="strict"),
+        "build-strict": parse_requirements("requirements/build.txt", versions="strict"),
+        "docs-strict": parse_requirements("requirements/docs.txt", versions="strict"),
+        "gdal-strict-strict": parse_requirements(
+            "requirements/gdal-strict.txt", versions="strict"
+        ),
+        "optional-strict": parse_requirements(
+            "requirements/optional.txt", versions="strict"
+        ),
+        "problematic-strict": parse_requirements(
+            "requirements/problematic.txt", versions="strict"
+        ),
         "runtime-strict": parse_requirements(
             "requirements/runtime.txt", versions="strict"
         ),
         "tests-strict": parse_requirements("requirements/tests.txt", versions="strict"),
-        "optional-strict": parse_requirements(
-            "requirements/optional.txt", versions="strict"
-        ),
     }
-
     setupkw["name"] = NAME
     setupkw["version"] = VERSION
     setupkw["author"] = "Jon Crall"
@@ -245,12 +259,21 @@ if __name__ == "__main__":
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Utilities",
         "License :: OSI Approved :: Apache Software License",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Software Development",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ]
     setupkw["package_data"] = {"kwimage": ["py.typed", "*.pyi"]}
+    setupkw["entry_points"] = {
+        "console_scripts": [
+            "kwimage = kwimage.cli.__main__:main",
+        ],
+    }
     setup(**setupkw)
