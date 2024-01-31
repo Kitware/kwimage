@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.24 - Unreleased
 
+### Added
+
+* Basic CLI with the `stack_images` command.
+
 
 ## Version 0.9.23 - Released 2023-12-16
 
