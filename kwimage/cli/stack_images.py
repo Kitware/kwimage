@@ -22,8 +22,8 @@ class StackImagesConfig(scfg.DataConfig):
             >>> )
             >>> main(cmdline=cmdline, **kwargs)
         """
-        import kwimage
         config = StackImagesConfig.cli(cmdline=cmdline, data=kwargs)
+        import kwimage
         print('config = ' + ub.urepr(dict(config), nl=1))
         fpaths = config['input_fpaths']
         images = [kwimage.imread(p) for p in ub.ProgIter(fpaths, desc='read images')]
