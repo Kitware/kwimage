@@ -1,5 +1,7 @@
 """
 TODO:
+    - [ ] Rename Heatmap to Raster, then maybe QuantizedRaster, NormalizedRaster, etc...
+
     - [ ] Remove doctest dependency on ndsampler?
 
     - [ ] Remove the datakeys that tries to define what heatmap should represent
@@ -97,19 +99,33 @@ class _HeatmapDrawMixin(object):
 
     def _colorize_class_idx(self):
         """
-        """
-        # Ignore cases where index is negative?
-        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int)
+        Visualization logic for discrete class index rasters.
+        Negative indexes are interpreted as an "ignore" class.
 
+        Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> import kwimage
+            >>> classes = ['A', 'B', 'C']
+            >>> C = len(classes)
+            >>> class_idxs = np.random.randint(0, C, size=(10, 10))
+            >>> class_idxs[0:3] = -100
+            >>> self = kwimage.Heatmap(class_idx=class_idxs, classes=classes)
+            >>> overlay = self.colorize('class_idx')
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(overlay)
+        """
         import networkx as nx
         import kwimage
-
+        # Ignore cases where index is negative?
+        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int, copy=True)
         classes = self.meta['classes']
+
         backup_colors = iter(kwimage.Color.distinct(len(classes)))
-
         name_to_color = {}
-
         if hasattr(classes, 'graph'):
+            # If classes has graph metadata with colors, use that.
             name_to_color = nx.get_node_attributes(classes.graph, 'color')
             for node in classes.graph.nodes:
                 color = classes.graph.nodes[node].get('color', None)
@@ -118,6 +134,23 @@ class _HeatmapDrawMixin(object):
                 name_to_color[node] = kwimage.Color(color).as01()
         else:
             name_to_color = ub.dzip(classes, backup_colors)
+
+        # Check for special "ignore" indexes
+        index_is_negative = cidxs < 0
+        if index_is_negative.any():
+            # hack to force a new visualizable class that encompases any
+            # negative indexes.
+            # TODO:
+            # - [ ] some mechanism for controlling what color this will be.
+            # - [ ] Should we differentiate between different negative indexes?
+            special_ignore_classname = '__ignore__'
+            classes = list(classes) + [special_ignore_classname]
+            cidxs[index_is_negative] = (len(classes) - 1)
+            if special_ignore_classname not in name_to_color:
+                # hack to use gray for the special ignore color, we should let
+                # the user have more control here.
+                special_ignore_color = kwimage.Color.coerce('kitware_gray').as01()
+                name_to_color[special_ignore_classname] = special_ignore_color
 
         cx_to_color = np.array([name_to_color[cname] for cname in classes])
         colorized = cx_to_color[cidxs]

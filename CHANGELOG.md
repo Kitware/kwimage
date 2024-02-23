@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 
 * Basic CLI with the `stack_images` command.
+* Workaround for `colorize` when heatmap is an index raster with negative ignore values.
 
 
 ## Version 0.9.23 - Released 2023-12-16
