@@ -5,7 +5,7 @@ The Kitware Image Module
 .. # TODO Get CI services running on gitlab
 .. #
 
-|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| |ReadTheDocs|
+|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |PypiDownloads| |ReadTheDocs|
 
 +------------------+-------------------------------------------------------+
 | Read the docs    | https://kwimage.readthedocs.io                        |
@@ -133,7 +133,7 @@ the underlying data representation.
 Some of these structures have a ``self.format`` attribute describing the
 underlying data representation.
 
-Most of the compositie strucutres also have a ``self.meta`` attribute, which
+Most of the composite structures also have a ``self.meta`` attribute, which
 holds user-level metadata (e.g. info about the classes).
 
 
@@ -185,7 +185,7 @@ linux systems:
 .. |Pypi| image:: https://img.shields.io/pypi/v/kwimage.svg
    :target: https://pypi.python.org/pypi/kwimage
 
-.. |Downloads| image:: https://img.shields.io/pypi/dm/kwimage.svg
+.. |PypiDownloads| image:: https://img.shields.io/pypi/dm/kwimage.svg
    :target: https://pypistats.org/packages/kwimage
 
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/kwimage/badge/?version=release
@@ -198,5 +198,5 @@ linux systems:
 .. |GitlabCIPipeline| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/pipeline.svg
    :target: https://gitlab.kitware.com/computer-vision/kwimage/-/jobs
 
-.. |GitlabCICoverage| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/coverage.svg?job=coverage
+.. |GitlabCICoverage| image:: https://gitlab.kitware.com/computer-vision/kwimage/badges/main/coverage.svg
     :target: https://gitlab.kitware.com/computer-vision/kwimage/commits/main

@@ -34,10 +34,12 @@ mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  -w
 mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  --diff
 """
 
-import ubelt as ub
+import os
 try:
-    import cv2  # NOQA
+    if not os.environ.get('_ARGCOMPLETE', ''):
+        import cv2  # NOQA
 except ImportError as ex:
+    import ubelt as ub
     msg = ub.paragraph(
         '''
         The kwimage module failed to import the cv2 module.  This may be due to
@@ -65,39 +67,41 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.9.23'
+__version__ = '0.9.24'
 
-from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
-from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
-                            overlay_alpha_layers,)
-from .im_color import (Color,)
-from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                      exactly_1channel, find_robust_normalizers,
-                      make_channels_comparable, normalize, normalize_intensity,
-                      num_channels, padded_slice,)
-from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
-                     gaussian_patch, imcrop, imresize, imscale, morphology,
-                     warp_affine, warp_image, warp_projective,)
-from .im_demodata import (checkerboard, grab_test_image,
-                          grab_test_image_fpath,)
-from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
-                      draw_line_segments_on_image, draw_text_on_image,
-                      draw_vector_field, fill_nans_with_checkers,
-                      make_heatmask, make_orimask, make_vector_field,
-                      nodata_checkerboard,)
-from .im_filter import (fourier_mask, radial_fourier_mask,)
-from .im_io import (imread, imwrite, load_image_shape,)
-from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
-from .im_stack import (stack_images, stack_images_grid,)
-from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
-                      MultiPolygon, Points, PointsList, Polygon, PolygonList,
-                      Segmentation, SegmentationList, smooth_prob,)
-from .transform import (Affine, Linear, Matrix, Projective, Transform,)
-from .util_warp import (add_homog, remove_homog, subpixel_accum,
-                        subpixel_align, subpixel_getvalue, subpixel_maximum,
-                        subpixel_minimum, subpixel_set, subpixel_setvalue,
-                        subpixel_slice, subpixel_translate, warp_points,
-                        warp_tensor,)
+# TODO: lazy initialization
+if not os.environ.get('_ARGCOMPLETE', ''):
+    from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
+    from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
+                                overlay_alpha_layers,)
+    from .im_color import (Color,)
+    from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
+                          exactly_1channel, find_robust_normalizers,
+                          make_channels_comparable, normalize, normalize_intensity,
+                          num_channels, padded_slice,)
+    from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
+                         gaussian_patch, imcrop, imresize, imscale, morphology,
+                         warp_affine, warp_image, warp_projective,)
+    from .im_demodata import (checkerboard, grab_test_image,
+                              grab_test_image_fpath,)
+    from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
+                          draw_line_segments_on_image, draw_text_on_image,
+                          draw_vector_field, fill_nans_with_checkers,
+                          make_heatmask, make_orimask, make_vector_field,
+                          nodata_checkerboard,)
+    from .im_filter import (fourier_mask, radial_fourier_mask,)
+    from .im_io import (imread, imwrite, load_image_shape,)
+    from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
+    from .im_stack import (stack_images, stack_images_grid,)
+    from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
+                          MultiPolygon, Points, PointsList, Polygon, PolygonList,
+                          Segmentation, SegmentationList, smooth_prob,)
+    from .transform import (Affine, Linear, Matrix, Projective, Transform,)
+    from .util_warp import (add_homog, remove_homog, subpixel_accum,
+                            subpixel_align, subpixel_getvalue, subpixel_maximum,
+                            subpixel_minimum, subpixel_set, subpixel_setvalue,
+                            subpixel_slice, subpixel_translate, warp_points,
+                            warp_tensor,)
 
 __all__ = ['Affine', 'Box', 'Boxes', 'Color', 'Coords', 'Detections',
            'Heatmap', 'Linear', 'Mask', 'MaskList', 'Matrix', 'MultiPolygon',
