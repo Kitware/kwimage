@@ -12,11 +12,11 @@ THE BOX FORMAT.
 
 There are 3 main bounding box formats:
 
-    * xywh: top left xy-coordinates and width height offsets
+    * xywh: left-x, top-y cooridinates and width / height offsets
 
-    * cxywh: center xy-coordinates and width height offsets
+    * cxywh: center-x, center-y coordinates and width / height offsets
 
-    * ltrb: top left and bottom right xy coordinates
+    * ltrb: left-x, top-y, right-x, and bottom-y coordinates.
 
 Here is some example usage
 
@@ -116,17 +116,13 @@ class BoxFormat:
 
     See module level docstring for format definitions
     """
-    # xywh = 'xywh'
-    # cxywh = 'cxywh'
-    # xy1xy2 = 'ltrb'
-    # xx1yy2 = 'extent'
-
     # Note: keep the strings as the "old"-style names for now
     # TODO: change the string values to match their associated NameConstant
     #     - [x] bump versions
     #     - [x] use the later in the or statements
     #     - [ ] ensure nothing depends on the old values.
     #     - [x] Change cannonical TLBR to LTRB
+    #     - [ ] add mechanism for deprecating / removing codes
 
     # Definitions:
     #     x1 = top-left-x
