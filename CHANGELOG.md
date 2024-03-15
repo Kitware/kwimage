@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.25 - Unreleased
 
+### Fixed
+
+* `kwimage.Boxes.clip` now works on torch.Tensor data.
+
 
 ## Version 0.9.24 - Released 2024-02-23
 
