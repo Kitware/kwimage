@@ -24,7 +24,7 @@ def _box_clip_test(boxes):
     assert clipped._impl.all(clipped.tl_y >= y_min)
 
     # Check implace = True case
-    clipped2 = boxes.clip(1, 2, 10, 11, inplace=True)
+    clipped2 = boxes.clip(x_min, y_min, x_max, y_max, inplace=True)
     assert clipped2.data is boxes.data
     assert boxes._impl.all(clipped2.data == boxes.data)
 
