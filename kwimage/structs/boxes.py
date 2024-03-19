@@ -12,11 +12,11 @@ THE BOX FORMAT.
 
 There are 3 main bounding box formats:
 
-    * xywh: top left xy-coordinates and width height offsets
+    * xywh: left-x, top-y cooridinates and width / height offsets
 
-    * cxywh: center xy-coordinates and width height offsets
+    * cxywh: center-x, center-y coordinates and width / height offsets
 
-    * ltrb: top left and bottom right xy coordinates
+    * ltrb: left-x, top-y, right-x, and bottom-y coordinates.
 
 Here is some example usage
 
@@ -116,17 +116,13 @@ class BoxFormat:
 
     See module level docstring for format definitions
     """
-    # xywh = 'xywh'
-    # cxywh = 'cxywh'
-    # xy1xy2 = 'ltrb'
-    # xx1yy2 = 'extent'
-
     # Note: keep the strings as the "old"-style names for now
     # TODO: change the string values to match their associated NameConstant
     #     - [x] bump versions
     #     - [x] use the later in the or statements
     #     - [ ] ensure nothing depends on the old values.
     #     - [x] Change cannonical TLBR to LTRB
+    #     - [ ] add mechanism for deprecating / removing codes
 
     # Definitions:
     #     x1 = top-left-x
@@ -1600,18 +1596,17 @@ class _BoxTransformMixins(object):
 
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
-        Clip boxes to image boundaries.
-
-        If box is in ltrb format, inplace operation is an option.
+        Clip boxes to boundaries specified as minimum and maximum coordinates.
 
         Args:
-            x_min (int): minimum x-coordinate
-            y_min (int): minimum x-coordinate
-            x_max (int): maximum x-coordinate
-            y_max (int): maximum y-coordinate
+            x_min (Number): minimum x-coordinate
+            y_min (Number): minimum y-coordinate
+            x_max (Number): maximum x-coordinate
+            y_max (Number): maximum y-coordinate
             inplace (bool):
-                if True and possible, perform operation inplace. Defaults to
-                False.
+                if True and possible, perform the operation inplace.
+                This is only available if the data is in ltrb format.
+                Defaults to False.
 
         Returns:
             Boxes: clipped boxes
@@ -1638,27 +1633,12 @@ class _BoxTransformMixins(object):
         if len(new) == 0:
             return new
 
-        if True:
-            impl = self._impl
-            x1, y1, x2, y2 = impl.T(new.data)
-            np.clip(x1, x_min, x_max, out=x1)
-            np.clip(y1, y_min, y_max, out=y1)
-            np.clip(x2, x_min, x_max, out=x2)
-            np.clip(y2, y_min, y_max, out=y2)
-        else:
-            torch = sys.modules.get('torch', None)
-            if torch is not None and torch.is_tensor(new.data):
-                x1, y1, x2, y2 = new.data.t()
-                x1.clamp_(x_min, x_max)
-                y1.clamp_(y_min, y_max)
-                x2.clamp_(x_min, x_max)
-                y2.clamp_(y_min, y_max)
-            else:
-                x1, y1, x2, y2 = new.data.T
-                np.clip(x1, x_min, x_max, out=x1)
-                np.clip(y1, y_min, y_max, out=y1)
-                np.clip(x2, x_min, x_max, out=x2)
-                np.clip(y2, y_min, y_max, out=y2)
+        impl = self._impl
+        x1, y1, x2, y2 = impl.T(new.data)
+        impl.clip(x1, x_min, x_max, out=x1)
+        impl.clip(y1, y_min, y_max, out=y1)
+        impl.clip(x2, x_min, x_max, out=x2)
+        impl.clip(y2, y_min, y_max, out=y2)
         return new
 
     def resize(self, width=None, height=None, inplace=False, about='xy'):
@@ -1774,10 +1754,10 @@ class _BoxTransformMixins(object):
         of each bounding box.
 
         Args:
-            x_left (int | float): xmin pad
-            y_top (int | float): ymin pad
-            x_right (int | float): xmax pad
-            y_bot (int | float): ymax pad
+            x_left (Number): xmin pad
+            y_top (Number): ymin pad
+            x_right (Number): xmax pad
+            y_bot (Number): ymax pad
 
         Returns:
             Boxes : padded boxes
@@ -2944,7 +2924,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         torch = sys.modules.get('torch', None)
         if torch is None:
-            raise Exception('torch is not available')
+            raise Exception('torch has not been imported or is not available')
         data = self.data
         if not torch.is_tensor(data):
             data = torch.from_numpy(data)
@@ -3400,7 +3380,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             # Probably want a ltrb inplace implementation as well.
             self = self.to_xywh()
         assert self.format == 'xywh'
-        new = self if inplace else self.__class__(self.data.copy(), self.format)
+        _impl = self._impl
+        new = self if inplace else self.__class__(_impl.copy(self.data), self.format)
         is_neg_w = new.data[..., 2] < 0
         is_neg_h = new.data[..., 3] < 0
         new_data = new.data

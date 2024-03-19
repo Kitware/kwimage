@@ -67,7 +67,7 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.9.24'
+__version__ = '0.9.25'
 
 # TODO: lazy initialization
 if not os.environ.get('_ARGCOMPLETE', ''):
