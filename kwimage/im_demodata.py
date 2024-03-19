@@ -281,15 +281,20 @@ def grab_test_image(key='astro', space='rgb', dsize=None,
 
 def _grabdata_with_mirrors(url, mirror_urls, grabkw):
     fpath = None
+    verbose = 1
     try:
         fpath = ub.grabdata(url, **grabkw)
     except Exception as main_ex:
+        if verbose:
+            print(f'Failed to grab main url: {main_ex}')
+            print('Fallback to mirrors:')
         # urllib.error.HTTPError
-        for mirror_url in mirror_urls:
+        for idx, mirror_url in enumerate(mirror_urls):
             try:
                 fpath = ub.grabdata(mirror_url, **grabkw)
-            except Exception:
-                ...
+            except Exception as ex:
+                if verbose:
+                    print(f'Failed to grab mirror #{idx}: {ex}')
             else:
                 break
         if fpath is None:
