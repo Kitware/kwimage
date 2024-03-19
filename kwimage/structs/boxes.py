@@ -3380,7 +3380,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             # Probably want a ltrb inplace implementation as well.
             self = self.to_xywh()
         assert self.format == 'xywh'
-        new = self if inplace else self.__class__(self.data.copy(), self.format)
+        _impl = self._impl
+        new = self if inplace else self.__class__(_impl.copy(self.data), self.format)
         is_neg_w = new.data[..., 2] < 0
         is_neg_h = new.data[..., 3] < 0
         new_data = new.data
