@@ -572,6 +572,16 @@ class _BoxConversionMixins(object):
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
         return bboi
 
+    def __json__(self):
+        json_boxes = {
+            'type': 'kwimage.Boxes',
+            'properties': {
+                'data': self.data.tolist(),
+                'format': self.format,
+            }
+        }
+        return json_boxes
+
     def to_shapely(self):
         """
         Convert boxes to a list of shapely polygons

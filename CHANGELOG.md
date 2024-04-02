@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.26 - Unreleased
 
+### Added
+
+* Add "opacity" argument to `kwimage.Color.adjust`.
+* Add `__json__` to `kwimage.Boxes`
+* Allow user to specify backend order in `load_image_shape`.
+
 
 ## Version 0.9.25 - Released 2024-03-19
 

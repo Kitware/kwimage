@@ -651,7 +651,7 @@ class Color(ub.NiceRepr):
         cell = np.tile(cell_pixel, (h, w, 1))
         return cell
 
-    def adjust(self, saturate=0, lighten=0):
+    def adjust(self, saturate=0, lighten=0, opacity=0):
         """
         Adjust the saturation or value of a color.
 
@@ -664,7 +664,14 @@ class Color(ub.NiceRepr):
 
             lighten (float):
                 between +1 and -1, when positive lightens the color, when
-                negative darkens the color.
+                negative darkens the color
+
+            opacity (float):
+                between +1 and -1, when positive increases opacity, when
+                negative decreases opacity.
+
+        Returns:
+            Self - modified color
 
         Example:
             >>> # xdoctest: +REQUIRES(module:colormath)
@@ -704,6 +711,8 @@ class Color(ub.NiceRepr):
             >>>     {'saturate': +0.9},
             >>>     {'lighten': +0.9},
             >>>     {'lighten': -0.9},
+            >>>     {'opacity': +0.5},
+            >>>     {'opacity': -0.5},
             >>> ]
             >>> self = kwimage.Color.coerce('kitware_green')
             >>> dsize = (256, 64)
@@ -733,9 +742,18 @@ class Color(ub.NiceRepr):
             v = max(min(1, v + lighten), 0)
         hsv = (h, s, v)
         rgb = _colormath_convert(hsv, 'hsv', 'rgb')
+
+        if opacity:
+            if len(a) == 0:
+                a = [1]
+            else:
+                assert len(a) == 1
+            alpha = a[0]
+            a = [max(min(1, alpha + opacity), 0)]
+
         color = list(rgb) + a
-        new_rgb = self.__class__.coerce(color)
-        return new_rgb
+        new_color = self.__class__.coerce(color)
+        return new_color
 
 
 def _draw_color_swatch(colors, cellshape=9):
