@@ -212,7 +212,6 @@ _TEST_IMAGES = {
 }
 
 
-
 def _update_hashes():
     """
     for dev use to update hashes of the demo images
@@ -265,7 +264,6 @@ def _update_hashes():
 
         if ENSURE_METADATA:
             import kwimage
-            import kwarray
             imdata = kwimage.imread(fpath)
             props = item.setdefault('properties', {})
             props['shape'] = imdata.shape
@@ -496,7 +494,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None, allow_fallbac
                 max_value = item['properties']['max_value']
                 rand_data = kwarray.normalize(np.random.rand(*shape))
                 rand_data = (rand_data * (max_value - min_value)) + min_value
-                rand_data = rand_data.astype(item['properties']['dtype'])
+                rand_data = rand_data.astype(dtype)
                 kwimage.imwrite(fallback_fpath, rand_data)
             return fallback_fpath
         else:
