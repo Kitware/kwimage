@@ -1266,6 +1266,7 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> import ubelt as ub
         >>> import kwimage
+        >>> import numpy as np
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
         >>> fpath = dpath / 'foo1.tif'
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
@@ -1275,8 +1276,9 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
     Example:
         >>> import ubelt as ub
         >>> import kwimage
+        >>> import numpy as np
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
-        >>> fpath = dpath / 'foo2.tif'
+        >>> fpath = dpath / 'foo2.png'  # FIXME: this fails if this is TIF with basic dependencies installed
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
         >>> shape1 = kwimage.load_image_shape(fpath, backend=['pil', 'gdal'])
         >>> shape2 = kwimage.load_image_shape(fpath, backend=['gdal', 'pil'])
