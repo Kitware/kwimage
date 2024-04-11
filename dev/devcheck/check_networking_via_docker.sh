@@ -9,7 +9,7 @@ xdev freshpyenv
 # ---- Inside Docker
 
 # Install the package
-pip install -e .[all] -v
+pip install -e .[all,headless] -v
 
 # ---- Outside Docker
 

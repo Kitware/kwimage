@@ -380,7 +380,7 @@ def _grabdata_with_mirrors(url, mirror_urls, grabkw):
     return fpath
 
 
-def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
+def grab_test_image_fpath(key='astro', dsize=None, overviews=None, allow_fallback=True):
     """
     Ensures that the test image exists (this might use the network) and returns
     the cached filepath to the requested image.
@@ -399,6 +399,11 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
 
         overviews (None | int):
             if specified, will return a variant of the data with overviews
+
+        allow_fallback (bool):
+            if True, and for some reason (e.g. network issue) we cannot grab
+            the requested image, generate a random image based with expected
+            metadata.
 
     Returns:
         str: path to the requested image
@@ -469,13 +474,33 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
             for gateway in ipfs_gateways:
                 ipfs_url = gateway + '/' + cid
                 mirror_urls.append(ipfs_url)
-    fpath = _grabdata_with_mirrors(url, mirror_urls, grabkw)
 
-    # TODO:
-    # To avoid network issues in testing, add an option that triggers
-    # if all mirrors fail. In that case, create a random image according
-    # to the specs. Ideally use a different path, so if networking comes
-    # back on we get the real image if we can.
+    try:
+        fpath = _grabdata_with_mirrors(url, mirror_urls, grabkw)
+    except Exception:
+        if allow_fallback:
+            # To avoid network issues in testing, add an option that triggers
+            # if all mirrors fail. In that case, create a random image according
+            # to the specs. Ideally use a different path, so if networking comes
+            # back on we get the real image if we can.
+            import numpy as np
+            import kwarray
+            import kwimage
+            cache_dpath = ub.Path.appdir(grabkw['appname'])
+            fallback_fpath = cache_dpath / fname
+            if not fallback_fpath.exists():
+                shape = item['properties']['shape']
+                dtype = item['properties']['dtype']
+                min_value = item['properties']['min_value']
+                max_value = item['properties']['max_value']
+                rand_data = kwarray.normalize(np.random.rand(*shape))
+                rand_data = (rand_data * (max_value - min_value)) + min_value
+                rand_data = rand_data.astype(item['properties']['dtype'])
+                fname = ub.Path(item['fname']).augment(stemsuffix='_random_fallback')
+                kwimage.imwrite(fallback_fpath, rand_data)
+            return fallback_fpath
+        else:
+            raise
 
     augment_params = {
         'dsize': dsize,
