@@ -3135,5 +3135,3 @@ def _order_vertices(verts):
     sortx = angle.argsort()
     verts = verts.take(sortx, axis=0)
     return verts
-
-
