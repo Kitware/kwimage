@@ -1312,7 +1312,8 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
             if len(candidate_errors) == 0:
                 raise Exception('Unable to try an candidates')
             else:
-                raise candidate_errors[-1]
+                ex = candidate_errors[-1][1]
+                raise ex
     elif backend == 'pil':
         # TODO: can we prevent pil from logging to stdout here on failure?
         # This will often print "More samples per pixel than can be decoded"
