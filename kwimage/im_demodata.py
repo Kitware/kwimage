@@ -471,6 +471,12 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
                 mirror_urls.append(ipfs_url)
     fpath = _grabdata_with_mirrors(url, mirror_urls, grabkw)
 
+    # TODO:
+    # To avoid network issues in testing, add an option that triggers
+    # if all mirrors fail. In that case, create a random image according
+    # to the specs. Ideally use a different path, so if networking comes
+    # back on we get the real image if we can.
+
     augment_params = {
         'dsize': dsize,
         'overviews': overviews,
