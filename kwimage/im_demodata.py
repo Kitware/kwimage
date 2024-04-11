@@ -16,6 +16,12 @@ _TEST_IMAGES = {
         ],
         'sha256': 'bff5f9212d5c77dd47f2b80e5dc1b4409fa7813b08fc39b504294497b3483ffc',
         'sha512': '957695b319d8b8266e4eece845b016fbf2eb4f1b6889d7374d29ab812f752da77e42a6cb664bf15cc38face439bd60070e85e5b7954be15fc354b07b353b9582',
+        'properties': {
+            'shape': (868, 1156, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'amazon': {
         'fname': 'amazon.jpg',
@@ -28,6 +34,12 @@ _TEST_IMAGES = {
         ],
         'sha256': 'ef352b60f2577692ab3e9da19d09a49fa9da9937f892afc48094988a17c32dc3',
         'sha512': '80f3f5a5bf5b225c36cbefe44e0c977bf9f3ea53658a97bc2d215405587f40dea6b6c0f04b5934129b4c0265616846562c3f15c9aba61ae1afaacd13c047c9cb',
+        'properties': {
+            'shape': (3000, 3836, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'astro': {
         'fname': 'astro.png',
@@ -41,6 +53,12 @@ _TEST_IMAGES = {
         ],
         'sha256': '9f2b4671e868fd51451f03809a694006425eee64ad472f7065da04079be60c53',
         'sha512': 'de64fcb37e67d5b5946ee45eb659436b446a9a23ac5aefb6f3cce53e58a682a0828f5e8435cf7bd584358760d59915eb6e37a1b69ca34a78f3d511e6ebdad6fd',
+        'properties': {
+            'shape': (512, 512, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'carl': {
         'fname': 'carl.jpg',
@@ -55,6 +73,12 @@ _TEST_IMAGES = {
         ],
         'sha256': '94c2a5acfe53cf7d0f6c75577bd947bf559a4a99d1a200e0fca537602a966da2',
         'sha512': 'dc948163225157b85a968b2614cf2a2416b98d8b7b115ce8e046744e64e0f01150e539c06e78fc58306725188ee84f443414abac2e95dc11a8f2435df97ab6d4',
+        'properties': {
+            'shape': (448, 328, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'lowcontrast': {
         'fname': 'lowcontrast.jpg',
@@ -67,6 +91,12 @@ _TEST_IMAGES = {
         ],
         'sha256': '532572a245d2b401583488ccf9f033e5960dc9f3f56b8ca6b933a8986ec9e95e',
         'sha512': '68d37c11a005168791e6a6ca018d34c6ee305c76a38fa8c93ccfaf4520f2f01d690b218b4ad6fbac36790104a670a154daa2da14850b5de0cc7c5d6843e5b18a',
+        'properties': {
+            'shape': (267, 400, 3),
+            'dtype': 'uint8',
+            'min_value': 85,
+            'max_value': 193,
+        },
     },
     'paraview': {
         'fname': 'paraview.png',
@@ -79,6 +109,12 @@ _TEST_IMAGES = {
         ],
         'sha256': '859423aefce1037b2b6959b74d7b137a4104acd6db95a9247abb26c2d0aa93b8',
         'sha512': '25e92fe7661c0d9caf8eb919f6a9e76ed1bc689b1c599ad0786a47b86578961b07746a8303deb9efdab2bb562c700751d8cf6555e628bb65cb7ea74e8da8ad23',
+        'properties': {
+            'shape': (106, 462, 4),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'parrot': {
         'fname': 'parrot.png',
@@ -91,6 +127,12 @@ _TEST_IMAGES = {
         ],
         'sha256': 'fadd4cdddc46e43185999421dcb1ae9d3ba6d13b5b6d0acc05268fc7246f3e59',
         'sha512': '542f08ae6228483aa418ed1108d99a63805292bae43388256ea3edad780f7de2654ace72efcea4259b44a41784c364543fe763d4e4c65c90221be4b70e2d056c',
+        'properties': {
+            'shape': (200, 150),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'stars': {
         'fname': 'stars.png',
@@ -103,6 +145,12 @@ _TEST_IMAGES = {
         ],
         'sha256': '36391b4d36b4b5e2597c53f9465951910542fbec82f5a0213715759d1de9714f',
         'sha512': 'e19e0c0c28c67441700cf272cb6ae20e5cc0baee24e5527e096e61e290ca823913224cdbabb884c5550e73587192428c0650921a00630c82f45c4eddf52c652f',
+        'properties': {
+            'shape': (256, 256, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'pm5644': {
         'fname': 'Philips_Pattern_pm5644.png',
@@ -116,6 +164,12 @@ _TEST_IMAGES = {
         ],
         'sha256': 'eba500341492649d4fa4e83b5200abbffa6673de5de4c20ed669dedeb00d3941',
         'sha512': '8841ccd59b41dde98385e93531837668f09fafa42cfbdf27bf7c1088028596e3c82da8cad102543b330e1bba97476060ce002864360da76b2b3116647d2a79d8',
+        'properties': {
+            'shape': (576, 1024, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'tsukuba_l': {
         'fname': 'tsukuba_l.png',
@@ -129,6 +183,12 @@ _TEST_IMAGES = {
         ],
         'sha256': 'e29144841f4e2200e88eb6ad928cfa3ee0c55ccac0a28532c9293c4a5e0b284d',
         'sha512': '51b8df8fb08f12609676923bb473c76b8ef9d73ce2c5493bca00b7b4b0eec7b298ce33f0bf860cc94c8b7cda8e69e021674e5a7ddaf0a1f007318053e4985740',
+        'properties': {
+            'shape': (288, 384, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
     'tsukuba_r': {
         'fname': 'tsukuba_r.png',
@@ -142,8 +202,15 @@ _TEST_IMAGES = {
         ],
         'sha256': 'fb4e8b1561c177a9aba23693bd576d0e06f5778b8d44e1c1cc5c5dd35d5fd1d4',
         'sha512': '04da24efa0037aaad7a72a19d2210dd64f39f1a703d12fd1b379c3d6a9fb8695f33584d566b6159eb9aebce5b9b930b52df4b2ae7e90fcf66014711063635c27',
+        'properties': {
+            'shape': (288, 384, 3),
+            'dtype': 'uint8',
+            'min_value': 0,
+            'max_value': 255,
+        },
     },
 }
+
 
 
 def _update_hashes():
@@ -152,11 +219,12 @@ def _update_hashes():
 
     CommandLine:
         xdoctest -m kwimage.im_demodata _update_hashes
-        xdoctest -m kwimage.im_demodata _update_hashes --require-hashes
+        xdoctest -m kwimage.im_demodata _update_hashes --require-hashes --ensure-metadata
     """
     TEST_IMAGES = _TEST_IMAGES.copy()
 
     ENSURE_IPFS = ub.argflag('--ensure-ipfs')
+    ENSURE_METADATA = ub.argflag('--ensure-metadata')
     REQUIRE_EXISTING_HASH = ub.argflag('--require-hashes')
 
     for key in TEST_IMAGES.keys():
@@ -194,6 +262,16 @@ def _update_hashes():
 
         for hasher in request_hashers:
             item[hasher] = item.pop(hasher)
+
+        if ENSURE_METADATA:
+            import kwimage
+            import kwarray
+            imdata = kwimage.imread(fpath)
+            props = item.setdefault('properties', {})
+            props['shape'] = imdata.shape
+            props['dtype'] = str(imdata.dtype)
+            props['min_value'] = imdata.min()
+            props['max_value'] = imdata.max()
 
         if ENSURE_IPFS:
             ipfs_cids = item.get('ipfs_cids', [])
@@ -438,6 +516,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None):
 
     return fpath
 
+# Provide a programatic mechanism to let users test what keys are available.
 grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
@@ -466,7 +545,7 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
             The value off the other checker. Defaults to 0.
 
     References:
-        https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
+        .. [SO2169478] https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
 
     Example:
         >>> import kwimage
