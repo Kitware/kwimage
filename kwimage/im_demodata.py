@@ -487,6 +487,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None, allow_fallbac
             import kwarray
             import kwimage
             cache_dpath = ub.Path.appdir(grabkw['appname'])
+            fname = ub.Path(item['fname']).augment(stemsuffix='_random_fallback')
             fallback_fpath = cache_dpath / fname
             if not fallback_fpath.exists():
                 shape = item['properties']['shape']
@@ -496,7 +497,6 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None, allow_fallbac
                 rand_data = kwarray.normalize(np.random.rand(*shape))
                 rand_data = (rand_data * (max_value - min_value)) + min_value
                 rand_data = rand_data.astype(item['properties']['dtype'])
-                fname = ub.Path(item['fname']).augment(stemsuffix='_random_fallback')
                 kwimage.imwrite(fallback_fpath, rand_data)
             return fallback_fpath
         else:

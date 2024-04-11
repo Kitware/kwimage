@@ -18,12 +18,12 @@ docker network ls
 
 # Find the container ID
 docker ps
-export CONTAINER_ID=4d0bc4c5cbab
+export CONTAINER_ID=35abe4082ff6
 
 # List networks used by container
 docker inspect $CONTAINER_ID
 docker inspect $CONTAINER_ID | jq '.[0].NetworkSettings.Networks | keys'
 
-docker network disconnect bridge 4d0bc4c5cbab
-docker network connect bridge 4d0bc4c5cbab
+docker network disconnect bridge $CONTAINER_ID
+docker network connect bridge $CONTAINER_ID
 
