@@ -16,6 +16,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Demodata is now more robust to networking outages. If no mirror can be
   reached, it generates random data to replace the real image.
 
+### Fixed
+* Fix issue with Boxes.draw when Boxes is empty
+
 
 
 ## Version 0.9.25 - Released 2024-03-19

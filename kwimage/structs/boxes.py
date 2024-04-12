@@ -1941,11 +1941,14 @@ class _BoxDrawMixins(object):
 
         if setlim:
             xmins, ymins, xmaxs, ymaxs = self.to_ltrb().components
-            xmin = xmins.min()
-            ymin = ymins.min()
-            xmax = xmaxs.max()
-            ymax = ymaxs.max()
-            _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
+            try:
+                xmin = xmins.min()
+                ymin = ymins.min()
+                xmax = xmaxs.max()
+                ymax = ymaxs.max()
+                _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
+            except ValueError:
+                ...  # exception for empty box case
 
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:
