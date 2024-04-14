@@ -8,6 +8,7 @@ _TEST_IMAGES = {
     'airport': {
         'fname': 'airport.jpg',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
+        'note': 'An overhead image the an airport',
         'mirrors': [
             'https://data.kitware.com/api/v1/file/647cfb7ea71cc6eae69303aa/download',
         ],
@@ -26,6 +27,7 @@ _TEST_IMAGES = {
     'amazon': {
         'fname': 'amazon.jpg',
         'url': 'https://data.kitware.com/api/v1/file/611e9f4b2fa25629b9dc0ca2/download',
+        'note': 'An overhead image of the amazon rainforest',
         'mirrors': [
             'https://data.kitware.com/api/v1/file/647cfb85a71cc6eae69303ad/download',
         ],
@@ -83,6 +85,7 @@ _TEST_IMAGES = {
     'lowcontrast': {
         'fname': 'lowcontrast.jpg',
         'url': 'https://i.imgur.com/dyC68Bi.jpg',
+        'note': 'A low contrast image of a lobster',
         'mirrors': [
             'https://data.kitware.com/api/v1/file/647cfb93a71cc6eae69303b3/download',
         ],
@@ -101,6 +104,7 @@ _TEST_IMAGES = {
     'paraview': {
         'fname': 'paraview.png',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/4/46/ParaView_splash1.png',
+        'note': 'The paraview logo',
         'mirrors': [
             'https://data.kitware.com/api/v1/file/647cfb97a71cc6eae69303b6/download',
         ],
@@ -119,6 +123,7 @@ _TEST_IMAGES = {
     'parrot': {
         'fname': 'parrot.png',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Grayscale_8bits_palette_sample_image.png',
+        'note': 'An standard parrot test image',
         'mirrors': [
             'https://data.kitware.com/api/v1/file/647cfb9ca71cc6eae69303b9/download',
         ],
@@ -137,6 +142,7 @@ _TEST_IMAGES = {
     'stars': {
         'fname': 'stars.png',
         'url': 'https://i.imgur.com/kCi7C1r.png',
+        'note': 'An image of stars in the night sky',
         'mirrors': [
             'https://data.kitware.com/api/v1/file/647cfba7a71cc6eae69303bf/download',
         ],
@@ -151,6 +157,25 @@ _TEST_IMAGES = {
             'min_value': 0,
             'max_value': 255,
         },
+    },
+    'superstar': {
+        'fname': 'superstar.jpg',
+        'url': 'https://data.kitware.com/api/v1/file/661b2df25165b19d36c87d1c/download',
+        'note': 'A pre-rendered superstar',
+        'mirrors': [
+            'https://i.imgur.com/d2FHuIU.png',
+        ],
+        'sha256': '90fbba3e0985988f43440b742162535eb6458be9fdbd9dc6db6629f1bd4ded29',
+        'sha512': '5471f17234c8e47370ff6782b8b013fce2799e05e8a54739da75cc43adb59bf3d34262024122d893bb0b243f3bbfcc67be00369bd8b0de3aa5328221c62ab419',
+        'properties': {
+            'shape': (64, 64),
+            'dtype': 'uint8',
+            'min_value': 26,
+            'max_value': 204,
+        },
+        'ipfs_cids': [
+            'bafkreieq7o5d4cmftchugraloqqweu26wzcyx2p5xwo4nw3gfhy32tpnfe',
+        ],
     },
     'pm5644': {
         'fname': 'Philips_Pattern_pm5644.png',
@@ -212,14 +237,13 @@ _TEST_IMAGES = {
 }
 
 
-
 def _update_hashes():
     """
     for dev use to update hashes of the demo images
 
     CommandLine:
         xdoctest -m kwimage.im_demodata _update_hashes
-        xdoctest -m kwimage.im_demodata _update_hashes --require-hashes --ensure-metadata
+        xdoctest -m kwimage.im_demodata _update_hashes --require-hashes --ensure-metadata --ensure-ipfs
     """
     TEST_IMAGES = _TEST_IMAGES.copy()
 
@@ -265,7 +289,6 @@ def _update_hashes():
 
         if ENSURE_METADATA:
             import kwimage
-            import kwarray
             imdata = kwimage.imread(fpath)
             props = item.setdefault('properties', {})
             props['shape'] = imdata.shape
@@ -284,10 +307,15 @@ def _update_hashes():
     print('_TEST_IMAGES = ' + ub.urepr(TEST_IMAGES, nl=3, sort=0))
 
     if ENSURE_IPFS:
-        args = ' '.join(list(ub.flatten([item.get('ipfs_cids') for item in TEST_IMAGES.values()])))
-        command = 'ipfs pin add ' + args
+        commands = []
+        for key, item in TEST_IMAGES.items():
+            cids = item.get('ipfs_cids')
+            fname = item['fname']
+            for cid in cids:
+                line = f'ipfs pin add --name {fname} --progress {cid}'
+                commands.append(line)
         print('To pin on another machine:')
-        print(command)
+        print('\n'.join(commands))
 
 
 def grab_test_image(key='astro', space='rgb', dsize=None,
@@ -496,7 +524,7 @@ def grab_test_image_fpath(key='astro', dsize=None, overviews=None, allow_fallbac
                 max_value = item['properties']['max_value']
                 rand_data = kwarray.normalize(np.random.rand(*shape))
                 rand_data = (rand_data * (max_value - min_value)) + min_value
-                rand_data = rand_data.astype(item['properties']['dtype'])
+                rand_data = rand_data.astype(dtype)
                 kwimage.imwrite(fallback_fpath, rand_data)
             return fallback_fpath
         else:

@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add "opacity" argument to `kwimage.Color.adjust`.
 * Add `__json__` to `kwimage.Boxes`
 * Allow user to specify backend order in `load_image_shape`.
+* Add the superstar test image
 
 ### Changed
 * Demodata is now more robust to networking outages. If no mirror can be
