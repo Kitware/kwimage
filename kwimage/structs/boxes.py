@@ -1183,7 +1183,6 @@ class _BoxTransformMixins(object):
             new = new.tensor()
         return new
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are

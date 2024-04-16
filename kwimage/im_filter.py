@@ -2,12 +2,6 @@ import numpy as np
 import cv2
 
 
-try:
-    from line_profiler import profile
-except Exception:
-    from ubelt import identity as profile
-
-
 def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
     """
     In [1] they use a radius of 11.0 on CIFAR-10.
@@ -100,7 +94,6 @@ def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
     return out_hwc
 
 
-@profile
 def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
     """
     Applies a mask to the fourier spectrum of an image

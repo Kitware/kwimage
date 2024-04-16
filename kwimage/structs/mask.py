@@ -41,16 +41,6 @@ import warnings
 import numbers
 from . import _generic
 
-# try:
-#     import torch
-# except Exception:
-#     torch = None
-
-# try:
-#     from line_profiler import profile  # NOQA
-# except Exception:
-#     from ubelt import identity as profile  # NOQA
-
 
 class _Mask_Backends():
     # TODO: could make this prettier
@@ -518,7 +508,6 @@ class _MaskTransformMixin(object):
     Mixin methods relating to geometric transformations of mask objects
     """
 
-    # @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Perform a scale operation on the mask.
@@ -555,7 +544,6 @@ class _MaskTransformMixin(object):
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
         return new
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Perform a matrix warp (e.g. affine or projective) on the underlying
@@ -653,7 +641,6 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
-    # @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Translate the pixel values in the mask.
@@ -1277,7 +1264,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         patch = temp.to_c_mask().data
         return patch
 
-    # @profile
     def get_xywh(self):
         """
         Gets the bounding xywh box coordinates of this mask
@@ -1515,7 +1501,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
-    # @profile
     def to_multi_polygon(self, pixels_are='points'):
         """
         Returns a MultiPolygon object fit around this raster including disjoint

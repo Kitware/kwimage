@@ -736,7 +736,6 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
-    # @profile
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
              int_interpolation='nearest', mat_is_xy=True, version=None):
