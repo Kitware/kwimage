@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add `__json__` to `kwimage.Boxes`
 * Allow user to specify backend order in `load_image_shape`.
 * Add the superstar test image
+* `kwimage.Color.nearest_named` for finding the approximate name of a color.
 
 ### Changed
 * Demodata is now more robust to networking outages. If no mirror can be

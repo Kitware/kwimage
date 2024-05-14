@@ -519,12 +519,19 @@ class Color(ub.NiceRepr):
         """
         Returns:
             Color
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Color.random(pool='rgb-uniform')
+            >>> kwimage.Color.random(pool='named')
         """
         import kwarray
         rng = kwarray.ensure_rng(rng, api='python')
         if pool == 'named':
             color_name = rng.choice(Color.named_colors())
             color = Color._string_to_01(color_name)
+        elif pool == 'rgb-uniform':
+            color = [rng.random() for _ in range(3)]
         else:
             raise NotImplementedError
         if with_alpha:
@@ -537,7 +544,7 @@ class Color(ub.NiceRepr):
 
         Args:
             other (Color): the color to compare
-            space (str): the colorspace to comapre in
+            space (str): the colorspace to compare in
 
         Returns:
             float
@@ -583,6 +590,34 @@ class Color(ub.NiceRepr):
         vec1 = np.array(self.as01(space))
         vec2 = np.array(other.as01(space))
         return np.linalg.norm(vec1 - vec2)
+
+    def nearest_named(self, with_delta=0, space='lab'):
+        """
+        Find the distance to the nearest named color.
+
+        Args:
+            space (str): the colorspace to compare in
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Color.random(pool='rgb-uniform')
+            >>> name, delta = self.nearest_named(with_delta=1)
+            >>> print(f'name={name!r}, delta={delta!r}')
+            >>> kwimage.Color.random().nearest_named()
+        """
+        # TODO: efficient lookup
+        names = self.__class__.named_colors()
+        named_color = [self.__class__.coerce(n) for n in names]
+        distances = [self.distance(other, space=space)
+                     for other in named_color]
+        idx = np.argmin(distances)
+        color = named_color[idx]
+        name = names[idx]
+        delta = np.array(self.color01) - np.array(color.color01)
+        if with_delta:
+            return name, delta
+        else:
+            return name
 
     def interpolate(self, other, alpha=0.5, ispace=None, ospace=None):
         """
