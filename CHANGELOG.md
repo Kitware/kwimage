@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Fix issue with Boxes.draw when Boxes is empty
+* Allow heatmap.draw to do something if classes are not defined.
 
 
 

@@ -121,8 +121,16 @@ class _HeatmapDrawMixin(object):
         # Ignore cases where index is negative?
         cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int, copy=True)
         classes = self.meta['classes']
-
-        backup_colors = iter(kwimage.Color.distinct(len(classes)))
+        if classes is None:
+            # hack to get something, even though we dont have full info as to
+            # what the classes are.
+            import kwcoco
+            kwcoco.CategoryTree
+            num_classes = int(max(cidxs.max(), 0) + 1)
+            classes = kwcoco.CategoryTree.coerce(num_classes)
+        else:
+            num_classes = len(classes)
+        backup_colors = iter(kwimage.Color.distinct(num_classes))
         name_to_color = {}
         if hasattr(classes, 'graph'):
             # If classes has graph metadata with colors, use that.
