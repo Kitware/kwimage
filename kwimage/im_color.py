@@ -24,6 +24,8 @@ __todo__ = """
 
     - [ ] Keep old auto-coercing init, but have a way to disable it by default.
 
+    - [ ] Remove dependency on colormath
+
 """
 
 BASE_COLORS = _im_color_data.BASE_COLORS
@@ -92,14 +94,11 @@ class Color(ub.NiceRepr):
     This should only be used when handling small numbers of colors(e.g. 1),
     don't use this to represent an image.
 
-    Args:
-        space (str): colorspace of wrapped color.
-            Assume RGB if not specified and it cannot be inferred
-
     CommandLine:
-        xdoctest -m ~/code/kwimage/kwimage/im_color.py Color
+        xdoctest -m kwimage.im_color Color
 
     Example:
+        >>> from kwimage import Color
         >>> print(Color('g'))
         >>> print(Color('orangered'))
         >>> print(Color('#AAAAAA').as255())
@@ -599,6 +598,7 @@ class Color(ub.NiceRepr):
             space (str): the colorspace to compare in
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> self = kwimage.Color.random(pool='rgb-uniform')
             >>> name, delta = self.nearest_named(with_delta=1)
