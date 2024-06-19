@@ -13,11 +13,6 @@ try:
 except ImportError:
     from distutils.version import LooseVersion
 
-# try:
-#     from line_profiler import profile
-# except Exception:
-#     from ubelt import identity as profile
-
 
 try:
     import imgaug
@@ -457,7 +452,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     new.data += 10
         return new
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None,
              inplace=False):
         """
@@ -665,7 +659,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = xy
         return new
 
-    # @profile
     def to_imgaug(self, input_dims):
         """
         Translate to an imgaug object
@@ -736,7 +729,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self = cls(xy)
         return self
 
-    # @profile
     def scale(self, factor, about=None, output_dims=None, inplace=False):
         """
         Scale coordinates by a factor
@@ -796,7 +788,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = data
         return new
 
-    # @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Shift the coordinates
@@ -837,7 +828,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data += offset_
         return new
 
-    # @profile
     def rotate(self, theta, about=None, output_dims=None, inplace=False):
         """
         Rotate the coordinates about a point.

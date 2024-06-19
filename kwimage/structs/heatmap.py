@@ -121,8 +121,16 @@ class _HeatmapDrawMixin(object):
         # Ignore cases where index is negative?
         cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(int, copy=True)
         classes = self.meta['classes']
-
-        backup_colors = iter(kwimage.Color.distinct(len(classes)))
+        if classes is None:
+            # hack to get something, even though we dont have full info as to
+            # what the classes are.
+            import kwcoco
+            kwcoco.CategoryTree
+            num_classes = int(max(cidxs.max(), 0) + 1)
+            classes = kwcoco.CategoryTree.coerce(num_classes)
+        else:
+            num_classes = len(classes)
+        backup_colors = iter(kwimage.Color.distinct(num_classes))
         name_to_color = {}
         if hasattr(classes, 'graph'):
             # If classes has graph metadata with colors, use that.
@@ -389,7 +397,11 @@ class _HeatmapDrawMixin(object):
             if tf is not None:
                 mat = np.linalg.inv(tf.params)
 
-        cmap = mpl.cm.get_cmap('magma')
+        cmap_name = 'magma'
+        try:
+            cmap = mpl.colormaps[cmap_name]
+        except Exception:
+            cmap = mpl.cm.get_cmap(cmap_name)
 
         level_dsize = self.class_probs.shape[-2:][::-1]
 
@@ -736,7 +748,6 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
-    # @profile
     def warp(self, mat=None, input_dims=None, output_dims=None,
              interpolation='linear', modify_spatial_coords=True,
              int_interpolation='nearest', mat_is_xy=True, version=None):

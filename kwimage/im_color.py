@@ -24,6 +24,8 @@ __todo__ = """
 
     - [ ] Keep old auto-coercing init, but have a way to disable it by default.
 
+    - [ ] Remove dependency on colormath
+
 """
 
 BASE_COLORS = _im_color_data.BASE_COLORS
@@ -92,14 +94,11 @@ class Color(ub.NiceRepr):
     This should only be used when handling small numbers of colors(e.g. 1),
     don't use this to represent an image.
 
-    Args:
-        space (str): colorspace of wrapped color.
-            Assume RGB if not specified and it cannot be inferred
-
     CommandLine:
-        xdoctest -m ~/code/kwimage/kwimage/im_color.py Color
+        xdoctest -m kwimage.im_color Color
 
     Example:
+        >>> from kwimage import Color
         >>> print(Color('g'))
         >>> print(Color('orangered'))
         >>> print(Color('#AAAAAA').as255())
@@ -519,12 +518,19 @@ class Color(ub.NiceRepr):
         """
         Returns:
             Color
+
+        Example:
+            >>> import kwimage
+            >>> kwimage.Color.random(pool='rgb-uniform')
+            >>> kwimage.Color.random(pool='named')
         """
         import kwarray
         rng = kwarray.ensure_rng(rng, api='python')
         if pool == 'named':
             color_name = rng.choice(Color.named_colors())
             color = Color._string_to_01(color_name)
+        elif pool == 'rgb-uniform':
+            color = [rng.random() for _ in range(3)]
         else:
             raise NotImplementedError
         if with_alpha:
@@ -537,7 +543,7 @@ class Color(ub.NiceRepr):
 
         Args:
             other (Color): the color to compare
-            space (str): the colorspace to comapre in
+            space (str): the colorspace to compare in
 
         Returns:
             float
@@ -583,6 +589,35 @@ class Color(ub.NiceRepr):
         vec1 = np.array(self.as01(space))
         vec2 = np.array(other.as01(space))
         return np.linalg.norm(vec1 - vec2)
+
+    def nearest_named(self, with_delta=0, space='lab'):
+        """
+        Find the distance to the nearest named color.
+
+        Args:
+            space (str): the colorspace to compare in
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:colormath)
+            >>> import kwimage
+            >>> self = kwimage.Color.random(pool='rgb-uniform')
+            >>> name, delta = self.nearest_named(with_delta=1)
+            >>> print(f'name={name!r}, delta={delta!r}')
+            >>> kwimage.Color.random().nearest_named()
+        """
+        # TODO: efficient lookup
+        names = self.__class__.named_colors()
+        named_color = [self.__class__.coerce(n) for n in names]
+        distances = [self.distance(other, space=space)
+                     for other in named_color]
+        idx = np.argmin(distances)
+        color = named_color[idx]
+        name = names[idx]
+        delta = np.array(self.color01) - np.array(color.color01)
+        if with_delta:
+            return name, delta
+        else:
+            return name
 
     def interpolate(self, other, alpha=0.5, ispace=None, ospace=None):
         """
@@ -651,7 +686,7 @@ class Color(ub.NiceRepr):
         cell = np.tile(cell_pixel, (h, w, 1))
         return cell
 
-    def adjust(self, saturate=0, lighten=0):
+    def adjust(self, saturate=0, lighten=0, opacity=0):
         """
         Adjust the saturation or value of a color.
 
@@ -664,7 +699,14 @@ class Color(ub.NiceRepr):
 
             lighten (float):
                 between +1 and -1, when positive lightens the color, when
-                negative darkens the color.
+                negative darkens the color
+
+            opacity (float):
+                between +1 and -1, when positive increases opacity, when
+                negative decreases opacity.
+
+        Returns:
+            Self - modified color
 
         Example:
             >>> # xdoctest: +REQUIRES(module:colormath)
@@ -704,6 +746,8 @@ class Color(ub.NiceRepr):
             >>>     {'saturate': +0.9},
             >>>     {'lighten': +0.9},
             >>>     {'lighten': -0.9},
+            >>>     {'opacity': +0.5},
+            >>>     {'opacity': -0.5},
             >>> ]
             >>> self = kwimage.Color.coerce('kitware_green')
             >>> dsize = (256, 64)
@@ -733,9 +777,18 @@ class Color(ub.NiceRepr):
             v = max(min(1, v + lighten), 0)
         hsv = (h, s, v)
         rgb = _colormath_convert(hsv, 'hsv', 'rgb')
+
+        if opacity:
+            if len(a) == 0:
+                a = [1]
+            else:
+                assert len(a) == 1
+            alpha = a[0]
+            a = [max(min(1, alpha + opacity), 0)]
+
         color = list(rgb) + a
-        new_rgb = self.__class__.coerce(color)
-        return new_rgb
+        new_color = self.__class__.coerce(color)
+        return new_color
 
 
 def _draw_color_swatch(colors, cellshape=9):

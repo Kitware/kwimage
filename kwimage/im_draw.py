@@ -776,7 +776,10 @@ def make_orimask(radians, mag=None, alpha=1.0):
     TAU = np.pi * 2
     # Map radians to 0 to 1
     ori01 = (radians % TAU) / TAU
-    cmap_ = mpl.cm.get_cmap('hsv')
+    try:
+        cmap_ = mpl.colormaps['hsv']
+    except Exception:
+        cmap_ = mpl.cm.get_cmap('hsv')
     color_rgb = cmap_(ori01)[..., 0:3].astype(np.float32)
     if mag is not None:
         import kwimage

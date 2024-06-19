@@ -41,16 +41,6 @@ import warnings
 import numbers
 from . import _generic
 
-# try:
-#     import torch
-# except Exception:
-#     torch = None
-
-# try:
-#     from line_profiler import profile  # NOQA
-# except Exception:
-#     from ubelt import identity as profile  # NOQA
-
 
 class _Mask_Backends():
     # TODO: could make this prettier
@@ -518,7 +508,6 @@ class _MaskTransformMixin(object):
     Mixin methods relating to geometric transformations of mask objects
     """
 
-    # @profile
     def scale(self, factor, output_dims=None, inplace=False):
         """
         Perform a scale operation on the mask.
@@ -538,6 +527,7 @@ class _MaskTransformMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import torch
             >>> self = Mask.random()
             >>> factor = 5
             >>> inplace = False
@@ -555,7 +545,6 @@ class _MaskTransformMixin(object):
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
         return new
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Perform a matrix warp (e.g. affine or projective) on the underlying
@@ -577,6 +566,7 @@ class _MaskTransformMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwimage
+            >>> import torch
             >>> self = mask = kwimage.Mask.random()
             >>> transform = np.array([[5., 0, 0], [0, 5, 0], [0, 0, 1]])
             >>> output_dims = np.array(self.shape) * 6
@@ -594,6 +584,7 @@ class _MaskTransformMixin(object):
             >>> # to a mask and an equivalent polygon
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwimage
+            >>> import torch
             >>> input_dims = (100, 100)
             >>> output_dims = (200, 200)
             >>> rng = 92703548026074914707206344922748
@@ -653,7 +644,6 @@ class _MaskTransformMixin(object):
         new.format = MaskFormat.C_MASK
         return new
 
-    # @profile
     def translate(self, offset, output_dims=None, inplace=False):
         """
         Translate the pixel values in the mask.
@@ -1244,9 +1234,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             int: the number of non-zero pixels
 
         Example:
-            >>> self = Mask.demo()
-            >>> self.area
-            150
+            >>> import kwimage
+            >>> self = kwimage.Mask.demo()
+            >>> float(self.area)
+            150.0
         """
         if self.format == MaskFormat.C_MASK:
             return self.data.sum()
@@ -1277,7 +1268,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         patch = temp.to_c_mask().data
         return patch
 
-    # @profile
     def get_xywh(self):
         """
         Gets the bounding xywh box coordinates of this mask
@@ -1515,7 +1505,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
-    # @profile
     def to_multi_polygon(self, pixels_are='points'):
         """
         Returns a MultiPolygon object fit around this raster including disjoint

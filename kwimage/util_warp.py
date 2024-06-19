@@ -1248,12 +1248,13 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
 
     Benchmark:
         >>> # xdoctest: +REQUIRES(module:torch)
-        >>> from kwimage.util.util_warp import *
-        >>> from kwimage.util.util_warp import _warp_tensor_cv2
-        >>> from kwimage.util.util_warp import warp_tensor
+        >>> from kwimage.util_warp import *
+        >>> from kwimage.util_warp import _warp_tensor_cv2
+        >>> from kwimage.util_warp import warp_tensor
+        >>> import timerit
         >>> import torch
         >>> import numpy as np
-        >>> ti = ub.Timerit(10, bestof=3, verbose=2, unit='ms')
+        >>> ti = timerit.Timerit(10, bestof=3, verbose=2, unit='ms')
         >>> mode = 'linear'
         >>> rng = np.random.RandomState(0)
         >>> inputs = torch.Tensor(rng.rand(16, 10, 32, 32)).to('cpu')
@@ -1285,7 +1286,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
-        >>> kwplot.imshow(results['warp_tensor(torch)'][0, 0], fnum=1, pnum=(1, 2, 1), title='torch')
+        >>> kwplot.imshow(results['warp_tensor(torch)'][0, 0].numpy(), fnum=1, pnum=(1, 2, 1), title='torch')
         >>> kwplot.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
     """
     import cv2

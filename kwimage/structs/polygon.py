@@ -227,7 +227,7 @@ class _ShapelyMixin:
                 ]
                 if len(poly_parts) == 1:
                     a = poly_parts[0]
-                if len(poly_parts) > 1:
+                elif len(poly_parts) > 1:
                     a = shapely.geometry.MultiPolygon(poly_parts)
                 else:
                     raise Exception('null geometry')
@@ -557,6 +557,9 @@ class _PolyWarpMixin:
         References:
             .. [SO67822179] https://stackoverflow.com/questions/67822179/poly-topleft-points
 
+        CommandLine:
+            xdoctest -m kwimage.structs.polygon _PolyWarpMixin._rectify_about
+
         TextArt:
 
             (0, 0)
@@ -607,7 +610,7 @@ class _PolyWarpMixin:
         Example:
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).scale(10).round().astype(np.int32)
-            >>> print(self._rectify_about('centroid'))
+            >>> print(tuple(map(float, self._rectify_about('centroid'))))
             >>> print(self._rectify_about('ymax,xmin'))
             >>> print(self._rectify_about('xmin,ymax'))
             >>> print(self._rectify_about('ymax,xmin-bounds'))

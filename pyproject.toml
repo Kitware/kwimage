@@ -10,8 +10,9 @@ mod_name = "kwimage"
 author = 'Jon Crall'
 author_email = 'jon.crall@kitware.com'
 repo_name = "kwimage"
-ci_cpython_versions = ['3.6', '3.7', '3.8', '3.9', '3.10', '3.11']
-min_python = "3.6"
+ci_cpython_versions = ['3.8', '3.9', '3.10', '3.11', '3.12']
+min_python = "3.8"
+max_python = "3.12"
 url = 'https://gitlab.kitware.com/computer-vision/kwimage'
 dev_status = "beta"
 typed = true
@@ -26,12 +27,11 @@ classifiers = [
     'Topic :: Utilities',
     # This should be interpreted as Apache License v2.0
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [tool.xcookie.entry_points]

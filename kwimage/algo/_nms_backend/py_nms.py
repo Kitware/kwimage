@@ -15,6 +15,9 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
     References:
         https://github.com/rbgirshick/fast-rcnn/blob/master/lib/utils/nms.py
 
+    CommandLine:
+        xdoctest -m kwimage.algo._nms_backend.py_nms py_nms
+
     Example:
         >>> np_ltrb = np.array([
         >>>     [0, 0, 100, 100],
@@ -29,7 +32,7 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
         >>> np_scores = np.linspace(0, 1, len(np_ltrb))
         >>> thresh = 0.1
         >>> bias = 0.0
-        >>> keep = sorted(py_nms(np_ltrb, np_scores, thresh, bias))
+        >>> keep = sorted(map(int, py_nms(np_ltrb, np_scores, thresh, bias)))
         >>> print('keep = {!r}'.format(keep))
         keep = [2, 4, 5, 7]
 
@@ -42,13 +45,13 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
         >>>     [50, 50, 100, 100],
         >>> ], dtype=np.float32)
         >>> np_scores = np.array([.1, .5, .9, .1])
-        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=0.0, bias=1.0))
+        >>> keep = list(map(int, py_nms(np_ltrb, np_scores, thresh=0.0, bias=1.0)))
         >>> print('keep@0.0 = {!r}'.format(keep))
-        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=0.2, bias=1.0))
+        >>> keep = list(map(int, py_nms(np_ltrb, np_scores, thresh=0.2, bias=1.0)))
         >>> print('keep@0.2 = {!r}'.format(keep))
-        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=0.5, bias=1.0))
+        >>> keep = list(map(int, py_nms(np_ltrb, np_scores, thresh=0.5, bias=1.0)))
         >>> print('keep@0.5 = {!r}'.format(keep))
-        >>> keep = list(py_nms(np_ltrb, np_scores, thresh=1.0, bias=1.0))
+        >>> keep = list(map(int, py_nms(np_ltrb, np_scores, thresh=1.0, bias=1.0)))
         >>> print('keep@1.0 = {!r}'.format(keep))
         keep@0.0 = [2, 1]
         keep@0.2 = [2, 1]

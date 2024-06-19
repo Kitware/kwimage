@@ -34,7 +34,8 @@ def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
 
         recsize (int): number of boxes that triggers full NMS recombination
 
-        impl (str): algorithm to use
+        impl (str): algorithm to use. Defaults to "auto". Can be "python",
+            "cython_cpu", "gpu", "torch", or "torchvision".
 
     Note:
 
@@ -248,8 +249,8 @@ class _NMS_Impls():
                         # See the benchmarks for more info.
                         # ~/code/kwimage/dev/bench_nms.py
             except Exception as ex:
-                warnings.warn
-                ('optional gpu_nms is not available: {}'.format(str(ex)))
+                warnings.warn(
+                    'optional gpu_nms is not available: {}'.format(str(ex)))
         self._funcs = _funcs
         self._valid = frozenset(_impls._funcs.keys())
 
@@ -505,22 +506,17 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         >>> print('solutions = {}'.format(ub.urepr(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
     """
-    torch = sys.modules.get('torch', None)
-
     if impl == 'cpu':
-        import warnings
         warnings.warn(
             'impl="cpu" is deprecated use impl="cython_cpu" instead',
             DeprecationWarning)
         impl = 'cython_cpu'
     elif impl == 'gpu':
-        import warnings
         warnings.warn(
             'impl="gpu" is deprecated use impl="cython_gpu" instead',
             DeprecationWarning)
         impl = 'cython_gpu'
     elif impl == 'py':
-        import warnings
         warnings.warn(
             'impl="py" is deprecated use impl="numpy" instead',
             DeprecationWarning)
@@ -528,6 +524,8 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
 
     if not _impls._funcs:
         _impls._lazy_init()
+
+    torch = sys.modules.get('torch', None)
 
     if ltrb.shape[0] == 0:
         return []

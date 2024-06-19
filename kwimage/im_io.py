@@ -1183,7 +1183,8 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
 
     Args:
         fpath (str): path to an image
-        backend (str): can be "auto", "pil", or "gdal".
+        backend (str | List[str]): can be "auto", "pil", or "gdal".
+            Can also be a list of which backends to try in which order.
         include_channels (bool): if False, only reads the height, width.
 
     Returns:
@@ -1261,33 +1262,65 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         Timed imagesize for: 100 loops, best of 10
             time per loop: best=5.092 µs, mean=5.195 ± 0.1 µs
 
-
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> import ubelt as ub
         >>> import kwimage
+        >>> import numpy as np
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
-        >>> fpath = dpath / 'foo.tif'
+        >>> fpath = dpath / 'foo1.tif'
         >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
         >>> shape = kwimage.load_image_shape(fpath)
         >>> assert shape == (64, 64, 3)
+
+    Example:
+        >>> import ubelt as ub
+        >>> import kwimage
+        >>> import numpy as np
+        >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
+        >>> fpath = dpath / 'foo2.png'  # FIXME: this fails if this is TIF with basic dependencies installed
+        >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
+        >>> shape1 = kwimage.load_image_shape(fpath, backend=['pil', 'gdal'])
+        >>> shape2 = kwimage.load_image_shape(fpath, backend=['gdal', 'pil'])
+        >>> assert shape1 == shape2 == (64, 64, 3)
 
     Ignore:
         * Note: this seems to have an issue with PNG's with mode='LA',
           which means that there really are two underlying channels, but it
           kwimage.imread cv2 backend reads it as a 4 channel RGBA array.
+
+        * Note: we may want to change the name of this function to something
+          like imread_shape.
     """
     if backend == 'auto':
-        try:
-            shape = load_image_shape(fpath, backend='pil', include_channels=include_channels)
-        except Exception as pil_ex:
-            if not _have_gdal():
-                raise
+        backend = ['pil', 'gdal']
+
+    if isinstance(backend, list):
+        candidate_errors = []
+        success = False
+        for candidate_backend in backend:
+            if candidate_backend == 'gdal':
+                if not _have_gdal():
+                    continue
             try:
-                shape = load_image_shape(fpath, backend='gdal', include_channels=include_channels)
-            except Exception:
-                raise pil_ex
+                shape = load_image_shape(fpath, backend=candidate_backend,
+                                         include_channels=include_channels)
+            except Exception as ex:
+                candidate_errors.append((candidate_backend, ex))
+            else:
+                success = True
+                break
+        if not success:
+            if len(candidate_errors) == 0:
+                raise Exception('Unable to try an candidates')
+            else:
+                ex = candidate_errors[-1][1]
+                raise ex
     elif backend == 'pil':
+        # TODO: can we prevent pil from logging to stdout here on failure?
+        # This will often print "More samples per pixel than can be decoded"
+        # which gives little context and is ultimately not an issue if we can
+        # fallback on gdal.
         from PIL import Image
         fpath = os.fspath(fpath)
         with Image.open(fpath) as pil_img:
@@ -1779,6 +1812,14 @@ def _gdal_to_numpy_dtype(gdal_dtype):
         >>>     assert _dtype_equality(numpy_dtype1, numpy_dtype2)
     """
     from osgeo import gdal
+
+    try:
+        # For numpy < 2.0
+        complex_ = np.complex_
+    except AttributeError:
+        # For numpy >= 2.0
+        complex_ = np.complex128
+
     _GDAL_DTYPE_LUT = {
         gdal.GDT_Byte: np.uint8,
         gdal.GDT_UInt16: np.uint16,
@@ -1787,8 +1828,8 @@ def _gdal_to_numpy_dtype(gdal_dtype):
         gdal.GDT_Int32: np.int32,
         gdal.GDT_Float32: np.float32,
         gdal.GDT_Float64: np.float64,
-        gdal.GDT_CInt16: np.complex_,
-        gdal.GDT_CInt32: np.complex_,
+        gdal.GDT_CInt16: complex_,
+        gdal.GDT_CInt32: complex_,
         gdal.GDT_CFloat32: np.complex64,
         gdal.GDT_CFloat64: np.complex128
     }

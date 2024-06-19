@@ -69,6 +69,9 @@ stages:
     chr(47)))")
   - export MOD_VERSION=$(python -c "from pkginfo import Wheel; print(Wheel('$WHEEL_FPATH').version)")
   - pip install -r requirements/gdal.txt
+  - echo "$WHEEL_FPATH=WHEEL_FPATH"
+  - echo "$INSTALL_EXTRAS=INSTALL_EXTRAS"
+  - echo "$MOD_VERSION=MOD_VERSION"
   - pip install --prefer-binary "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
@@ -119,6 +122,9 @@ stages:
     chr(47)))")
   - export MOD_VERSION=$(python -c "from pkginfo import Wheel; print(Wheel('$WHEEL_FPATH').version)")
   - pip install -r requirements/gdal.txt
+  - echo "$WHEEL_FPATH=WHEEL_FPATH"
+  - echo "$INSTALL_EXTRAS=INSTALL_EXTRAS"
+  - echo "$MOD_VERSION=MOD_VERSION"
   - pip install --prefer-binary "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
@@ -169,6 +175,9 @@ stages:
     chr(47)))")
   - export MOD_VERSION=$(python -c "from pkginfo import Wheel; print(Wheel('$WHEEL_FPATH').version)")
   - pip install -r requirements/gdal.txt
+  - echo "$WHEEL_FPATH=WHEEL_FPATH"
+  - echo "$INSTALL_EXTRAS=INSTALL_EXTRAS"
+  - echo "$MOD_VERSION=MOD_VERSION"
   - pip install --prefer-binary "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
@@ -219,6 +228,9 @@ stages:
     chr(47)))")
   - export MOD_VERSION=$(python -c "from pkginfo import Wheel; print(Wheel('$WHEEL_FPATH').version)")
   - pip install -r requirements/gdal.txt
+  - echo "$WHEEL_FPATH=WHEEL_FPATH"
+  - echo "$INSTALL_EXTRAS=INSTALL_EXTRAS"
+  - echo "$MOD_VERSION=MOD_VERSION"
   - pip install --prefer-binary "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
@@ -243,52 +255,6 @@ stages:
   - |-
     python -m pytest --verbose -p pytester -p no:doctest --xdoctest --cov-config ../pyproject.toml --cov-report term --durations=100 --cov="$MOD_NAME" "$MOD_DPATH" ../tests
   - echo "pytest command finished, moving the coverage file to the repo root"
-build/cp36-linux-x86_64:
-  <<: *build_template
-  image: python:3.6
-test/minimal-loose/cp36-linux-x86_64:
-  <<: *test_minimal-loose_template
-  image: python:3.6
-  needs:
-  - build/cp36-linux-x86_64
-test/full-loose/cp36-linux-x86_64:
-  <<: *test_full-loose_template
-  image: python:3.6
-  needs:
-  - build/cp36-linux-x86_64
-test/minimal-strict/cp36-linux-x86_64:
-  <<: *test_minimal-strict_template
-  image: python:3.6
-  needs:
-  - build/cp36-linux-x86_64
-test/full-strict/cp36-linux-x86_64:
-  <<: *test_full-strict_template
-  image: python:3.6
-  needs:
-  - build/cp36-linux-x86_64
-build/cp37-linux-x86_64:
-  <<: *build_template
-  image: python:3.7
-test/minimal-loose/cp37-linux-x86_64:
-  <<: *test_minimal-loose_template
-  image: python:3.7
-  needs:
-  - build/cp37-linux-x86_64
-test/full-loose/cp37-linux-x86_64:
-  <<: *test_full-loose_template
-  image: python:3.7
-  needs:
-  - build/cp37-linux-x86_64
-test/minimal-strict/cp37-linux-x86_64:
-  <<: *test_minimal-strict_template
-  image: python:3.7
-  needs:
-  - build/cp37-linux-x86_64
-test/full-strict/cp37-linux-x86_64:
-  <<: *test_full-strict_template
-  image: python:3.7
-  needs:
-  - build/cp37-linux-x86_64
 build/cp38-linux-x86_64:
   <<: *build_template
   image: python:3.8
@@ -381,6 +347,29 @@ test/full-strict/cp311-linux-x86_64:
   image: python:3.11
   needs:
   - build/cp311-linux-x86_64
+build/cp312-linux-x86_64:
+  <<: *build_template
+  image: python:3.12
+test/minimal-loose/cp312-linux-x86_64:
+  <<: *test_minimal-loose_template
+  image: python:3.12
+  needs:
+  - build/cp312-linux-x86_64
+test/full-loose/cp312-linux-x86_64:
+  <<: *test_full-loose_template
+  image: python:3.12
+  needs:
+  - build/cp312-linux-x86_64
+test/minimal-strict/cp312-linux-x86_64:
+  <<: *test_minimal-strict_template
+  image: python:3.12
+  needs:
+  - build/cp312-linux-x86_64
+test/full-strict/cp312-linux-x86_64:
+  <<: *test_full-strict_template
+  image: python:3.12
+  needs:
+  - build/cp312-linux-x86_64
 lint:
   <<: *common_template
   image: python:3.11
@@ -409,10 +398,6 @@ gpgsign/wheels:
     - main
     - release
   needs:
-  - job: build/cp36-linux-x86_64
-    artifacts: true
-  - job: build/cp37-linux-x86_64
-    artifacts: true
   - job: build/cp38-linux-x86_64
     artifacts: true
   - job: build/cp39-linux-x86_64
@@ -420,6 +405,8 @@ gpgsign/wheels:
   - job: build/cp310-linux-x86_64
     artifacts: true
   - job: build/cp311-linux-x86_64
+    artifacts: true
+  - job: build/cp312-linux-x86_64
     artifacts: true
   script:
   - ls dist

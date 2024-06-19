@@ -572,6 +572,16 @@ class _BoxConversionMixins(object):
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
         return bboi
 
+    def __json__(self):
+        json_boxes = {
+            'type': 'kwimage.Boxes',
+            'properties': {
+                'data': self.data.tolist(),
+                'format': self.format,
+            }
+        }
+        return json_boxes
+
     def to_shapely(self):
         """
         Convert boxes to a list of shapely polygons
@@ -1173,7 +1183,6 @@ class _BoxTransformMixins(object):
             new = new.tensor()
         return new
 
-    # @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform. Note that transformations that are
@@ -1931,11 +1940,14 @@ class _BoxDrawMixins(object):
 
         if setlim:
             xmins, ymins, xmaxs, ymaxs = self.to_ltrb().components
-            xmin = xmins.min()
-            ymin = ymins.min()
-            xmax = xmaxs.max()
-            ymax = ymaxs.max()
-            _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
+            try:
+                xmin = xmins.min()
+                ymin = ymins.min()
+                xmax = xmaxs.max()
+                ymax = ymaxs.max()
+                _generic._setlim(xmin, ymin, xmax, ymax, setlim, ax=ax)
+            except ValueError:
+                ...  # exception for empty box case
 
         boxes = self.to_xywh()
         if len(boxes.shape) == 1 and boxes.shape[0] == 4:
@@ -2740,9 +2752,13 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Returns:
             Boxes: the boxes with the chosen type
 
+        CommandLine:
+            xdoctest -m kwimage.structs.boxes Boxes.astype
+
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import torch
             >>> Boxes.random(3, 100, rng=0).tensor().astype('int16')
             <Boxes(xywh,
                 tensor([[54, 54,  6, 17],
@@ -3516,9 +3532,14 @@ def _torch_dtype_lut():
     else:
         raise AssertionError('dont think this can happen')
 
-    if np.float_ == np.float32:
+    try:
+        float_ = np.float_
+    except AttributeError:
+        float_ = np.float64
+
+    if float_ == np.float32:
         lut[float] = torch.float32
-    elif np.float_ == np.float64:
+    elif float_ == np.float64:
         lut[float] = torch.float64
     else:
         raise AssertionError('dont think this can happen')

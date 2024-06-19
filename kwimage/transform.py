@@ -19,11 +19,6 @@ __docstubs__ = """
 import affine
 """
 
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 
 class Transform(ub.NiceRepr):
     pass
@@ -205,7 +200,8 @@ class Matrix(Transform):
         else:
             try:
                 inv_mat = np.linalg.inv(self.matrix)
-            except (np.linalg.LinAlgError, np.core._exceptions.UFuncTypeError):
+            except (np.linalg.LinAlgError, TypeError):
+                # using TypeError instead of np.core._exceptions.UFuncTypeError
                 if self.is_rational():
                     # inv_mat = mp.inverse(self.matrix)
                     # handle object arrays (rationals)
@@ -337,7 +333,6 @@ class Matrix(Transform):
         new = self.__class__(new_mat)
         return new
 
-    @profile
     def isclose_identity(self, rtol=1e-05, atol=1e-08):
         """
         Returns true if the matrix is nearly the identity.
@@ -710,7 +705,6 @@ class Projective(Linear):
         return self
 
     @classmethod
-    @profile
     def coerce(cls, data=None, **kwargs):
         """
         Attempt to coerce the data into an Projective object
@@ -786,9 +780,9 @@ class Projective(Linear):
 
         Example:
             >>> import kwimage
-            >>> kwimage.Projective.coerce(scale=2, uv=[1, 1]).is_affine()
+            >>> bool(kwimage.Projective.coerce(scale=2, uv=[1, 1]).is_affine())
             False
-            >>> kwimage.Projective.coerce(scale=2, uv=[0, 0]).is_affine()
+            >>> bool(kwimage.Projective.coerce(scale=2, uv=[0, 0]).is_affine())
             True
         """
         if self.matrix is None:
@@ -1148,7 +1142,6 @@ class Affine(Projective):
         else:
             return {'type': 'affine', 'matrix': self.matrix.tolist()}
 
-    @profile
     def concise(self):
         """
         Return a concise coercable dictionary representation of this matrix
@@ -1238,7 +1231,6 @@ class Affine(Projective):
         return self
 
     @classmethod
-    @profile
     def coerce(cls, data=None, **kwargs):
         """
         Attempt to coerce the data into an affine object
@@ -1610,7 +1602,6 @@ class Affine(Projective):
         )
         return params
 
-    @profile
     def decompose(self):
         r"""
         Decompose the affine matrix into its individual scale, translation,
@@ -1760,7 +1751,6 @@ class Affine(Projective):
         return params
 
     @classmethod
-    @profile
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
                about=None, shearx=None, array_cls=None, math_mod=None,
                **kwargs):
@@ -2418,7 +2408,7 @@ def _ensure_iterable2(scalar):
 if __name__ == '__main__':
     """
     CommandLine:
-        python -m kwimage.transform all --profile
+        python -m kwimage.transform all
     """
     import xdoctest
     xdoctest.doctest_module(__file__)
