@@ -1,4 +1,8 @@
-coverage >= 5.3.1
+coverage>=7.2.7     ; python_version < '4.0'  and python_version >= '3.12'    # Python 3.12+
+coverage>=5.3.1     ; python_version < '3.12' and python_version >= '3.11'    # Python 3.11
+coverage>=5.3.1     ; python_version < '3.11' and python_version >= '3.10'    # Python 3.10
+coverage>=5.3.1     ; python_version < '3.10' 
+
 xdoctest >= 1.1.3
 pytest >= 6.2.5
 timerit >= 0.3.0
