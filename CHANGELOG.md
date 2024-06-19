@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+* Support for numpy 2.0 on Python 3.9+
 * Add "opacity" argument to `kwimage.Color.adjust`.
 * Add `__json__` to `kwimage.Boxes`
 * Allow user to specify backend order in `load_image_shape`.

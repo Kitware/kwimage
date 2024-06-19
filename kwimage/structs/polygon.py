@@ -227,7 +227,7 @@ class _ShapelyMixin:
                 ]
                 if len(poly_parts) == 1:
                     a = poly_parts[0]
-                if len(poly_parts) > 1:
+                elif len(poly_parts) > 1:
                     a = shapely.geometry.MultiPolygon(poly_parts)
                 else:
                     raise Exception('null geometry')
