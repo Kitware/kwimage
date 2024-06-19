@@ -4,7 +4,7 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.26 - Unreleased
+## Version 0.10.0 - Unreleased
 
 ### Added
 
@@ -14,6 +14,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Allow user to specify backend order in `load_image_shape`.
 * Add the superstar test image
 * `kwimage.Color.nearest_named` for finding the approximate name of a color.
+
+### Removed
+* Removed support for Python 3.6 and 3.7
+
 
 ### Changed
 * Demodata is now more robust to networking outages. If no mirror can be
