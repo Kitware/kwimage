@@ -1812,6 +1812,14 @@ def _gdal_to_numpy_dtype(gdal_dtype):
         >>>     assert _dtype_equality(numpy_dtype1, numpy_dtype2)
     """
     from osgeo import gdal
+
+    try:
+        # For numpy < 2.0
+        complex_ = np.complex_
+    except AttributeError:
+        # For numpy >= 2.0
+        complex_ = np.complex128
+
     _GDAL_DTYPE_LUT = {
         gdal.GDT_Byte: np.uint8,
         gdal.GDT_UInt16: np.uint16,
@@ -1820,8 +1828,8 @@ def _gdal_to_numpy_dtype(gdal_dtype):
         gdal.GDT_Int32: np.int32,
         gdal.GDT_Float32: np.float32,
         gdal.GDT_Float64: np.float64,
-        gdal.GDT_CInt16: np.complex_,
-        gdal.GDT_CInt32: np.complex_,
+        gdal.GDT_CInt16: complex_,
+        gdal.GDT_CInt32: complex_,
         gdal.GDT_CFloat32: np.complex64,
         gdal.GDT_CFloat64: np.complex128
     }

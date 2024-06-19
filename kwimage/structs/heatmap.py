@@ -397,7 +397,11 @@ class _HeatmapDrawMixin(object):
             if tf is not None:
                 mat = np.linalg.inv(tf.params)
 
-        cmap = mpl.cm.get_cmap('magma')
+        cmap_name = 'magma'
+        try:
+            cmap = mpl.colormaps[cmap_name]
+        except Exception:
+            cmap = mpl.cm.get_cmap(cmap_name)
 
         level_dsize = self.class_probs.shape[-2:][::-1]
 

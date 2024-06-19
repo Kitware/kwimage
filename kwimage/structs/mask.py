@@ -527,6 +527,7 @@ class _MaskTransformMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import torch
             >>> self = Mask.random()
             >>> factor = 5
             >>> inplace = False
@@ -565,6 +566,7 @@ class _MaskTransformMixin(object):
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwimage
+            >>> import torch
             >>> self = mask = kwimage.Mask.random()
             >>> transform = np.array([[5., 0, 0], [0, 5, 0], [0, 0, 1]])
             >>> output_dims = np.array(self.shape) * 6
@@ -582,6 +584,7 @@ class _MaskTransformMixin(object):
             >>> # to a mask and an equivalent polygon
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwimage
+            >>> import torch
             >>> input_dims = (100, 100)
             >>> output_dims = (200, 200)
             >>> rng = 92703548026074914707206344922748
@@ -1231,9 +1234,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             int: the number of non-zero pixels
 
         Example:
-            >>> self = Mask.demo()
-            >>> self.area
-            150
+            >>> import kwimage
+            >>> self = kwimage.Mask.demo()
+            >>> float(self.area)
+            150.0
         """
         if self.format == MaskFormat.C_MASK:
             return self.data.sum()

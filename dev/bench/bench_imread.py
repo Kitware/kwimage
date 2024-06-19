@@ -58,11 +58,17 @@ def _read_gdal_v2(fpath):
             else:
                 raise Exception('cant handle color tables yet')
         elif gdal_dset.RasterCount == 3:
+            try:
+                # For numpy < 2.0
+                complex_ = np.complex_
+            except AttributeError:
+                # For numpy >= 2.0
+                complex_ = np.complex128
             _gdal_dtype_lut = {
                 1: np.uint8,     2: np.uint16,
                 3: np.int16,     4: np.uint32,      5: np.int32,
-                6: np.float32,   7: np.float64,     8: np.complex_,
-                9: np.complex_,  10: np.complex64,  11: np.complex128
+                6: np.float32,   7: np.float64,     8: complex_,
+                9: complex_,  10: np.complex64,  11: np.complex128
             }
             bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
             gdal_type_code = bands[0].DataType

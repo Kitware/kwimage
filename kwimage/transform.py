@@ -200,7 +200,8 @@ class Matrix(Transform):
         else:
             try:
                 inv_mat = np.linalg.inv(self.matrix)
-            except (np.linalg.LinAlgError, np.core._exceptions.UFuncTypeError):
+            except (np.linalg.LinAlgError, TypeError):
+                # using TypeError instead of np.core._exceptions.UFuncTypeError
                 if self.is_rational():
                     # inv_mat = mp.inverse(self.matrix)
                     # handle object arrays (rationals)
@@ -779,9 +780,9 @@ class Projective(Linear):
 
         Example:
             >>> import kwimage
-            >>> kwimage.Projective.coerce(scale=2, uv=[1, 1]).is_affine()
+            >>> bool(kwimage.Projective.coerce(scale=2, uv=[1, 1]).is_affine())
             False
-            >>> kwimage.Projective.coerce(scale=2, uv=[0, 0]).is_affine()
+            >>> bool(kwimage.Projective.coerce(scale=2, uv=[0, 0]).is_affine())
             True
         """
         if self.matrix is None:

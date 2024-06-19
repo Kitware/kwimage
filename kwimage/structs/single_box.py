@@ -364,8 +364,8 @@ class Box(ub.NiceRepr):
         """
         Example:
             >>> import kwimage
-            >>> kwimage.Box.random(rng=0).scale(10).quantize().to_slice()
-            (slice(5, 8, None), slice(5, 7, None))
+            >>> slice_ = kwimage.Box.random(rng=0).scale(10).quantize().to_slice()
+            >>> assert slice_ == (slice(5, 8, None), slice(5, 7, None))
         """
         return self.boxes.to_slices(endpoint=endpoint)[0]
 
