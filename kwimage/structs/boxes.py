@@ -971,7 +971,7 @@ class _BoxPropertyMixins(object):
             a single ndarray[dim=2] whereas `self.center` returns two ndarrays.
         """
         import warnings
-        warnings.warn('Redundant, use self.center instead', DeprecationWarning)
+        warnings.warn('Calling xy_center is redundant, use self.center instead', DeprecationWarning)
         xy = self.to_cxywh(copy=False).data[..., 0:2]
         return xy
 
@@ -1479,7 +1479,8 @@ class _BoxTransformMixins(object):
                 if about == 'origin':
                     about = None
                 elif about in {'center', 'centroid'}:
-                    about = self.xy_center
+                    # about = self.xy_center
+                    about = self.to_cxywh(copy=False).data[..., 0:2]
                 else:
                     raise KeyError(about)
 
@@ -2630,6 +2631,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if axis != 0:
             raise ValueError('can only concatenate along axis=0')
         format = boxes[0].format
+        # Doing a view here seems wrong. This function might be broken.
         datas = [_view(b.toformat(format).data, -1, 4) for b in boxes]
         newdata = _cat(datas, axis=0)
         new = cls(newdata, format)
