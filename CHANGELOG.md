@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed:
 * Passing a list of alphas to `Detections.draw_on` now works correctly.
+* Usage of distutils
 
 
 ## Version 0.10.0 - Released 2024-06-19
