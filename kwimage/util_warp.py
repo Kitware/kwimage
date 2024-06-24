@@ -6,6 +6,11 @@ import ubelt as ub
 import numpy as np
 import kwarray
 
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 
 def _coordinate_grid(dims, align_corners=False):
     """
@@ -1331,6 +1336,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     return outputs
 
 
+@profile
 def warp_points(matrix, pts, homog_mode='divide'):
     """
     Warp ND points / coordinates using a transformation matrix.

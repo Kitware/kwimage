@@ -2,6 +2,11 @@ import numpy as np
 import ubelt as ub
 
 
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 # TODO: Perhaps dynamically fix the wraped method signatures to agree with
 # Boxes when possible. OR just make this efficient (perhaps that is a fools
 # errand because single box objects wont be efficient in Python). Probably just
@@ -103,6 +108,7 @@ class Box(ub.NiceRepr):
         return self
 
     @classmethod
+    @profile
     def coerce(cls, data, format=None, **kwargs):
         if isinstance(data, Box):
             return data

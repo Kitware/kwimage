@@ -87,6 +87,12 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
+
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 __all__ = ['Boxes']
 
 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
@@ -488,6 +494,7 @@ class _BoxConversionMixins(object):
         return Boxes(cxywh, BoxFormat.CXYWH, check=False)
 
     @_register_convertor(BoxFormat.LTRB)
+    @profile
     def to_ltrb(self, copy=True):
         if self.format == BoxFormat.LTRB:
             return self.copy() if copy else self

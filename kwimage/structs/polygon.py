@@ -21,6 +21,11 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 
 class _ShapelyMixin:
     """
@@ -370,6 +375,7 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -406,11 +412,12 @@ class _PolyWarpMixin:
             >>> #assert np.all(self.warp(np.eye(2)).exterior == self.exterior)
         """
         from kwimage._typing import SKImageGeometricTransform
+        from kwimage.transform import Transform
         new = self if inplace else self.__class__(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if transform is None:
             return new
-        elif not isinstance(transform, (np.ndarray, SKImageGeometricTransform)):
+        elif not isinstance(transform, (np.ndarray, Transform, SKImageGeometricTransform)):
             try:
                 import imgaug
             except ImportError:
@@ -1722,6 +1729,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return boxes
 
+    @profile
     def box(self):
         """
         Returns an axis-aligned bounding box for the segmentation
@@ -1740,7 +1748,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         lt = xys.min(axis=0)
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
-        box = kwimage.Box.coerce(ltrb, format='ltrb')
+        # Slow Code:
+        # box = kwimage.Box.coerce(ltrb, format='ltrb')
+        # Optimized Code:
+        boxes = kwimage.Boxes(ltrb[None, :], format='ltrb', check=False)
+        box = kwimage.Box(boxes)
         return box
 
     def bounding_box_polygon(self):

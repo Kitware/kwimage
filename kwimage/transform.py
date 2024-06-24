@@ -1,7 +1,5 @@
 """
 Objects for representing and manipulating image transforms.
-
-XDEV_PROFILE=1 xdoctest ~/code/kwimage/kwimage/transform.py
 """
 import ubelt as ub
 import numpy as np
@@ -18,6 +16,11 @@ __all__ = [
 __docstubs__ = """
 import affine
 """
+
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
 
 
 class Transform(ub.NiceRepr):
@@ -1602,6 +1605,7 @@ class Affine(Projective):
         )
         return params
 
+    @profile
     def decompose(self):
         r"""
         Decompose the affine matrix into its individual scale, translation,
@@ -1749,6 +1753,27 @@ class Affine(Projective):
             'theta': theta,
         }
         return params
+
+    @profile
+    def _decompose_scale(self):
+        """
+        Scale only decomposition. Experimental method that is faster than
+        decompose when only scale is needed.
+        """
+        if self.matrix is None:
+            return (1., 1.)
+        a11, a12, _, a21, a22 = self.matrix.ravel()[0:5]
+        sx = math.sqrt(a11 * a11 + a21 * a21)
+        theta = math.atan2(a21, a11)
+        sin_t = math.sin(theta)
+        cos_t = math.cos(theta)
+        msy = a12 * cos_t + a22 * sin_t
+        if abs(cos_t) < abs(sin_t):
+            sy = (msy * cos_t - a12) / sin_t
+        else:
+            sy = (a22 - msy * sin_t) / cos_t
+        scale = (sx, sy)
+        return scale
 
     @classmethod
     def affine(cls, scale=None, offset=None, theta=None, shear=None,
