@@ -1418,12 +1418,14 @@ def warp_points(matrix, pts, homog_mode='divide'):
     D1, D2 = matrix.shape
 
     # Reshape points into a NxD, and transpose into a
-    pts_T = impl.T(impl.view(pts, (-1, D)))
+    _flat_pts = impl.view(pts, (-1, D))
+    pts_T = impl.T(_flat_pts)
 
     if D != D2:
         assert D + 1 == D2, 'only can have one homog coord'
         # Add homogenous coordinate
-        new_pts_T = impl.cat([pts_T, impl.ones_like(pts_T[0:1])], axis=0)
+        _ones = impl.ones_like(pts_T[0:1])
+        new_pts_T = impl.cat([pts_T, _ones], axis=0)
     else:
         # new_pts_T = impl.contiguous(pts_T)
         new_pts_T = pts_T

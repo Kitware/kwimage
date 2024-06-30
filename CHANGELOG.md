@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.10.1 - Unreleased
 
+### Added:
+* Added `canonical` flag to Boxes to speed up creation time when input is known to be good.
+
 ### Fixed:
 * Passing a list of alphas to `Detections.draw_on` now works correctly.
 * Usage of distutils

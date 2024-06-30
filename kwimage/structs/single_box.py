@@ -94,9 +94,17 @@ class Box(ub.NiceRepr):
 
     @classmethod
     def from_dsize(self, dsize):
-        width, height = dsize
+        """
+        Args:
+            dsize (Tuple[int, int]): A width/height tuple.
+
+        Returns:
+            Self
+        """
         import kwimage
-        boxes = kwimage.Boxes([[0, 0, width, height]], 'ltrb')
+        width, height = dsize
+        ltrb = np.array([[0, 0, width, height]])
+        boxes = kwimage.Boxes(ltrb, 'ltrb')
         self = Box(boxes, _check=False)
         return self
 
@@ -147,7 +155,9 @@ class Box(ub.NiceRepr):
 
     @property
     def dsize(self):
-        return (int(self.width), int(self.height))
+        xywh = self.boxes.to_xywh(copy=False)
+        width, height = xywh.data[..., 2:4].ravel()
+        return (int(width), int(height))
 
     def translate(self, *args, **kwargs):
         new_boxes = self.boxes.translate(*args, **kwargs)
