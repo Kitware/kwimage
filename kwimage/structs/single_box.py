@@ -13,7 +13,7 @@ except Exception:
 # maintain the wrapper.
 
 
-class Box(ub.NiceRepr):
+class Box:
     """
     Represents a single Box.
 
@@ -37,6 +37,7 @@ class Box(ub.NiceRepr):
         >>> box = Box.from_slice(sl)
         >>> print(f'box={box}')
     """
+    __slots__ = ('boxes',)
 
     def __init__(self, boxes, _check: bool = False):
         if _check:
@@ -59,6 +60,20 @@ class Box(ub.NiceRepr):
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
         nice = '{}, {}'.format(self.format, data_repr)
         return nice
+
+    def __str__(self):
+        """
+        Returns:
+            str
+        """
+        classname = self.__class__.__name__
+        nice = self.__nice__()
+        return '<{0}({1})>'.format(classname, nice)
+
+    def __repr__(self):
+        classname = self.__class__.__name__
+        nice = self.__nice__()
+        return '<{0}({1})>'.format(classname, nice)
 
     @classmethod
     def random(self, **kwargs):
@@ -104,7 +119,7 @@ class Box(ub.NiceRepr):
         import kwimage
         width, height = dsize
         ltrb = np.array([[0, 0, width, height]])
-        boxes = kwimage.Boxes(ltrb, 'ltrb')
+        boxes = kwimage.Boxes(ltrb, 'ltrb', canonical=True)
         self = Box(boxes, _check=False)
         return self
 

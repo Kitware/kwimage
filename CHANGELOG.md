@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added:
 * Added `canonical` flag to Boxes to speed up creation time when input is known to be good.
 
+### Changed
+* kwimage.Boxes and kwimage.Box now use `__slots__` 
+
 ### Fixed:
 * Passing a list of alphas to `Detections.draw_on` now works correctly.
 * Usage of distutils
