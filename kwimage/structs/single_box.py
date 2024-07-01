@@ -40,10 +40,10 @@ class Box:
     __slots__ = ('boxes',)
 
     def __init__(self, boxes, _check: bool = False):
-        if _check:
-            raise Exception(
-                'For now, only construct an instance of this using a class '
-                ' method, like coerce, from_slice, from_shapely, etc...')
+        # if _check:
+        #     raise Exception(
+        #         'For now, only construct an instance of this using a class '
+        #         ' method, like coerce, from_slice, from_shapely, etc...')
         self.boxes = boxes
 
     @property

@@ -640,7 +640,7 @@ class _BoxConversionMixins:
         from shapely.geometry import Polygon
         if isinstance(geom, Polygon):
             xmin, ymin, xmax, ymax = geom.bounds
-            self = Boxes(np.array([geom.bounds]), 'ltrb')
+            self = Boxes(np.array([geom.bounds]), 'ltrb', canonical=True)
         else:
             raise NotImplementedError
         return self
@@ -878,12 +878,19 @@ class _BoxConversionMixins:
             else:
                 raise ValueError(f'Invalid y slice tl_y={tl_y}, rb_y={rb_y}')
 
+        if clip and shape is not None:
+            tl_x = max(min(tl_x, width), 0)
+            tl_y = max(min(tl_y, height), 0)
+            rb_x = max(min(rb_x, width), 0)
+            rb_y = max(min(rb_y, height), 0)
+
         ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
         box = Boxes(ltrb, 'ltrb', check=False, canonical=True)
-
-        if clip:
-            if shape is not None:
-                box.clip(0, 0, width, height, inplace=True)
+        # Using box clip took 70% of the time, new logic does it in scalar
+        # space
+        # if clip:
+        #     if shape is not None:
+        #         box.clip(0, 0, width, height, inplace=True)
         return box
 
     @profile
@@ -1274,7 +1281,7 @@ class _BoxTransformMixins:
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(float, copy=True)
-            new = Boxes(new_data, self.format)
+            new = Boxes(new_data, self.format, canonical=True)
 
         if transform is None:
             return new
@@ -1405,6 +1412,7 @@ class _BoxTransformMixins:
         corners = np.ascontiguousarray(corners)
         return corners
 
+    @profile
     def scale(self, factor, about='origin', output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
@@ -1490,7 +1498,7 @@ class _BoxTransformMixins:
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(float, copy=True)
-            new = Boxes(new_data, self.format)
+            new = Boxes(new_data, self.format, canonical=True)
 
         if _numel(new_data) > 0:
 
@@ -2652,9 +2660,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             rel_cxy = rng.rand(num, 2).astype(np.float32) * .99
             rand_cxwy = rel_cxy * (max_cxy - min_cxy) + min_cxy
             cxywh = np.hstack([rand_cxwy, rand_whs])
-            ltrb = Boxes(cxywh, BoxFormat.CXYWH, check=False).to_ltrb().data
+            ltrb = Boxes(cxywh, BoxFormat.CXYWH, check=False, canonical=True).to_ltrb().data
 
-        boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False)
+        boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False, canonical=True)
         boxes = boxes.scale(scale, inplace=True)
         if as_integer:
             boxes.data = boxes.data.astype(int)
@@ -2669,7 +2677,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             Boxes: a copy of these boxes
         """
         new_data = _copy(self.data)
-        return Boxes(new_data, self.format, check=False)
+        return Boxes(new_data, self.format, check=False, canonical=True)
 
     @classmethod
     def concatenate(cls, boxes, axis=0):
@@ -3296,7 +3304,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
-        isect = Boxes(ltrb, 'ltrb')
+        isect = Boxes(ltrb, 'ltrb', canonical=True)
 
         return isect
 
@@ -3344,7 +3352,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
-        isect = Boxes(ltrb, 'ltrb')
+        isect = Boxes(ltrb, 'ltrb', canonical=True)
 
         return isect
 
@@ -3369,7 +3377,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         max_x = max_xs.max()
         max_y = max_ys.max()
         new_ltrb = np.array([[min_x, min_y, max_x, max_y]])
-        new = Boxes(new_ltrb, format='ltrb')
+        new = Boxes(new_ltrb, format='ltrb', canonical=True)
         return new
 
     def contains(self, other):
