@@ -583,11 +583,11 @@ grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
                  dtype=float, on_value=1, off_value=0):
     """
-    Creates a checkerboard image
+    Creates a checkerboard image, mainly for use in testing.
 
     Args:
         num_squares (int | str):
-            Number of squares in a row. If 'auto' defaults to 8
+            Number of squares in each row. If 'auto' defaults to 8
 
         square_shape (int | Tuple[int, int] | str):
             If 'auto', chosen based on `num_squares`. Otherwise this is
@@ -597,11 +597,13 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
         dtype (type): return data type
 
-        on_value (Number | int):
+        on_value (Number | int | str):
             The value of one checker. Defaults to 1.
+            Can also be the name of a color.
 
-        off_value (Number | int):
+        off_value (Number | int | str):
             The value off the other checker. Defaults to 0.
+            Can also be the name of a color.
 
     References:
         .. [SO2169478] https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
@@ -679,7 +681,6 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
     num_pairs_w = int(num_w // 2)
     num_pairs_h = int(num_h // 2)
-    # img_size = 512
     base = np.array([
         [on_value, off_value] * num_pairs_w,
         [off_value, on_value] * num_pairs_w
