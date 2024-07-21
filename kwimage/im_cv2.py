@@ -201,7 +201,7 @@ def _coerce_border_value(border_value, default=0, image=None):
 
     if isinstance(borderValue, str):
         from kwimage import im_color
-        borderValue = im_color.Color(borderValue)._forimage(image)
+        borderValue = im_color.Color(borderValue).forimage(image)
     elif not ub.iterable(borderValue):
         # convert scalar border value to a tuple to ensure the user always
         # fully defines the output. (and to have conciseness)

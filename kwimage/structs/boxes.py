@@ -2141,7 +2141,7 @@ class _BoxDrawMixins:
             return image
 
         # Get the color that is compatible with the input image encoding
-        # rect_color = kwimage.Color(color)._forimage(image)
+        # rect_color = kwimage.Color(color).forimage(image)
 
         # Parameters for drawing the box rectangles
         rectkw = {

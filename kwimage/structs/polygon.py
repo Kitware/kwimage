@@ -2071,7 +2071,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         from kwimage.im_cv2 import _cv2_imputation
         image = _cv2_imputation(image)
 
-        color = kwimage.Color(color, alpha=alpha)._forimage(image)
+        color = kwimage.Color(color, alpha=alpha).forimage(image)
         # print('--- B')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
@@ -2083,7 +2083,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         elif facecolor is True:
             facecolor = color
         else:
-            facecolor = kwimage.Color(facecolor, alpha=alpha)._forimage(image)
+            facecolor = kwimage.Color(facecolor, alpha=alpha).forimage(image)
 
         # TODO: consolidate logic
         # _generic._handle_color_args_for(
@@ -2107,7 +2107,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 mask = cv2.fillPoly(mask, cv_contours, facecolor, line_type, shift=0)
                 # TODO: could use add weighted
                 image = kwimage.overlay_alpha_images(mask, orig)
-                # facecolor = kwimage.Color(facecolor)._forimage(image)
+                # facecolor = kwimage.Color(facecolor).forimage(image)
 
         # print('--- C')
         # print('image.dtype = {!r}'.format(image.dtype))
@@ -2120,7 +2120,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         elif edgecolor is True:
             edgecolor = color
         else:
-            edgecolor = kwimage.Color(edgecolor, alpha=alpha)._forimage(image)
+            edgecolor = kwimage.Color(edgecolor, alpha=alpha).forimage(image)
 
         if edgecolor:
             thickness = 4
@@ -2135,7 +2135,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 mask = cv2.drawContours(mask, cv_contours, contour_idx,
                                         edgecolor, thickness, line_type)
                 image = kwimage.overlay_alpha_images(mask, orig)
-                # edgecolor = kwimage.Color(edgecolor)._forimage(image)
+                # edgecolor = kwimage.Color(edgecolor).forimage(image)
 
         # image = kwimage.ensure_float01(image)[..., 0:3]
         # print('--- D')

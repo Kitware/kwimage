@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added:
 * Added `canonical` flag to Boxes to speed up creation time when input is known to be good.
+* Added `bayer_value` argument to `kwimage.checkerboard`.
 
 ### Changed
 * kwimage.Boxes and kwimage.Box now use `__slots__` 

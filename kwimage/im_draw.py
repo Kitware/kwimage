@@ -239,7 +239,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
     if img is None or isinstance(img, dict):
         kwargs['color'] = kwimage.Color(kwargs['color']).as255()
     else:
-        kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
+        kwargs['color'] = kwimage.Color(kwargs['color']).forimage(img)
 
     if 'thickness' not in kwargs:
         kwargs['thickness'] = 2
@@ -336,7 +336,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
             alloc_h = text_h
         img = np.zeros((alloc_h, alloc_w, len(bg_color)), dtype=np.uint8)
         img[...] = np.array(bg_color)[None, None, :]
-        kwargs['color'] = kwimage.Color(kwargs['color'])._forimage(img)
+        kwargs['color'] = kwimage.Color(kwargs['color']).forimage(img)
 
     if border_thickness > 0:
         # recursive call
@@ -563,7 +563,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
             raise ValueError('specify box_format')
         boxes = kwimage.Boxes(boxes, box_format)
 
-    color = kwimage.Color(color)._forimage(img, colorspace)
+    color = kwimage.Color(color).forimage(img, colorspace)
     ltrb = boxes.to_ltrb().data
     img2 = img.copy()
     for x1, y1, x2, y2 in ltrb:
@@ -623,7 +623,6 @@ def draw_line_segments_on_image(
         >>> kwplot.imshow(img2)
     """
     import cv2
-    # color = kwimage.Color(color)._forimage(img, colorspace)
     num = len(pts1)
     colors = _broadcast_colors(color, num, img, colorspace)
 
@@ -680,10 +679,10 @@ def _broadcast_colors(color, num, img, colorspace):
                 needs_broadcast = False
 
     if needs_broadcast:
-        color = kwimage.Color(color)._forimage(img, colorspace)
+        color = kwimage.Color(color).forimage(img, colorspace)
         colors = [color] * num
     else:
-        colors = [kwimage.Color(c)._forimage(img, colorspace) for c in color]
+        colors = [kwimage.Color(c).forimage(img, colorspace) for c in color]
     return colors
 
 
@@ -984,7 +983,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
         image = np.zeros(dx.shape + (3,), dtype=np.uint8)
         # image = kwimage.atleast_3channels(image)
 
-    color = kwimage.Color(color)._forimage(image)
+    color = kwimage.Color(color).forimage(image)
 
     line_type_lookup = {'aa': cv2.LINE_AA}
     line_type = line_type_lookup.get(line_type, line_type)
