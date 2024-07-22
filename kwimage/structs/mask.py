@@ -1505,8 +1505,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
-    def to_multi_polygon(self, pixels_are='points'):
-        """
+    def to_multi_polygon(self, pixels_are='points', origin_convention='center'):
+        r"""
         Returns a MultiPolygon object fit around this raster including disjoint
         pieces and holes.
 
@@ -1522,6 +1522,17 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 square with coordinates ([i - 0.5, j - 0.5], [i + 0.5, j -
                 0.5], [i + 0.5, j + 0.5], and [i - 0.5, j + 0.5]). Must have
                 rasterio installed to use this method.
+
+            origin_convention (str):
+                Controls the interpretation of the underlying raster.
+                Can be "center" (default opencv behavior), or "corner" (matches
+                torchvision / detectron2 behavior).
+                If "center", then center of the top left pixel is at (0, 0), and
+                the top left corner is at (-0.5, -0.5).
+                If "center", then center of the top left pixel is at (0.5, 0.5), and
+                the top left corner is at (0, 0).
+                Currently defaults to "center", but in the future we may change the
+                default to "corner".  For more info see [WhereArePixels]_.
 
         Returns:
             kwimage.MultiPolygon: vectorized representation
@@ -1651,49 +1662,78 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> #self = self.translate((0, 0), output_dims=(10, 9))
             >>> self = self.translate((0, 1), output_dims=(11, 11))
             >>> dims = self.shape[0:2]
-            >>> multi_poly1 = self.to_multi_polygon(pixels_are='points')
-            >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas')
+            >>> multi_poly1 = self.to_multi_polygon(pixels_are='points', origin_convention='center')
+            >>> multi_poly2 = self.to_multi_polygon(pixels_are='areas', origin_convention='center')
+            >>> multi_poly3 = self.to_multi_polygon(pixels_are='points', origin_convention='corner')
+            >>> multi_poly4 = self.to_multi_polygon(pixels_are='areas', origin_convention='corner')
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> pretty_data = kwplot.make_heatmask(self.data/1.0, cmap='magma')[..., 0:3]
-            >>> def _pixel_grid_lines(self, ax):
+            >>> def _pixel_grid_lines(self, ax, origin_convention):
+            >>>     offset = 0.5 if origin_convention == 'center' else 0
             >>>     h, w = self.data.shape[0:2]
-            >>>     ybasis = np.arange(0, h) + 0.5
-            >>>     xbasis = np.arange(0, w) + 0.5
-            >>>     xmin = 0 - 0.5
-            >>>     xmax = w - 0.5
-            >>>     ymin = 0 - 0.5
-            >>>     ymax = h - 0.5
+            >>>     ybasis = np.arange(0, h) + offset
+            >>>     xbasis = np.arange(0, w) + offset
+            >>>     xmin = 0 - offset
+            >>>     xmax = w - offset
+            >>>     ymin = 0 - offset
+            >>>     ymax = h - offset
             >>>     ax.hlines(y=ybasis, xmin=xmin, xmax=xmax, color="gainsboro")
             >>>     ax.vlines(x=xbasis, ymin=ymin, ymax=ymax, color="gainsboro")
-            >>> def _setup_grid(self, pnum):
-            >>>     ax = kwplot.imshow(pretty_data, show_ticks=True, pnum=pnum)[1]
+            >>> def _setup_grid(self, pnum, origin_convention):
+            >>>     ax = kwplot.imshow(pretty_data, show_ticks=True, pnum=pnum, origin_convention=origin_convention)[1]
             >>>     # The gray ticks show the center of the pixels
             >>>     ax.grid(color='dimgray', linewidth=0.5)
             >>>     ax.set_xticks(np.arange(self.data.shape[1]))
             >>>     ax.set_yticks(np.arange(self.data.shape[0]))
             >>>     # Also draw black lines around the edges of the pixels
-            >>>     _pixel_grid_lines(self, ax=ax)
+            >>>     _pixel_grid_lines(self, ax=ax, origin_convention=origin_convention)
             >>>     return ax
             >>> # Overlay the extracted polygons
-            >>> ax = _setup_grid(self, pnum=(2, 3, 1))
-            >>> ax.set_title('input binary mask data')
-            >>> ax = _setup_grid(self, pnum=(2, 3, 2))
+            >>> fig = kwplot.figure(fnum=1)
+            >>> fig.clf()
+            >>> ax = _setup_grid(self, pnum=(4, 3, 1), origin_convention='center')
+            >>> ax.set_title('input binary mask data\n(origin_convention=center)')
+            >>> # ------------------------------------
+            >>> ax = _setup_grid(self, pnum=(4, 3, 2), origin_convention='center')
             >>> multi_poly1.draw(linewidth=5, alpha=0.5, radius=0.2, ax=ax, fill=False, vertex=0.2)
-            >>> ax.set_title('opencv "point" polygons')
-            >>> ax = _setup_grid(self, pnum=(2, 3, 3))
+            >>> ax.set_title('opencv "point/center" polygons')
+            >>> # ------------------------------------
+            >>> ax = _setup_grid(self, pnum=(4, 3, 3), origin_convention='center')
             >>> multi_poly2.draw(linewidth=5, alpha=0.5, radius=0.2, color='limegreen', ax=ax, fill=False, vertex=0.2)
-            >>> ax.set_title('raterio "area" polygons')
+            >>> ax.set_title('rasterio "area/center" polygons')
+            >>> # ------------------------------------
+            >>> ax = _setup_grid(self, pnum=(4, 3, 4), origin_convention='corner')
+            >>> ax.set_title('input binary mask data\n(origin_convention=corner)')
+            >>> # ------------------------------------
+            >>> ax = _setup_grid(self, pnum=(4, 3, 5), origin_convention='corner')
+            >>> multi_poly3.draw(linewidth=5, alpha=0.5, radius=0.2, ax=ax, fill=False, vertex=0.2)
+            >>> ax.set_title('opencv "point/corner" polygons')
+            >>> # ------------------------------------
+            >>> ax = _setup_grid(self, pnum=(4, 3, 6), origin_convention='corner')
+            >>> multi_poly4.draw(linewidth=5, alpha=0.5, radius=0.2, color='limegreen', ax=ax, fill=False, vertex=0.2)
+            >>> ax.set_title('rasterio "area/corner" polygons')
+            >>> # ------------------------------------
+            >>> raster1 = multi_poly1.to_mask(dims, pixels_are='points', origin_convention='center')
+            >>> kwplot.imshow(raster1.draw_on(), pnum=(4, 3, 8), title='rasterized area/center', origin_convention='center', show_ticks=True)
+            >>> # ------------------------------------
+            >>> raster2 = multi_poly2.to_mask(dims, pixels_are='areas', origin_convention='center')
+            >>> kwplot.imshow(raster2.draw_on(), pnum=(4, 3, 9), title='rasterized area/center', origin_convention='center', show_ticks=True)
+            >>> # ------------------------------------
+            >>> raster3 = multi_poly3.to_mask(dims, pixels_are='points', origin_convention='corner')
+            >>> kwplot.imshow(raster3.draw_on(), pnum=(4, 3, 11), title='rasterized point/corner', origin_convention='corner', show_ticks=True)
+            >>> # ------------------------------------
+            >>> raster4 = multi_poly4.to_mask(dims, pixels_are='areas', origin_convention='corner')
+            >>> kwplot.imshow(raster4.draw_on(), pnum=(4, 3, 12), title='rasterized area/corner', origin_convention='corner', show_ticks=True)
+            >>> # ------------------------------------
             >>> ax.figure.suptitle(ub.codeblock(
             >>>     '''
-            >>>     Gray lines are coordinates and pass through pixel centers (integer coords)
-            >>>     White lines trace pixel boundaries (fractional coords)
+            >>>     There are two conventions we need to decide on.
+            >>>     1. Do pixels represent points or areas?
+            >>>     2. Is the origin in the center or corner of the top left pixel?
             >>>     '''))
-            >>> raster1 = multi_poly1.to_mask(dims, pixels_are='points')
-            >>> raster2 = multi_poly2.to_mask(dims, pixels_are='areas')
-            >>> kwplot.imshow(raster1.draw_on(), pnum=(2, 3, 5), title='rasterized')
-            >>> kwplot.imshow(raster2.draw_on(), pnum=(2, 3, 6), title='rasterized')
+            >>> fig.set_size_inches([12.8, 13.37])
         """
         from kwimage.structs.polygon import Polygon, MultiPolygon
         # Note: it is not necessarilly faster to to only exact the patch of
@@ -1702,7 +1742,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         if temp_mask.dtype.kind == 'b':
             temp_mask = temp_mask.astype(np.uint8)
         # TODO: polygons and masks should keep track what "pixels_are"
-        polys = _find_contours(temp_mask, pixels_are=pixels_are)
+        polys = _find_contours(temp_mask, pixels_are=pixels_are,
+                               origin_convention=origin_convention)
         poly_list = [Polygon(**data) for data in polys]
         multi_poly = MultiPolygon(poly_list)
         return multi_poly
@@ -1935,7 +1976,7 @@ class MaskList(_generic.ObjectList):
         return self
 
 
-def _find_contours(binary_mask, pixels_are='points'):
+def _find_contours(binary_mask, pixels_are='points', origin_convention='center'):
     """
     Finds the contours in a binary mask
 
@@ -1954,14 +1995,25 @@ def _find_contours(binary_mask, pixels_are='points'):
             0.5], [i + 0.5, j + 0.5], and [i - 0.5, j + 0.5]). Must have
             rasterio installed to use this method.
 
+        origin_convention (str):
+            Controls the interpretation of the underlying raster.
+            Can be "center" (default opencv behavior), or "corner" (matches
+            torchvision / detectron2 behavior).
+            If "center", then center of the top left pixel is at (0, 0), and
+            the top left corner is at (-0.5, -0.5).
+            If "center", then center of the top left pixel is at (0.5, 0.5), and
+            the top left corner is at (0, 0).
+            Currently defaults to "center", but in the future we may change the
+            default to "corner".  For more info see [WhereArePixels]_.
+
     Returns:
         List[Dict]: list of polygon exteriors and interiors
     """
     if pixels_are == 'points':
         # Note this mask needs to be uint8 not bool
-        polys = _opencv_find_contours(binary_mask)
+        polys = _opencv_find_contours(binary_mask, origin_convention)
     elif pixels_are == 'areas':
-        polys = _rasterio_find_contours(binary_mask)
+        polys = _rasterio_find_contours(binary_mask, origin_convention)
     else:
         raise KeyError(pixels_are)
     return polys
@@ -1997,7 +2049,7 @@ def _write_img_in_terminal(binary_mask):
     print(text)
 
 
-def _rasterio_find_contours(label_img):
+def _rasterio_find_contours(label_img, origin_convention='center'):
     """
     Note:
         The :func:`rasterio.features.shapes` is capable of multi-label polygon
@@ -2012,21 +2064,33 @@ def _rasterio_find_contours(label_img):
     polys = []
     if label_img.size > 0:
         shapes = list(features.shapes(label_img, connectivity=8))
-        translate = np.array([-0.5, -0.5]).ravel()[None, :]
-        for shape, value in shapes:
-            if value > 0:
-                coords = shape['coordinates']
-                exterior = np.array(coords[0]) + translate
-                interiors = [np.array(p) + translate for p in coords[1:]]
-                polys.append({
-                    'exterior': exterior,
-                    'interiors': interiors,
-                    # 'value': value,
-                })
+        if (origin_convention == 'center'):
+            translate = np.array([-0.5, -0.5]).ravel()[None, :]
+            for shape, value in shapes:
+                if value > 0:
+                    coords = shape['coordinates']
+                    exterior = np.array(coords[0]) + translate
+                    interiors = [np.array(p) + translate for p in coords[1:]]
+                    polys.append({
+                        'exterior': exterior,
+                        'interiors': interiors,
+                        # 'value': value,
+                    })
+        else:
+            for shape, value in shapes:
+                if value > 0:
+                    coords = shape['coordinates']
+                    exterior = np.array(coords[0])
+                    interiors = [np.array(p) for p in coords[1:]]
+                    polys.append({
+                        'exterior': exterior,
+                        'interiors': interiors,
+                        # 'value': value,
+                    })
     return polys
 
 
-def _opencv_find_contours(binary_mask):
+def _opencv_find_contours(binary_mask, origin_convention='center'):
     import cv2
     p = 2
     offset = (0 - p, 0 - p)
@@ -2065,6 +2129,15 @@ def _opencv_find_contours(binary_mask):
             #     raise Exception
             polys[i]['exterior'] = coords
     polys = list(polys.values())
+
+    if (origin_convention == 'center'):
+        ...  # default opencv behavior
+    elif (origin_convention == 'corner'):
+        # Translate integer-center to integer-corner coordinates
+        for poly in polys:
+            poly['exterior'] = poly['exterior'].astype(np.float32) + 0.5
+            poly['interiors'] = [p.astype(np.float32) + 0.5
+                                 for p in poly['interiors']]
     return polys
 
 

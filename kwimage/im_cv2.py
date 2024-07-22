@@ -1289,7 +1289,8 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
 
 def warp_affine(image, transform, dsize=None, antialias=False,
                 interpolation='linear', border_mode=None, border_value=0,
-                large_warp_dim=None, return_info=False):
+                large_warp_dim=None, return_info=False,
+                origin_convention='center'):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -1331,7 +1332,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             Border code or cv2 integer. Border codes are constant (default)
             replicate, reflect, wrap, reflect101, and transparent.
 
-        border_value (int | float | Iterable[int | float]):
+        border_value (int | float | Iterable[int | float] | str):
             Used as the fill value if border_mode is constant. Otherwise this
             is ignored. Defaults to 0, but can also be defaulted to nan.
             if border_value is a scalar and there are multiple channels, the
@@ -1339,6 +1340,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             for individual channels will cause an error. See OpenCV #22283 for
             details.  In the future we may accept np.ma and return a masked
             array, but for now that is not implemented.
+            If a string, it indicates a border_mode that is not constant.
+            In this case border mode should not be given.
 
         large_warp_dim (int | None | str):
             If specified, perform the warp piecewise in chunks of the specified
@@ -1350,6 +1353,17 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             if True, returns information about the operation. In the case
             where dsize="content", this includes the modified transformation.
 
+        origin_convention (str):
+            Controls the interpretation of the underlying raster.
+            Can be "center" (default opencv behavior), or "corner" (matches
+            torchvision / detectron2 behavior).
+            If "center", then center of the top left pixel is at (0, 0), and
+            the top left corner is at (-0.5, -0.5).
+            If "center", then center of the top left pixel is at (0.5, 0.5), and
+            the top left corner is at (0, 0).
+            Currently defaults to "center", but in the future we may change the
+            default to "corner".  For more info see [WhereArePixels]_.
+
     Returns:
         ndarray | Tuple[ndarray, Dict]:
             the warped image, or if return info is True, the warped image and
@@ -1359,6 +1373,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         - [ ] When dsize='positive' but the transform contains an axis flip,
               the width / height of the box will become negative.  Should we
               adjust for this?
+
+    References:
+        .. [WhereArePixels] https://ppwwyyxx.com/blog/2021/Where-are-Pixels/
 
     Example:
         >>> from kwimage.im_cv2 import *  # NOQA
@@ -1550,6 +1567,26 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         poly2 = poly.warp(recon)
         pts_warp1 = transform_.matrix @ pts.T
         pts_warp2 = transform_.matrix @ pts.T
+
+    Example:
+        >>> image = kwimage.checkerboard(dsize=(4, 4), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> grid = list(ub.named_product({
+        >>>     'origin_convention': ['center', 'corner'],
+        >>>     'border_value': [0, np.nan, 'replicate'],
+        >>>     'interpolation': ['linear', 'nearest'],
+        >>> }))
+        >>> results = [('input', image)]
+        >>> for kwargs in grid:
+        >>>     warped_image = kwimage.warp_affine(image, {'scale': 100.0}, dsize='auto', **kwargs)
+        >>>     title = ub.urepr(kwargs, compact=1, nl=1)
+        >>>     results.append((title, warped_image))
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
+        >>> for title, canvas in results:
+        >>>     canvas = kwimage.fill_nans_with_checkers(canvas)
+        >>>     kwplot.imshow(canvas, pnum=pnum_(), origin_convention='corner', title=title)
     """
     from kwimage.transform import Affine
     import kwimage
@@ -1565,12 +1602,22 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
+    if isinstance(border_value, str):
+        # it is annoying to have borer value / border mode be different
+        # if it is a string assume the border mode is a strategy
+        # todo: cleanup
+        assert border_mode is None
+        border_mode = border_value
+        border_value = 0
     borderMode = _coerce_border_mode(border_mode)
     borderValue = _coerce_border_value(border_value, image=image)
 
     h, w = image.shape[0:2]
 
     if isinstance(dsize, str) or large_warp_dim is not None:
+        # FIXME: we may need to modify this based on the origin convention for
+        # correctness.
+
         # calculate dimensions needed for auto/max/try_large_warp
         box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = box.warp(transform)
@@ -1638,6 +1685,19 @@ def warp_affine(image, transform, dsize=None, antialias=False,
     }
     _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
                            borderMode, borderValue)
+
+    if origin_convention == 'corner':
+        # cv2.warpAffine uses the integer-center convention, but by modifying
+        # the transform we can implement the integer-corner behavior.
+        offset1 = kwimage.Affine.translate((0.5, 0.5))
+        offset2 = kwimage.Affine.translate((-0.5, -0.5))
+        print(f'transform_={transform_}')
+        transform_ = offset2 @ transform_ @ offset1
+        print(f'transform_={transform_}')
+    elif origin_convention == 'center':
+        ...
+    else:
+        raise KeyError(origin_convention)
 
     try:
         if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):

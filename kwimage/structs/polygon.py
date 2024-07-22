@@ -1283,7 +1283,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
     def _impl(self):
         return self.data['exterior']._impl
 
-    def to_mask(self, dims=None, pixels_are='points'):
+    def to_mask(self, dims=None, pixels_are='points', origin_convention='center'):
         """
         Convert this polygon to a mask
 
@@ -1291,8 +1291,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             - [ ] currently not efficient
 
         Args:
-            dims (Tuple): height and width of the output mask
+            dims (Tuple[int, int]): height and width of the output mask
+
             pixels_are (str): either "points" or "areas"
+
+            origin_convention (str): either "center" or "corner"
 
         Returns:
             kwimage.Mask
@@ -1313,7 +1316,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
         value = 1
-        self.fill(c_mask, value, pixels_are=pixels_are)
+        self.fill(c_mask, value, pixels_are=pixels_are,
+                  origin_convention=origin_convention)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
@@ -1347,11 +1351,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         else:
             return mask
 
-    def _to_cv_countours(self):
+    def _to_cv_countours(self, origin_convention='center'):
         """
-        OpenCV polygon representation, which is a list of points.  Holes are
-        implicitly represented. When another polygon is drawn over an existing
-        polyon via cv2.fillPoly
+        OpenCV polygon representation, which is a list of integer points.
+        Holes are implicitly represented. When another polygon is drawn over an
+        existing polyon via cv2.fillPoly
 
         Returns:
             List[ndarray]: where each ndarray is of shape [N, 1, 2],
@@ -1370,7 +1374,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                     import warnings
                     warnings.warn('Drawing a large polygon with cv2 has bugs')
             cv_contour_ = [c.clip(-max_coord, max_coord) for c in cv_contour_]
-        cv_contours = [c.astype(np.int32) for c in cv_contour_]
+        if origin_convention == 'corner':
+            # convert detectron integer-center convention to opencv integer-center
+            # cv_contours = [(c - 0.5).astype(np.int32) for c in cv_contour_]
+            cv_contours = [c.astype(np.int32) for c in cv_contour_]
+        else:
+            # given opencv integer-center convention
+            cv_contours = [c.astype(np.int32) for c in cv_contour_]
         return cv_contours
 
     @classmethod
@@ -1805,7 +1815,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         np.clip(ys, y_min, y_max, out=ys)
         return self2
 
-    def fill(self, image, value=1, pixels_are='points', assert_inplace=False):
+    def fill(self, image, value=1, pixels_are='points', origin_convention='center', assert_inplace=False):
         """
         Fill in an image based on this polyon.
 
@@ -1814,7 +1824,28 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
             value (int | Tuple[int]): value fill in with. Defaults to 1.
 
-            pixels_are (str): either points or areas
+            pixel_are (str):
+                Can either be "points" or "areas".
+
+                If pixels are "points", the we treat each pixel (i, j) as a
+                single infinitely small point at (i, j). As such, some polygons
+                may have zero area.
+
+                If pixels are "areas", then each pixel (i, j) represents a
+                square with coordinates ([i - 0.5, j - 0.5], [i + 0.5, j -
+                0.5], [i + 0.5, j + 0.5], and [i - 0.5, j + 0.5]). Must have
+                rasterio installed to use this method.
+
+            origin_convention (str):
+                Controls the interpretation of the underlying raster.
+                Can be "center" (default opencv behavior), or "corner" (matches
+                torchvision / detectron2 behavior).
+                If "center", then center of the top left pixel is at (0, 0), and
+                the top left corner is at (-0.5, -0.5).
+                If "center", then center of the top left pixel is at (0.5, 0.5), and
+                the top left corner is at (0, 0).
+                Currently defaults to "center", but in the future we may change the
+                default to "corner".  For more info see [WhereArePixels]_.
 
             assert_inplace (bool):
                 if True then the function will error if the modification cannot
@@ -1863,6 +1894,39 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     assert image1.sum() > 0
             >>>     assert image.sum() == 0
             >>>     print(f'dtype: {dtype} not inplace')
+
+        Example:
+            >>> # show difference between pixels_are and origin_convention
+            >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> import kwimage
+            >>> poly = kwimage.Polygon.star()
+            >>> poly = poly.translate(-poly.box().to_xywh().data[0:2])
+            >>> poly = poly.scale(8).translate((-2, .3))
+            >>> image = kwimage.checkerboard(dsize=(16, 16), square_shape=1)
+            >>> image1 = poly.fill(image, pixels_are='points', origin_convention='center', value=0.5)
+            >>> image2 = poly.fill(image, pixels_are='areas', origin_convention='center', value=0.5)
+            >>> image3 = poly.fill(image, pixels_are='points', origin_convention='corner', value=0.5)
+            >>> image4 = poly.fill(image, pixels_are='areas', origin_convention='corner', value=0.5)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=1)
+            >>> fig.clf()
+            >>> kwplot.imshow(image1, pnum=(2, 2, 1), show_ticks=True, origin_convention='center', title='points/center')
+            >>> poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> kwplot.imshow(image2, pnum=(2, 2, 2), show_ticks=True, origin_convention='center', title='areas/center')
+            >>> poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> kwplot.imshow(image3, pnum=(2, 2, 3), show_ticks=True, origin_convention='corner', title='points/corner')
+            >>> poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> kwplot.imshow(image4, pnum=(2, 2, 4), show_ticks=True, origin_convention='corner', title='areas/corner')
+            >>> poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> fig.suptitle(ub.codeblock(
+            >>>     '''
+            >>>     There are two conventions we need to decide on.
+            >>>     1. Do pixels represent points or areas?
+            >>>     2. Is the origin in the center or corner of the top left pixel?
+            >>>     '''))
+            >>> fig.set_size_inches([11, 9])
         """
         import cv2
         # If the dtype if fixed, then the data is not modified inplace
@@ -1878,11 +1942,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if pixels_are == 'areas':
             # rasterio hac: todo nicer organization
             from rasterio import features
-            shapes = [self.translate((0.5, 0.5)).to_geojson()]
+            if origin_convention == 'center':
+                shapes = [self.translate((0.5, 0.5)).to_geojson()]
+            else:
+                shapes = [self.to_geojson()]
             features.rasterize(shapes, out=image_, default_value=value)
         elif pixels_are == 'points':
             # line_type = cv2.LINE_AA
-            cv_contours = self._to_cv_countours()
+            cv_contours = self._to_cv_countours(
+                origin_convention=origin_convention)
             line_type = cv2.LINE_8
             # Modification happens inplace
             if len(image_.shape) == 2:
@@ -1905,7 +1973,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return image_
 
     def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
-                edgecolor=None, facecolor=None, copy=False):
+                edgecolor=None, facecolor=None, pixels_are='points',
+                origin_convention='center',
+                copy=False):
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
@@ -1927,6 +1997,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             copy (bool): if False only copies if necessary
 
             edgecolor (str | tuple): color for the border
+
+            pixels_are (str): either "points" or "areas"
+
+            origin_convention (str): either "center" or "corner"
 
             facecolor (str | tuple): color for the fill
 
@@ -2023,6 +2097,45 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> image = np.zeros((128, 128), dtype=np.float32)
             >>> image_out = self.draw_on(image)
 
+        Example:
+            >>> # show difference between pixels_are and origin_convention
+            >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> import kwimage
+            >>> poly = kwimage.Polygon.star()
+            >>> poly = poly.translate(-poly.box().to_xywh().data[0:2])
+            >>> poly = poly.scale(8).translate((-2, .3))
+            >>> part1 = kwimage.Box.coerce([10, 0, 1, 1], 'xywh').to_polygon()
+            >>> part2 = kwimage.Box.coerce([12.9, 8.6, 1, 1], 'xywh').to_polygon()
+            >>> part3 = kwimage.Box.coerce([3, 12.6, 8, 0.2], 'xywh').to_polygon()
+            >>> poly = poly.union(part1)
+            >>> poly = poly.union(part2)
+            >>> poly = poly.union(part3)
+            >>> image = kwimage.checkerboard(dsize=(16, 16), square_shape=1)
+            >>> image1 = poly.draw_on(image, pixels_are='points', origin_convention='center', facecolor='kitware_blue', edgecolor=None, alpha=0.8)
+            >>> #image2 = poly.draw_on(image, pixels_are='areas', origin_convention='center', facecolor='kitware_blue', edgecolor=None, alpha=0.8)
+            >>> image3 = poly.draw_on(image, pixels_are='points', origin_convention='corner', facecolor='kitware_blue', edgecolor=None, alpha=0.8)
+            >>> #image4 = poly.draw_on(image, pixels_are='areas', origin_convention='corner', facecolor='kitware_blue', edgecolor=None, alpha=0.8)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> fig = kwplot.figure(fnum=1, doclf=1)
+            >>> fig.clf()
+            >>> kwplot.imshow(image1, pnum=(2, 2, 1), show_ticks=True, origin_convention='center', title='points/center')
+            >>> poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> #kwplot.imshow(image2, pnum=(2, 2, 2), show_ticks=True, origin_convention='center', title='areas/center')
+            >>> #poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> kwplot.imshow(image3, pnum=(2, 2, 3), show_ticks=True, origin_convention='corner', title='points/corner')
+            >>> poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> #kwplot.imshow(image4, pnum=(2, 2, 4), show_ticks=True, origin_convention='corner', title='areas/corner')
+            >>> #poly.draw(alpha=0.5, facecolor='none', edgecolor='kitware_green')
+            >>> fig.suptitle(ub.codeblock(
+            >>>     '''
+            >>>     There are two conventions we need to decide on.
+            >>>     1. Do pixels represent points or areas?
+            >>>     2. Is the origin in the center or corner of the top left pixel?
+            >>>     '''))
+            >>> fig.set_size_inches([11, 9])
+
         Ignore:
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Polygon.draw_on))
@@ -2056,7 +2169,11 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         # line_type = cv2.LINE_AA
         line_type = cv2.LINE_8
 
-        cv_contours = self._to_cv_countours()
+        if pixels_are == 'areas':
+            raise NotImplementedError('Only pixels_area=points are implemented here')
+
+        cv_contours = self._to_cv_countours(
+            origin_convention=origin_convention)
 
         if alpha == 1.0:
             alpha = None
@@ -2308,6 +2425,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 except Exception:
                     edgecolor = list(color)
                     # hack to darken
+                    # TODO: kwimage.Color has a darken method now
                     edgecolor[0] -= .1
                     edgecolor[1] -= .1
                     edgecolor[2] -= .1
@@ -2533,7 +2651,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         self = MultiPolygon(data)
         return self
 
-    def fill(self, image, value=1, pixels_are='points', assert_inplace=False):
+    def fill(self, image, value=1, pixels_are='points',
+             origin_convention='center', assert_inplace=False):
         """
         Inplace fill in an image based on this multi-polyon.
 
@@ -2543,6 +2662,29 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
             value (int | Tuple[int, ...]):
                 value fill in with. Defaults to 1.0
+
+            pixel_are (str):
+                Can either be "points" or "areas".
+
+                If pixels are "points", the we treat each pixel (i, j) as a
+                single infinitely small point at (i, j). As such, some polygons
+                may have zero area.
+
+                If pixels are "areas", then each pixel (i, j) represents a
+                square with coordinates ([i - 0.5, j - 0.5], [i + 0.5, j -
+                0.5], [i + 0.5, j + 0.5], and [i - 0.5, j + 0.5]). Must have
+                rasterio installed to use this method.
+
+            origin_convention (str):
+                Controls the interpretation of the underlying raster.
+                Can be "center" (default opencv behavior), or "corner" (matches
+                torchvision / detectron2 behavior).
+                If "center", then center of the top left pixel is at (0, 0), and
+                the top left corner is at (-0.5, -0.5).
+                If "center", then center of the top left pixel is at (0.5, 0.5), and
+                the top left corner is at (0, 0).
+                Currently defaults to "center", but in the future we may change the
+                default to "corner".  For more info see [WhereArePixels]_.
 
         Returns:
             ndarray: the image that has been modified in place
@@ -2557,6 +2699,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
         for p in self.data:
             image_ = p.fill(image_, value=value, pixels_are=pixels_are,
+                            origin_convention=origin_convention,
                             assert_inplace=assert_inplace)
 
         if final_dtype is not None:
@@ -2658,9 +2801,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         box = kwimage.Box.coerce(ltrb, format='ltrb')
         return box
 
-    def to_mask(self, dims=None, pixels_are='points'):
+    def to_mask(self, dims=None, pixels_are='points', origin_convention='center'):
         """
         Returns a mask object indication regions occupied by this multipolygon
+
+        Args:
+            dims (Tuple[int, int]): height and width of the output mask
+
+            pixel_are (str):
+                Can either be "points" or "areas".
+
+            origin_convention (str): either "center" or "corner"
 
         Returns:
             kwimage.Mask
@@ -2688,7 +2839,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         c_mask = np.zeros(dims, dtype=np.uint8)
         for p in self.data:
             if p is not None:
-                p.fill(c_mask, value=1, pixels_are=pixels_are)
+                p.fill(c_mask, value=1, pixels_are=pixels_are,
+                       origin_convention=origin_convention)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
@@ -2934,7 +3086,7 @@ class PolygonList(_generic.ObjectList):
     same image.
     """
 
-    def to_mask_list(self, dims=None, pixels_are='points'):
+    def to_mask_list(self, dims=None, pixels_are='points', origin_convention='center'):
         """
         Converts all items to masks
 
@@ -2943,7 +3095,8 @@ class PolygonList(_generic.ObjectList):
         """
         import kwimage
         new = kwimage.MaskList([
-            None if item is None else item.to_mask(dims=dims, pixels_are=pixels_are)
+            None if item is None else item.to_mask(
+                dims=dims, pixels_are=pixels_are, origin_convention=origin_convention)
             for item in self
         ])
         return new
@@ -3017,7 +3170,8 @@ class PolygonList(_generic.ObjectList):
         else:
             return items
 
-    def fill(self, image, value=1, pixels_are='points', assert_inplace=False):
+    def fill(self, image, value=1, pixels_are='points',
+             origin_convention='center', assert_inplace=False):
         """
         Inplace fill in an image based on these polygons
 
@@ -3038,6 +3192,7 @@ class PolygonList(_generic.ObjectList):
         for p in self.data:
             if p is not None:
                 image = p.fill(image, value=value, pixels_are=pixels_are,
+                               origin_convention=origin_convention,
                                assert_inplace=assert_inplace)
         if final_dtype is not None:
             image_ = image_.astype(final_dtype)
