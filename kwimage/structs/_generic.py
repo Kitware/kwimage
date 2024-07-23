@@ -300,9 +300,9 @@ def _coerce_color_list_for(image, color, num):
     import kwimage
     if (ub.iterable(color) and len(color) == num and
          len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
-        color_list = [kwimage.Color(c)._forimage(image) for c in color]
+        color_list = [kwimage.Color(c).forimage(image) for c in color]
     else:
-        color_list = [kwimage.Color(color)._forimage(image)] * num
+        color_list = [kwimage.Color(color).forimage(image)] * num
     return color_list
 
 
@@ -427,7 +427,7 @@ def _handle_color_args_for(color, alpha, border, fill, edgecolor, facecolor, ima
     elif facecolor is True:
         facecolor = color
     else:
-        facecolor = kwimage.Color(facecolor, alpha=alpha)._forimage(image)
+        facecolor = kwimage.Color(facecolor, alpha=alpha).forimage(image)
 
     if edgecolor is None:
         if border:
@@ -435,4 +435,4 @@ def _handle_color_args_for(color, alpha, border, fill, edgecolor, facecolor, ima
     elif edgecolor is True:
         edgecolor = color
     else:
-        edgecolor = kwimage.Color(edgecolor, alpha=alpha)._forimage(image)
+        edgecolor = kwimage.Color(edgecolor, alpha=alpha).forimage(image)

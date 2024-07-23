@@ -13,6 +13,11 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 
 class _PointsWarpMixin:
 
@@ -83,6 +88,7 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -521,12 +527,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             image = kwimage.ensure_float01(image, copy=copy)
             # value = kwimage.Color(color).as01()
             if single_color:
-                color_value = np.array(colors[0]._forimage(image))
+                color_value = np.array(colors[0].forimage(image))
                 image = self.data['xy'].fill(
                     image, color_value, coord_axes=[1, 0], interp='bilinear')
             else:
                 # Need to loop when thare are multiple colors
-                color_values = [np.array(kwimage.Color(c)._forimage(image))
+                color_values = [np.array(kwimage.Color(c).forimage(image))
                                 for c in colors]
                 xy_pts = self.data['xy'].data.reshape(-1, 2)
                 for xy, color_ in zip(xy_pts, color_values):
@@ -541,7 +547,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             image = np.ascontiguousarray(image)
 
             xy_pts = self.data['xy'].data.reshape(-1, 2)
-            color_values = [kwimage.Color(c)._forimage(image) for c in colors]
+            color_values = [kwimage.Color(c).forimage(image) for c in colors]
 
             for xy, color_ in zip(xy_pts, color_values):
                 # center = tuple(map(int, xy.tolist()))

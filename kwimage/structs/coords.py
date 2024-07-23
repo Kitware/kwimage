@@ -27,6 +27,11 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 
 class Coords(_generic.Spatial, ub.NiceRepr):
     """
@@ -452,6 +457,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     new.data += 10
         return new
 
+    @profile
     def warp(self, transform, input_dims=None, output_dims=None,
              inplace=False):
         """

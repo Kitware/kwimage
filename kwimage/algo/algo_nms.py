@@ -207,7 +207,10 @@ class _NMS_Impls():
         from kwimage.algo._nms_backend import torch_nms
         _funcs['numpy'] = py_nms.py_nms
 
-        from distutils.version import LooseVersion
+        try:
+            from packaging.version import parse as LooseVersion
+        except ImportError:
+            from distutils.version import LooseVersion
         recent_numpy = LooseVersion(np.__version__) >= LooseVersion('1.20.0')
 
         if torch is not None and recent_numpy:

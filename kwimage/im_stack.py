@@ -376,7 +376,7 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
     if bg_value is not None:
         if isinstance(bg_value, str):
             import kwimage
-            bg_value = kwimage.Color(bg_value)._forimage(imgB)
+            bg_value = kwimage.Color(bg_value).forimage(imgB)
         try:
             imgB[:, :] = bg_value
         except ValueError:

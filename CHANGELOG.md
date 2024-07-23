@@ -4,7 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.10.0 - Unreleased
+## Version 0.10.1 - Unreleased
+
+### Added:
+* Added `canonical` flag to Boxes to speed up creation time when input is known to be good.
+* Added `bayer_value` argument to `kwimage.checkerboard`.
+
+### Changed
+* kwimage.Boxes and kwimage.Box now use `__slots__` 
+
+### Fixed:
+* Passing a list of alphas to `Detections.draw_on` now works correctly.
+* Usage of distutils
+* Issue in checkerboard function where the next multiple of X was not computed correctly.
+
+
+## Version 0.10.0 - Released 2024-06-19
 
 ### Added
 

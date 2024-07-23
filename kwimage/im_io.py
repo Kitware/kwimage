@@ -58,7 +58,13 @@ IMAGE_EXTENSIONS = (
     ITK_EXTENSIONS
 )
 
+try:
+    from line_profiler import profile
+except ImportError:
+    from ubelt import identity as profile
 
+
+@profile
 def imread(fpath, space='auto', backend='auto', **kw):
     """
     Reads image data in a specified format using some backend implementation.
@@ -522,6 +528,7 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
+@profile
 def _imread_gdal(fpath, overview=None, ignore_color_table=False,
                  nodata_method=None, band_indices=None, nodata=None):
     """
@@ -703,6 +710,7 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
     return image, src_space, auto_dst_space
 
 
+@profile
 def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
                band_indices=None, gdalkw=None, nodata_method=None,
                nodata_value=None):
@@ -851,6 +859,7 @@ def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
     return image, num_channels
 
 
+@profile
 def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     """
     Writes image data to disk.
@@ -1418,6 +1427,7 @@ def _have_gdal():
         return True
 
 
+@profile
 def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
                                      overview_resample='NEAREST',

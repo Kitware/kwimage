@@ -150,7 +150,7 @@ class _DetDrawMixin:
             >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=2000, doclf=True)
-            >>> kwplot.imshow(image2)
+            >>> kwplot.imshow(image2, title='test basic detection drawing')
             >>> kwplot.show_if_requested()
 
         Example:
@@ -164,7 +164,7 @@ class _DetDrawMixin:
             >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
             >>> kwplot.figure(fnum=2000, doclf=True)
-            >>> kwplot.imshow(image2)
+            >>> kwplot.imshow(image2, title='test color by classes')
             >>> kwplot.show_if_requested()
 
         Example:
@@ -178,7 +178,7 @@ class _DetDrawMixin:
             >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
-            >>> kwplot.imshow(image2)
+            >>> kwplot.imshow(image2, title='test keypoints and segmentations')
             >>> kwplot.show_if_requested()
 
         Example:
@@ -192,8 +192,24 @@ class _DetDrawMixin:
             >>> image2 = self.draw_on(image, color='blue')
             >>> # xdoctest: +REQUIRES(--show)
             >>> kwplot.autompl()
-            >>> kwplot.figure(fnum=2000, doclf=True)
+            >>> kwplot.figure(fnum=2000, doclf=True, title='test tiny scores')
             >>> kwplot.imshow(image2)
+            >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # Test that alpha can be passed as an iterable.
+            >>> import kwimage
+            >>> import kwplot
+            >>> self = kwimage.Detections.random(num=3, scale=512, rng=0)
+            >>> canvas = self.draw_on(None, color='blue', alpha=[0, 0.5, 1.0])
+            >>> unique_values = np.unique(canvas)
+            >>> assert len(unique_values) == 3, ub.paragraph(
+                '''2 non-zero alpha colors plus background should have 3 unique
+                colors''')
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(canvas, fnum=2000, doclf=True, title='test custom alphas')
             >>> kwplot.show_if_requested()
 
         Ignore:
@@ -307,8 +323,10 @@ class _DetDrawMixin:
         Either passes through user specified alpha or chooses a sensible
         default
         """
-        if alpha in ['score', 'scores']:
+        if isinstance(alpha, str) and alpha in ['score', 'scores']:
             alpha = np.sqrt(self.scores)
+        elif ub.iterable(alpha):
+            assert len(alpha) == self.num_boxes()
         else:
             if alpha is None or alpha is False:
                 alpha = 1.0

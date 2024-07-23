@@ -581,13 +581,13 @@ grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
 
 def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
-                 dtype=float, on_value=1, off_value=0):
+                 dtype=float, on_value=1, off_value=0, bayer_value=None):
     """
-    Creates a checkerboard image
+    Creates a checkerboard image, mainly for use in testing.
 
     Args:
         num_squares (int | str):
-            Number of squares in a row. If 'auto' defaults to 8
+            Number of squares in each row. If 'auto' defaults to 8
 
         square_shape (int | Tuple[int, int] | str):
             If 'auto', chosen based on `num_squares`. Otherwise this is
@@ -597,16 +597,29 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
         dtype (type): return data type
 
-        on_value (Number | int):
+        on_value (Number | int | str):
             The value of one checker. Defaults to 1.
+            Can also be the name of a color.
 
-        off_value (Number | int):
+        off_value (Number | int | str):
             The value off the other checker. Defaults to 0.
+            Can also be the name of a color.
+
+        bayer_value (Number | int | str | None):
+            If specified, adds a third value to the checkerboard similar to a
+            Bayer pattern [WikiBayerFilter]_. The on and off values become the
+            value for the one quater parts of the bayer pattern and this is the
+            value for the remaining half.
+
+    Returns:
+        ndarray: a numpy array representing a checkerboard pattern
 
     References:
         .. [SO2169478] https://stackoverflow.com/questions/2169478/how-to-make-a-checkerboard-in-numpy
+        .. [WikiBayerFilter] https://en.wikipedia.org/wiki/Bayer_filter
 
     Example:
+        >>> # Various invocations of checkerboard
         >>> import kwimage
         >>> import numpy as np
         >>> img = kwimage.checkerboard()
@@ -616,16 +629,50 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         >>> print(kwimage.checkerboard(square_shape=3, dsize=(1451, 1163)).shape)
         >>> print(kwimage.checkerboard(square_shape=3, dsize=(1202, 956)).shape)
         >>> print(kwimage.checkerboard(dsize=(4, 4), on_value=(255, 0, 0), off_value=(0, 0, 1), dtype=np.uint8))
+        >>> print(kwimage.checkerboard(dsize=(4, 4), on_value=(255, 0, 0), off_value=(0, 0, 1), bayer_value=(1, 9, 1), dtype=np.uint8))
+        >>> print(kwimage.checkerboard(dsize=(5, 5), num_squares=5))
+
+    Example:
+        >>> # Check small sizes
+        >>> import kwimage
+        >>> import numpy as np
+        >>> print(kwimage.checkerboard(dsize=(2, 2), num_squares=2))
+        >>> print(kwimage.checkerboard(dsize=(2, 2), num_squares=2, square_shape=1))
+        >>> print(kwimage.checkerboard(dsize=(4, 4), num_squares=4))
+        >>> print(kwimage.checkerboard(dsize=(4, 4), num_squares=4, square_shape=1))
+        >>> print(kwimage.checkerboard(dsize=(3, 3), num_squares=4))
+        >>> print(kwimage.checkerboard(dsize=(3, 3), num_squares=3))  # broken
+        >>> # Fixme, corner cases are broken
+        >>> print(kwimage.checkerboard(dsize=(2, 2)))  # broken
+        >>> print(kwimage.checkerboard(dsize=(4, 4)))  # broken
+        >>> print(kwimage.checkerboard(dsize=(3, 3)))  # broken
+        >>> print(kwimage.checkerboard(dsize=(8, 8)))  # ok
 
     Example:
         >>> import kwimage
-        >>> img = kwimage.checkerboard(
+        >>> img1c = kwimage.checkerboard(dsize=(64, 64))
+        >>> img3c = kwimage.checkerboard(
         >>>     dsize=(64, 64), on_value='kw_green', off_value='kw_blue')
         >>> # xdoctest: +REQUIRES(--show)
         >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> kwplot.autoplt()
-        >>> kwplot.imshow(img)
+        >>> kwplot.figure().clf()
+        >>> kwplot.imshow(img1c, pnum=(1, 2, 1), title='1 Channel Basic Checkerboard')
+        >>> kwplot.imshow(img3c, pnum=(1, 2, 2), title='3 Channel Basic Checkerboard')
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> import kwimage
+        >>> img1c = kwimage.checkerboard(bayer_value=0.5)
+        >>>     bayer_value='kw_green')
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
+        >>> import kwplot
+        >>> kwplot.autoplt()
+        >>> kwplot.figure().clf()
+        >>> kwplot.imshow(img1c, pnum=(1, 2, 1), title='1 Channel Bayer Checkerboard')
+        >>> kwplot.imshow(img3c, pnum=(1, 2, 2), title='3 Channel Bayer Checkerboard')
         >>> kwplot.show_if_requested()
 
     Ignore:
@@ -633,20 +680,63 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         globals().update(xdev.get_func_kwargs(kwimage.checkerboard))
     """
     import numpy as np
-    import kwimage
-    if num_squares == 'auto' and square_shape == 'auto':
-        num_squares = 8
 
     want_w, want_h = dsize
 
+    # Resolve number of pixels for the image and the square
+    h, w, num_h, num_w = _resolve_checkerboard_shape_args(square_shape,
+                                                          num_squares, want_w,
+                                                          want_h)
+    # Resolve the color values
+    on_value = _resolve_checkerboard_color_arg(on_value, dtype)
+    off_value = _resolve_checkerboard_color_arg(off_value, dtype)
+    if bayer_value is not None:
+        bayer_value = _resolve_checkerboard_color_arg(bayer_value, dtype)
+        # For efficiency swap the bayer value with the off value in the
+        # following logic.
+        bayer_value, off_value =  off_value, bayer_value
+
+    # All paramters have been resolved, build the image.
+    num_pairs_w = int(num_w // 2)
+    num_pairs_h = int(num_h // 2)
+    base = np.array([
+        [on_value, off_value] * num_pairs_w,
+        [off_value, on_value] * num_pairs_w
+    ] * num_pairs_h, dtype=dtype)
+
+    if len(base.shape) == 3:
+        base = base.transpose([2, 0, 1])
+
+    if bayer_value is not None:
+        base[..., 1::2, 1::2] = np.array(bayer_value)[..., None, None]
+
+    expansion = np.ones((h, w), dtype=dtype)
+    img = np.kron(base, expansion)[0:want_h, 0:want_w]
+    if len(base.shape) == 3:
+        img = img.transpose([1, 2, 0])
+    return img
+
+
+def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w,
+                                     want_h):
+
+    if num_squares == 'auto' and square_shape == 'auto':
+        num_squares = 8
+
+    # Resolve the pixel width and height of each square.
     if square_shape != 'auto':
         if not ub.iterable(square_shape):
             square_shape = [square_shape, square_shape]
         h, w = square_shape
-        gen_h, gen_w = _next_multiple_of(want_h, h * 2), _next_multiple_of(want_w, w * 2)
+        gen_h = _next_multiple_of(want_h, h * 2)
+        gen_w = _next_multiple_of(want_w, w * 2)
     else:
-        gen_h, gen_w = _next_multiple_of(want_h, 4), _next_multiple_of(want_w, 4)
+        mulitple_w = 4 if want_w >= 4 else 2
+        mulitple_h = 4 if want_h >= 4 else 2
+        gen_h = _next_multiple_of(want_h, mulitple_h)
+        gen_w = _next_multiple_of(want_w, mulitple_w)
 
+    # Resolve the number of squares in each row and column.
     if num_squares == 'auto':
         assert square_shape != 'auto'
         if not ub.iterable(square_shape):
@@ -671,33 +761,24 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
     num_h, num_w = num_squares
 
-    if isinstance(on_value, str):
-        on_value = kwimage.Color(on_value).forimage(dtype)
+    return h, w, num_h, num_w
 
-    if isinstance(off_value, str):
-        off_value = kwimage.Color(off_value).forimage(dtype)
 
-    num_pairs_w = int(num_w // 2)
-    num_pairs_h = int(num_h // 2)
-    # img_size = 512
-    base = np.array([
-        [on_value, off_value] * num_pairs_w,
-        [off_value, on_value] * num_pairs_w
-    ] * num_pairs_h, dtype=dtype)
-
-    if len(base.shape) == 3:
-        base = base.transpose([2, 0, 1])
-    expansion = np.ones((h, w), dtype=dtype)
-    img = np.kron(base, expansion)[0:want_h, 0:want_w]
-    if len(base.shape) == 3:
-        img = img.transpose([1, 2, 0])
-    return img
+def _resolve_checkerboard_color_arg(value, dtype):
+    import kwimage
+    if isinstance(value, str):
+        value = kwimage.Color(value).forimage(dtype)
+    return value
 
 
 def _next_power_of_two(x):
     """
     References:
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
+
+    Example:
+        from kwimage.im_demodata import _next_power_of_two
+        {i: _next_power_of_two(i) for i in range(20)}
     """
     return 2 ** (x - 1).bit_length()
 
@@ -706,6 +787,10 @@ def _next_multiple_of_two(x):
     """
     References:
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
+
+    Example:
+        from kwimage.im_demodata import _next_multiple_of_two
+        {i: _next_multiple_of_two(i) for i in range(20)}
     """
     return x + (x % 2)
 
@@ -714,5 +799,14 @@ def _next_multiple_of(x, m):
     """
     References:
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
+
+    Example:
+        from kwimage.im_demodata import _next_multiple_of
+        a = {x: _next_multiple_of_two(x) for x in range(20)}
+        b = {x: _next_multiple_of(x, 2) for x in range(20)}
+        print(ub.hzcat([ub.urepr(a), ' ', ub.urepr(b)]))
+        ub.IndexableWalker(a).diff(b)
+
     """
-    return (x // m) * m + m
+    import math
+    return math.ceil(x / m) * m

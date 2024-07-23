@@ -87,6 +87,12 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
+
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 __all__ = ['Boxes']
 
 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
@@ -112,7 +118,7 @@ class BoxFormat:
 
     Attrs:
         aliases (Mapping[str, str]):
-            maps format aliases to their cannonical name.
+            maps format aliases to their canonical name.
 
     See module level docstring for format definitions
     """
@@ -121,7 +127,7 @@ class BoxFormat:
     #     - [x] bump versions
     #     - [x] use the later in the or statements
     #     - [ ] ensure nothing depends on the old values.
-    #     - [x] Change cannonical TLBR to LTRB
+    #     - [x] Change canonical TLBR to LTRB
     #     - [ ] add mechanism for deprecating / removing codes
 
     # Definitions:
@@ -136,10 +142,11 @@ class BoxFormat:
     #      r = row = y-coordinate
     #      c = column = x-coordinate
 
-    cannonical = []
+    canonical = []
+    cannonical = canonical  # for backwards compat. FIXME: remove
 
-    def _register(k, cannonical=cannonical):
-        cannonical.append(k)
+    def _register(k, canonical=canonical):
+        canonical.append(k)
         return k
 
     # Column-Major-Formats
@@ -154,6 +161,8 @@ class BoxFormat:
     # Reason: Boxes prefers column-major formats
     _YYXX  = _register('_yyxx')   # (y1, y2, x1, x2)
     _RCHW  = _register('_rchw')   # (y1, y2, h, w)
+
+    del _register
 
     aliases = {
         # NOTE: Once a name enters here it is very difficult to remove
@@ -182,7 +191,7 @@ class BoxFormat:
         'tl_x,tl_y,br_x,br_y' : LTRB,
         'x1,x2,y1,y2'         : XXYY,
     }
-    for key in cannonical:
+    for key in canonical:
         aliases[key] = key
 
     # these are old deprecated format codes that were once used and were
@@ -350,11 +359,12 @@ def _isect_areas(ltrb1, ltrb2, bias=0, _impl=None):
     return inter_areas
 
 
-class _BoxConversionMixins(object):
+class _BoxConversionMixins:
     """
     Extends :class:`Boxes` with methods for converting between different
     bounding box formats.
     """
+    __slots__ = tuple()
 
     convert_funcs = {}
 
@@ -630,7 +640,7 @@ class _BoxConversionMixins(object):
         from shapely.geometry import Polygon
         if isinstance(geom, Polygon):
             xmin, ymin, xmax, ymax = geom.bounds
-            self = Boxes(np.array([geom.bounds]), 'ltrb')
+            self = Boxes(np.array([geom.bounds]), 'ltrb', canonical=True)
         else:
             raise NotImplementedError
         return self
@@ -695,6 +705,7 @@ class _BoxConversionMixins(object):
         return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
 
     @classmethod
+    @profile
     def from_slice(Boxes, slices, shape=None, clip=True, endpoint=True,
                    wrap=False):
         """
@@ -867,14 +878,22 @@ class _BoxConversionMixins(object):
             else:
                 raise ValueError(f'Invalid y slice tl_y={tl_y}, rb_y={rb_y}')
 
-        ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
-        box = Boxes(ltrb, 'ltrb')
+        if clip and shape is not None:
+            tl_x = max(min(tl_x, width), 0)
+            tl_y = max(min(tl_y, height), 0)
+            rb_x = max(min(rb_x, width), 0)
+            rb_y = max(min(rb_y, height), 0)
 
-        if clip:
-            if shape is not None:
-                box.clip(0, 0, width, height, inplace=True)
+        ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
+        box = Boxes(ltrb, 'ltrb', check=False, canonical=True)
+        # Using box clip took 70% of the time, new logic does it in scalar
+        # space
+        # if clip:
+        #     if shape is not None:
+        #         box.clip(0, 0, width, height, inplace=True)
         return box
 
+    @profile
     def to_slices(self, endpoint=True):
         """
         Convert the boxes into slices
@@ -900,13 +919,17 @@ class _BoxConversionMixins(object):
             List[Tuple[slice, slice]]:
                 a list of slices (y, x ordered) corresponding to each box.
         """
-        slices_list = []
-        for tl_x, tl_y, br_x, br_y in self.to_ltrb().data:
-            if not endpoint:
-                br_x = br_x + 1
-                br_y = br_y + 1
-            sl = (slice(tl_y, br_y), slice(tl_x, br_x))
-            slices_list.append(sl)
+        _ltrb_data = self.to_ltrb(copy=False).data
+        if endpoint:
+            slices_list = [
+                (slice(tl_y, br_y), slice(tl_x, br_x))
+                for tl_x, tl_y, br_x, br_y in _ltrb_data
+            ]
+        else:
+            slices_list = [
+                (slice(tl_y, br_y + 1), slice(tl_x, br_x + 1))
+                for tl_x, tl_y, br_x, br_y in _ltrb_data
+            ]
         return slices_list
 
     def to_coco(self, style='orig'):
@@ -921,9 +944,10 @@ class _BoxConversionMixins(object):
             >>> coco_boxes = list(orig.to_coco())
             >>> print('coco_boxes = {!r}'.format(coco_boxes))
         """
-        for row in self.to_xywh().data.tolist():
+        for row in self.to_xywh(copy=False).data.tolist():
             yield [round(x, 4) for x in row]
 
+    @profile
     def to_polygons(self):
         """
         Convert each box to a polygon object
@@ -939,7 +963,7 @@ class _BoxConversionMixins(object):
         """
         import kwimage
         poly_list = []
-        for ltrb in self.to_ltrb().data:
+        for ltrb in self.to_ltrb(copy=False).data:
             x1, y1, x2, y2 = ltrb
             # Exteriors are counterlockwise
             exterior = np.array([
@@ -955,11 +979,12 @@ class _BoxConversionMixins(object):
         return polys
 
 
-class _BoxPropertyMixins(object):
+class _BoxPropertyMixins:
     """
     Extends :class:`Boxes` with properties for quick access to common
     information.
     """
+    __slots__ = tuple()
 
     @property
     def xy_center(self):
@@ -971,7 +996,7 @@ class _BoxPropertyMixins(object):
             a single ndarray[dim=2] whereas `self.center` returns two ndarrays.
         """
         import warnings
-        warnings.warn('Redundant, use self.center instead', DeprecationWarning)
+        warnings.warn('Calling xy_center is redundant, use self.center instead', DeprecationWarning)
         xy = self.to_cxywh(copy=False).data[..., 0:2]
         return xy
 
@@ -1143,10 +1168,11 @@ class _BoxPropertyMixins(object):
         return self.to_cxywh(copy=False).components[1]
 
 
-class _BoxTransformMixins(object):
+class _BoxTransformMixins:
     """
     Extends :class:`Boxes` with methods for warping their geometry.
     """
+    __slots__ = tuple()
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
@@ -1171,7 +1197,7 @@ class _BoxTransformMixins(object):
             >>> input_dims = (10, 10)
             >>> new = self._warp_imgaug(augmenter, input_dims)
         """
-        new = self if inplace else self.__class__(self.data, self.format)
+        new = self if inplace else self.__class__(self.data, self.format, canonical=True)
         bboi = self.to_imgaug(shape=input_dims)
         bboi = augmenter.augment_bounding_boxes([bboi])[0]
         ltrb = np.array([[bb.x1, bb.y1, bb.x2, bb.y2]
@@ -1255,7 +1281,7 @@ class _BoxTransformMixins(object):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(float, copy=True)
-            new = Boxes(new_data, self.format)
+            new = Boxes(new_data, self.format, canonical=True)
 
         if transform is None:
             return new
@@ -1386,6 +1412,7 @@ class _BoxTransformMixins(object):
         corners = np.ascontiguousarray(corners)
         return corners
 
+    @profile
     def scale(self, factor, about='origin', output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
@@ -1471,7 +1498,7 @@ class _BoxTransformMixins(object):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(float, copy=True)
-            new = Boxes(new_data, self.format)
+            new = Boxes(new_data, self.format, canonical=True)
 
         if _numel(new_data) > 0:
 
@@ -1479,7 +1506,8 @@ class _BoxTransformMixins(object):
                 if about == 'origin':
                     about = None
                 elif about in {'center', 'centroid'}:
-                    about = self.xy_center
+                    # about = self.xy_center
+                    about = self.to_cxywh(copy=False).data[..., 0:2]
                 else:
                     raise KeyError(about)
 
@@ -1583,7 +1611,7 @@ class _BoxTransformMixins(object):
                 new_data = self.data.float().clone()
             else:
                 new_data = self.data.astype(float, copy=True)
-            new = Boxes(new_data, self.format)
+            new = Boxes(new_data, self.format, canonical=True)
 
         if _numel(new_data) > 0:
             if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH]:
@@ -1603,6 +1631,7 @@ class _BoxTransformMixins(object):
                 raise NotImplementedError('Cannot translate: {}'.format(self.format))
         return new
 
+    @profile
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
         Clip boxes to boundaries specified as minimum and maximum coordinates.
@@ -1620,9 +1649,13 @@ class _BoxTransformMixins(object):
         Returns:
             Boxes: clipped boxes
 
+        CommandLine:
+            xdoctest -m kwimage.structs.boxes _BoxTransformMixins.clip
+
         Example:
             >>> # xdoctest: +IGNORE_WHITESPACE
-            >>> self = boxes = Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'ltrb')
+            >>> import kwimage
+            >>> self = boxes = kwimage.Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'ltrb')
             >>> clipped = boxes.clip(0, 0, 110, 100, inplace=False)
             >>> assert np.any(boxes.data != clipped.data)
             >>> clipped2 = boxes.clip(0, 0, 110, 100, inplace=True)
@@ -1632,6 +1665,22 @@ class _BoxTransformMixins(object):
             <Boxes(ltrb,
                 array([[  0,   0, 110, 100],
                        [  1,   0,  30,  50]]))>
+
+        Example:
+            >>> # xdoctest: +IGNORE_WHITESPACE
+            >>> # xdoctest: +REQUIRES(module:torch)
+            >>> import kwimage
+            >>> import torch
+            >>> self = kwimage.Boxes(np.array([[-10, -10, 120, 120], [1, -2, 30, 50]]), 'ltrb').tensor()
+            >>> clipped = self.clip(0, 0, 110, 100, inplace=False)
+            >>> assert (self.data != clipped.data).any()
+            >>> clipped2 = self.clip(0, 0, 110, 100, inplace=True)
+            >>> assert clipped2.data is self.data
+            >>> assert (clipped2.data == clipped.data).all()
+            >>> print(clipped)
+            <Boxes(ltrb,
+                tensor([[  0,   0, 110, 100],
+                        [  1,   0,  30,  50]]))>
         """
         if inplace:
             if self.format != BoxFormat.LTRB:
@@ -1643,11 +1692,20 @@ class _BoxTransformMixins(object):
             return new
 
         impl = self._impl
-        x1, y1, x2, y2 = impl.T(new.data)
-        impl.clip(x1, x_min, x_max, out=x1)
-        impl.clip(y1, y_min, y_max, out=y1)
-        impl.clip(x2, x_min, x_max, out=x2)
-        impl.clip(y2, y_min, y_max, out=y2)
+        _clip = impl.clip
+        _data = new.data
+        # For benchmark about this implementation see:
+        # ../../dev/bench/bench_box_clip.py
+        # x1, y1, x2, y2 = _data.T
+        x1 = _data[..., 0]
+        y1 = _data[..., 1]
+        x2 = _data[..., 2]
+        y2 = _data[..., 3]
+        # x1, y1, x2, y2 = impl.T(new.data)
+        _clip(x1, x_min, x_max, out=x1)
+        _clip(y1, y_min, y_max, out=y1)
+        _clip(x2, x_min, x_max, out=x2)
+        _clip(y2, y_min, y_max, out=y2)
         return new
 
     def resize(self, width=None, height=None, inplace=False, about='xy'):
@@ -1812,7 +1870,7 @@ class _BoxTransformMixins(object):
         else:
             dtype = impl.result_type(self.data, x_left, y_top, x_right, y_bot)
             new_data = impl.astype(self.data, dtype, copy=True)
-            new = Boxes(new_data, self.format)
+            new = Boxes(new_data, self.format, canonical=True)
 
         if _numel(new_data) > 0:
             if self.format in [BoxFormat.LTRB]:
@@ -1833,12 +1891,12 @@ class _BoxTransformMixins(object):
             <Boxes(ltrb, array([[1, 0, 4, 2]]))>
         """
         x, y, w, h = self.to_xywh().components
-        new = self.__class__(_cat([y, x, h, w]), format=BoxFormat.XYWH)
+        new = self.__class__(_cat([y, x, h, w]), format=BoxFormat.XYWH, canonical=True)
         new = new.toformat(self.format)
         return new
 
 
-class _BoxDrawMixins(object):
+class _BoxDrawMixins:
     """
     Extends :class:`Boxes` with methods for matplotlib and opencv
     visualization.
@@ -1881,8 +1939,8 @@ class _BoxDrawMixins(object):
         >>> # Assuming you already have a figure setup with correct limits
         >>> # you can draw the boxes on top of that figure via:
         >>> boxes.draw()
-
     """
+    __slots__ = tuple()
 
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
              fill=False, lw=2, ax=None, setlim=False, **kwargs):
@@ -2083,7 +2141,7 @@ class _BoxDrawMixins(object):
             return image
 
         # Get the color that is compatible with the input image encoding
-        # rect_color = kwimage.Color(color)._forimage(image)
+        # rect_color = kwimage.Color(color).forimage(image)
 
         # Parameters for drawing the box rectangles
         rectkw = {
@@ -2187,7 +2245,7 @@ class _BoxDrawMixins(object):
 
 
 class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
-            _BoxDrawMixins, ub.NiceRepr):  # _generic.Spatial
+            _BoxDrawMixins):  # _generic.Spatial
     r"""
     Converts boxes between different formats as long as the last dimension
     contains 4 coordinates and the format is specified.
@@ -2400,7 +2458,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>>     [[1, 2, 3, 4], [4, 5, 6, 7]],
         >>>     [[[1, 2, 3, 4], [4, 5, 6, 7]]],
         >>> ]
-        >>> formats = BoxFormat.cannonical
+        >>> formats = BoxFormat.canonical
         >>> for format1 in formats:
         >>>     for data in datas:
         >>>         self = box1 = Boxes(data, format1)
@@ -2409,9 +2467,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>>             back = box2.toformat(format1)
         >>>             assert box1 == back
     """
-    # __slots__ = ('data', 'format',)
+    __slots__ = ('data', 'format', '__impl')
 
-    def __init__(self, data, format=None, check=True):
+    @profile
+    def __init__(self, data, format=None, check=True, canonical=False):
         """
         Args:
             data (ndarray | Tensor | Boxes) : Either an ndarray or Tensor
@@ -2423,38 +2482,50 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
             check (bool) : if True runs input checks on raw data.
 
+            canonical (bool):
+                if True, assume inputs are canonical arrays and format strings
+                and skip all checks / rectifications. This implies check=False.
+                Note: in the future, the constructor will always assume
+                canonical inputs and classmethods for non-canonical inputs
+                will be provided.
+
         Raises:
             ValueError : if data is specified without a format
         """
-        if (isinstance(data, Boxes) or (data.__class__.__name__ == 'Boxes' and
-                                        hasattr(data, 'format') and
-                                        hasattr(data, 'data'))):
-            if format is not None:
-                data = data.toformat(format).data
-            else:
-                data = data.data
-                format = data.format
-        elif isinstance(data, (list, tuple)):
-            data = np.asarray(data)
+        if canonical:
+            self.data = data
+            self.format = format
+            self.__impl = None
+        else:
+            if (isinstance(data, Boxes) or (data.__class__.__name__ == 'Boxes' and
+                                            hasattr(data, 'format') and
+                                            hasattr(data, 'data'))):
+                if format is not None:
+                    data = data.toformat(format).data
+                else:
+                    data = data.data
+                    format = data.format
+            elif isinstance(data, (list, tuple)):
+                data = np.asarray(data)
 
-        if format is None:
-            raise ValueError('Must specify format of raw box data')
+            if format is None:
+                raise ValueError('Must specify format of raw box data')
 
-        format = BoxFormat.aliases.get(format, format)
+            format = BoxFormat.aliases.get(format, format)
 
-        if check:
-            if _numel(data) > 0 and data.shape[-1] != 4:
-                got = data.shape[-1]
-                raise ValueError(
-                    'Trailing dimension of boxes must be 4. Got {}'.format(got)
-                )
-
-        self.data = data
-        self.format = format
+            if check:
+                if _numel(data) > 0 and data.shape[-1] != 4:
+                    got = data.shape[-1]
+                    raise ValueError(
+                        'Trailing dimension of boxes must be 4. Got {}'.format(got)
+                    )
+            self.data = data
+            self.format = format
+            self.__impl = None
 
     def __getitem__(self, index):
         cls = self.__class__
-        subset = cls(self.data[index], self.format)
+        subset = cls(self.data[index], self.format, canonical=True)
         return subset
 
     def __eq__(self, other):
@@ -2492,8 +2563,19 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         nice = '{}, {}'.format(self.format, data_repr)
         return nice
 
+    def __str__(self):
+        """
+        Returns:
+            str
+        """
+        classname = self.__class__.__name__
+        nice = self.__nice__()
+        return '<{0}({1})>'.format(classname, nice)
+
     def __repr__(self):
-        return super().__str__()
+        classname = self.__class__.__name__
+        nice = self.__nice__()
+        return '<{0}({1})>'.format(classname, nice)
 
     @classmethod
     def random(Boxes, num=1, scale=1.0, format=BoxFormat.XYWH, anchors=None,
@@ -2578,9 +2660,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             rel_cxy = rng.rand(num, 2).astype(np.float32) * .99
             rand_cxwy = rel_cxy * (max_cxy - min_cxy) + min_cxy
             cxywh = np.hstack([rand_cxwy, rand_whs])
-            ltrb = Boxes(cxywh, BoxFormat.CXYWH, check=False).to_ltrb().data
+            ltrb = Boxes(cxywh, BoxFormat.CXYWH, check=False, canonical=True).to_ltrb().data
 
-        boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False)
+        boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False, canonical=True)
         boxes = boxes.scale(scale, inplace=True)
         if as_integer:
             boxes.data = boxes.data.astype(int)
@@ -2595,7 +2677,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             Boxes: a copy of these boxes
         """
         new_data = _copy(self.data)
-        return Boxes(new_data, self.format, check=False)
+        return Boxes(new_data, self.format, check=False, canonical=True)
 
     @classmethod
     def concatenate(cls, boxes, axis=0):
@@ -2630,9 +2712,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if axis != 0:
             raise ValueError('can only concatenate along axis=0')
         format = boxes[0].format
+        # Doing a view here seems wrong. This function might be broken.
         datas = [_view(b.toformat(format).data, -1, 4) for b in boxes]
         newdata = _cat(datas, axis=0)
-        new = cls(newdata, format)
+        new = cls(newdata, format, canonical=True)
         return new
 
     def compress(self, flags, axis=0, inplace=False):
@@ -2663,7 +2746,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             self.data = newdata
             new = self
         else:
-            new = self.__class__(newdata, self.format)
+            new = self.__class__(newdata, self.format, canonical=True)
         return new
 
     def take(self, idxs, axis=0, inplace=False):
@@ -2695,7 +2778,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             new = self
         else:
             newdata = _take(self.data, idxs, axis=axis)
-            new = self.__class__(newdata, self.format)
+            new = self.__class__(newdata, self.format, canonical=True)
         return new
 
     def is_tensor(self):
@@ -2717,7 +2800,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         """
         return isinstance(self.data, np.ndarray)
 
-    @ub.memoize_property
+    # @ub.memoize_property
+    @property
+    @profile
     def _impl(self):
         """
         returns the kwarray.ArrayAPI implementation for the data
@@ -2730,7 +2815,10 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> assert Boxes.random().tensor()._impl.is_tensor
         """
-        return kwarray.ArrayAPI.coerce(self.data)
+        _impl = self.__impl
+        if _impl is None:
+            self.__impl = _impl = kwarray.ArrayAPI.impl(self.data)
+        return _impl
 
     @property
     def device(self):
@@ -2776,9 +2864,9 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         torch = sys.modules.get('torch', None)
         if torch is not None and torch.is_tensor(data):
             dtype = _rectify_torch_dtype(dtype)
-            newself = self.__class__(data.to(dtype), self.format)
+            newself = self.__class__(data.to(dtype), self.format, canonical=True)
         else:
-            newself = self.__class__(data.astype(dtype), self.format)
+            newself = self.__class__(data.astype(dtype), self.format, canonical=True)
         return newself
 
     def round(self, inplace=False):
@@ -2812,7 +2900,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                        [4., 6., 0., 2.],
                        [8., 4., 2., 1.]]))>
         """
-        new = self if inplace else self.__class__(self.data, self.format)
+        new = self if inplace else self.__class__(self.data, self.format, canonical=True)
         new.data = self._impl.round(new.data)
         return new
 
@@ -2871,7 +2959,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> self.quantize(inplace=True)
             >>> assert np.any(self.data != orig.data)
         """
-        new = self if inplace else self.__class__(self.data, self.format)
+        new = self if inplace else self.__class__(self.data, self.format, canonical=True)
         _impl = self._impl
         _ceil = _impl.ceil
         _floor = _impl.floor
@@ -2914,7 +3002,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         if torch is not None and torch.is_tensor(data):
             data = self._impl.numpy(data.data)
             # data = data.data.cpu().numpy()
-        newself = self.__class__(data, self.format)
+        newself = self.__class__(data, self.format, canonical=True)
         return newself
 
     def tensor(self, device=ub.NoParam):
@@ -2946,7 +3034,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             data = torch.from_numpy(data)
         if device is not ub.NoParam:
             data = data.to(device)
-        newself = self.__class__(data, self.format)
+        newself = self.__class__(data, self.format, canonical=True)
         return newself
 
     def ious(self, other, bias=0, impl='auto', mode=None):
@@ -3023,7 +3111,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         Examples:
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> import torch
-            >>> formats = BoxFormat.cannonical
+            >>> formats = BoxFormat.canonical
             >>> istensors = [False, True]
             >>> results = {}
             >>> for format in formats:
@@ -3216,7 +3304,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
-        isect = Boxes(ltrb, 'ltrb')
+        isect = Boxes(ltrb, 'ltrb', canonical=True)
 
         return isect
 
@@ -3264,7 +3352,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
                 ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
-        isect = Boxes(ltrb, 'ltrb')
+        isect = Boxes(ltrb, 'ltrb', canonical=True)
 
         return isect
 
@@ -3289,7 +3377,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         max_x = max_xs.max()
         max_y = max_ys.max()
         new_ltrb = np.array([[min_x, min_y, max_x, max_y]])
-        new = Boxes(new_ltrb, format='ltrb')
+        new = Boxes(new_ltrb, format='ltrb', canonical=True)
         return new
 
     def contains(self, other):
@@ -3349,7 +3437,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             >>> assert list(self.view(3, 2, 4).data.shape) == [3, 2, 4]
         """
         data_ = _view(self.data, *shape)
-        return self.__class__(data_, self.format)
+        return self.__class__(data_, self.format, canonical=True)
 
     def _ensure_nonnegative_extent(self, inplace=False):
         """
@@ -3397,7 +3485,7 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
             self = self.to_xywh()
         assert self.format == 'xywh'
         _impl = self._impl
-        new = self if inplace else self.__class__(_impl.copy(self.data), self.format)
+        new = self if inplace else self.__class__(_impl.copy(self.data), self.format, canonical=True)
         is_neg_w = new.data[..., 2] < 0
         is_neg_h = new.data[..., 3] < 0
         new_data = new.data

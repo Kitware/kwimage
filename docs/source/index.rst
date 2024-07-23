@@ -22,6 +22,7 @@ Welcome to kwimage's documentation!
    :caption: Contents:
 
    kwimage
+   auto/modules.rst
 
 .. .. toctree::
 ..   kwarray

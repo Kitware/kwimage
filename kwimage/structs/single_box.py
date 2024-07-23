@@ -2,13 +2,18 @@ import numpy as np
 import ubelt as ub
 
 
+try:
+    from line_profiler import profile
+except Exception:
+    profile = ub.identity
+
 # TODO: Perhaps dynamically fix the wraped method signatures to agree with
 # Boxes when possible. OR just make this efficient (perhaps that is a fools
 # errand because single box objects wont be efficient in Python). Probably just
 # maintain the wrapper.
 
 
-class Box(ub.NiceRepr):
+class Box:
     """
     Represents a single Box.
 
@@ -32,12 +37,13 @@ class Box(ub.NiceRepr):
         >>> box = Box.from_slice(sl)
         >>> print(f'box={box}')
     """
+    __slots__ = ('boxes',)
 
     def __init__(self, boxes, _check: bool = False):
-        if _check:
-            raise Exception(
-                'For now, only construct an instance of this using a class '
-                ' method, like coerce, from_slice, from_shapely, etc...')
+        # if _check:
+        #     raise Exception(
+        #         'For now, only construct an instance of this using a class '
+        #         ' method, like coerce, from_slice, from_shapely, etc...')
         self.boxes = boxes
 
     @property
@@ -54,6 +60,20 @@ class Box(ub.NiceRepr):
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
         nice = '{}, {}'.format(self.format, data_repr)
         return nice
+
+    def __str__(self):
+        """
+        Returns:
+            str
+        """
+        classname = self.__class__.__name__
+        nice = self.__nice__()
+        return '<{0}({1})>'.format(classname, nice)
+
+    def __repr__(self):
+        classname = self.__class__.__name__
+        nice = self.__nice__()
+        return '<{0}({1})>'.format(classname, nice)
 
     @classmethod
     def random(self, **kwargs):
@@ -89,9 +109,17 @@ class Box(ub.NiceRepr):
 
     @classmethod
     def from_dsize(self, dsize):
-        width, height = dsize
+        """
+        Args:
+            dsize (Tuple[int, int]): A width/height tuple.
+
+        Returns:
+            Self
+        """
         import kwimage
-        boxes = kwimage.Boxes([[0, 0, width, height]], 'ltrb')
+        width, height = dsize
+        ltrb = np.array([[0, 0, width, height]])
+        boxes = kwimage.Boxes(ltrb, 'ltrb', canonical=True)
         self = Box(boxes, _check=False)
         return self
 
@@ -103,6 +131,7 @@ class Box(ub.NiceRepr):
         return self
 
     @classmethod
+    @profile
     def coerce(cls, data, format=None, **kwargs):
         if isinstance(data, Box):
             return data
@@ -141,7 +170,9 @@ class Box(ub.NiceRepr):
 
     @property
     def dsize(self):
-        return (int(self.width), int(self.height))
+        xywh = self.boxes.to_xywh(copy=False)
+        width, height = xywh.data[..., 2:4].ravel()
+        return (int(width), int(height))
 
     def translate(self, *args, **kwargs):
         new_boxes = self.boxes.translate(*args, **kwargs)
