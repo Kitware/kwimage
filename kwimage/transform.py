@@ -467,6 +467,7 @@ class Projective(Linear):
         >>> kwplot.imshow(canvas)
         >>> fig = plt.gcf()
         >>> fig.set_size_inches(13, 13)
+        >>> kwplot.show_if_requested()
     """
     # References:
     #     .. [AffineDecompColab] https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_

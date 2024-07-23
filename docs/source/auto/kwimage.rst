@@ -9,7 +9,6 @@ Subpackages
 
    kwimage.algo
    kwimage.cli
-   kwimage.gis
    kwimage.structs
 
 Submodules
@@ -18,8 +17,10 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
+   kwimage.__main__
    kwimage._im_color_data
    kwimage._internal
+   kwimage._typing
    kwimage.im_alphablend
    kwimage.im_color
    kwimage.im_core

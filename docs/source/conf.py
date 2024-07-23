@@ -17,7 +17,7 @@ Notes:
     # need to edit the conf.py
 
     cd ~/code/kwimage/docs
-    sphinx-apidoc --private --separate -f -o ~/code/kwimage/docs/source/auto ~/code/kwimage/kwimage
+    sphinx-apidoc --private --separate --force --output-dir ~/code/kwimage/docs/source/auto ~/code/kwimage/kwimage
 
     # Note: the module should importable before running this
     # (e.g. install it in developer mode or munge the PYTHONPATH)
