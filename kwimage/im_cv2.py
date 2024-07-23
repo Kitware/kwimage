@@ -46,6 +46,13 @@ _CV2_BORDER_MODES = {
     # 'isolated':    cv2.BORDER_ISOLATED,
 }
 
+# https://www.projectpro.io/recipes/what-are-types-of-borders-which-can-be-made-opencv
+# https://answers.opencv.org/question/50706/border_reflect-vs-border_reflect_101/
+# cv2.BORDER_REPLICATE creates a border by replicating the last element of the image like this: PPPPPPP|ProjectPro|ooooooo
+# cv2.BORDER_REFLECT - Border will be mirror reflection of the border elements, like this : fedcba|abcdefgh|hgfedcb
+# cv2.BORDER_WRAP - forms a border like this: ojectPro|ProjectPro|ProjectP
+# cv2.BORDER_REFLECT101 - Same as BORDER_REFLECT, but with a slight change in which the outter-most pixels (a or h) are not repeated : gfedcb|abcdefgh|gfedcba
+
 
 def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                           grow_default=cv2.INTER_LANCZOS4,
@@ -215,6 +222,23 @@ def _coerce_border_value(border_value, default=0, image=None):
         raise ValueError('borderValue cannot have more than 4 components. '
                          'OpenCV #22283 describes why')
     return borderValue
+
+
+def _coerce_border_mode_value(border_mode, border_value, image):
+    """
+    Common code for warp_affine and warp_persepctive
+    """
+
+    borderMode = _coerce_border_mode(border_mode)
+    if isinstance(border_value, str):
+        # it is annoying to have borer value / border mode be different
+        # if it is a string assume the border mode is a strategy
+        # todo: cleanup
+        assert border_mode is None
+        border_mode = border_value
+        border_value = 0
+    borderValue = _coerce_border_value(border_value, image=image)
+    return borderMode, borderValue
 
 
 def imscale(img, scale, interpolation=None, return_scale=False):
@@ -1569,15 +1593,29 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         pts_warp2 = transform_.matrix @ pts.T
 
     Example:
-        >>> image = kwimage.checkerboard(dsize=(4, 4), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> import kwimage
+        >>> #image = kwimage.checkerboard(dsize=(8, 8), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> image = kwimage.checkerboard(dsize=(32, 32), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> #image = kwimage.checkerboard(dsize=(4, 4), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
         >>> grid = list(ub.named_product({
+        >>>     'border_value': [
+        >>>         0,
+        >>>         np.nan,
+        >>>         #'replicate'
+        >>>    ],
+        >>>     'interpolation': [
+        >>>         'nearest',
+        >>>         'linear',
+        >>>         #'cubic',
+        >>>         #'lanczos',
+        >>>         #'area'
+        >>>     ],
         >>>     'origin_convention': ['center', 'corner'],
-        >>>     'border_value': [0, np.nan, 'replicate'],
-        >>>     'interpolation': ['linear', 'nearest'],
         >>> }))
-        >>> results = [('input', image)]
+        >>> results = []
+        >>> results += [('input', image)]
         >>> for kwargs in grid:
-        >>>     warped_image = kwimage.warp_affine(image, {'scale': 100.0}, dsize='auto', **kwargs)
+        >>>     warped_image = kwimage.warp_affine(image, {'scale': 0.5}, dsize='auto', **kwargs)
         >>>     title = ub.urepr(kwargs, compact=1, nl=1)
         >>>     results.append((title, warped_image))
         >>> # xdoctest: +REQUIRES(--show)
@@ -1585,8 +1623,12 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.autompl()
         >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
         >>> for title, canvas in results:
-        >>>     canvas = kwimage.fill_nans_with_checkers(canvas)
-        >>>     kwplot.imshow(canvas, pnum=pnum_(), origin_convention='corner', title=title)
+        >>>     canvas = kwimage.fill_nans_with_checkers(canvas).clip(0, 1)
+        >>>     kwplot.imshow(canvas, pnum=pnum_(), origin_convention='corner', title=title, show_ticks=True)
+        >>> fig = kwplot.plt.gcf()
+        >>> fig.subplots_adjust(hspace=0.37, wspace=0.25)
+        >>> fig.set_size_inches([18.11, 11.07])
+        >>> kwplot.show_if_requested()
     """
     from kwimage.transform import Affine
     import kwimage
@@ -1602,15 +1644,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
-    if isinstance(border_value, str):
-        # it is annoying to have borer value / border mode be different
-        # if it is a string assume the border mode is a strategy
-        # todo: cleanup
-        assert border_mode is None
-        border_mode = border_value
-        border_value = 0
-    borderMode = _coerce_border_mode(border_mode)
-    borderValue = _coerce_border_value(border_value, image=image)
+    borderMode, borderValue = _coerce_border_mode_value(
+        border_mode, border_value, image)
 
     h, w = image.shape[0:2]
 
@@ -1691,9 +1726,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         # the transform we can implement the integer-corner behavior.
         offset1 = kwimage.Affine.translate((0.5, 0.5))
         offset2 = kwimage.Affine.translate((-0.5, -0.5))
-        print(f'transform_={transform_}')
         transform_ = offset2 @ transform_ @ offset1
-        print(f'transform_={transform_}')
     elif origin_convention == 'center':
         ...
     else:
@@ -2428,7 +2461,8 @@ def connected_components(image, connectivity=8, ltype=np.int32,
 
 def warp_projective(image, transform, dsize=None, antialias=False,
                     interpolation='linear', border_mode=None, border_value=0,
-                    large_warp_dim=None, return_info=False):
+                    large_warp_dim=None, origin_convention='center',
+                    return_info=False):
     """
     Applies an projective transformation to an image with optional antialiasing.
 
@@ -2484,6 +2518,17 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             This works around a limitation of cv2.warpAffine, which must have
             image dimensions < SHRT_MAX (=32767 in version 4.5.3)
 
+        origin_convention (str):
+            Controls the interpretation of the underlying raster.
+            Can be "center" (default opencv behavior), or "corner" (matches
+            torchvision / detectron2 behavior).
+            If "center", then center of the top left pixel is at (0, 0), and
+            the top left corner is at (-0.5, -0.5).
+            If "center", then center of the top left pixel is at (0.5, 0.5), and
+            the top left corner is at (0, 0).
+            Currently defaults to "center", but in the future we may change the
+            default to "corner".  For more info see [WhereArePixels]_.
+
         return_info (bool):
             if True, returns information about the operation. In the case
             where dsize="content", this includes the modified transformation.
@@ -2508,8 +2553,8 @@ def warp_projective(image, transform, dsize=None, antialias=False,
 
     transform = kwimage.Projective.coerce(transform)
     flags = _coerce_interpolation(interpolation)
-    borderMode = _coerce_border_mode(border_mode)
-    borderValue = _coerce_border_value(border_value, image=image)
+    borderMode, borderValue = _coerce_border_mode_value(
+        border_mode, border_value, image)
 
     h, w = image.shape[0:2]
 
@@ -2544,6 +2589,17 @@ def warp_projective(image, transform, dsize=None, antialias=False,
         'dsize': dsize,
         'antialias_info': None,
     }
+
+    if origin_convention == 'corner':
+        # cv2.warpAffine uses the integer-center convention, but by modifying
+        # the transform we can implement the integer-corner behavior.
+        offset1 = kwimage.Affine.translate((0.5, 0.5))
+        offset2 = kwimage.Affine.translate((-0.5, -0.5))
+        transform_ = offset2 @ transform_ @ offset1
+    elif origin_convention == 'center':
+        ...
+    else:
+        raise KeyError(origin_convention)
 
     _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
                            borderMode, borderValue)
@@ -2629,7 +2685,7 @@ def _try_warp_projective(image, transform_, large_warp_dim, dsize, max_dsize,
 
 def warp_image(image, transform, dsize=None, antialias=False,
                interpolation='linear', border_mode=None, border_value=0,
-               large_warp_dim=None, return_info=False):
+               large_warp_dim=None, origin_convention='center', return_info=False):
     """
     Applies an transformation to an image with optional antialiasing.
 
@@ -2686,6 +2742,17 @@ def warp_image(image, transform, dsize=None, antialias=False,
             This works around a limitation of cv2.warpAffine, which must have
             image dimensions < SHRT_MAX (=32767 in version 4.5.3)
 
+        origin_convention (str):
+            Controls the interpretation of the underlying raster.
+            Can be "center" (default opencv behavior), or "corner" (matches
+            torchvision / detectron2 behavior).
+            If "center", then center of the top left pixel is at (0, 0), and
+            the top left corner is at (-0.5, -0.5).
+            If "center", then center of the top left pixel is at (0.5, 0.5), and
+            the top left corner is at (0, 0).
+            Currently defaults to "center", but in the future we may change the
+            default to "corner".  For more info see [WhereArePixels]_.
+
         return_info (bool):
             if True, returns information about the operation. In the case
             where dsize="content", this includes the modified transformation.
@@ -2724,6 +2791,7 @@ def warp_image(image, transform, dsize=None, antialias=False,
     kwargs = dict(dsize=dsize, antialias=antialias,
                   interpolation=interpolation, border_mode=border_mode,
                   border_value=border_value, large_warp_dim=large_warp_dim,
+                  origin_convention=origin_convention,
                   return_info=return_info)
     if transform.is_affine():
         return kwimage.warp_affine(image, transform, **kwargs)
