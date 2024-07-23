@@ -610,6 +610,8 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
             Bayer pattern [WikiBayerFilter]_. The on and off values become the
             value for the one quater parts of the bayer pattern and this is the
             value for the remaining half.
+            It would be nice to find a better name for this arg and deprecate
+            this one. Help wanted.
 
     Returns:
         ndarray: a numpy array representing a checkerboard pattern
