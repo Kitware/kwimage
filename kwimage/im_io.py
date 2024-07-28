@@ -70,7 +70,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
     Reads image data in a specified format using some backend implementation.
 
     Args:
-        fpath (str): path to the file to be read
+        fpath (str | PathLike): path to the file to be read
 
         space (str):
             The desired colorspace of the image. Can by any colorspace accepted
@@ -865,7 +865,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Writes image data to disk.
 
     Args:
-        fpath (PathLike): location to save the image
+        fpath (str | PathLike): location to save the image
 
         image (ndarray): image data
 
@@ -1071,6 +1071,39 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         ...     kwimage.imwrite(fpath, imdata, backend='gdal')
         >>> with pytest.raises((IOError, RuntimeError)):
         ...     kwimage.imwrite(fpath, imdata, backend='itk')
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test writing a georeferenced image
+        >>> import kwimage
+        >>> from osgeo import gdal
+        >>> from osgeo import osr
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> geo_fpath = dpath / 'dummy_geotiff.tif'
+        >>> # compute dummy values for a geotransform to CRS84
+        >>> img_h, img_w = imdata.shape[0:2]
+        >>> img_box = kwimage.Boxes([[0, 0, img_w, img_h]], 'xywh')
+        >>> wld_box = kwimage.Boxes([[-73.7595528, 42.6552404, 0.0001, 0.0001]], 'xywh')
+        >>> img_corners = img_box.corners()
+        >>> wld_corners = wld_box.corners()
+        >>> # The transform warps the CRS coordinates to pixel coordinates
+        >>> transform = kwimage.Affine.fit(img_corners, wld_corners)
+        >>> srs = osr.SpatialReference()
+        >>> srs.ImportFromEPSG(4326)
+        >>> # The CRS is a string indicating the coordinate reference system
+        >>> crs = srs.ExportToWkt()
+        >>> # Can store abtirary info in metadata
+        >>> metadata = {'my_special_key': 'my special value'}
+        >>> # Write the data to disk with georeferencing information
+        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata_value=-9999,
+        >>>                 crs=crs, transform=transform, compress='RAW',
+        >>>                 metadata=metadata)
+        >>> # Verify that the written dataset is georeferenced by inspecting
+        >>> # the metadata with gdalinfo
+        >>> info = ub.cmd(['gdalinfo', geo_fpath], verbose=3)
+        >>> assert 'WGS 84' in info.stdout
     """
     fpath = os.fspath(fpath)
 
@@ -1441,7 +1474,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     Writes data as a cloud-optimized geotiff using gdal
 
     Args:
-        fpath (PathLike): file path to save the COG to.
+        fpath (str | PathLike): file path to save the COG to.
 
         data (ndarray[ndim=3]): Raw HWC image data to save. Dimensions should
             be height, width, channels.
