@@ -6,8 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.10.2 - Unreleased
 
+### Added
+* Add classmethod `PolygonList.random`
+* Add method `PolygonList.to_boxes`
+
 ### Fixed
 * `kwimage.Polygon.draw` facecolor argument now properly handles coercible colors.
+* `kwimage.PolygonList.draw` now handles setlim correctly
 * `kwimage.Boxes.coerce` now handles the format argument correctly.
 
 
