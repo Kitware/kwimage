@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.10.2 - Unreleased
 
+### Fixed
+* `kwimage.Polygon.draw` facecolor argument now properly handles coercible colors.
+* `kwimage.Boxes.coerce` now handles the format argument correctly.
+
 
 ## Version 0.10.1 - Released 2024-07-23
 

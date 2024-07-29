@@ -2411,6 +2411,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         if facecolor is None:
             facecolor = color
+        else:
+            facecolor = list(kwimage.Color(facecolor).as01())
 
         kw = {}
         # TODO:
@@ -2421,7 +2423,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kw['linewidth'] = linewidth
             if edgecolor is None:
                 try:
-                    edgecolor = list(kwimage.Color(border).as01())
+                    edgecolor = list(kwimage.Color.coerce(border).as01())
                 except Exception:
                     edgecolor = list(color)
                     # hack to darken
