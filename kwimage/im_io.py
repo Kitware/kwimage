@@ -4,13 +4,16 @@ wrappers around concrete readers/writers provided by other libraries. This
 allows us to support a wider array of formats than any of individual backends.
 """
 import os
-import numpy as np
-import warnings  # NOQA
-import cv2
 from os.path import exists, dirname
+import numpy as np
 import ubelt as ub
-from . import im_cv2
-from . import im_core
+from kwimage import im_core
+# import warnings
+
+try:
+    from line_profiler import profile
+except ImportError:
+    from ubelt import identity as profile
 
 __all__ = [
     'imread', 'imwrite', 'load_image_shape',
@@ -57,11 +60,6 @@ IMAGE_EXTENSIONS = (
     GDAL_EXTENSIONS +
     ITK_EXTENSIONS
 )
-
-try:
-    from line_profiler import profile
-except ImportError:
-    from ubelt import identity as profile
 
 
 @profile
@@ -364,6 +362,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
                     ' space=None to return the raw data.'
                 ).format(dst_space))
 
+            from kwimage import im_cv2
             image = im_cv2.convert_colorspace(image, src_space=src_space,
                                               dst_space=dst_space,
                                               implicit=False)
@@ -501,6 +500,7 @@ def _imread_skimage(fpath):
 
 
 def _imread_cv2(fpath):
+    import cv2
     # opencv reads color in BGR by default
     image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
     if image is None:
@@ -1166,11 +1166,13 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                 dst_space = 'gray'
             else:
                 raise AssertionError('impossible state')
+        from kwimage import im_cv2
         image = im_cv2.convert_colorspace(
             image, src_space=src_space, dst_space=dst_space,
             implicit=False)
 
     if backend == 'cv2':
+        import cv2
         try:
             flag = cv2.imwrite(fpath, image, **kwargs)
         except cv2.error as ex:

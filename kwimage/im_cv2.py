@@ -9,7 +9,7 @@ import numpy as np
 import ubelt as ub
 import numbers
 from functools import lru_cache
-from . import im_core
+from kwimage import im_core
 
 __all__ = [
     'connected_components',

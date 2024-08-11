@@ -1,6 +1,5 @@
 import itertools as it
 import numpy as np
-import cv2
 
 
 def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
@@ -230,6 +229,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
         >>> kwplot.show_if_requested()
     """
     import kwimage
+    import cv2
 
     if 'color' not in kwargs:
         # kwargs['color'] = 'red'
@@ -362,6 +362,7 @@ def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
 
 
 def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
+    import cv2
     getsize_kw = {
         k: kwargs[k]
         for k in ['fontFace', 'fontScale', 'thickness']
@@ -542,6 +543,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         colorspace (str): string code of the input image colorspace
 
     Example:
+        >>> # xdoctest +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
