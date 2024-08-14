@@ -11,7 +11,7 @@ import kwarray
 def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
                     stop_size=2048, recsize=2048, impl='auto', device_id=None):
     """
-    Divide and conquor speedup non-max-supression algorithm for when bboxes
+    Divide and conquer speedup non-max-supression algorithm for when bboxes
     have a known max size
 
     Args:
@@ -28,7 +28,7 @@ def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
             greater than this threshold. 0 is the most strict, resulting in the
             fewest boxes, and 1 is the most permissive resulting in the most.
 
-        max_depth (int): maximum number of times we can divide and conquor
+        max_depth (int): maximum number of times we can divide and conquer
 
         stop_size (int): number of boxes that triggers full NMS computation
 
@@ -296,7 +296,7 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
     Ignore:
         _impls._funcs
         valid_pref = ub.oset(preference) & set(_impls._funcs.keys())
-        python ~/code/kwimage/dev/bench_nms.py --show --small-boxes --thresh=0.6
+        python ~/code/kwimage/dev/bench/bench_nms.py --show --small-boxes --thresh=0.6
     """
     if code not in {'tensor0', 'tensor', 'ndarray'}:
         raise KeyError(code)

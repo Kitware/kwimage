@@ -1539,7 +1539,7 @@ class Affine(Projective):
                 dist = distributions.Constant(arg, rng=rng)
             elif isinstance(arg, tuple) and len(arg) == 2:
                 lo, hi = arg
-                dist = distributions.Uniform(lo, hi, rng=rng)
+                dist = distributions.Uniform(low=lo, high=hi, rng=rng)
             else:
                 raise NotImplementedError
             return dist
