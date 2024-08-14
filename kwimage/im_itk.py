@@ -18,6 +18,7 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
         >>> import sys, ubelt
         >>> sys.path.append(ubelt.expandpath('~/code/kwimage'))
         >>> from kwimage.im_itk import *  # NOQA
+        >>> import numpy as np
         >>> import kwarray
         >>> import kwarray.distributions
         >>> import kwimage
