@@ -610,6 +610,8 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
             Bayer pattern [WikiBayerFilter]_. The on and off values become the
             value for the one quater parts of the bayer pattern and this is the
             value for the remaining half.
+            It would be nice to find a better name for this arg and deprecate
+            this one. Help wanted.
 
     Returns:
         ndarray: a numpy array representing a checkerboard pattern
@@ -665,7 +667,6 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
     Example:
         >>> import kwimage
         >>> img1c = kwimage.checkerboard(bayer_value=0.5)
-        >>>     bayer_value='kw_green')
         >>> # xdoctest: +REQUIRES(--show)
         >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot

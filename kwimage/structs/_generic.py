@@ -166,6 +166,12 @@ class ObjectList(Spatial):
         return self.__class__(newdata, self.meta)
 
     def draw(self, **kwargs):
+        """
+        Generic draw method for list of spatial annotations
+        """
+        if 'setlim' in kwargs:
+            import warnings
+            warnings.warn('ObjectList currently need special handling for setlim kwarg')
         patches = []
         for item in self.data:
             if item is not None:

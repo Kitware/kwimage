@@ -400,7 +400,7 @@ class _DetAlgoMixin:
             perclass (bool): if True, works on a per-class basis
             impl (str): nms implementation to use
             daq (bool | Dict): if False, uses reqgular nms, otherwise uses
-                divide and conquor algorithm. If `daq` is a Dict, then
+                divide and conquer algorithm. If `daq` is a Dict, then
                 it is used as the kwargs to `kwimage.daq_spatial_nms`
 
             device_id : try not to use. only used if impl is gpu

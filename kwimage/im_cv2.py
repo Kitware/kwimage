@@ -9,7 +9,7 @@ import numpy as np
 import ubelt as ub
 import numbers
 from functools import lru_cache
-from . import im_core
+from kwimage import im_core
 
 __all__ = [
     'connected_components',
@@ -1202,12 +1202,10 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
             sigma_x, sigma_y = sigma
 
     if kernel is None:
-        # USE_CV2_DEF = 0
         if autokernel_mode == 'zero':
             # When 0 computed internally via cv2
             k_x = k_y = 0
         elif autokernel_mode == 'cv2':
-            # if USE_CV2_DEF:
             # This is the CV2 definition
             # https://github.com/egonSchiele/OpenCV/blob/09bab41/modules/imgproc/src/smooth.cpp#L387
             depth_factor = 3  # or 4 for non-uint8
@@ -1328,6 +1326,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
         dsize (Tuple[int, int] | None | str):
             A integer width and height tuple of the resulting "canvas" image.
+
             If None, then the input image size is used.
 
             If specified as a string, dsize is computed based on the given

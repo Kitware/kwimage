@@ -675,7 +675,7 @@ class _BoxConversionMixins:
                 _arr_data = np.array(data)
 
             if _arr_data is not None:
-                format = kwargs.get('format', None)
+                format = kwargs.get('format', format)
                 if format is None:
                     raise Exception('ambiguous, specify Box format')
                 self = Boxes(_arr_data, format=format)

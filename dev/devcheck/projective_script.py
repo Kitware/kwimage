@@ -131,7 +131,7 @@ def main():
     doc.append('And adding an origin shift the general form is:')
     doc.append(pylatex.Math(data=[affine_components_tex, '=', affine_tex], escape=False))
 
-    doc.append(pylatex.Section('Projective Matrix Components Without Origin Shift'))
+    doc.append(pylatex.Section('Homography Matrix Components'))
     doc.append(pylatex.NoEscape('An projective (or homography) matrix $H$ about the origin is generalizes and affine transform adding a projection as the first operation. Explicitly, homography matrix can be constructed as a projection, scale, shear, rotation, and translation. $T R E S P = H$. Expanded out this looks like:'))
     doc.append(pylatex.Math(data=[homog_noshift_components_tex, '=', homog_noshift_tex], escape=False))
     doc.append('And adding an origin shift the general form is:')
@@ -150,6 +150,7 @@ def main():
 if __name__ == '__main__':
     """
     CommandLine:
+        python ~/code/kwimage/dev/devcheck/projective_script.py
         python projective_script.py
     """
     main()

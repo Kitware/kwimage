@@ -488,7 +488,7 @@ class Projective(Linear):
             Projective : a transform that warps from "space1" to "space2".
 
         Note:
-            A projective matrix has 8 degrees of freedome, so at least 8 point
+            A projective matrix has 8 degrees of freedom, so at least 8 point
             pairs are needed.
 
         References:
@@ -1539,7 +1539,7 @@ class Affine(Projective):
                 dist = distributions.Constant(arg, rng=rng)
             elif isinstance(arg, tuple) and len(arg) == 2:
                 lo, hi = arg
-                dist = distributions.Uniform(lo, hi, rng=rng)
+                dist = distributions.Uniform(low=lo, high=hi, rng=rng)
             else:
                 raise NotImplementedError
             return dist

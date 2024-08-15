@@ -4,13 +4,16 @@ wrappers around concrete readers/writers provided by other libraries. This
 allows us to support a wider array of formats than any of individual backends.
 """
 import os
-import numpy as np
-import warnings  # NOQA
-import cv2
 from os.path import exists, dirname
+import numpy as np
 import ubelt as ub
-from . import im_cv2
-from . import im_core
+from kwimage import im_core
+# import warnings
+
+try:
+    from line_profiler import profile
+except ImportError:
+    from ubelt import identity as profile
 
 __all__ = [
     'imread', 'imwrite', 'load_image_shape',
@@ -58,11 +61,6 @@ IMAGE_EXTENSIONS = (
     ITK_EXTENSIONS
 )
 
-try:
-    from line_profiler import profile
-except ImportError:
-    from ubelt import identity as profile
-
 
 @profile
 def imread(fpath, space='auto', backend='auto', **kw):
@@ -70,7 +68,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
     Reads image data in a specified format using some backend implementation.
 
     Args:
-        fpath (str): path to the file to be read
+        fpath (str | PathLike): path to the file to be read
 
         space (str):
             The desired colorspace of the image. Can by any colorspace accepted
@@ -364,6 +362,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
                     ' space=None to return the raw data.'
                 ).format(dst_space))
 
+            from kwimage import im_cv2
             image = im_cv2.convert_colorspace(image, src_space=src_space,
                                               dst_space=dst_space,
                                               implicit=False)
@@ -501,6 +500,7 @@ def _imread_skimage(fpath):
 
 
 def _imread_cv2(fpath):
+    import cv2
     # opencv reads color in BGR by default
     image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
     if image is None:
@@ -865,7 +865,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     Writes image data to disk.
 
     Args:
-        fpath (PathLike): location to save the image
+        fpath (str | PathLike): location to save the image
 
         image (ndarray): image data
 
@@ -1071,6 +1071,39 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         ...     kwimage.imwrite(fpath, imdata, backend='gdal')
         >>> with pytest.raises((IOError, RuntimeError)):
         ...     kwimage.imwrite(fpath, imdata, backend='itk')
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:osgeo)
+        >>> # Test writing a georeferenced image
+        >>> import kwimage
+        >>> from osgeo import gdal
+        >>> from osgeo import osr
+        >>> # Make a dummy geotiff
+        >>> imdata = kwimage.grab_test_image('airport')
+        >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
+        >>> geo_fpath = dpath / 'dummy_geotiff.tif'
+        >>> # compute dummy values for a geotransform to CRS84
+        >>> img_h, img_w = imdata.shape[0:2]
+        >>> img_box = kwimage.Boxes([[0, 0, img_w, img_h]], 'xywh')
+        >>> wld_box = kwimage.Boxes([[-73.7595528, 42.6552404, 0.0001, 0.0001]], 'xywh')
+        >>> img_corners = img_box.corners()
+        >>> wld_corners = wld_box.corners()
+        >>> # The transform warps the CRS coordinates to pixel coordinates
+        >>> transform = kwimage.Affine.fit(img_corners, wld_corners)
+        >>> srs = osr.SpatialReference()
+        >>> srs.ImportFromEPSG(4326)
+        >>> # The CRS is a string indicating the coordinate reference system
+        >>> crs = srs.ExportToWkt()
+        >>> # Can store abtirary info in metadata
+        >>> metadata = {'my_special_key': 'my special value'}
+        >>> # Write the data to disk with georeferencing information
+        >>> kwimage.imwrite(geo_fpath, imdata, backend='gdal', nodata_value=-9999,
+        >>>                 crs=crs, transform=transform, compress='RAW',
+        >>>                 metadata=metadata)
+        >>> # Verify that the written dataset is georeferenced by inspecting
+        >>> # the metadata with gdalinfo
+        >>> info = ub.cmd(['gdalinfo', geo_fpath], verbose=3)
+        >>> assert 'WGS 84' in info.stdout
     """
     fpath = os.fspath(fpath)
 
@@ -1133,11 +1166,13 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
                 dst_space = 'gray'
             else:
                 raise AssertionError('impossible state')
+        from kwimage import im_cv2
         image = im_cv2.convert_colorspace(
             image, src_space=src_space, dst_space=dst_space,
             implicit=False)
 
     if backend == 'cv2':
+        import cv2
         try:
             flag = cv2.imwrite(fpath, image, **kwargs)
         except cv2.error as ex:
@@ -1441,7 +1476,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     Writes data as a cloud-optimized geotiff using gdal
 
     Args:
-        fpath (PathLike): file path to save the COG to.
+        fpath (str | PathLike): file path to save the COG to.
 
         data (ndarray[ndim=3]): Raw HWC image data to save. Dimensions should
             be height, width, channels.

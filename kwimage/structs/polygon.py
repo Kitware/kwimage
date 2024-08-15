@@ -2411,6 +2411,8 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         if facecolor is None:
             facecolor = color
+        else:
+            facecolor = list(kwimage.Color(facecolor).as01())
 
         kw = {}
         # TODO:
@@ -2421,7 +2423,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kw['linewidth'] = linewidth
             if edgecolor is None:
                 try:
-                    edgecolor = list(kwimage.Color(border).as01())
+                    edgecolor = list(kwimage.Color.coerce(border).as01())
                 except Exception:
                     edgecolor = list(color)
                     # hack to darken
@@ -3086,6 +3088,59 @@ class PolygonList(_generic.ObjectList):
     same image.
     """
 
+    @classmethod
+    def random(cls, length=10, rng=None):
+        """
+        A random list of Polygons and MultiPolygons.
+
+        Args:
+            length (int): length of randomized list
+            rng (None | int | RandomState): random number gen or seed
+
+        Returns:
+            PolygonList
+
+        Example:
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> import kwimage
+            >>> length = 10
+            >>> rng = 0
+            >>> self = kwimage.PolygonList.random(length, rng=rng)
+            >>> assert len(self) == 10
+        """
+        import kwimage
+        import kwarray
+        import kwarray.distributions
+        rng = kwarray.ensure_rng(rng)
+
+        p_multi = 0.5
+        max_holes = 3
+
+        nmulti_distri = kwarray.distributions.Binomial(p=p_multi, n=length)
+
+        nhole_distri = kwarray.distributions.DiscreteUniform(
+            0, max_holes, rng=rng)
+
+        num_multipoly = nmulti_distri.sample()
+        num_polys = length - num_multipoly
+
+        items = []
+        for _ in range(num_polys):
+            n_holes = nhole_distri.sample()
+            poly = kwimage.Polygon.random(n_holes=n_holes)
+            items.append(poly)
+
+        for _ in range(num_multipoly):
+            n_holes = nhole_distri.sample()
+            poly = kwimage.MultiPolygon.random(n_holes=n_holes)
+            items.append(poly)
+
+        # mixup polygons and multipolygons
+        rng.shuffle(items)
+
+        self = cls(items)
+        return self
+
     def to_mask_list(self, dims=None, pixels_are='points', origin_convention='center'):
         """
         Converts all items to masks
@@ -3107,6 +3162,24 @@ class PolygonList(_generic.ObjectList):
             PolygonList
         """
         return self
+
+    def to_boxes(self):
+        """
+        Returns axis aligned bounding boxes for each item in this list
+
+        Returns:
+            kwimage.Boxes
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.PolygonList.random(10)
+            >>> boxes = self.to_boxes()
+            >>> assert len(self) == len(boxes)
+        """
+        import kwimage
+        boxes_list = [p.to_boxes() for p in self.data]
+        boxes = kwimage.Boxes.concatenate(boxes_list)
+        return boxes
 
     def to_segmentation_list(self):
         """
@@ -3199,6 +3272,32 @@ class PolygonList(_generic.ObjectList):
         if assert_inplace and image_ is not image:
             raise AssertionError('Unable to perform requested inplace operation')
         return image
+
+    def draw(self, **kwargs):
+        """
+        Generic draw method for a PolygonList.
+        See :func:`kwimage.Polygon.draw`.
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> import kwimage
+            >>> self = kwimage.PolygonList.random(10)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> self.draw(alpha=0.5, edgecolor='black', setlim=True)
+            >>> kwplot.show_if_requested()
+        """
+        setlim = kwargs.pop('setlim', False)
+        result = super().draw(**kwargs)
+        if setlim:
+            import kwplot
+            ax = kwplot.plt.gca()
+            _boxes = self.to_boxes()
+            xmin, ymin, xmax, ymax = _boxes.bounding_box().to_ltrb().data[0]
+            _generic._setlim(xmin, ymin, xmax, ymax, setlim=setlim, ax=ax)
+        return result
 
     def draw_on(self, *args, **kw):
         """

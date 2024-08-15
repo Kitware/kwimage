@@ -356,6 +356,7 @@ def benchamrk_det_nms():
         marker=markers,
         # xscale='symlog',
     )
+    kwplot.plt.gca().set_yscale('symlog')
 
     kwplot.show_if_requested()
 
