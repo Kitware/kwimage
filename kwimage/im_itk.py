@@ -13,7 +13,11 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
         https://github.com/hinerm/ITK/blob/master/Wrapping/Generators/Python/Tests/ResampleImageFilter.py
         https://simpleitk.readthedocs.io/en/master/fundamentalConcepts.html
 
+    TODO:
+        What is the itk package we need to add as a dependency?
+
     Example:
+        >>> # xdoctest: +SKIP
         >>> # xdoctest: +REQUIRES(module:itk)
         >>> from kwimage.im_itk import *  # NOQA
         >>> import numpy as np
