@@ -666,8 +666,7 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
 
     Example:
         >>> import kwimage
-        >>> img1c = kwimage.checkerboard(bayer_value=0.5)
-        >>>     bayer_value='kw_green')
+        >>> img1c = kwimage.checkerboard(bayer_value=0.5, bayer_value='kw_green')
         >>> # xdoctest: +REQUIRES(--show)
         >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot

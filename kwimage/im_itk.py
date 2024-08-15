@@ -15,8 +15,6 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
 
     Example:
         >>> # xdoctest: +REQUIRES(module:itk)
-        >>> import sys, ubelt
-        >>> sys.path.append(ubelt.expandpath('~/code/kwimage'))
         >>> from kwimage.im_itk import *  # NOQA
         >>> import numpy as np
         >>> import kwarray
@@ -41,8 +39,8 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
         >>> abs_difference = np.abs(difference)
         >>> difference = kwarray.normalize(abs_difference)
         >>> #
-        >>> # xdoctest +REQUIRES(--show)
-        >>> # xdoctest +REQUIRES(module:kwplot)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> # xdoctest: +REQUIRES(module:kwplot)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> kwplot.imshow(image, pnum=(1, 4, 1), title='input image', fnum=1, doclf=1)
