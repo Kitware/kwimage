@@ -1563,10 +1563,27 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             # Empty polygon
             geom = shapely.geometry.Polygon()
         else:
-            geom = shapely.geometry.Polygon(
-                shell=shell_data,
-                holes=[c.data for c in self.data['interiors']]
-            )
+            holes = [c.data for c in self.data['interiors']]
+            try:
+                # Shapely requires 4 coordinates for a line-ring
+                geom = shapely.geometry.Polygon(shell=shell_data, holes=holes)
+            except TypeError:  # as ex:
+                # FIXME: our polygon representation can handle line strings and
+                # singualr poitns without a problem, but this becomes an issue
+                # when converting to shapely. Need to think about if there is a
+                # way to handle the conversion gracefully. There might not be.
+                #
+                # if fix and len(shell_data) < 4:
+                #     if len(holes):
+                #         raise TypeError(f'Even with fix=True, cannot handle a degenerate polygon with holds. Orig Error {ex}')
+                #     if len(shell_data) == 1:
+                #         raise TypeError(f'Even with fix=True, cannot handle a degenerate polygon with 1 point. Orig Error {ex}')
+                #     elif len(shell_data) == 2:
+                #         geom = shapely.geometry.LineString(shell_data).buffer(0.5)
+                #     else:
+                #         geom = shapely.geometry.LineString(shell_data)
+                # else:
+                raise
         if fix:
             if not geom.is_valid:
                 geom = geom.buffer(0)
