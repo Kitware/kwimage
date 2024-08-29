@@ -252,6 +252,8 @@ def atleast_3channels(arr, copy=True):
         >>> assert atleast_3channels(np.zeros((10, 10, 3))).shape[-1] == 3
         >>> assert atleast_3channels(np.zeros((10, 10, 4))).shape[-1] == 4
     """
+    # TODO: add argument that speifies which dimension is the channel
+    # dimension.
     ndims = len(arr.shape)
     if ndims == 2:
         res = np.tile(arr[:, :, None], 3)
