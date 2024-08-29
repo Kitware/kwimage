@@ -392,7 +392,9 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
             If specified NMS is done on a perclass basis.
 
         impl (str): implementation can be "auto", "python", "cython_cpu",
-            "gpu", "torch", or "torchvision".
+            "gpu", "torch", or "torchvision". Not all backends may be
+            available, see :func:`kwimage.algo.algo_nms.available_nms_impls`
+            for what is supported on your system.
 
         device_id (int): used if impl is gpu, device id to work on. If not
             specified `torch.cuda.current_device()` is used.
@@ -412,6 +414,9 @@ def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
         .. [NMSPython] https://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/
 
         .. [SoftNMS] https://github.com/bharatsingh430/soft-nms/blob/master/lib/nms/cpu_nms.pyx
+
+    SeeAlso:
+        :func:`kwimage.structs.detections.Detections.non_max_supression`.
 
     CommandLine:
         xdoctest -m ~/code/kwimage/kwimage/algo/algo_nms.py non_max_supression

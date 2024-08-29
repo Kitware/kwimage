@@ -397,8 +397,14 @@ class _DetAlgoMixin:
                 threshold. Higher values are are more permissive (more boxes
                 are returned). A value of 0 means that returned boxes will have
                 no overlap.
+
             perclass (bool): if True, works on a per-class basis
-            impl (str): nms implementation to use
+
+            impl (str): implementation can be "auto", "python", "cython_cpu",
+                "gpu", "torch", or "torchvision". Not all backends may be
+                available, see :func:`kwimage.algo.algo_nms.available_nms_impls`
+                for what is supported on your system.
+
             daq (bool | Dict): if False, uses reqgular nms, otherwise uses
                 divide and conquer algorithm. If `daq` is a Dict, then
                 it is used as the kwargs to `kwimage.daq_spatial_nms`
@@ -407,6 +413,9 @@ class _DetAlgoMixin:
 
         Returns:
             ndarray[Shape['*'], Integer]: indices of boxes to keep
+
+        SeeAlso:
+            :func:`kwimage.algo.algo_nms.non_max_supression`.
 
         Example:
             >>> import kwimage
