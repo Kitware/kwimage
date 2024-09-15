@@ -299,7 +299,7 @@ def _update_hashes():
         if ENSURE_IPFS:
             ipfs_cids = item.get('ipfs_cids', [])
             if not ipfs_cids:
-                info = ub.cmd('ipfs add {} --cid-version=1'.format(fpath), verbose=3)
+                info = ub.cmd('ipfs add {} --progress --cid-version=1'.format(fpath), verbose=3)
                 cid = info['out'].split(' ')[1]
                 ipfs_cids.append(cid)
                 item['ipfs_cids'] = ipfs_cids
@@ -307,15 +307,28 @@ def _update_hashes():
     print('_TEST_IMAGES = ' + ub.urepr(TEST_IMAGES, nl=3, sort=0))
 
     if ENSURE_IPFS:
-        commands = []
+        setup_single_dir_commands = []
+        kwimage_demo_image_ipfs_dpath = ub.Path.appdir('kwimage/demodata/ipfs-setup/kwimage-demo-images')
+        setup_single_dir_commands.append(f'rm -rf {kwimage_demo_image_ipfs_dpath}')
+        setup_single_dir_commands.append(f'mkdir -p {kwimage_demo_image_ipfs_dpath}')
+        pin_commands = []
         for key, item in TEST_IMAGES.items():
             cids = item.get('ipfs_cids')
             fname = item['fname']
             for cid in cids:
                 line = f'ipfs pin add --name {fname} --progress {cid}'
-                commands.append(line)
-        print('To pin on another machine:')
-        print('\n'.join(commands))
+                pin_commands.append(line)
+                setup_single_dir_commands.append(f'ipfs get {cid} -o {kwimage_demo_image_ipfs_dpath / fname}')
+        setup_single_dir_commands.append(f'ipfs add -r {kwimage_demo_image_ipfs_dpath} --progress --cid-version=1 | tee "kwimage_demodata_pin_job.log"')
+        setup_single_dir_commands.append("NEW_ROOT_CID=$(tail -n 1 kwimage_demodata_pin_job.log | cut -d ' ' -f 2)")
+        setup_single_dir_commands.append('echo "NEW_ROOT_CID=$NEW_ROOT_CID"')
+        setup_single_dir_commands.append('ipfs pin add --name kwimage-demo-images --progress -- "$NEW_ROOT_CID"')
+
+        print('\n\nTo pin individual images on another machine:')
+        print('\n'.join(pin_commands))
+
+        print('\n\nTo setup an IPFS directory that tracks all images:')
+        print('\n'.join(setup_single_dir_commands))
 
 
 def grab_test_image(key='astro', space='rgb', dsize=None,

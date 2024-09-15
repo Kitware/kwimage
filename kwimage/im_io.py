@@ -1171,51 +1171,65 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             image, src_space=src_space, dst_space=dst_space,
             implicit=False)
 
-    if backend == 'cv2':
-        import cv2
-        try:
-            flag = cv2.imwrite(fpath, image, **kwargs)
-        except cv2.error as ex:
-            if 'could not find a writer for the specified extension' in str(ex):
-                raise ValueError(
-                    'Image fpath {!r} does not have a known image extension '
-                    '(e.g. png/jpg)'.format(fpath))
-            else:
-                raise
-        else:
-            # TODO: generalize error handling and diagnostics for all backends
-            if not flag:
-                if not exists(dirname(fpath)):
-                    raise IOError((
-                        'kwimage failed to write with opencv backend. '
-                        'Reason: destination fpath {!r} is in a directory that '
-                        'does not exist.').format(fpath))
-                elif image.size > 4e10:
-                    raise IOError(
-                        'kwimage failed to write with opencv backend. '
-                        f'Reason: unknown, but could image with shape {image.shape} is too big.')
+    try:
+        if backend == 'cv2':
+            import cv2
+            try:
+                flag = cv2.imwrite(fpath, image, **kwargs)
+            except cv2.error as ex:
+                if 'could not find a writer for the specified extension' in str(ex):
+                    raise ValueError(
+                        'Image fpath {!r} does not have a known image extension '
+                        '(e.g. png/jpg)'.format(fpath))
                 else:
-                    raise IOError(
-                        'kwimage failed to write with opencv backend. '
-                        'Reason: unknown.')
+                    raise
+            else:
+                # TODO: generalize error handling and diagnostics for all backends
+                if not flag:
+                    if not exists(dirname(fpath)):
+                        raise IOError((
+                            'kwimage failed to write with opencv backend. '
+                            'Reason: destination fpath {!r} is in a directory that '
+                            'does not exist.').format(fpath))
+                    elif image.size > 4e10:
+                        raise IOError(
+                            'kwimage failed to write with opencv backend. '
+                            f'Reason: unknown, but could image with shape {image.shape} is too big.')
+                    else:
+                        raise IOError(
+                            'kwimage failed to write with opencv backend. '
+                            'Reason: unknown.')
 
-    elif backend == 'skimage':
-        import skimage.io
-        skimage.io.imsave(fpath, image, **kwargs)
-    elif backend == 'gdal':
-        _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
-    elif backend == 'pil':
-        from PIL import Image
-        pil_img = Image.fromarray(image)
-        pil_img.save(fpath)
-    elif backend == 'itk':
-        import itk
-        itk_obj = itk.image_view_from_array(image)
-        itk.imwrite(itk_obj, fpath, **kwargs)
-    elif backend == 'turbojpeg':
-        raise NotImplementedError
-    else:
-        raise KeyError('Unknown imwrite backend={!r}'.format(backend))
+        elif backend == 'skimage':
+            import skimage.io
+            skimage.io.imsave(fpath, image, **kwargs)
+        elif backend == 'gdal':
+            _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+        elif backend == 'pil':
+            from PIL import Image
+            pil_img = Image.fromarray(image)
+            pil_img.save(fpath)
+        elif backend == 'itk':
+            import itk
+            itk_obj = itk.image_view_from_array(image)
+            itk.imwrite(itk_obj, fpath, **kwargs)
+        elif backend == 'turbojpeg':
+            raise NotImplementedError
+        else:
+            raise KeyError('Unknown imwrite backend={!r}'.format(backend))
+    except Exception as ex:
+        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note.'
+        if ub.Path(fpath).is_dir():
+            msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because {fpath!r} is a directory.'
+        if not ub.Path(fpath).parent.exists():
+            msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because the parent of {fpath!r} does not exist.'
+        try:
+            from kwutil import util_exception
+            raise util_exception.add_exception_note(ex, msg)
+        except ImportError:
+            # TODO: add exception note instead
+            raise IOError(msg)
+        raise
 
     return fpath
 
