@@ -1,4 +1,8 @@
 """
+This file originally contained tools for warping with respect to tensors, but
+has been expanded to include the generic :func:`warp_affine` function that may
+use multiple backends.
+
 TODO:
     - [ ] Replace internal padded slice with kwarray.padded_slice
 """

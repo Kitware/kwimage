@@ -1,8 +1,8 @@
 
 
-def warp_affine_itk(image, transform, dsize=None, antialias=False,
-                    interpolation='linear', border_mode=None, border_value=0,
-                    origin_convention='center', return_info=False):
+def _itk_warp_affine(image, transform, dsize=None, antialias=False,
+                     interpolation='linear', border_mode=None, border_value=0,
+                     origin_convention='center', return_info=False):
     """
     ITK backend for warp affine
 
@@ -16,10 +16,14 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
     TODO:
         What is the itk package we need to add as a dependency?
 
+    CommandLine:
+        xdoctest -m kwimage.im_itk _itk_warp_affine:0 --show
+        xdoctest -m kwimage.im_itk _itk_warp_affine:1 --show
+
     Example:
-        >>> # xdoctest: +SKIP
         >>> # xdoctest: +REQUIRES(module:itk)
         >>> from kwimage.im_itk import *  # NOQA
+        >>> from kwimage.im_itk import _itk_warp_affine
         >>> import numpy as np
         >>> import kwarray
         >>> import kwarray.distributions
@@ -31,8 +35,8 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
         >>> # Compare Warp Methods
         >>> #interpolation = 'nearest'
         >>> interpolation = 'linear'
-        >>> result1 = warp_affine_itk(image, transform, interpolation=interpolation, origin_convention='corner')
-        >>> result2 = kwimage.warp_affine(image, transform, interpolation=interpolation, origin_convention='corner')
+        >>> result1 = kwimage.warp_affine(image, transform, interpolation=interpolation, origin_convention='corner', backend='itk')
+        >>> result2 = kwimage.warp_affine(image, transform, interpolation=interpolation, origin_convention='corner', backend='cv2')
         >>> # Test Results
         >>> import kwarray
         >>> print(kwarray.stats_dict(result1))
@@ -52,6 +56,48 @@ def warp_affine_itk(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(result2, pnum=(1, 4, 3), title='cv2 transform')
         >>> kwplot.imshow(abs_difference, pnum=(1, 4, 4), title='difference')
         >>> #kwplot.imshow((abs_difference > 0).astype(np.float32), pnum=(1, 4, 4), title='difference')
+        >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +SKIP(todo)
+        >>> import kwimage
+        >>> import ubelt as ub
+        >>> import numpy as np
+        >>> #image = kwimage.checkerboard(dsize=(8, 8), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> image = kwimage.checkerboard(dsize=(32, 32), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> #image = kwimage.checkerboard(dsize=(4, 4), num_squares=4, on_value='kitware_blue', off_value='kitware_green')
+        >>> grid = list(ub.named_product({
+        >>>     'border_value': [
+        >>>         0,
+        >>>         np.nan,
+        >>>         #'replicate'
+        >>>    ],
+        >>>     'interpolation': [
+        >>>         'nearest',
+        >>>         'linear',
+        >>>         #'cubic',
+        >>>         #'lanczos',
+        >>>         #'area'
+        >>>     ],
+        >>>     'origin_convention': ['center', 'corner'],
+        >>>     'backend': ['itk'],
+        >>> }))
+        >>> results = []
+        >>> results += [('input', image)]
+        >>> for kwargs in grid:
+        >>>     warped_image = kwimage.warp_affine(image, {'scale': 0.5}, dsize='auto', **kwargs)
+        >>>     title = ub.urepr(kwargs, compact=1, nl=1)
+        >>>     results.append((title, warped_image))
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> pnum_ = kwplot.PlotNums(nSubplots=len(results))
+        >>> for title, canvas in results:
+        >>>     canvas = kwimage.fill_nans_with_checkers(canvas).clip(0, 1)
+        >>>     kwplot.imshow(canvas, pnum=pnum_(), origin_convention='corner', title=title, show_ticks=True)
+        >>> fig = kwplot.plt.gcf()
+        >>> fig.subplots_adjust(hspace=0.37, wspace=0.25)
+        >>> fig.set_size_inches([18.11, 11.07])
         >>> kwplot.show_if_requested()
     """
     import itk

@@ -1586,11 +1586,12 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import kwimage
+        >>> import kwarray
         >>> # Test with uint16
         >>> shape = (100, 100, 1)
         >>> dtype = np.uint16
         >>> dinfo = np.iinfo(np.uint16)
-        >>> data = kwimage.normalize(kwimage.gaussian_patch(shape))
+        >>> data = kwarray.normalize(kwimage.gaussian_patch(shape))
         >>> data = ((data - dinfo.min) * (dinfo.max - dinfo.min)).astype(dtype)
         >>> dpath = ub.Path.appdir('kwimage/test/imwrite_cog').ensuredir()
         >>> fpath = dpath / 'tmp1.tif'

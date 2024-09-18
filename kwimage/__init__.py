@@ -67,7 +67,7 @@ __ignore__ = [
 ]
 
 
-__version__ = '0.10.3'
+__version__ = '0.11.0'
 
 # TODO: lazy initialization
 if not os.environ.get('_ARGCOMPLETE', ''):
@@ -80,8 +80,7 @@ if not os.environ.get('_ARGCOMPLETE', ''):
                           make_channels_comparable, normalize, normalize_intensity,
                           num_channels, padded_slice,)
     from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
-                         gaussian_patch, imcrop, imresize, imscale, morphology,
-                         warp_affine, warp_image, warp_projective,)
+                         gaussian_patch, imcrop, imresize, imscale, morphology,)
     from .im_demodata import (checkerboard, grab_test_image,
                               grab_test_image_fpath,)
     from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
@@ -93,6 +92,7 @@ if not os.environ.get('_ARGCOMPLETE', ''):
     from .im_io import (imread, imwrite, load_image_shape,)
     from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
     from .im_stack import (stack_images, stack_images_grid,)
+    from .im_transform import (warp_affine, warp_image, warp_projective,)
     from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
                           MultiPolygon, Points, PointsList, Polygon, PolygonList,
                           Segmentation, SegmentationList, smooth_prob,)

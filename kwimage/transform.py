@@ -1,5 +1,6 @@
 """
-Objects for representing and manipulating image transforms.
+Objects for representing and manipulating image transforms, namely image
+transformation matrices.
 """
 import ubelt as ub
 import numpy as np

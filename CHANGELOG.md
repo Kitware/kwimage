@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.10.3 - Unreleased
+## Version 0.11.0 - Unreleased
+
+### Added
+
+* `warp_affine` can now be used with `backend='itk'`.
+
+
+### Changed
+
+* Move `warp_affine`, `warp_projective`, and `warp_image` into their own module
+  to support the using multiple backends for the underlying operation.
 
 
 ## Version 0.10.2 - Released 2024-08-14
