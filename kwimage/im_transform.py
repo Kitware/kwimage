@@ -1,7 +1,6 @@
 """
 Contains functions that used to belong to im_cv2, but have been generalized to
 accept different backends.
-
 """
 
 
