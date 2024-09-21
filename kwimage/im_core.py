@@ -600,6 +600,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         ndarray: a floating point array with values between 0 and 1.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_core import *  # NOQA
         >>> import ubelt as ub
         >>> import kwimage

@@ -76,6 +76,7 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
               the entire canvas first.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> img1 = kwimage.grab_test_image('carl', space='rgb')
         >>> img2 = kwimage.grab_test_image('astro', space='rgb')
@@ -186,6 +187,7 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
         :func:`kwimage.im_stack.stack_images`
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> img1 = kwimage.grab_test_image('carl')
         >>> img2 = kwimage.grab_test_image('astro')

@@ -430,6 +430,7 @@ class Box:
         Draws a box directly on an image using OpenCV
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Box.random(scale=256, rng=10, format='ltrb')
             >>> canvas = np.zeros((256, 256, 3), dtype=np.uint8)

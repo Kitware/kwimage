@@ -370,6 +370,7 @@ class Projective(Linear):
         * TODO: - [ ] fully rational transform
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import math
         >>> image = kwimage.grab_test_image()
@@ -1022,6 +1023,7 @@ class Affine(Projective):
         * TODO: - [ ] fully rational transform
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import math
         >>> image = kwimage.grab_test_image()

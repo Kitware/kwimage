@@ -464,6 +464,7 @@ def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import torch
         >>> import kwarray
         >>> import kwimage
@@ -550,7 +551,7 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
         colorspace (str): string code of the input image colorspace
 
     Example:
-        >>> # xdoctest +REQUIRES(module:cv2)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -715,6 +716,7 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
 
     Example:
         >>> # xdoctest: +REQUIRES(module:matplotlib)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_draw import *  # NOQA
         >>> probs = np.tile(np.linspace(0, 1, 10), (10, 1))
         >>> heatmask = make_heatmask(probs, with_alpha=0.8, dsize=(100, 100))
@@ -768,6 +770,7 @@ def make_orimask(radians, mag=None, alpha=1.0):
 
     Example:
         >>> # xdoctest: +REQUIRES(module:matplotlib)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_draw import *  # NOQA
         >>> x, y = np.meshgrid(np.arange(64), np.arange(64))
         >>> dx, dy = x - 32, y - 32
@@ -852,6 +855,7 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
     DEPRECATED USE: draw_vector_field instead
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> x, y = np.meshgrid(np.arange(512), np.arange(512))
         >>> dx, dy = x - 256.01, y - 256.01
         >>> radians = np.arctan2(dx, dy)
@@ -970,6 +974,7 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
             is created and returned.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
         >>> width, height = 512, 512
@@ -1099,6 +1104,7 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
         ndarray
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
         >>> image = kwimage.grab_test_image()
@@ -1122,6 +1128,7 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Test fontScale
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
@@ -1264,6 +1271,7 @@ def fill_nans_with_checkers(canvas, square_shape=8,
         :func:`nodata_checkerboard` - similar, but operates on nans or masked arrays.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
         >>> orig_img = kwimage.ensure_float01(kwimage.grab_test_image())
@@ -1289,6 +1297,7 @@ def fill_nans_with_checkers(canvas, square_shape=8,
         >>> kwplot.imshow(canvas, pnum=(1, 2, 2), title='checkers highlight real nans')
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Test grayscale
         >>> from kwimage.im_draw import *  # NOQA
         >>> import kwimage
@@ -1399,6 +1408,7 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         values.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> # Test a masked array WITH nan values
         >>> data = kwimage.grab_test_image(space='rgb')
@@ -1424,6 +1434,7 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Simple test with a masked array
         >>> import kwimage
         >>> data = kwimage.grab_test_image(space='rgb', dsize=(64, 64))
@@ -1441,6 +1452,7 @@ def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Simple test with a bad mask
         >>> import kwimage
         >>> data = kwimage.grab_test_image(space='rgb', dsize=(64, 64))

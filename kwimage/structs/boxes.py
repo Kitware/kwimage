@@ -1902,6 +1902,7 @@ class _BoxDrawMixins:
     visualization.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Drawing boxes (and annotation objects in general) with kwimage is
         >>> # easy.  For boxes we assume that your data is in an [Nx4] array,
         >>> # but its important that you further specify a format so we know
@@ -2055,6 +2056,7 @@ class _BoxDrawMixins:
             ndarray: the image drawn onto.
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> import numpy as np
             >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
@@ -2072,6 +2074,7 @@ class _BoxDrawMixins:
             >>> kwplot.show_if_requested()
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> import numpy as np
             >>> self = kwimage.Boxes.random(num=10, rng=0).scale(128)
@@ -2105,6 +2108,7 @@ class _BoxDrawMixins:
             >>> kwplot.show_if_requested()
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
             >>> image = self.draw_on()

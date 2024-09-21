@@ -91,6 +91,7 @@ def warp_image(image, transform, dsize=None, antialias=False,
         :func:`kwimage.warp_projective`
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> import kwimage
         >>> import ubelt as ub
@@ -220,13 +221,13 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             return_info=return_info,
         )
     elif backend == 'itk':
-        raise NotImplementedError(backend)
+        raise NotImplementedError(f'no kwimage backend={backend} for warp_projective')
     elif backend == 'torch':
-        raise NotImplementedError(backend)
+        raise NotImplementedError(f'no kwimage backend={backend} for warp_projective')
     elif backend == 'skimage':
-        raise NotImplementedError(backend)
+        raise NotImplementedError(f'no kwimage backend={backend} for warp_projective')
     else:
-        raise KeyError(backend)
+        raise KeyError(f'no kwimage backend={backend} for warp_projective')
 
 
 def warp_affine(image, transform, dsize=None, antialias=False,
@@ -321,6 +322,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         .. [WhereArePixels] https://ppwwyyxx.com/blog/2021/Where-are-Pixels/
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> from kwimage.transform import Affine
         >>> image = kwimage.grab_test_image('astro')
@@ -338,6 +340,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> from kwimage.transform import Affine
         >>> image = kwimage.grab_test_image('astro')
@@ -354,6 +357,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Test the case where the input data is empty or the target canvas
         >>> # is empty, this should be handled like boundary effects
         >>> import kwimage
@@ -372,6 +376,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> assert result.shape == (0, 10, 3)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Demo difference between positive and content dsize
         >>> import kwimage
         >>> from kwimage.transform import Affine
@@ -413,6 +418,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Demo piecewise transform
         >>> import kwimage
         >>> from kwimage.transform import Affine
@@ -428,6 +434,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped_piecewise, pnum=(1, 3, 3), title='piecewise warp')
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> # TODO: Explain why the bottom left is interpolated with 0's
@@ -440,6 +447,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> warped = kwimage.warp_affine(image, transform, dsize=(12, 12))
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Demo how nans are handled
         >>> import kwimage
         >>> import numpy as np
@@ -470,6 +478,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Demo how of how we also handle masked arrays
         >>> import kwimage
         >>> import numpy as np
@@ -495,6 +504,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import ubelt as ub
         >>> import numpy as np
@@ -567,11 +577,11 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             return_info=return_info,
         )
     elif backend == 'torch':
-        raise NotImplementedError(backend)
+        raise NotImplementedError(f'no kwimage backend={backend} for warp_affine')
     elif backend == 'skimage':
-        raise NotImplementedError(backend)
+        raise NotImplementedError(f'no kwimage backend={backend} for warp_affine')
     else:
-        raise KeyError(backend)
+        raise KeyError(f'no kwimage backend={backend} for warp_affine')
 
 
 def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
@@ -657,6 +667,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         .. [ResizeConfusion] https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> # Test scale
@@ -692,6 +703,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> assert info['scale'].tolist() == [0.6  , 0.625]
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> # Test letterbox resize
@@ -715,6 +727,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Check aliasing
         >>> import kwimage
         >>> #img = kwimage.grab_test_image('checkerboard')
@@ -747,6 +760,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Test single pixel resize
         >>> import kwimage
         >>> import numpy as np
@@ -789,6 +803,7 @@ def _skimage_resize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
                     return_info=False, antialias=False, border_value=0):
     """
     Example:
+        >>> import numpy as np
         >>> from kwimage.im_transform import _skimage_resize
         >>> img = np.zeros((16, 10, 3), dtype=np.uint8)
         >>> new_img = _skimage_resize(img, dsize=(20, 21))

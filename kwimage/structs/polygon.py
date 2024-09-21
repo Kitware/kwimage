@@ -37,6 +37,7 @@ class _ShapelyMixin:
         .. [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.structs.polygon import *  # NOQA
         >>> import itertools as it
         >>> import kwimage
@@ -57,6 +58,7 @@ class _ShapelyMixin:
     def oriented_bounding_box(self):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Polygon.random().scale(100, 100).round()
             >>> obox = self.oriented_bounding_box()
@@ -459,11 +461,13 @@ class _PolyWarpMixin:
             inplace (bool): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.scale(10)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).translate((0.5))
             >>> new = self.scale(1.5, about='centroid')
@@ -583,6 +587,7 @@ class _PolyWarpMixin:
                  ymax,left ──────►xxxxxxxxxxxxxxx◄────── ymax,xmax
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.from_text(ub.codeblock(
             >>>     '''
@@ -615,6 +620,7 @@ class _PolyWarpMixin:
             [16  8]
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).scale(10).round().astype(np.int32)
             >>> print(tuple(map(float, self._rectify_about('centroid'))))
@@ -1301,6 +1307,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kwimage.Mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> mask = self.to_mask((128, 128))
@@ -1332,6 +1339,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kwimage.Mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random().scale(8).translate(100, 100)
             >>> mask = self.to_relative_mask()
@@ -1399,6 +1407,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kwimage.Polygon
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Polygon.random()
             >>> kwimage.Polygon.coerce(self)
@@ -2846,6 +2855,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             kwimage.Mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> s = 100
             >>> self = MultiPolygon.random(rng=0).scale(s)
@@ -2906,6 +2916,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             None | MultiPolygon
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> dims = (32, 32)
             >>> kw_poly = kwimage.Polygon.random().scale(dims)

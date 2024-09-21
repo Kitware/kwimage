@@ -3,6 +3,10 @@ def test_interlaced():
     """
     sudo apt install imagemagick
     """
+    from kwimage._backend_info import _have_cv2
+    if not _have_cv2():
+        import pytest
+        pytest.skip('requires cv2')
     import ubelt as ub
     import cv2
     import kwimage

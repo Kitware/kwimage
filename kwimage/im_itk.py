@@ -22,6 +22,7 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
 
     Example:
         >>> # xdoctest: +REQUIRES(module:itk)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_itk import *  # NOQA
         >>> from kwimage.im_itk import _itk_warp_affine
         >>> import numpy as np

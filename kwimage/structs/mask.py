@@ -471,6 +471,7 @@ class _MaskConstructorMixin(object):
             ../../test/test_rle.py
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> mask = Mask.random(shape=(32, 32), rng=0).data
             >>> offset = (30, 100)
             >>> shape = (501, 502)
@@ -527,6 +528,7 @@ class _MaskTransformMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import torch
             >>> self = Mask.random()
             >>> factor = 5
@@ -565,6 +567,7 @@ class _MaskTransformMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> import torch
             >>> self = mask = kwimage.Mask.random()
@@ -583,6 +586,7 @@ class _MaskTransformMixin(object):
             >>> # Verify that the warp transform does roughtly the same thing
             >>> # to a mask and an equivalent polygon
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> import torch
             >>> input_dims = (100, 100)
@@ -661,6 +665,7 @@ class _MaskTransformMixin(object):
             Mask: the transformed Mask object
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> shape = (10, 10)
             >>> offset = (1, 1)
@@ -668,6 +673,7 @@ class _MaskTransformMixin(object):
             >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.mask import MaskFormat  # NOQA
             >>> shape = (10, 10)
             >>> offset = (2, -3)
@@ -738,6 +744,7 @@ class _MaskDrawMixin(object):
             ndarray: the image with data drawn on it
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.mask import *  # NOQA
             >>> import kwimage
             >>> image = kwimage.grab_test_image()
@@ -750,6 +757,7 @@ class _MaskDrawMixin(object):
             >>> kwplot.show_if_requested()
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # Test the case where the mask and image are different sizes
             >>> from kwimage.structs.mask import *  # NOQA
             >>> import kwimage
@@ -760,6 +768,7 @@ class _MaskDrawMixin(object):
             >>> canvas = self.draw_on(image)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> color = 'blue'
             >>> self = kwimage.Mask.random(shape=(128, 128))
@@ -936,6 +945,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask: the random mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.random()
             >>> # xdoctest: +REQUIRES(--show)
@@ -1086,6 +1096,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask: the copied mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> other = self.copy()
             >>> assert other.data is not self.data
@@ -1178,6 +1189,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask: the intersection of the masks
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> n = 3
             >>> masks = [Mask.random(shape=(8, 8), rng=i) for i in range(n)]
             >>> items = masks
@@ -1278,18 +1290,21 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         Example:
             >>> # xdoctest: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> self.get_xywh().tolist()
             >>> self = Mask.random(rng=0).translate((10, 10))
             >>> self.get_xywh().tolist()
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # test empty case
             >>> import kwimage
             >>> self = kwimage.Mask(np.empty((0, 0), dtype=np.uint8), format='c_mask')
             >>> assert self.get_xywh().tolist() == [0, 0, 0, 0]
 
         Ignore:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
             >>> x_coords = np.array([621, 752])
@@ -1573,6 +1588,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         Example:
             >>> # Test empty cases
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask0 = kwimage.Mask(np.zeros((0, 0), dtype=np.uint8), format='c_mask')
             >>> mask1 = kwimage.Mask(np.zeros((1, 1), dtype=np.uint8), format='c_mask')
@@ -1600,6 +1616,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         Example:
             >>> # Test full ones cases
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask1 = kwimage.Mask(np.ones((1, 1), dtype=np.uint8), format='c_mask')
             >>> mask2 = kwimage.Mask(np.ones((2, 2), dtype=np.uint8), format='c_mask')
@@ -1622,6 +1639,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         Example:
             >>> # Corner case, only two pixels are on
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Mask(np.zeros((768, 768), dtype=np.uint8), format='c_mask')
             >>> x_coords = np.array([621, 752])
@@ -1636,6 +1654,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         Example:
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> dims = (10, 10)
             >>> data = np.zeros(dims, dtype=np.uint8)
@@ -1758,6 +1777,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         Example:
             >>> # xdoctest: +REQUIRES(--mask)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Mask.random(shape=(8, 8), rng=0)
             >>> polygons = self.get_convex_hull()
             >>> print('polygons = ' + ub.urepr(polygons))

@@ -14,6 +14,7 @@ def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
         https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_transforms/py_fourier_transform/py_fourier_transform.html
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image()
@@ -123,6 +124,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
             fourier_mask(out_hwc, mask, backend='cv2')
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image(space='gray')
@@ -140,6 +142,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image(space='gray')
@@ -157,6 +160,7 @@ def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_filter import *  # NOQA
         >>> import kwimage
         >>> img_hwc = kwimage.grab_test_image(space='gray')

@@ -77,6 +77,7 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
            functions like cv2.resize, cv2.warpAffine, etc...
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> flag = _coerce_interpolation('linear')
         >>> assert flag == cv2.INTER_LINEAR
         >>> flag = _coerce_interpolation(cv2.INTER_LINEAR)
@@ -141,6 +142,7 @@ def _coerce_border_mode(border_mode, default=cv2.BORDER_CONSTANT):
            functions like cv2.warpAffine, etc...
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> flag = _coerce_border_mode('constant')
         >>> assert flag == cv2.BORDER_CONSTANT
         >>> flag = _coerce_border_mode(cv2.BORDER_CONSTANT)
@@ -306,6 +308,7 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
             "negative slices".
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> #
@@ -684,6 +687,7 @@ def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         .. [ResizeConfusion] https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> # Test scale
@@ -719,6 +723,7 @@ def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> assert info['scale'].tolist() == [0.6  , 0.625]
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import numpy as np
         >>> # Test letterbox resize
@@ -742,6 +747,7 @@ def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Check aliasing
         >>> import kwimage
         >>> #img = kwimage.grab_test_image('checkerboard')
@@ -774,6 +780,7 @@ def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Test single pixel resize
         >>> import kwimage
         >>> import numpy as np
@@ -993,6 +1000,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
             (Note, that some extreme combinations of a and b are not valid)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import numpy as np
         >>> convert_colorspace(np.array([[[0, 0, 1]]], dtype=np.float32), 'RGB', 'LAB')
         >>> convert_colorspace(np.array([[[0, 1, 0]]], dtype=np.float32), 'RGB', 'LAB')
@@ -1094,6 +1102,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         xdoctest -m kwimage.im_cv2 gaussian_patch --show
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import numpy as np
         >>> shape = (88, 24)
         >>> sigma = None  # 1.0
@@ -1108,6 +1117,7 @@ def gaussian_patch(shape=(7, 7), sigma=None):
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import numpy as np
         >>> shape = (24, 24)
         >>> sigma = 3.0
@@ -1143,6 +1153,7 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
     Attempt to determine sigma and kernel size from heuristics
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> _auto_kernel_sigma(None, None)
         >>> _auto_kernel_sigma(3, None)
@@ -1254,6 +1265,7 @@ def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
         ndarray: the blurred image
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> image = kwimage.ensure_float01(kwimage.grab_test_image('astro'))
         >>> blurred1 = kwimage.gaussian_blur(image)
@@ -1668,6 +1680,7 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
     and stitch them back together with minimal artifacts.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # xdoctest: +REQUIRES(--large_memory)
         >>> import kwimage
         >>> img = np.random.randint(255, size=(32767, 32767), dtype=np.uint8)
@@ -1686,6 +1699,7 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
         >>> assert res.dtype == img.dtype
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import cv2
         >>> image = kwimage.grab_test_image('astro')
@@ -1813,6 +1827,7 @@ def _prepare_downscale(image, sx, sy):
     be done is returned.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> s = 523
         >>> image = np.random.rand(s, s)
         >>> sx = sy = 1 / 11
@@ -1962,6 +1977,7 @@ def _morph_kernel_core(w, h, element):
 def _morph_kernel(kernel, element='rect'):
     """
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> from kwimage.im_cv2 import _morph_kernel
         >>> from kwimage.im_cv2 import _CV2_MORPH_MODES  # NOQA
@@ -2023,6 +2039,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
             Otherwise this is ignored.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> import kwimage
         >>> #image = kwimage.grab_test_image(dsize=(380, 380))
@@ -2061,6 +2078,7 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> from kwimage.im_cv2 import _CV2_MORPH_MODES  # NOQA
         >>> from kwimage.im_cv2 import _CV2_STRUCT_ELEMENTS  # NOQA
@@ -2162,6 +2180,7 @@ def connected_components(image, connectivity=8, ltype=np.int32,
         xdoctest -m kwimage.im_cv2 connected_components:0 --show
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> from kwimage.im_cv2 import *  # NOQA
         >>> mask = kwimage.Mask.demo()

@@ -395,6 +395,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.points import *  # NOQA
             >>> s = 128
             >>> image = np.zeros((s, s))
@@ -424,6 +425,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.show_if_requested()
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> s = 32
             >>> self = kwimage.Points.random(10).scale(s)

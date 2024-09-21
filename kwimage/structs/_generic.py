@@ -251,6 +251,7 @@ class ObjectList(Spatial):
             ObjectList: combined object list
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> cls = kwimage.MaskList
             >>> sub_cls = kwimage.Mask

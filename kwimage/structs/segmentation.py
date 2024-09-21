@@ -58,6 +58,7 @@ class Segmentation(_WrapperObject):
     def random(cls, rng=None):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Segmentation.random()
             >>> print('self = {!r}'.format(self))
             >>> # xdoctest: +REQUIRES(--show)

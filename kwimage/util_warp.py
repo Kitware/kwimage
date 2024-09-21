@@ -154,6 +154,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Example:
         >>> # Create a relatively simple affine matrix
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import skimage
         >>> import torch
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
@@ -180,6 +181,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Example:
         >>> # Create a relatively simple affine matrix
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import skimage
         >>> import torch
         >>> mat = torch.FloatTensor(skimage.transform.AffineTransform(
@@ -207,6 +209,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     Example:
         >>> # Create a random affine matrix
         >>> # xdoctest: +REQUIRES(module:torch)
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import skimage
         >>> import torch
         >>> rng = np.random.RandomState(0)
