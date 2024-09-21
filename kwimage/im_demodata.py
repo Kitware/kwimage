@@ -332,7 +332,7 @@ def _update_hashes():
 
 
 def grab_test_image(key='astro', space='rgb', dsize=None,
-                    interpolation='lanczos'):
+                    interpolation='linear'):
     """
     Ensures that the test image exists (this might use the network), reads it
     and returns the the image pixels.

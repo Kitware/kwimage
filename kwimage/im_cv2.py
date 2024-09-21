@@ -601,9 +601,9 @@ def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64',
     return img, final_dtype
 
 
-def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
-             interpolation=None, grow_interpolation=None, letterbox=False,
-             return_info=False, antialias=False, border_value=0):
+def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
+                  interpolation=None, grow_interpolation=None, letterbox=False,
+                  return_info=False, antialias=False, border_value=0):
     """
     Resize an image via a scale factor, final size, or size and aspect ratio.
 

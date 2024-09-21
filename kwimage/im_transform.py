@@ -2,6 +2,7 @@
 Contains functions that used to belong to im_cv2, but have been generalized to
 accept different backends.
 """
+from kwimage._backend_info import _default_backend
 
 
 def warp_image(image, transform, dsize=None, antialias=False,
@@ -202,7 +203,7 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             the info dictionary.
     """
     if backend == 'auto':
-        backend = 'cv2'
+        backend = _default_backend()
 
     if backend == 'cv2':
         from kwimage.im_cv2 import _cv2_warp_projective
@@ -221,6 +222,8 @@ def warp_projective(image, transform, dsize=None, antialias=False,
     elif backend == 'itk':
         raise NotImplementedError(backend)
     elif backend == 'torch':
+        raise NotImplementedError(backend)
+    elif backend == 'skimage':
         raise NotImplementedError(backend)
     else:
         raise KeyError(backend)
@@ -532,7 +535,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
     """
     if backend == 'auto':
-        backend = 'cv2'
+        backend = _default_backend()
 
     if backend == 'cv2':
         from kwimage.im_cv2 import _cv2_warp_affine
@@ -565,5 +568,268 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         )
     elif backend == 'torch':
         raise NotImplementedError(backend)
+    elif backend == 'skimage':
+        raise NotImplementedError(backend)
     else:
         raise KeyError(backend)
+
+
+def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
+             interpolation=None, grow_interpolation=None, letterbox=False,
+             return_info=False, antialias=False, border_value=0, backend='auto'):
+    """
+    Resize an image via a scale factor, final size, or size and aspect ratio.
+
+    Wraps and generalizes cv2.resize, allows for specification of either a
+    scale factor, a final size, or the final size for a particular dimension.
+
+    Note:
+        As described in [ResizeConfusion]_, this each entry in the image array
+        as representing the center of a pixel. This is the pixels_are='area'
+        approach, or align_corners=False in pytorch. It is equivalent to a
+        shift and scale in warp_affine (which by default uses align corners).
+
+    Note:
+        The border mode cannot be specified here and seems to always be reflect
+        in the underlying cv2 implementation.
+
+    Args:
+        img (ndarray): image to resize
+
+        scale (float | Tuple[float, float]):
+            Desired floating point scale factor. If a tuple, the dimension
+            ordering is x,y.  Mutually exclusive with dsize, min_dim, max_dim.
+
+        dsize (Tuple[int | None, int | None] | None):
+            The desired width and height of the new image. If a dimension is
+            None, then it is automatically computed to preserve aspect ratio.
+            Mutually exclusive with scale, min_dim, max_dim.
+
+        max_dim (int):
+            New size of the maximum dimension, the other dimension is scaled to
+            maintain aspect ratio. Mutually exclusive with scale, dsize,
+            min_dim.
+
+        min_dim (int):
+            New size of the minimum dimension, the other dimension is scaled to
+            maintain aspect ratio. Mutually exclusive with scale, dsize,
+            max_dim.
+
+        interpolation (str | int):
+            The interpolation key or code (e.g. linear lanczos). By default
+            "area" is used if the image is shrinking and "lanczos" is used if
+            the image is growing. Note, if this is explicitly set, then it will
+            be used regardless of if the image is growing or shrinking. Set
+            ``grow_interpolation`` to change the default for an enlarging
+            interpolation.
+
+        grow_interpolation (str | int):
+            The interpolation key or code to use when the image is being
+            enlarged. Does nothing if "interpolation" is explicitly given. If
+            "interpolation" is not specified "area" is used when shrinking.
+            Defaults to "lanczos".
+
+        letterbox (bool):
+            If used in conjunction with dsize, then the image is scaled and
+            translated to fit in the center of the new image while maintaining
+            aspect ratio. Border padding is added if necessary.  Defaults to
+            False.
+
+        return_info (bool):
+            if True returns information about the final transformation in a
+            dictionary. If there is an offset, the scale is applied before the
+            offset when transforming to the new resized space.  Defaults to
+            False.
+
+        antialias (bool):
+            if True blurs to anti-alias before downsampling.
+            Defaults to False.
+
+        border_value (int | float | Iterable[int | float]):
+            if letterbox is True, this is used as the constant fill value.
+
+    Returns:
+        ndarray | Tuple[ndarray, Dict] :
+            the new image and optionally an info dictionary if
+            `return_info=True`
+
+    References:
+        .. [ResizeConfusion] https://jricheimer.github.io/tensorflow/2019/02/11/resize-confusion/
+
+    Example:
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Test scale
+        >>> img = np.zeros((16, 10, 3), dtype=np.uint8)
+        >>> new_img, info = kwimage.imresize(img, scale=.85,
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['scale'].tolist() == [.8, 0.875]
+        >>> # Test dsize without None
+        >>> new_img, info = kwimage.imresize(img, dsize=(5, 12),
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['scale'].tolist() == [0.5 , 0.75]
+        >>> # Test dsize with None
+        >>> new_img, info = kwimage.imresize(img, dsize=(6, None),
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['scale'].tolist() == [0.6, 0.625]
+        >>> # Test max_dim
+        >>> new_img, info = kwimage.imresize(img, max_dim=6,
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['scale'].tolist() == [0.4  , 0.375]
+        >>> # Test min_dim
+        >>> new_img, info = kwimage.imresize(img, min_dim=6,
+        >>>                                  interpolation='area',
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['scale'].tolist() == [0.6  , 0.625]
+
+    Example:
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Test letterbox resize
+        >>> img = np.ones((5, 10, 3), dtype=np.float32)
+        >>> new_img, info = kwimage.imresize(img, dsize=(19, 19),
+        >>>                                  letterbox=True,
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['offset'].tolist() == [0, 4]
+        >>> img = np.ones((10, 5, 3), dtype=np.float32)
+        >>> new_img, info = kwimage.imresize(img, dsize=(19, 19),
+        >>>                                  letterbox=True,
+        >>>                                  return_info=True)
+        >>> print('info = {!r}'.format(info))
+        >>> assert info['offset'].tolist() == [4, 0]
+
+        >>> import kwimage
+        >>> import numpy as np
+        >>> # Test letterbox resize
+        >>> img = np.random.rand(100, 200)
+        >>> new_img, info = kwimage.imresize(img, dsize=(300, 300), letterbox=True, return_info=True)
+
+    Example:
+        >>> # Check aliasing
+        >>> import kwimage
+        >>> #img = kwimage.grab_test_image('checkerboard')
+        >>> img = kwimage.grab_test_image('pm5644')
+        >>> # test with nans
+        >>> img = kwimage.ensure_float01(img)
+        >>> img[100:200, 400:700] = np.nan
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> dsize = (14, 14)
+        >>> dsize = (64, 64)
+        >>> # When we set "grow_interpolation" for a "shrinking" resize it should
+        >>> # still do the "area" interpolation to antialias the results. But if we
+        >>> # use explicit interpolation it should alias.
+        >>> pnum_ = kwplot.PlotNums(nSubplots=12, nCols=4)
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True,  interpolation='area'), pnum=pnum_(), title='resize aa area')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, interpolation='linear'), pnum=pnum_(), title='resize aa linear')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, interpolation='nearest'), pnum=pnum_(), title='resize aa nearest')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, interpolation='cubic'), pnum=pnum_(), title='resize aa cubic')
+
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, grow_interpolation='area'), pnum=pnum_(), title='resize aa grow area')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, grow_interpolation='linear'), pnum=pnum_(), title='resize aa grow linear')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, grow_interpolation='nearest'), pnum=pnum_(), title='resize aa grow nearest')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=True, grow_interpolation='cubic'), pnum=pnum_(), title='resize aa grow cubic')
+
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='area'), pnum=pnum_(), title='resize no-aa area')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='linear'), pnum=pnum_(), title='resize no-aa linear')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='nearest'), pnum=pnum_(), title='resize no-aa nearest')
+        >>> kwplot.imshow(kwimage.imresize(img, dsize=dsize, antialias=False, interpolation='cubic'), pnum=pnum_(), title='resize no-aa cubic')
+
+    Example:
+        >>> # Test single pixel resize
+        >>> import kwimage
+        >>> import numpy as np
+        >>> assert kwimage.imresize(np.random.rand(1, 1, 3), scale=3).shape == (3, 3, 3)
+        >>> assert kwimage.imresize(np.random.rand(1, 1), scale=3).shape == (3, 3)
+
+        # cv2.resize(np.random.rand(1, 1, 3), (3, 3))
+
+
+    TODO:
+        - [X] When interpolation is area and the number of channels > 4 cv2.resize will error but it is fine for linear interpolation
+        - [ ] TODO: add padding options when letterbox=True
+
+        - [ ] Allow for pre-clipping when letterbox=True
+    """
+    if backend == 'auto':
+        backend = _default_backend()
+
+    if backend == 'cv2':
+        from kwimage.im_cv2 import _cv2_imresize
+        return _cv2_imresize(
+            img=img, scale=scale, dsize=dsize, max_dim=max_dim, min_dim=min_dim,
+            interpolation=interpolation, grow_interpolation=grow_interpolation,
+            letterbox=letterbox, return_info=return_info, antialias=antialias,
+        )
+    elif backend == 'skimage':
+        return _skimage_resize(
+            img=img, scale=scale, dsize=dsize, max_dim=max_dim, min_dim=min_dim,
+            interpolation=interpolation, grow_interpolation=grow_interpolation,
+            letterbox=letterbox, return_info=return_info, antialias=antialias,
+        )
+    elif backend == 'torch':
+        raise NotImplementedError(backend)
+    else:
+        raise KeyError(backend)
+
+
+def _skimage_resize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
+                    interpolation=None, grow_interpolation=None, letterbox=False,
+                    return_info=False, antialias=False, border_value=0):
+    """
+    Example:
+        >>> from kwimage.im_transform import _skimage_resize
+        >>> img = np.zeros((16, 10, 3), dtype=np.uint8)
+        >>> new_img = _skimage_resize(img, dsize=(20, 21))
+        >>> assert new_img.shape[0:2] == (21, 20)
+    """
+    from skimage.transform import resize
+    not_implemented_params = [
+        letterbox, min_dim, max_dim, scale, grow_interpolation,
+        return_info, antialias
+    ]
+    for p in not_implemented_params:
+        if p:
+            raise NotImplementedError('skimage imresize params')
+
+    order = _coerce_skimage_interpolation_order(interpolation)
+
+    new_w, new_h = dsize
+    output_shape = (new_h, new_w)
+    new_img = resize(img, output_shape=output_shape, order=order)
+    return new_img
+
+
+def _coerce_skimage_interpolation_order(interpolation):
+    """
+    The order of interpolation. The order has to be in the range 0-5:
+     - 0: Nearest-neighbor
+     - 1: Bi-linear (default)
+     - 2: Bi-quadratic
+     - 3: Bi-cubic
+     - 4: Bi-quartic
+     - 5: Bi-quintic
+    """
+    if interpolation is None:
+        interpolation = 'linear'   # TODO: make consistent with the cv2 default interpolation, which is currently lanczos
+
+    if interpolation == 'nearest':
+        order = 0
+    elif interpolation == 'linear':
+        order = 1
+    elif interpolation == 'cubic':
+        order = 3
+    else:
+        raise NotImplementedError(interpolation)
+    return order

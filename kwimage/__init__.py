@@ -106,7 +106,6 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
             'gaussian_blur',
             'gaussian_patch',
             'imcrop',
-            'imresize',
             'imscale',
             'morphology',
         ],
@@ -150,6 +149,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
             'warp_affine',
             'warp_image',
             'warp_projective',
+            'imresize',
         ],
         'structs': [
             'Box',
