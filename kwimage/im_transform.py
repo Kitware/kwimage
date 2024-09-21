@@ -92,7 +92,6 @@ def warp_image(image, transform, dsize=None, antialias=False,
 
     Example:
         >>> # xdoctest: +REQUIRES(module:cv2)
-        >>> from kwimage.im_cv2 import *  # NOQA
         >>> import kwimage
         >>> import ubelt as ub
         >>> image = kwimage.grab_test_image('paraview')
@@ -729,6 +728,7 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     Example:
         >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # Check aliasing
+        >>> import numpy as np
         >>> import kwimage
         >>> #img = kwimage.grab_test_image('checkerboard')
         >>> img = kwimage.grab_test_image('pm5644')

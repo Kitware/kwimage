@@ -17,7 +17,6 @@ __all__ = [
     'gaussian_blur',
     'gaussian_patch',
     'imcrop',
-    'imresize',
     'imscale',
     'morphology',
 ]

@@ -18,6 +18,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Module init now uses lazy imports
 
+* Default `grab_test_image` interpolation changed from lanczos to linear.
+
+* cv2 is now officially optional, but a large amount of functionality will not be available without it.
+
 
 ## Version 0.10.2 - Released 2024-08-14
 
