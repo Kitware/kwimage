@@ -295,10 +295,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
             if _have_turbojpg():
                 backend = 'turbojpeg'
             else:
-                if _have_cv2():
-                    backend = 'cv2'
-                else:
-                    backend = 'skimage'
+                backend = _default_backend()
         elif _fpath_lower.endswith('.svg'):
             backend = 'svg'  # a bit hacky, not a raster format
         else:
@@ -319,21 +316,15 @@ def imread(fpath, space='auto', backend='auto', **kw):
                 with open(fpath, 'rb') as file:
                     header_bytes = file.read(4)
                 if header_bytes.startswith(JPEG_HEADER):
-                    backend = 'cv2'
+                    backend = _default_backend()
                 elif header_bytes.startswith(PNG_HEADER):
-                    backend = 'cv2'
+                    backend = _default_backend()
                 elif header_bytes.startswith(NITF_HEADER):
                     backend = 'gdal'
                 else:
-                    if _have_cv2():
-                        backend = 'cv2'
-                    else:
-                        backend = 'skimage'
+                    backend = _default_backend()
             else:
-                if _have_cv2():
-                    backend = 'cv2'
-                else:
-                    backend = 'skimage'
+                backend = _default_backend()
 
     if space == 'auto' and backend != 'cv2':
         # cv2 is the only backend that does weird things, we can
@@ -1135,7 +1126,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         elif _fpath_lower.endswith(ITK_EXTENSIONS):
             backend = 'itk'
         else:
-            backend = 'cv2'
+            backend = _default_backend()
 
     if space == 'auto':
         if backend != 'cv2':
@@ -1500,6 +1491,19 @@ def _have_cv2():
         return False
     else:
         return True
+
+
+@cache
+def _default_backend():
+    """
+    Define the default backend for simple cases.
+    In kwimage < 0.11.0, this was always cv2, but now cv2 is optional, so we
+    will fallback to skimage (or is PIL a better option?)
+    """
+    if _have_cv2():
+        return 'cv2'
+    else:
+        return 'skimage'
 
 
 @profile
