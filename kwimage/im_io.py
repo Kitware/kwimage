@@ -15,6 +15,11 @@ try:
 except ImportError:
     from ubelt import identity as profile
 
+try:
+    from functools import cache
+except ImportError:
+    from ubelt import memoize as cache
+
 __all__ = [
     'imread', 'imwrite', 'load_image_shape',
 ]
@@ -290,7 +295,10 @@ def imread(fpath, space='auto', backend='auto', **kw):
             if _have_turbojpg():
                 backend = 'turbojpeg'
             else:
-                backend = 'cv2'
+                if _have_cv2():
+                    backend = 'cv2'
+                else:
+                    backend = 'skimage'
         elif _fpath_lower.endswith('.svg'):
             backend = 'svg'  # a bit hacky, not a raster format
         else:
@@ -317,9 +325,15 @@ def imread(fpath, space='auto', backend='auto', **kw):
                 elif header_bytes.startswith(NITF_HEADER):
                     backend = 'gdal'
                 else:
-                    backend = 'cv2'
+                    if _have_cv2():
+                        backend = 'cv2'
+                    else:
+                        backend = 'skimage'
             else:
-                backend = 'cv2'
+                if _have_cv2():
+                    backend = 'cv2'
+                else:
+                    backend = 'skimage'
 
     if space == 'auto' and backend != 'cv2':
         # cv2 is the only backend that does weird things, we can
@@ -1062,9 +1076,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> import pytest
         >>> fpath = dpath / 'does-not-exist/img.jpg'
         >>> with pytest.raises(IOError):
-        ...     kwimage.imwrite(fpath, imdata, backend='cv2')
-        >>> with pytest.raises(IOError):
         ...     kwimage.imwrite(fpath, imdata, backend='skimage')
+        >>> # xdoctest: +REQUIRES(module:cv2)
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='cv2')
         >>> # xdoctest: +SKIP
         >>> # TODO: run tests conditionally
         >>> with pytest.raises(IOError):
@@ -1452,7 +1467,7 @@ def __inspect_optional_overhead():
     raise NotImplementedError
 
 
-@ub.memoize
+@cache
 def _have_turbojpg():
     """
     pip install PyTurboJPEG
@@ -1467,9 +1482,20 @@ def _have_turbojpg():
         return True
 
 
+@cache
 def _have_gdal():
     try:
         from osgeo import gdal  # NOQA
+    except Exception:
+        return False
+    else:
+        return True
+
+
+@cache
+def _have_cv2():
+    try:
+        import cv2  # NOQA
     except Exception:
         return False
     else:

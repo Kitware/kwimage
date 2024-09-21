@@ -1873,6 +1873,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.random(rng=0)
             >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
@@ -1881,6 +1882,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # Test case where there are multiple channels
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
             >>> self = mask.to_multi_polygon()
@@ -1890,6 +1892,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> # Test dtype with inplace vs not
             >>> mask = kwimage.Mask.random(shape=(32, 32), rng=0)
@@ -1915,6 +1918,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> # show difference between pixels_are and origin_convention
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> poly = kwimage.Polygon.star()
             >>> poly = poly.translate(-poly.box().to_xywh().data[0:2])
@@ -2031,6 +2035,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> image_in = np.zeros((128, 128), dtype=np.float32)
@@ -2042,6 +2047,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # Demo drawing on a RGBA canvas
             >>> # If you initialize an zero rgba canvas, the alpha values are
             >>> # filled correctly.
@@ -2055,6 +2061,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> assert not np.all(image_out[..., 3] == 0)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> color = 'blue'
             >>> self = kwimage.Polygon.random(n_holes=1).scale(128)
@@ -2100,6 +2107,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # Test empty polygon draw
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.from_coco([])
             >>> image_in = np.zeros((128, 128), dtype=np.float32)
@@ -2107,6 +2115,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # Test stupid large polygon draw
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> from kwimage.structs.polygon import _generic
             >>> import kwimage
@@ -2117,6 +2126,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> # show difference between pixels_are and origin_convention
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> poly = kwimage.Polygon.star()
             >>> poly = poly.translate(-poly.box().to_xywh().data[0:2])

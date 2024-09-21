@@ -1,9 +1,14 @@
+import pytest
 
 
 def test_cv2_func_dtypes():
     import kwimage
     from functools import partial
     import numpy as np
+    try:
+        import cv2  # NOQA
+    except ImportError:
+        pytest.skip('requires cv2')
 
     # TODO: make this work with more dtypes
     funcs = {

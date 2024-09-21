@@ -2,6 +2,7 @@ import kwimage
 import kwarray
 import numpy as np
 import ubelt as ub
+import pytest
 
 
 def image_variations(image_basis):
@@ -9,6 +10,10 @@ def image_variations(image_basis):
     Helper to make several variations of image inputs for opencv with different
     dtypes etc..
     """
+    try:
+        import cv2  # NOQA
+    except ImportError:
+        pytest.skip('requires cv2')
     rng = kwarray.ensure_rng(0)
 
     if image_basis is None:
@@ -40,6 +45,10 @@ def test_imresize_multi_channel():
     """
     Test that imresize works with multiple channels in various configurations
     """
+    try:
+        import cv2  # NOQA
+    except ImportError:
+        pytest.skip('requires cv2')
 
     resize_kw_basis = {
         'dsize': [
@@ -108,6 +117,10 @@ def test_imresize_multi_channel():
 
 
 def test_resize_shapes():
+    try:
+        import cv2  # NOQA
+    except ImportError:
+        pytest.skip('requires cv2')
     import kwimage
     data = np.random.rand(32, 32)
     new = kwimage.imresize(data, scale=2)
@@ -123,6 +136,10 @@ def test_resize_shapes():
 
 
 def test_resize_bool():
+    try:
+        import cv2  # NOQA
+    except ImportError:
+        pytest.skip('requires cv2')
     import kwimage
     img = (np.random.rand(32, 32, 1) > 0.5).astype(bool)
     new = kwimage.imresize(img, scale=2)
