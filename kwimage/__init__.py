@@ -30,78 +30,168 @@ Module features:
 __devnotes__ = """
 mkinit ~/code/kwimage/kwimage/algo/__init__.py --relative -w --nomod
 mkinit ~/code/kwimage/kwimage/structs/__init__.py --relative -w --nomod
-mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  -w
-mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  --diff
+mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  -w --lazy-loader
+mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  --diff --lazy-loader
 """
 
 import os
-try:
-    if not os.environ.get('_ARGCOMPLETE', ''):
-        import cv2  # NOQA
-except ImportError as ex:
-    import ubelt as ub
-    msg = ub.paragraph(
-        '''
-        The kwimage module failed to import the cv2 module.  This may be due to
-        an issue https://github.com/opencv/opencv-python/issues/467 which
-        prevents us from marking cv2 as package dependency.
-        To work around this we require that the user install this package with
-        one of the following extras tags:
-        `pip install kwimage[graphics]` xor
-        `pip install kwimage[headless]`.
+if os.environ.get('REQUIRE_CV2', ''):
+    try:
+        if not os.environ.get('_ARGCOMPLETE', ''):
+            import cv2  # NOQA
+    except ImportError as ex:
+        import ubelt as ub
+        msg = ub.paragraph(
+            '''
+            The kwimage module failed to import the cv2 module.  This may be due to
+            an issue https://github.com/opencv/opencv-python/issues/467 which
+            prevents us from marking cv2 as package dependency.
+            To work around this we require that the user install this package with
+            one of the following extras tags:
+            `pip install kwimage[graphics]` xor
+            `pip install kwimage[headless]`.
 
-        Alternatively, the user can directly install the cv2 package as a post
-        processing step via:
-        `pip install opencv-python-headless` xor
-        `pip install opencv-python`.
+            Alternatively, the user can directly install the cv2 package as a post
+            processing step via:
+            `pip install opencv-python-headless` xor
+            `pip install opencv-python`.
 
-        We appologize for this issue and hope this documentation is sufficient.
+            We appologize for this issue and hope this documentation is sufficient.
 
-        orig_ex={!r}
-        ''').format(ex)
-    raise ImportError(msg)
+            orig_ex={!r}
+            ''').format(ex)
+        raise ImportError(msg)
 
 __ignore__ = [
     'BASE_COLORS', 'XKCD_COLORS', 'TABLEAU_COLORS', 'CSS4_COLORS',
     'TORCH_GRID_SAMPLE_HAS_ALIGN',
 ]
 
-
 __version__ = '0.11.0'
 
-# TODO: lazy initialization
-if not os.environ.get('_ARGCOMPLETE', ''):
-    from .algo import (available_nms_impls, daq_spatial_nms, non_max_supression,)
-    from .im_alphablend import (ensure_alpha_channel, overlay_alpha_images,
-                                overlay_alpha_layers,)
-    from .im_color import (Color,)
-    from .im_core import (atleast_3channels, ensure_float01, ensure_uint255,
-                          exactly_1channel, find_robust_normalizers,
-                          make_channels_comparable, normalize, normalize_intensity,
-                          num_channels, padded_slice,)
-    from .im_cv2 import (connected_components, convert_colorspace, gaussian_blur,
-                         gaussian_patch, imcrop, imresize, imscale, morphology,)
-    from .im_demodata import (checkerboard, grab_test_image,
-                              grab_test_image_fpath,)
-    from .im_draw import (draw_boxes_on_image, draw_clf_on_image, draw_header_text,
-                          draw_line_segments_on_image, draw_text_on_image,
-                          draw_vector_field, fill_nans_with_checkers,
-                          make_heatmask, make_orimask, make_vector_field,
-                          nodata_checkerboard,)
-    from .im_filter import (fourier_mask, radial_fourier_mask,)
-    from .im_io import (imread, imwrite, load_image_shape,)
-    from .im_runlen import (decode_run_length, encode_run_length, rle_translate,)
-    from .im_stack import (stack_images, stack_images_grid,)
-    from .im_transform import (warp_affine, warp_image, warp_projective,)
-    from .structs import (Box, Boxes, Coords, Detections, Heatmap, Mask, MaskList,
-                          MultiPolygon, Points, PointsList, Polygon, PolygonList,
-                          Segmentation, SegmentationList, smooth_prob,)
-    from .transform import (Affine, Linear, Matrix, Projective, Transform,)
-    from .util_warp import (add_homog, remove_homog, subpixel_accum,
-                            subpixel_align, subpixel_getvalue, subpixel_maximum,
-                            subpixel_minimum, subpixel_set, subpixel_setvalue,
-                            subpixel_slice, subpixel_translate, warp_points,
-                            warp_tensor,)
+import lazy_loader
+
+__getattr__, __dir__, __all__ = lazy_loader.attach(
+    __name__,
+    submodules={},
+    submod_attrs={
+        'algo': [
+            'available_nms_impls',
+            'daq_spatial_nms',
+            'non_max_supression',
+        ],
+        'im_alphablend': [
+            'ensure_alpha_channel',
+            'overlay_alpha_images',
+            'overlay_alpha_layers',
+        ],
+        'im_color': [
+            'Color',
+        ],
+        'im_core': [
+            'atleast_3channels',
+            'ensure_float01',
+            'ensure_uint255',
+            'exactly_1channel',
+            'find_robust_normalizers',
+            'make_channels_comparable',
+            'normalize',
+            'normalize_intensity',
+            'num_channels',
+            'padded_slice',
+        ],
+        'im_cv2': [
+            'connected_components',
+            'convert_colorspace',
+            'gaussian_blur',
+            'gaussian_patch',
+            'imcrop',
+            'imresize',
+            'imscale',
+            'morphology',
+        ],
+        'im_demodata': [
+            'checkerboard',
+            'grab_test_image',
+            'grab_test_image_fpath',
+        ],
+        'im_draw': [
+            'draw_boxes_on_image',
+            'draw_clf_on_image',
+            'draw_header_text',
+            'draw_line_segments_on_image',
+            'draw_text_on_image',
+            'draw_vector_field',
+            'fill_nans_with_checkers',
+            'make_heatmask',
+            'make_orimask',
+            'make_vector_field',
+            'nodata_checkerboard',
+        ],
+        'im_filter': [
+            'fourier_mask',
+            'radial_fourier_mask',
+        ],
+        'im_io': [
+            'imread',
+            'imwrite',
+            'load_image_shape',
+        ],
+        'im_runlen': [
+            'decode_run_length',
+            'encode_run_length',
+            'rle_translate',
+        ],
+        'im_stack': [
+            'stack_images',
+            'stack_images_grid',
+        ],
+        'im_transform': [
+            'warp_affine',
+            'warp_image',
+            'warp_projective',
+        ],
+        'structs': [
+            'Box',
+            'Boxes',
+            'Coords',
+            'Detections',
+            'Heatmap',
+            'Mask',
+            'MaskList',
+            'MultiPolygon',
+            'Points',
+            'PointsList',
+            'Polygon',
+            'PolygonList',
+            'Segmentation',
+            'SegmentationList',
+            'smooth_prob',
+        ],
+        'transform': [
+            'Affine',
+            'Linear',
+            'Matrix',
+            'Projective',
+            'Transform',
+        ],
+        'util_warp': [
+            'add_homog',
+            'remove_homog',
+            'subpixel_accum',
+            'subpixel_align',
+            'subpixel_getvalue',
+            'subpixel_maximum',
+            'subpixel_minimum',
+            'subpixel_set',
+            'subpixel_setvalue',
+            'subpixel_slice',
+            'subpixel_translate',
+            'warp_points',
+            'warp_tensor',
+        ],
+    },
+)
 
 __all__ = ['Affine', 'Box', 'Boxes', 'Color', 'Coords', 'Detections',
            'Heatmap', 'Linear', 'Mask', 'MaskList', 'Matrix', 'MultiPolygon',

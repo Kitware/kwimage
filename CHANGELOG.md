@@ -16,6 +16,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Move `warp_affine`, `warp_projective`, and `warp_image` into their own module
   to support the using multiple backends for the underlying operation.
 
+* Module init now uses lazy imports
+
 
 ## Version 0.10.2 - Released 2024-08-14
 
