@@ -810,7 +810,7 @@ def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
     def _aa_resize(a, scale, dsize, interpolation):
         sx, sy = scale
         if sx < 1 or sy < 1:
-            a, sx, sy = _prepare_downscale(a, sx, sy)
+            a, sx, sy = _cv2_prepare_downscale(a, sx, sy)
         return cv2.resize(a, dsize=dsize, interpolation=interpolation)
 
     def _regular_resize(a, scale, dsize, interpolation):
@@ -1426,9 +1426,24 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         poly2 = poly.warp(recon)
         pts_warp1 = transform_.matrix @ pts.T
         pts_warp2 = transform_.matrix @ pts.T
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
+        >>> import kwimage
+        >>> from kwimage.transform import Affine
+        >>> image = kwimage.grab_test_image('astro')
+        >>> transform = Affine.random() @ Affine.scale(0.5) @ Affine.translate(-300)
+        >>> from kwimage.im_cv2 import _cv2_warp_affine
+        >>> warped = _cv2_warp_affine(image, transform, dsize='auto', antialias=1, interpolation='nearest')
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(warped)
+        >>> kwplot.show_if_requested()
     """
     from kwimage.transform import Affine
     import kwimage
+    from kwimage._common import _coerce_warp_dsize_inputs
 
     if isinstance(image, np.ma.MaskedArray):
         mask = image.mask
@@ -1445,76 +1460,25 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         border_mode, border_value, image)
 
     h, w = image.shape[0:2]
-
-    if isinstance(dsize, str) or large_warp_dim is not None:
-        # FIXME: we may need to modify this based on the origin convention for
-        # correctness.
-
-        # calculate dimensions needed for auto/max/try_large_warp
-        box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
-        warped_box = box.warp(transform)
-        if 0:
-            # import rich
-            # print('---------')
-            # rich.print(f'box={box}')
-            # rich.print(transform)
-            # rich.print(f'warped_box={warped_box}')
-            # TODO: should we enable this?  This seems to break if there is an
-            # axis or orientation flip because the Boxes was designed with
-            # slices in mind, so we need to maintain orientation information to
-            # handle this correctly.
-            warped_box._ensure_nonnegative_extent(inplace=True)
-            # rich.print(f'warped_box={warped_box}')
-            warped_box = warped_box.to_ltrb()
-            # rich.print(f'warped_box={warped_box}')
-            warped_box = warped_box.to_xywh().quantize()
-            # rich.print(f'warped_box={warped_box}')
-            max_dsize = tuple(map(int, warped_box.data[0, 2:4]))
-            # print('warped_box = {}'.format(ub.urepr(warped_box, nl=1)))
-            # print('max_dsize = {}'.format(ub.urepr(max_dsize, nl=1)))
-
-        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
-        new_origin = warped_box.to_ltrb().data[0, 0:2]
-    else:
-        max_dsize = None
-        new_origin = None
-
-    transform_ = transform
+    input_dsize = (w, h)
+    require_warped_info = large_warp_dim is not None
+    dsize_inputs = _coerce_warp_dsize_inputs(
+        dsize=dsize,
+        input_dsize=input_dsize,
+        transform=transform,
+        require_warped_info=require_warped_info
+    )
     affine_params = None
-
-    if dsize is None:
-        # If unspecified, leave the canvas size unchanged
-        dsize = (w, h)
-    elif isinstance(dsize, str):
-        # Handle special "auto-compute" dsize keys
-        if dsize in {'positive', 'auto'}:
-            # corners = warped_box.to_xywh().quantize().corners()
-            # print(f'corners={corners}')
-            # dsize = corners.max(axis=0)
-            dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
-            if 0:
-                # rich.print('affine_params = {}'.format(ub.urepr(affine_params, nl=1)))
-                if affine_params is None:
-                    affine_params = transform_.decompose()
-                sx, sy = affine_params['scale']
-                new_w, new_h = dsize
-                if sx < 0:
-                    new_w += 1
-                if sy < 0:
-                    new_h += 1
-                dsize = (new_w, new_h)
-        elif dsize in {'content', 'max'}:
-            dsize = max_dsize
-            transform_ = Affine.translate(-new_origin) @ transform
-            new_origin = np.array([0, 0])
-        else:
-            raise KeyError('Unknown dsize={}'.format(dsize))
-
+    max_dsize = dsize_inputs['max_dsize']
+    new_origin = dsize_inputs['new_origin']
+    transform_ = dsize_inputs['transform']
+    dsize = dsize_inputs['dsize']
     info = {
         'transform': transform_,
         'dsize': dsize,
         'antialias_info': None,
     }
+
     _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
                            borderMode, borderValue)
 
@@ -1586,7 +1550,7 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
                 noscale_warp = Affine.affine(**ub.dict_diff(affine_params, {'scale'}))
 
                 # Execute part of the downscale with iterative pyramid downs
-                downscaled, residual_sx, residual_sy = _prepare_downscale(
+                downscaled, residual_sx, residual_sy = _cv2_prepare_downscale(
                     image, sx, sy)
 
                 # Compute the transform from the downsampled image to the destination
@@ -1600,7 +1564,7 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
                 result = _cv2_try_warp_affine(downscaled, rest_warp, *_try_warp_tail_args)
 
                 if is_masked:
-                    downscaled_mask, _, _ = _prepare_downscale(mask, sx, sy)
+                    downscaled_mask, _, _ = _cv2_prepare_downscale(mask, sx, sy)
                     result_mask = _cv2_try_warp_affine(downscaled_mask, rest_warp, *_try_warp_tail_args)
     except Exception as ex:
         print('Error in warp_affine: ex = {}'.format(ub.urepr(ex, nl=1)))
@@ -1810,6 +1774,10 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
 
 
 def _prepare_scale_residual(sx, sy, fudge=0):
+    """
+    Helper to decompose a scale factor into pyramid downscales plus a residual
+    scale factor.
+    """
     max_scale = max(sx, sy)
     ideal_num_downs = int(np.log2(1 / max_scale))
     num_downs = max(ideal_num_downs - fudge, 0)
@@ -1819,7 +1787,7 @@ def _prepare_scale_residual(sx, sy, fudge=0):
     return num_downs, residual_sx, residual_sy
 
 
-def _prepare_downscale(image, sx, sy):
+def _cv2_prepare_downscale(image, sx, sy):
     """
     Does a partial downscale with antialiasing and prepares for a final
     downsampling. Only downscales by factors of 2, any residual scaling to
@@ -1830,7 +1798,7 @@ def _prepare_downscale(image, sx, sy):
         >>> s = 523
         >>> image = np.random.rand(s, s)
         >>> sx = sy = 1 / 11
-        >>> downsampled, rx, ry = _prepare_downscale(image, sx, sy)
+        >>> downsampled, rx, ry = _cv2_prepare_downscale(image, sx, sy)
     """
     # The "fudge" factor limits the number of downsampled pyramid
     # operations. A bigger fudge factor means means that the final
@@ -2343,8 +2311,8 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
             the info dictionary.
     """
     # TODO: consolidate with warp_affine and warp_image logic
-    from kwimage.transform import Affine
     import kwimage
+    from kwimage._common import _coerce_warp_dsize_inputs
 
     if isinstance(image, np.ma.MaskedArray):
         mask = image.mask
@@ -2361,33 +2329,18 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
         border_mode, border_value, image)
 
     h, w = image.shape[0:2]
-
-    if isinstance(dsize, str) or large_warp_dim is not None:
-        # calculate dimensions needed for auto/max/try_large_warp
-        box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
-        warped_box = box.warp(transform)
-        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
-        new_origin = warped_box.to_ltrb().data[0, 0:2]
-    else:
-        max_dsize = None
-        new_origin = None
-
-    transform_ = transform
-
-    if dsize is None:
-        # If unspecified, leave the canvas size unchanged
-        dsize = (w, h)
-    elif isinstance(dsize, str):
-        # Handle special "auto-compute" dsize keys
-        if dsize in {'positive', 'auto'}:
-            dsize = tuple(map(int, warped_box.to_ltrb().quantize().data[0, 2:4]))
-        elif dsize in {'content', 'max'}:
-            dsize = max_dsize
-            transform_ = Affine.translate(-new_origin) @ transform
-            new_origin = np.array([0, 0])
-        else:
-            raise KeyError('Unknown dsize={}'.format(dsize))
-
+    input_dsize = (w, h)
+    require_warped_info = large_warp_dim is not None
+    dsize_inputs = _coerce_warp_dsize_inputs(
+        dsize=dsize,
+        input_dsize=input_dsize,
+        transform=transform,
+        require_warped_info=require_warped_info
+    )
+    max_dsize = dsize_inputs['max_dsize']
+    new_origin = dsize_inputs['new_origin']
+    transform_ = dsize_inputs['transform']
+    dsize = dsize_inputs['dsize']
     info = {
         'transform': transform_,
         'dsize': dsize,

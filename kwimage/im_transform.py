@@ -328,8 +328,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> #image = kwimage.grab_test_image('checkerboard')
         >>> transform = Affine.random() @ Affine.scale(0.05)
         >>> transform = Affine.scale(0.02)
-        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='nearest')
-        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> warped1 = kwimage.warp_affine(image, transform, dsize='positive', antialias=1, interpolation='nearest')
+        >>> warped2 = kwimage.warp_affine(image, transform, dsize='positive', antialias=0)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -345,8 +345,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> image = kwimage.grab_test_image('astro')
         >>> image = kwimage.grab_test_image('checkerboard')
         >>> transform = Affine.random() @ Affine.scale((.1, 1.2))
-        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1)
-        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> warped1 = kwimage.warp_affine(image, transform, dsize='positive', antialias=1)
+        >>> warped2 = kwimage.warp_affine(image, transform, dsize='positive', antialias=0)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -387,8 +387,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> # will remain unchanged wrt other aligned images / geometries.
         >>> poly = kwimage.Boxes([[350, 5, 130, 290]], 'xywh').to_polygons()[0]
         >>> # Apply the warping to the images
-        >>> warped_pos, info_pos = warp_affine(image, transform, dsize='positive', return_info=True)
-        >>> warped_con, info_con = warp_affine(image, transform, dsize='content', return_info=True)
+        >>> warped_pos, info_pos = kwimage.warp_affine(image, transform, dsize='positive', return_info=True)
+        >>> warped_con, info_con = kwimage.warp_affine(image, transform, dsize='content', return_info=True)
         >>> assert info_pos['dsize'] == (919, 1072)
         >>> assert info_con['dsize'] == (1122, 1122)
         >>> assert info_pos['transform'] == transform
@@ -423,8 +423,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> from kwimage.transform import Affine
         >>> image = kwimage.grab_test_image('pm5644')
         >>> transform = Affine.coerce(offset=(-100, -50), scale=2, theta=0.1)
-        >>> warped_piecewise, info = warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=32)
-        >>> warped_normal, info = warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=None)
+        >>> warped_piecewise, info = kwimage.warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=32)
+        >>> warped_normal, info = kwimage.warp_affine(image, transform, dsize='positive', return_info=True, large_warp_dim=None)
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
@@ -454,8 +454,8 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> image = kwimage.ensure_float01(image)
         >>> image[100:300, 400:700] = np.nan
         >>> transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
-        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear', border_value=0)
-        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0, border_value=np.nan)
+        >>> warped1 = kwimage.warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear', border_value=0)
+        >>> warped2 = kwimage.warp_affine(image, transform, dsize='positive', antialias=0, border_value=np.nan)
         >>> assert np.isnan(warped1).any()
         >>> assert np.isnan(warped2).any()
         >>> assert warped1[np.isnan(warped1).any(axis=2)].all()
@@ -488,9 +488,9 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         >>> data = np.nan_to_num(_image)
         >>> image = np.ma.MaskedArray(data=data, mask=mask)
         >>> transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
-        >>> warped1 = warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
+        >>> warped1 = kwimage.warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
         >>> assert isinstance(warped1, np.ma.MaskedArray)
-        >>> warped2 = warp_affine(image, transform, dsize='positive', antialias=0)
+        >>> warped2 = kwimage.warp_affine(image, transform, dsize='positive', antialias=0)
         >>> print('warped1.shape = {!r}'.format(warped1.shape))
         >>> print('warped2.shape = {!r}'.format(warped2.shape))
         >>> assert warped2.shape == warped1.shape

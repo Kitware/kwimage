@@ -100,9 +100,25 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
         >>> fig.subplots_adjust(hspace=0.37, wspace=0.25)
         >>> fig.set_size_inches([18.11, 11.07])
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
+        >>> import kwimage
+        >>> from kwimage.im_itk import _itk_warp_affine
+        >>> from kwimage.transform import Affine
+        >>> image = kwimage.grab_test_image('astro')
+        >>> transform = Affine.random() @ Affine.translate(300)
+        >>> from kwimage.im_cv2 import _cv2_warp_affine
+        >>> warped = _itk_warp_affine(image, transform, dsize='auto', interpolation='nearest')
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(warped)
+        >>> kwplot.show_if_requested()
     """
     import itk
     import numpy as np
+    from kwimage._common import _coerce_warp_dsize_inputs
     if 0:
         [n for n in dir(itk) if 'resample' in n.lower()]
         [n for n in dir(itk) if 'affine' in n.lower()]
@@ -110,8 +126,6 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
         [n for n in dir(itk) if 'type' in n.lower()]
         [n for n in dir(itk) if 'RGB' in n.upper()]
         [n for n in dir(itk) if 'UC' in n.upper()]
-
-    numpy_matrix = np.asarray(transform)
 
     # ttype = itk.Image[ itk.UC,  2 ]
     # itk_image = itk.image_from_array(image.T, ttype=ttype)
@@ -130,8 +144,27 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
     output_spacing = itk.spacing(itk_image)
     output_origin = itk.origin(itk_image)
 
-    if dsize is not None:
-        raise NotImplementedError('TODO')
+    h, w = image.shape[0:2]
+    input_dsize = (w, h)
+    require_warped_info = False
+    dsize_inputs = _coerce_warp_dsize_inputs(
+        dsize=dsize,
+        input_dsize=input_dsize,
+        transform=transform,
+        require_warped_info=require_warped_info
+    )
+    # max_dsize = dsize_inputs['max_dsize']
+    # new_origin = dsize_inputs['new_origin']
+    transform_ = dsize_inputs['transform']
+    dsize = dsize_inputs['dsize']
+    info = {
+        'transform': transform_,
+        'dsize': dsize,
+        'antialias_info': None,
+    }
+
+    numpy_matrix = np.asarray(transform_)
+    output_size = dsize
 
     # Is the above or this perferred?
     # itk_image.UpdateOutputInformation()
@@ -157,18 +190,50 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
         raise NotImplementedError(interpolation)
 
     if antialias:
-        raise NotImplementedError('TODO: implement antialiasing')
+        affine_params = transform_.decompose()
+        sx, sy = affine_params['scale']
+        if sx < 1 or sy < 1:
+            # Requires antialias
+            raise NotImplementedError(
+                'TODO: need to implement antialiasing in ITK backend')
+            # AntiAliasFilterType = itk.AntiAliasBinaryImageFilter[ImageType, ImageType]
+            # antialiasfilter = AntiAliasFilterType.New()
+            # antialiasfilter.SetInput(reader.GetOutput())
+            # antialiasfilter.SetMaximumRMSError(args.maximum_RMS_error)
+            # antialiasfilter.SetNumberOfIterations(args.number_of_iterations)
+            # antialiasfilter.SetNumberOfLayers(args.number_of_layers)
 
     # Execute transformation
-    resampled = itk.resample_image_filter(
-        itk_image,
-        transform=itk_transform.GetInverseTransform(),
-        interpolator=itk_interpolator,
-        size=output_size,
-        output_spacing=output_spacing,
-        output_origin=output_origin,
-    )
+    if 0:
+        resampled = itk.resample_image_filter(
+            itk_image,
+            transform=itk_transform.GetInverseTransform(),
+            interpolator=itk_interpolator,
+            size=output_size,
+            output_spacing=output_spacing,
+            output_origin=output_origin,
+        )
+    else:
+        resample_filter = itk.ResampleImageFilter.New(
+            itk_image,
+            transform=itk_transform.GetInverseTransform(),
+            interpolator=itk_interpolator,
+            size=output_size,
+            output_spacing=output_spacing,
+            output_origin=output_origin,
+            # default_pixel_value=...,
+            # output_direction=...,
+            # output_start_index=...,
+            # reference_image=...,
+            # use_reference_image=...,
+        )
+        resample_filter.Update()
+        resampled = resample_filter.GetOutput()
 
     # Convert back to numpy
     result = itk.array_from_image(resampled)
-    return result
+
+    if return_info:
+        return result, info
+    else:
+        return result
