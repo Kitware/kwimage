@@ -61,6 +61,7 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
 
     Example:
         >>> # xdoctest: +SKIP(todo)
+        >>> # xdoctest: +REQUIRES(module:itk)
         >>> import kwimage
         >>> import ubelt as ub
         >>> import numpy as np
@@ -103,6 +104,7 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
 
     Example:
         >>> # xdoctest: +REQUIRES(module:cv2)
+        >>> # xdoctest: +REQUIRES(module:itk)
         >>> import kwimage
         >>> from kwimage.im_itk import _itk_warp_affine
         >>> from kwimage.transform import Affine
