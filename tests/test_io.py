@@ -95,6 +95,7 @@ def test_cross_backend_reads():
 
     # Using 3 or 4 channels is fine, 5... not so much
     data = np.random.rand(8, 8, 5)
+    # data = np.random.rand(64, 64, 5)
 
     import imageio
     import tifffile
