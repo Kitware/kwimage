@@ -13,6 +13,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * Fix issue of coercing detections when segmentations are null.
 
+* Patched issue where checkerboard would produce the wrong sized image, fix is not perfect.
+
 
 ### Changed
 

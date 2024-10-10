@@ -689,6 +689,19 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         >>> kwplot.imshow(img3c, pnum=(1, 2, 2), title='3 Channel Bayer Checkerboard')
         >>> kwplot.show_if_requested()
 
+    Example:
+        >>> import kwimage
+        >>> kwimage.checkerboard(dsize=(16, 4)).shape == (4, 16)
+        >>> kwimage.checkerboard(dsize=(16, 3)).shape == (3, 16)
+        >>> failed = []
+        >>> for i in range(32):
+        >>>    want_dsize = (16, i)
+        >>>    got = kwimage.checkerboard(dsize=want_dsize)
+        >>>    got_dsize = got.shape[0:2][::-1]
+        >>>    if got_dsize != want_dsize:
+        >>>        failed.append((got_dsize, want_dsize))
+        >>> assert not failed
+
     Ignore:
         import xdev
         globals().update(xdev.get_func_kwargs(kwimage.checkerboard))
@@ -728,6 +741,26 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
     img = np.kron(base, expansion)[0:want_h, 0:want_w]
     if len(base.shape) == 3:
         img = img.transpose([1, 2, 0])
+
+    # HACK: Force dsize to be correct.
+    # FIXME: fix the underlying problem
+
+    want_dsize = dsize
+    got_dsize = img.shape[0:2][::-1]
+    if got_dsize != want_dsize:
+        got_w, got_h = got_dsize
+        want_w, want_h = want_dsize
+        assert want_h >= got_h
+        assert want_w >= got_w
+
+        pad_w = want_w - got_w
+        pad_h = want_h - got_h
+
+        extra_w = img[:, 0:pad_w]
+        img = np.concatenate([img, extra_w], axis=1)
+        extra_h = img[0:pad_h, :]
+        img = np.concatenate([img, extra_h], axis=0)
+
     return img
 
 
@@ -756,16 +789,16 @@ def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w,
         if not ub.iterable(square_shape):
             square_shape = [square_shape, square_shape]
         h, w = square_shape
-        num_w = gen_w // w
-        num_h = gen_h // h
+        num_w = max(gen_w // w, 1)
+        num_h = max(gen_h // h, 1)
         num_squares = num_h, num_w
     elif square_shape == 'auto':
         assert num_squares != 'auto'
         if not ub.iterable(num_squares):
             num_squares = [num_squares, num_squares]
         num_h, num_w = num_squares
-        w = gen_w // num_w
-        h = gen_h // num_h
+        w = max(gen_w // num_w, 1)
+        h = max(gen_h // num_h, 1)
         square_shape = (h, w)
     else:
         if not ub.iterable(num_squares):
