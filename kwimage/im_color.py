@@ -709,6 +709,7 @@ class Color(ub.NiceRepr):
             Self - modified color
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> self = kwimage.Color.coerce('salmon')
@@ -722,6 +723,7 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(canvas)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> self = kwimage.Color.coerce('salmon', alpha=0.5)
@@ -735,6 +737,7 @@ class Color(ub.NiceRepr):
             >>> kwplot.imshow(canvas)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # xdoctest: +REQUIRES(module:colormath)
             >>> import kwimage
             >>> adjustments = [

@@ -4,6 +4,10 @@ import numpy as np
 
 
 def _random_drawables():
+    from kwimage._backend_info import _have_cv2
+    if not _have_cv2():
+        import pytest
+        pytest.skip('requires cv2')
     drawables = {
         'boxes': kwimage.Boxes.random(),
         'points': kwimage.Points.random(),
@@ -34,6 +38,10 @@ def test_draw_on_extreme_sizes():
     Test that draw_on doesn't fail with zero sized images or small images in
     general.
     """
+    from kwimage._backend_info import _have_cv2
+    if not _have_cv2():
+        import pytest
+        pytest.skip('requires cv2')
     drawables = _random_drawables()
     images = _random_extreme_images()
 

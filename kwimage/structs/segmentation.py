@@ -58,6 +58,7 @@ class Segmentation(_WrapperObject):
     def random(cls, rng=None):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Segmentation.random()
             >>> print('self = {!r}'.format(self))
             >>> # xdoctest: +REQUIRES(--show)
@@ -100,6 +101,8 @@ class Segmentation(_WrapperObject):
             self = Segmentation(data, 'multipolygon')
         else:
             data = _coerce_coco_segmentation(data, dims=dims)
+            if data is None:
+                return None
             self = cls.coerce(data, dims=dims)
         return self
 
@@ -275,5 +278,5 @@ def _coerce_coco_segmentation(data, dims=None):
         elif isinstance(data, Polygon):
             self = kwimage.Polygon.from_shapely(data)
         else:
-            raise TypeError('Unable to coerce {!r} into a segmentation'.format(type(data)))
+            raise TypeError(f'Unable to coerce type={type(data)!r} into a segmentation. data={data!r}')
     return self

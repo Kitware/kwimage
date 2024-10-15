@@ -5,6 +5,10 @@ def test_mask_with_bool_data():
     Ensure that `to_multi_polygon` doesn't break when the mask is a boolean
     type. We mainly just run these to ensure there is no crash.
     """
+    from kwimage._backend_info import _have_cv2
+    if not _have_cv2():
+        import pytest
+        pytest.skip('requires cv2')
     import kwimage
     import ubelt as ub
     import numpy as np

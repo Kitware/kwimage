@@ -299,7 +299,7 @@ def _update_hashes():
         if ENSURE_IPFS:
             ipfs_cids = item.get('ipfs_cids', [])
             if not ipfs_cids:
-                info = ub.cmd('ipfs add {} --cid-version=1'.format(fpath), verbose=3)
+                info = ub.cmd('ipfs add {} --progress --cid-version=1'.format(fpath), verbose=3)
                 cid = info['out'].split(' ')[1]
                 ipfs_cids.append(cid)
                 item['ipfs_cids'] = ipfs_cids
@@ -307,19 +307,32 @@ def _update_hashes():
     print('_TEST_IMAGES = ' + ub.urepr(TEST_IMAGES, nl=3, sort=0))
 
     if ENSURE_IPFS:
-        commands = []
+        setup_single_dir_commands = []
+        kwimage_demo_image_ipfs_dpath = ub.Path.appdir('kwimage/demodata/ipfs-setup/kwimage-demo-images')
+        setup_single_dir_commands.append(f'rm -rf {kwimage_demo_image_ipfs_dpath}')
+        setup_single_dir_commands.append(f'mkdir -p {kwimage_demo_image_ipfs_dpath}')
+        pin_commands = []
         for key, item in TEST_IMAGES.items():
             cids = item.get('ipfs_cids')
             fname = item['fname']
             for cid in cids:
                 line = f'ipfs pin add --name {fname} --progress {cid}'
-                commands.append(line)
-        print('To pin on another machine:')
-        print('\n'.join(commands))
+                pin_commands.append(line)
+                setup_single_dir_commands.append(f'ipfs get {cid} -o {kwimage_demo_image_ipfs_dpath / fname}')
+        setup_single_dir_commands.append(f'ipfs add -r {kwimage_demo_image_ipfs_dpath} --progress --cid-version=1 | tee "kwimage_demodata_pin_job.log"')
+        setup_single_dir_commands.append("NEW_ROOT_CID=$(tail -n 1 kwimage_demodata_pin_job.log | cut -d ' ' -f 2)")
+        setup_single_dir_commands.append('echo "NEW_ROOT_CID=$NEW_ROOT_CID"')
+        setup_single_dir_commands.append('ipfs pin add --name kwimage-demo-images --progress -- "$NEW_ROOT_CID"')
+
+        print('\n\nTo pin individual images on another machine:')
+        print('\n'.join(pin_commands))
+
+        print('\n\nTo setup an IPFS directory that tracks all images:')
+        print('\n'.join(setup_single_dir_commands))
 
 
 def grab_test_image(key='astro', space='rgb', dsize=None,
-                    interpolation='lanczos'):
+                    interpolation='linear'):
     """
     Ensures that the test image exists (this might use the network), reads it
     and returns the the image pixels.
@@ -676,6 +689,19 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
         >>> kwplot.imshow(img3c, pnum=(1, 2, 2), title='3 Channel Bayer Checkerboard')
         >>> kwplot.show_if_requested()
 
+    Example:
+        >>> import kwimage
+        >>> kwimage.checkerboard(dsize=(16, 4)).shape == (4, 16)
+        >>> kwimage.checkerboard(dsize=(16, 3)).shape == (3, 16)
+        >>> failed = []
+        >>> for i in range(32):
+        >>>    want_dsize = (16, i)
+        >>>    got = kwimage.checkerboard(dsize=want_dsize)
+        >>>    got_dsize = got.shape[0:2][::-1]
+        >>>    if got_dsize != want_dsize:
+        >>>        failed.append((got_dsize, want_dsize))
+        >>> assert not failed
+
     Ignore:
         import xdev
         globals().update(xdev.get_func_kwargs(kwimage.checkerboard))
@@ -715,6 +741,35 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
     img = np.kron(base, expansion)[0:want_h, 0:want_w]
     if len(base.shape) == 3:
         img = img.transpose([1, 2, 0])
+
+    HACK_FORCE_CORRECT_DSIZE = 1
+    if HACK_FORCE_CORRECT_DSIZE:
+        # HACK: Force dsize to be correct.
+        # FIXME: fix the underlying problem
+        want_dsize = dsize
+        got_dsize = img.shape[0:2][::-1]
+        if got_dsize != want_dsize:
+            got_w, got_h = got_dsize
+            want_w, want_h = want_dsize
+
+            if want_w == got_w:
+                ...
+            if want_w > got_w:
+                pad_w = want_w - got_w
+                extra_w = img[:, 0:pad_w]
+                img = np.concatenate([img, extra_w], axis=1)
+            else:
+                img = img[:, :want_w]
+
+            if want_h == got_h:
+                ...
+            if want_h > got_h:
+                pad_h = want_h - got_h
+                extra_h = img[0:pad_h, :]
+                img = np.concatenate([img, extra_h], axis=0)
+            else:
+                img = img[:want_h, :]
+
     return img
 
 
@@ -743,16 +798,16 @@ def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w,
         if not ub.iterable(square_shape):
             square_shape = [square_shape, square_shape]
         h, w = square_shape
-        num_w = gen_w // w
-        num_h = gen_h // h
+        num_w = max(gen_w // w, 1)
+        num_h = max(gen_h // h, 1)
         num_squares = num_h, num_w
     elif square_shape == 'auto':
         assert num_squares != 'auto'
         if not ub.iterable(num_squares):
             num_squares = [num_squares, num_squares]
         num_h, num_w = num_squares
-        w = gen_w // num_w
-        h = gen_h // num_h
+        w = max(gen_w // num_w, 1)
+        h = max(gen_h // num_h, 1)
         square_shape = (h, w)
     else:
         if not ub.iterable(num_squares):

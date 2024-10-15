@@ -48,3 +48,5 @@ distinctipy>=1.2.1 ; python_version < '4.0' and python_version >= '3.8'  # Pytho
 parse>=1.14.0
 
 affine>=2.3.0
+
+lazy_loader>=0.3

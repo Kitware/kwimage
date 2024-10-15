@@ -252,6 +252,8 @@ def atleast_3channels(arr, copy=True):
         >>> assert atleast_3channels(np.zeros((10, 10, 3))).shape[-1] == 3
         >>> assert atleast_3channels(np.zeros((10, 10, 4))).shape[-1] == 4
     """
+    # TODO: add argument that speifies which dimension is the channel
+    # dimension.
     ndims = len(arr.shape)
     if ndims == 2:
         res = np.tile(arr[:, :, None], 3)
@@ -324,7 +326,7 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
     Allows slices with out-of-bound coordinates.  Any out of bounds coordinate
     will be sampled via padding.
 
-    DEPRECATED FOR THE VERSION IN KWARRAY (slices are more array-ish than
+    REMOVED FOR THE VERSION IN KWARRAY (slices are more array-ish than
     image-ish)
 
     Note:
@@ -350,44 +352,6 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
 
         return_info (bool): if True, return extra information
             about the transform. Defaults to False.
-
-    SeeAlso:
-        _padded_slice_embed - finds the embedded slice and padding
-        _padded_slice_apply - applies padding to sliced data
-
-    Returns:
-
-        Sliceable:
-            data_sliced: subregion of the input data (possibly with padding,
-                depending on if the original slice went out of bounds)
-
-
-        Tuple[Sliceable, Dict] :
-            data_sliced : as above
-
-            transform : information on how to return to the original coordinates
-
-                Currently a dict containing:
-                    st_dims: a list indicating the low and high space-time
-                        coordinate values of the returned data slice.
-
-                The structure of this dictionary mach change in the future
-
-    Example:
-        >>> data = np.arange(5)
-        >>> in_slice = [slice(-2, 7)]
-
-        >>> data_sliced = padded_slice(data, in_slice)
-        >>> print(ub.urepr(data_sliced, with_dtype=False))
-        np.array([0, 0, 0, 1, 2, 3, 4, 0, 0])
-
-        >>> data_sliced = padded_slice(data, in_slice, pad=(3, 3))
-        >>> print(ub.urepr(data_sliced, with_dtype=False))
-        np.array([0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 0, 0, 0, 0, 0])
-
-        >>> data_sliced = padded_slice(data, slice(3, 4), pad=[(1, 0)])
-        >>> print(ub.urepr(data_sliced, with_dtype=False))
-        np.array([2, 3])
     """
     ub.schedule_deprecation(
         'kwimage', 'padded_slice', 'function',
@@ -569,30 +533,7 @@ def find_robust_normalizers(data, params='auto'):
     """
     Finds robust normalization statistics for a single observation
 
-    DEPRECATED IN FAVOR of kwarray.find_robust_normalizers
-
-    Args:
-        data (ndarray): a 1D numpy array where invalid data has already been removed
-
-        params (str | dict): normalization params
-
-    Returns:
-        Dict[str, str | float]: normalization parameters
-
-    TODO:
-        - [ ] No Magic Numbers! Use first principles to deterimine defaults.
-        - [ ] Probably a lot of literature on the subject.
-        - [ ] Is this a kwarray function in general?
-
-    Example:
-        >>> from kwimage.im_core import *  # NOQA
-        >>> data = np.random.rand(100)
-        >>> norm_params1 = find_robust_normalizers(data, params='auto')
-        >>> norm_params2 = find_robust_normalizers(data, params={'low': 0, 'high': 1.0})
-        >>> norm_params3 = find_robust_normalizers(np.empty(0), params='auto')
-        >>> print('norm_params1 = {}'.format(ub.urepr(norm_params1, nl=1)))
-        >>> print('norm_params2 = {}'.format(ub.urepr(norm_params2, nl=1)))
-        >>> print('norm_params3 = {}'.format(ub.urepr(norm_params3, nl=1)))
+    REMOVED IN FAVOR of kwarray.find_robust_normalizers
     """
     import kwarray
     ub.schedule_deprecation(
@@ -659,6 +600,7 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
         ndarray: a floating point array with values between 0 and 1.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.im_core import *  # NOQA
         >>> import ubelt as ub
         >>> import kwimage

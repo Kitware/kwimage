@@ -209,7 +209,6 @@ if __name__ == "__main__":
         "all": parse_requirements("requirements.txt", versions="loose"),
         "headless": parse_requirements("requirements/headless.txt", versions="loose"),
         "graphics": parse_requirements("requirements/graphics.txt", versions="loose"),
-        "build": parse_requirements("requirements/build.txt", versions="loose"),
         "docs": parse_requirements("requirements/docs.txt", versions="loose"),
         "gdal-strict": parse_requirements("requirements/gdal.txt", versions="strict"),
         "gdal": parse_requirements("requirements/gdal.txt", versions="loose"),
@@ -226,7 +225,6 @@ if __name__ == "__main__":
         "graphics-strict": parse_requirements(
             "requirements/graphics.txt", versions="strict"
         ),
-        "build-strict": parse_requirements("requirements/build.txt", versions="strict"),
         "docs-strict": parse_requirements("requirements/docs.txt", versions="strict"),
         "gdal-strict-strict": parse_requirements(
             "requirements/gdal-strict.txt", versions="strict"

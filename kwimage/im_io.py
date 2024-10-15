@@ -15,6 +15,11 @@ try:
 except ImportError:
     from ubelt import identity as profile
 
+from kwimage._backend_info import _have_gdal
+from kwimage._backend_info import _have_cv2  # NOQA
+from kwimage._backend_info import _have_turbojpg
+from kwimage._backend_info import _default_backend
+
 __all__ = [
     'imread', 'imwrite', 'load_image_shape',
 ]
@@ -290,7 +295,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
             if _have_turbojpg():
                 backend = 'turbojpeg'
             else:
-                backend = 'cv2'
+                backend = _default_backend()
         elif _fpath_lower.endswith('.svg'):
             backend = 'svg'  # a bit hacky, not a raster format
         else:
@@ -311,15 +316,15 @@ def imread(fpath, space='auto', backend='auto', **kw):
                 with open(fpath, 'rb') as file:
                     header_bytes = file.read(4)
                 if header_bytes.startswith(JPEG_HEADER):
-                    backend = 'cv2'
+                    backend = _default_backend()
                 elif header_bytes.startswith(PNG_HEADER):
-                    backend = 'cv2'
+                    backend = _default_backend()
                 elif header_bytes.startswith(NITF_HEADER):
                     backend = 'gdal'
                 else:
-                    backend = 'cv2'
+                    backend = _default_backend()
             else:
-                backend = 'cv2'
+                backend = _default_backend()
 
     if space == 'auto' and backend != 'cv2':
         # cv2 is the only backend that does weird things, we can
@@ -1062,9 +1067,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         >>> import pytest
         >>> fpath = dpath / 'does-not-exist/img.jpg'
         >>> with pytest.raises(IOError):
-        ...     kwimage.imwrite(fpath, imdata, backend='cv2')
-        >>> with pytest.raises(IOError):
         ...     kwimage.imwrite(fpath, imdata, backend='skimage')
+        >>> # xdoctest: +REQUIRES(module:cv2)
+        >>> with pytest.raises(IOError):
+        ...     kwimage.imwrite(fpath, imdata, backend='cv2')
         >>> # xdoctest: +SKIP
         >>> # TODO: run tests conditionally
         >>> with pytest.raises(IOError):
@@ -1120,7 +1126,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         elif _fpath_lower.endswith(ITK_EXTENSIONS):
             backend = 'itk'
         else:
-            backend = 'cv2'
+            backend = _default_backend()
 
     if space == 'auto':
         if backend != 'cv2':
@@ -1171,51 +1177,65 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
             image, src_space=src_space, dst_space=dst_space,
             implicit=False)
 
-    if backend == 'cv2':
-        import cv2
-        try:
-            flag = cv2.imwrite(fpath, image, **kwargs)
-        except cv2.error as ex:
-            if 'could not find a writer for the specified extension' in str(ex):
-                raise ValueError(
-                    'Image fpath {!r} does not have a known image extension '
-                    '(e.g. png/jpg)'.format(fpath))
-            else:
-                raise
-        else:
-            # TODO: generalize error handling and diagnostics for all backends
-            if not flag:
-                if not exists(dirname(fpath)):
-                    raise IOError((
-                        'kwimage failed to write with opencv backend. '
-                        'Reason: destination fpath {!r} is in a directory that '
-                        'does not exist.').format(fpath))
-                elif image.size > 4e10:
-                    raise IOError(
-                        'kwimage failed to write with opencv backend. '
-                        f'Reason: unknown, but could image with shape {image.shape} is too big.')
+    try:
+        if backend == 'cv2':
+            import cv2
+            try:
+                flag = cv2.imwrite(fpath, image, **kwargs)
+            except cv2.error as ex:
+                if 'could not find a writer for the specified extension' in str(ex):
+                    raise ValueError(
+                        'Image fpath {!r} does not have a known image extension '
+                        '(e.g. png/jpg)'.format(fpath))
                 else:
-                    raise IOError(
-                        'kwimage failed to write with opencv backend. '
-                        'Reason: unknown.')
+                    raise
+            else:
+                # TODO: generalize error handling and diagnostics for all backends
+                if not flag:
+                    if not exists(dirname(fpath)):
+                        raise IOError((
+                            'kwimage failed to write with opencv backend. '
+                            'Reason: destination fpath {!r} is in a directory that '
+                            'does not exist.').format(fpath))
+                    elif image.size > 4e10:
+                        raise IOError(
+                            'kwimage failed to write with opencv backend. '
+                            f'Reason: unknown, but could image with shape {image.shape} is too big.')
+                    else:
+                        raise IOError(
+                            'kwimage failed to write with opencv backend. '
+                            'Reason: unknown.')
 
-    elif backend == 'skimage':
-        import skimage.io
-        skimage.io.imsave(fpath, image, **kwargs)
-    elif backend == 'gdal':
-        _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
-    elif backend == 'pil':
-        from PIL import Image
-        pil_img = Image.fromarray(image)
-        pil_img.save(fpath)
-    elif backend == 'itk':
-        import itk
-        itk_obj = itk.image_view_from_array(image)
-        itk.imwrite(itk_obj, fpath, **kwargs)
-    elif backend == 'turbojpeg':
-        raise NotImplementedError
-    else:
-        raise KeyError('Unknown imwrite backend={!r}'.format(backend))
+        elif backend == 'skimage':
+            import skimage.io
+            skimage.io.imsave(fpath, image, **kwargs)
+        elif backend == 'gdal':
+            _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
+        elif backend == 'pil':
+            from PIL import Image
+            pil_img = Image.fromarray(image)
+            pil_img.save(fpath)
+        elif backend == 'itk':
+            import itk
+            itk_obj = itk.image_view_from_array(image)
+            itk.imwrite(itk_obj, fpath, **kwargs)
+        elif backend == 'turbojpeg':
+            raise NotImplementedError
+        else:
+            raise KeyError('Unknown imwrite backend={!r}'.format(backend))
+    except Exception as ex:
+        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note.'
+        if ub.Path(fpath).is_dir():
+            msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because {fpath!r} is a directory.'
+        if not ub.Path(fpath).parent.exists():
+            msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because the parent of {fpath!r} does not exist.'
+        try:
+            from kwutil import util_exception
+            raise util_exception.add_exception_note(ex, msg)
+        except ImportError:
+            # TODO: add exception note instead
+            raise IOError(msg)
+        raise
 
     return fpath
 
@@ -1438,30 +1458,6 @@ def __inspect_optional_overhead():
     raise NotImplementedError
 
 
-@ub.memoize
-def _have_turbojpg():
-    """
-    pip install PyTurboJPEG
-
-    """
-    try:
-        import turbojpeg  # NOQA
-        turbojpeg.TurboJPEG()
-    except Exception:
-        return False
-    else:
-        return True
-
-
-def _have_gdal():
-    try:
-        from osgeo import gdal  # NOQA
-    except Exception:
-        return False
-    else:
-        return True
-
-
 @profile
 def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
                                      blocksize=256, overviews=None,
@@ -1572,11 +1568,12 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
         >>> from kwimage.im_io import *  # NOQA
         >>> from kwimage.im_io import _imwrite_cloud_optimized_geotiff
         >>> import kwimage
+        >>> import kwarray
         >>> # Test with uint16
         >>> shape = (100, 100, 1)
         >>> dtype = np.uint16
         >>> dinfo = np.iinfo(np.uint16)
-        >>> data = kwimage.normalize(kwimage.gaussian_patch(shape))
+        >>> data = kwarray.normalize(kwimage.gaussian_patch(shape))
         >>> data = ((data - dinfo.min) * (dinfo.max - dinfo.min)).astype(dtype)
         >>> dpath = ub.Path.appdir('kwimage/test/imwrite_cog').ensuredir()
         >>> fpath = dpath / 'tmp1.tif'

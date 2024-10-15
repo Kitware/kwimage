@@ -37,6 +37,7 @@ class _ShapelyMixin:
         .. [WikiDe91M] https://en.wikipedia.org/wiki/DE-9IM
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> from kwimage.structs.polygon import *  # NOQA
         >>> import itertools as it
         >>> import kwimage
@@ -57,6 +58,7 @@ class _ShapelyMixin:
     def oriented_bounding_box(self):
         """
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Polygon.random().scale(100, 100).round()
             >>> obox = self.oriented_bounding_box()
@@ -459,11 +461,13 @@ class _PolyWarpMixin:
             inplace (bool): if True, modifies data inplace
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.scale(10)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).translate((0.5))
             >>> new = self.scale(1.5, about='centroid')
@@ -583,6 +587,7 @@ class _PolyWarpMixin:
                  ymax,left ──────►xxxxxxxxxxxxxxx◄────── ymax,xmax
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.from_text(ub.codeblock(
             >>>     '''
@@ -615,6 +620,7 @@ class _PolyWarpMixin:
             [16  8]
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(10, rng=0).scale(10).round().astype(np.int32)
             >>> print(tuple(map(float, self._rectify_about('centroid'))))
@@ -1301,6 +1307,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kwimage.Mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> mask = self.to_mask((128, 128))
@@ -1332,6 +1339,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kwimage.Mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random().scale(8).translate(100, 100)
             >>> mask = self.to_relative_mask()
@@ -1399,6 +1407,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             kwimage.Polygon
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> self = kwimage.Polygon.random()
             >>> kwimage.Polygon.coerce(self)
@@ -1563,10 +1572,27 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             # Empty polygon
             geom = shapely.geometry.Polygon()
         else:
-            geom = shapely.geometry.Polygon(
-                shell=shell_data,
-                holes=[c.data for c in self.data['interiors']]
-            )
+            holes = [c.data for c in self.data['interiors']]
+            try:
+                # Shapely requires 4 coordinates for a line-ring
+                geom = shapely.geometry.Polygon(shell=shell_data, holes=holes)
+            except TypeError:  # as ex:
+                # FIXME: our polygon representation can handle line strings and
+                # singualr poitns without a problem, but this becomes an issue
+                # when converting to shapely. Need to think about if there is a
+                # way to handle the conversion gracefully. There might not be.
+                #
+                # if fix and len(shell_data) < 4:
+                #     if len(holes):
+                #         raise TypeError(f'Even with fix=True, cannot handle a degenerate polygon with holds. Orig Error {ex}')
+                #     if len(shell_data) == 1:
+                #         raise TypeError(f'Even with fix=True, cannot handle a degenerate polygon with 1 point. Orig Error {ex}')
+                #     elif len(shell_data) == 2:
+                #         geom = shapely.geometry.LineString(shell_data).buffer(0.5)
+                #     else:
+                #         geom = shapely.geometry.LineString(shell_data)
+                # else:
+                raise
         if fix:
             if not geom.is_valid:
                 geom = geom.buffer(0)
@@ -1856,6 +1882,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.random(rng=0)
             >>> self = mask.to_multi_polygon(pixels_are='areas').data[0]
@@ -1864,6 +1891,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # Test case where there are multiple channels
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> mask = kwimage.Mask.random(shape=(4, 4), rng=0)
             >>> self = mask.to_multi_polygon()
@@ -1873,6 +1901,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> assert np.all((fill_v1 > 0) == (fill_v2 > 0))
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> # Test dtype with inplace vs not
             >>> mask = kwimage.Mask.random(shape=(32, 32), rng=0)
@@ -1898,6 +1927,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> # show difference between pixels_are and origin_convention
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> poly = kwimage.Polygon.star()
             >>> poly = poly.translate(-poly.box().to_xywh().data[0:2])
@@ -2014,6 +2044,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.random(n_holes=1).scale(128)
             >>> image_in = np.zeros((128, 128), dtype=np.float32)
@@ -2025,6 +2056,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # Demo drawing on a RGBA canvas
             >>> # If you initialize an zero rgba canvas, the alpha values are
             >>> # filled correctly.
@@ -2038,6 +2070,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> assert not np.all(image_out[..., 3] == 0)
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> color = 'blue'
             >>> self = kwimage.Polygon.random(n_holes=1).scale(128)
@@ -2083,6 +2116,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # Test empty polygon draw
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> self = Polygon.from_coco([])
             >>> image_in = np.zeros((128, 128), dtype=np.float32)
@@ -2090,6 +2124,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
         Example:
             >>> # Test stupid large polygon draw
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> from kwimage.structs.polygon import _generic
             >>> import kwimage
@@ -2100,6 +2135,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Example:
             >>> # show difference between pixels_are and origin_convention
             >>> # xdoctest: +REQUIRES(module:rasterio)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> poly = kwimage.Polygon.star()
             >>> poly = poly.translate(-poly.box().to_xywh().data[0:2])
@@ -2819,6 +2855,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             kwimage.Mask
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
             >>> s = 100
             >>> self = MultiPolygon.random(rng=0).scale(s)
@@ -2879,6 +2916,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             None | MultiPolygon
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
             >>> dims = (32, 32)
             >>> kw_poly = kwimage.Polygon.random().scale(dims)

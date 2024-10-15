@@ -1,5 +1,6 @@
 """
-Objects for representing and manipulating image transforms.
+Objects for representing and manipulating image transforms, namely image
+transformation matrices.
 """
 import ubelt as ub
 import numpy as np
@@ -369,6 +370,7 @@ class Projective(Linear):
         * TODO: - [ ] fully rational transform
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import math
         >>> image = kwimage.grab_test_image()
@@ -1021,6 +1023,7 @@ class Affine(Projective):
         * TODO: - [ ] fully rational transform
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> import kwimage
         >>> import math
         >>> image = kwimage.grab_test_image()
@@ -1159,9 +1162,11 @@ class Affine(Projective):
 
         Example:
             >>> import kwimage
+            >>> import numpy as np
+            >>> import ubelt as ub
             >>> self = kwimage.Affine.random(rng=0, scale=1)
             >>> params = self.concise()
-            >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
+            >>> assert np.allclose(kwimage.Affine.coerce(params).matrix, self.matrix)
             >>> print('params = {}'.format(ub.urepr(params, nl=1, precision=2)))
             params = {
                 'offset': (0.08, 0.38),
@@ -1171,9 +1176,11 @@ class Affine(Projective):
 
         Example:
             >>> import kwimage
+            >>> import numpy as np
+            >>> import ubelt as ub
             >>> self = kwimage.Affine.random(rng=0, scale=2, offset=0)
             >>> params = self.concise()
-            >>> assert np.allclose(Affine.coerce(params).matrix, self.matrix)
+            >>> assert np.allclose(kwimage.Affine.coerce(params).matrix, self.matrix)
             >>> print('params = {}'.format(ub.urepr(params, nl=1, precision=2)))
             params = {
                 'scale': 2.00,

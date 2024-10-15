@@ -367,15 +367,15 @@ if __name__ == '__main__':
     CommandLine:
         xdoctest -m kwimage.algo.algo_nms available_nms_impls
 
-        python ~/code/kwimage/dev/bench_nms.py  --show --small-boxes --thresh=0.1
-        python ~/code/kwimage/dev/bench_nms.py  --show --small-boxes --thresh=0.8
-        python ~/code/kwimage/dev/bench_nms.py  --show --small-boxes --thresh=1.0
-        python ~/code/kwimage/dev/bench_nms.py  --show
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --small-boxes --thresh=0.1
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --small-boxes --thresh=0.8
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --small-boxes --thresh=1.0
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show
 
-        python ~/code/kwimage/dev/bench_nms.py  --show --small
-        python ~/code/kwimage/dev/bench_nms.py  --show --small --small-boxes
-        python ~/code/kwimage/dev/bench_nms.py  --show --medium
-        python ~/code/kwimage/dev/bench_nms.py  --show --large
-        python ~/code/kwimage/dev/bench_nms.py  --show --extra-large --small-boxes
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --small
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --small --small-boxes
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --medium
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --large
+        python ~/code/kwimage/dev/bench/bench_nms.py  --show --extra-large --small-boxes
     """
     benchamrk_det_nms()

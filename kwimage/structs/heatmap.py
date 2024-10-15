@@ -657,6 +657,7 @@ class _HeatmapWarpMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
             >>> other = Heatmap.random((60, 70), img_dims=(200, 210), classes=2, nblips=10, rng=1)
@@ -736,6 +737,7 @@ class _HeatmapWarpMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask = self.upscale()
 
@@ -785,6 +787,7 @@ class _HeatmapWarpMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random(rng=0, keypoints=True)
             >>> S = 3.0
@@ -799,8 +802,8 @@ class _HeatmapWarpMixin(object):
             >>> assert f2 == S
 
         Example:
-            >>> import kwimage
             >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> import kwimage
             >>> self = kwimage.Heatmap.random(dims=(100, 100), dets='coco', keypoints=True)
             >>> image = np.zeros(self.img_dims)
             >>> # xdoctest: +REQUIRES(module:kwplot)
@@ -972,6 +975,7 @@ class _HeatmapAlgoMixin(object):
             Heatmap: the combined heatmap
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # xdoctest: +REQUIRES(module:torch)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> a = Heatmap.random((120, 130), img_dims=(200, 210), classes=2, nblips=10, rng=0)
@@ -1244,6 +1248,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>> kwplot.show_if_requested()
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> self = Heatmap.random()
@@ -1383,6 +1388,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             Heatmap
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.heatmap import *  # NOQA
             >>> self = Heatmap.random((128, 128), img_dims=(200, 200),
             >>>     classes=3, nblips=10, rng=0, noise=0.1)
@@ -1401,6 +1407,7 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
             globals().update(xdev.get_func_kwargs(Heatmap.random))
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # xdoctest: +REQUIRES(module:ndsampler)
             >>> import kwimage
             >>> self = kwimage.Heatmap.random(dims=(50, 200), dets='coco',
@@ -1618,6 +1625,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             detections.
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import torch
         >>> rng = np.random.RandomState(0)
@@ -1632,6 +1640,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         >>> assert len(dets) == 9
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> # xdoctest: +REQUIRES(module:torch)
         >>> import kwimage
         >>> from kwimage.structs.heatmap import *
@@ -1663,6 +1672,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
         dets.draw(setlim=True, radius=.1)
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
         >>> heatmap = Heatmap.random(rng=0, dims=(3, 3), diameter=1)
         >>> probs = heatmap.class_probs[0]
         >>> diameter = heatmap.diameter

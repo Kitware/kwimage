@@ -4,7 +4,33 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.10.2 - Unreleased
+## Version 0.11.0 - Unreleased
+
+### Added
+
+* `warp_affine` can now be used with `backend='itk'`.
+
+* `kwimage.Points` now contains a "new-v2" style of coco keypoints that it can handle.
+
+### Fixed
+* Fix issue of coercing detections when segmentations are null.
+
+* Patched issue where checkerboard would produce the wrong sized image, fix is not perfect.
+
+
+### Changed
+
+* Move `warp_affine`, `warp_projective`, and `warp_image` into their own module
+  to support the using multiple backends for the underlying operation.
+
+* Module init now uses lazy imports
+
+* Default `grab_test_image` interpolation changed from lanczos to linear.
+
+* cv2 is now officially optional, but a large amount of functionality will not be available without it.
+
+
+## Version 0.10.2 - Released 2024-08-14
 
 ### Added
 * Add classmethod `PolygonList.random`

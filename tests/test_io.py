@@ -3,6 +3,10 @@ def test_interlaced():
     """
     sudo apt install imagemagick
     """
+    from kwimage._backend_info import _have_cv2
+    if not _have_cv2():
+        import pytest
+        pytest.skip('requires cv2')
     import ubelt as ub
     import cv2
     import kwimage
@@ -91,6 +95,7 @@ def test_cross_backend_reads():
 
     # Using 3 or 4 channels is fine, 5... not so much
     data = np.random.rand(8, 8, 5)
+    # data = np.random.rand(64, 64, 5)
 
     import imageio
     import tifffile
