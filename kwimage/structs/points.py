@@ -720,7 +720,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             be rectified.
 
         Args:
-            style (str): either orig, new, new-id, or new-name
+            style (str): either orig, new, new-id, new-name, or new-v2
 
         Returns:
             Dict: mscoco-like representation
@@ -737,6 +737,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.meta['classes'] = kwcoco.CategoryTree.coerce(self.meta['classes'])
             >>> new_id = self._to_coco(style='new-id')
             >>> print('new_id = {}'.format(ub.urepr(new_id, nl=-1)))
+            >>> # Test new-v2 style
+            >>> new_v2 = self._to_coco(style='new-v2')
+            >>> print('new_v2 = {}'.format(ub.urepr(new_v2, nl=-1)))
         """
         if self.xy.size == 0:
             return []
@@ -760,8 +763,22 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             # TODO: ensure these are in the right order for the classes
             flat_pts = np.hstack([self.xy, visible]).reshape(-1)
             return flat_pts.tolist()
+        elif style.startswith('new-v2'):
+            new_kpts_v2 = {}
+            x, y = self.data['xy'].data.T.tolist()
+            new_kpts_v2['x'] = x
+            new_kpts_v2['y'] = y
+            class_idxs = self.data.get('class_idxs', None)
+            if class_idxs is not None:
+                assert 'classes' in self.meta
+                classes = self.meta['classes']
+                keypoint_category_id = [classes.idx_to_id[idx] for idx in class_idxs]
+                new_kpts_v2['keypoint_category_id'] = keypoint_category_id
+            visible = self.data.get('visible', None)
+            if visible is not None:
+                new_kpts_v2['visible'] = self.data['visible'].tolist()
+            return new_kpts_v2
         elif style.startswith('new'):
-
             if style == 'new-id':
                 use_id = True
             elif style == 'new-name':
@@ -859,12 +876,72 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> ]
             >>> pts = Points.from_coco(coco_kpts, classes=classes)
             >>> assert pts.data['class_idxs'].tolist() == [2, 0]
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:kwcoco)
+            >>> from kwimage.structs.points import *  # NOQA
+            >>> import kwcoco
+            >>> coco_kpts = {
+            >>>     'x': [0, 1, 2, 3, 4, 5],
+            >>>     'y': [0, 1, 2, 3, 4, 5],
+            >>> }
+            >>> # Without classes
+            >>> pts1 = Points.from_coco(coco_kpts)
+            >>> print(f'pts1.data={pts1.data}')
+            >>> print(f'pts1.meta={pts1.meta}')
+            >>> # With classes
+            >>> classes = kwcoco.CategoryTree.from_coco([
+            >>>     {'name': 'mouth', 'id': 2}, {'name': 'left-hand', 'id': 3}, {'name': 'right-hand', 'id': 5}
+            >>> ])
+            >>> coco_kpts['keypoint_category_id'] = [5, 2, 3, 5, 2]
+            >>> pts2 = Points.from_coco(coco_kpts, classes=classes)
+            >>> print(f'pts2 = {ub.urepr(pts2, nl=1)}')
+            >>> print(f'pts2.data={pts2.data}')
+            >>> print(f'pts2.meta={pts2.meta}')
+            >>> assert pts2.data['class_idxs'].tolist() == [2, 0, 1, 2, 0]
         """
         if coco_kpts is None:
             return None
 
-        if len(coco_kpts) and isinstance(ub.peek(coco_kpts), dict):
-            # new style
+        if isinstance(coco_kpts, dict) and 'x' in coco_kpts:
+            # new style (v2) which is column based and uses less memory
+            xs = coco_kpts['x']
+            ys = coco_kpts['y']
+            class_idxs = None
+            visible = None
+            if len(xs) != len(ys):
+                raise ValueError(
+                    'new-v2 column-style coco keypoints must have '
+                    f'corresponding length lists. Got: {len(xs)}, {len(ys)}'
+                )
+
+            visible = coco_kpts.get('visible', None)
+            if visible is None:
+                visible = np.array([2] * len(xs))
+            else:
+                visible = np.array(visible)
+
+            keypoint_category_id = coco_kpts.get('keypoint_category_id', None)
+            if keypoint_category_id is not None:
+                if classes is None:
+                    raise Exception('classes should be specified for new-style-v2')
+                else:
+                    try:
+                        class_idxs = [classes.id_to_idx[cid]
+                                      for cid in keypoint_category_id]
+                    except AttributeError:
+                        raise TypeError('classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id')
+                    else:
+                        class_idxs = np.array(class_idxs)
+
+            xs = np.array(xs)
+            ys = np.array(ys)
+            xy = np.stack([xs, ys], axis=0)
+            self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
+                       classes=classes)
+
+        elif len(coco_kpts) and isinstance(ub.peek(coco_kpts), dict):
+            # new style (v1)
             xy = []
             visible = []
             cidx_list = []
