@@ -742,32 +742,33 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
     if len(base.shape) == 3:
         img = img.transpose([1, 2, 0])
 
-    # HACK: Force dsize to be correct.
-    # FIXME: fix the underlying problem
+    HACK_FORCE_CORRECT_DSIZE = 1
+    if HACK_FORCE_CORRECT_DSIZE:
+        # HACK: Force dsize to be correct.
+        # FIXME: fix the underlying problem
+        want_dsize = dsize
+        got_dsize = img.shape[0:2][::-1]
+        if got_dsize != want_dsize:
+            got_w, got_h = got_dsize
+            want_w, want_h = want_dsize
 
-    want_dsize = dsize
-    got_dsize = img.shape[0:2][::-1]
-    if got_dsize != want_dsize:
-        got_w, got_h = got_dsize
-        want_w, want_h = want_dsize
+            if want_w == got_w:
+                ...
+            if want_w > got_w:
+                pad_w = want_w - got_w
+                extra_w = img[:, 0:pad_w]
+                img = np.concatenate([img, extra_w], axis=1)
+            else:
+                img = img[:, :want_w]
 
-        if want_w == got_w:
-            ...
-        if want_w > got_w:
-            pad_w = want_w - got_w
-            extra_w = img[:, 0:pad_w]
-            img = np.concatenate([img, extra_w], axis=1)
-        else:
-            img = img[:, :want_w]
-
-        if want_h == got_h:
-            ...
-        if want_h > got_h:
-            pad_h = want_h - got_h
-            extra_h = img[0:pad_h, :]
-            img = np.concatenate([img, extra_h], axis=0)
-        else:
-            img = img[:want_h, :]
+            if want_h == got_h:
+                ...
+            if want_h > got_h:
+                pad_h = want_h - got_h
+                extra_h = img[0:pad_h, :]
+                img = np.concatenate([img, extra_h], axis=0)
+            else:
+                img = img[:want_h, :]
 
     return img
 
