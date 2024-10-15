@@ -750,16 +750,24 @@ def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
     if got_dsize != want_dsize:
         got_w, got_h = got_dsize
         want_w, want_h = want_dsize
-        assert want_h >= got_h
-        assert want_w >= got_w
 
-        pad_w = want_w - got_w
-        pad_h = want_h - got_h
+        if want_w == got_w:
+            ...
+        if want_w > got_w:
+            pad_w = want_w - got_w
+            extra_w = img[:, 0:pad_w]
+            img = np.concatenate([img, extra_w], axis=1)
+        else:
+            img = img[:, :want_w]
 
-        extra_w = img[:, 0:pad_w]
-        img = np.concatenate([img, extra_w], axis=1)
-        extra_h = img[0:pad_h, :]
-        img = np.concatenate([img, extra_h], axis=0)
+        if want_h == got_h:
+            ...
+        if want_h > got_h:
+            pad_h = want_h - got_h
+            extra_h = img[0:pad_h, :]
+            img = np.concatenate([img, extra_h], axis=0)
+        else:
+            img = img[:want_h, :]
 
     return img
 
