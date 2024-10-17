@@ -702,29 +702,59 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi
 
-    # Err... not sure abou this function. Punting.
-    # def to_shapely(self):
-    #     """
-    #     A shapely representation of these coordinates.
+    def to_wkt(self):
+        """
+        Convert coordinates to well known text.
 
-    #     Note:
-    #         This does not return shapely.coords.CoordinateSequence which is
-    #         something more fundamental than what we are doing here.  Our
-    #         interpretation of coordinates is still geometric.  Unfortunately
-    #         there isn't a perfect correspondence, but LineString is close.
+        Returns:
+            str
 
-    #     Returns:
-    #         shapely.geometry.MultiLineString
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Coords.random(3, rng=0)
+            >>> self.to_wkt()
+        """
+        return self.to_shapely().wkt
 
-    #     Example:
-    #         >>> import kwimage
-    #         >>> self = kwimage.Coords.random(10)
-    #         >>> geom = self.to_shapely()
-    #         >>>
-    #     """
-    #     from shapely import geometry
-    #     new = geometry.LineString(self.data)
-    #     return new
+    def to_shapely(self):
+        """
+        Convert coordinates to shapely.
+
+        Returns:
+            shapely.geometry.multipoint.MultiPoint:
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Coords.random(3)
+            >>> geom = self.to_shapely()
+            >>> print(f'geom={geom}')
+        """
+        import shapely
+        geom = shapely.geometry.multipoint.MultiPoint(self.data)
+        return geom
+
+    @classmethod
+    def from_shapely(Coords, geom):
+        """
+        Create a Coords object from shapely.
+
+        Args:
+            geom (shapely.geometry.multipoint.MultiPoint):
+                a shapely multipoint
+
+        Returns:
+            Self:
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Coords.random(3)
+            >>> geom = self.to_shapely()
+            >>> new = kwimage.Coords.from_shapely(geom)
+            >>> assert np.isclose(self.data, new.data).all()
+        """
+        xy = np.array([point.xy for point in geom.geoms])[:, :, 0]
+        self = Coords(xy)
+        return self
 
     @classmethod
     def from_imgaug(cls, kpoi):

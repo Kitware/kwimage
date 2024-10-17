@@ -921,12 +921,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 classes = dset.object_categories()
             except Exception:
                 pass
-            cats = dset.dataset['categories']
+            cats = dset.dataset['categories']  # redundant with classes, can simplify
             try:
                 kp_classes = dset.keypoint_categories()
             except Exception:
                 pass
-                # kp_classes = None
+            if len(kp_classes) == 0:
+                kp_classes = None
         else:
             if cats is None:
                 cnames = []
@@ -985,7 +986,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             ]
             dets.data['segmentations'] = kwimage.PolygonList(masks)
 
-        if True:
+        HANDLE_KEYPOINTS = 1
+        if HANDLE_KEYPOINTS:
             name_to_cat = {c['name']: c for c in cats}
             def _lookup_kp_class_idxs(cid):
                 kpnames = None
@@ -1013,11 +1015,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     if dset is not None:
                         pass
                     kpcidxs = None
-                    if not (isinstance(k, list) and len(k) and isinstance(ub.peek(k), dict)):
+                    is_oldstyle = (isinstance(k, list) and len(k) and not isinstance(ub.peek(k), dict))
+                    if is_oldstyle:
                         # oldstyle
                         if kp_classes is not None:
                             # These are only needed for old-style coco
-                            kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
+                            cid = ann['category_id']
+                            try:
+                                kpcidxs = _lookup_kp_class_idxs(cid)
+                            except KeyError:
+                                # unable to find keypoint category ids
+                                ...
 
                     pts = kwimage.Points.from_coco(
                         k, class_idxs=kpcidxs, classes=kp_classes)

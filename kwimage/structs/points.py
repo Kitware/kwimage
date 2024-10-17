@@ -789,12 +789,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 raise KeyError(style)
 
             new_kpts = []
+            _visible = self.data.get('visible', None)
+            _class_idxs = self.data.get('class_idxs', None)
             for i, xy in enumerate(self.data['xy'].data.tolist()):
                 kpdict = {'xy': xy}
-                if 'visible' in self.data:
-                    kpdict['visible'] = int(self.data['visible'][i])
-                if 'class_idxs' in self.data:
-                    cidx = self.data['class_idxs'][i]
+                if _visible is not None:
+                    kpdict['visible'] = int(_visible[i])
+                if _class_idxs is not None:
+                    cidx = _class_idxs[i]
                     if use_id:
                         cid = self.meta['classes'].idx_to_id[cidx]
                         kpdict['keypoint_category_id'] = int(cid)
@@ -806,18 +808,83 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             raise KeyError(style)
 
+    def to_wkt(self):
+        """
+        Convert points to well known text. Loses any metadata information.
+
+        Returns:
+            str
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Points.random(3, rng=0)
+            >>> self.to_wkt()
+        """
+        import shapely
+        xy = self.data['xy'].data
+        geom = shapely.geometry.multipoint.MultiPoint(xy)
+        return geom
+
+    def to_shapely(self):
+        """
+        Convert points to shapely. Loses any metadata information.
+
+        Returns:
+            shapely.geometry.multipoint.MultiPoint:
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Points.random(3)
+            >>> geom = self.to_shapely()
+            >>> print(f'geom={geom}')
+        """
+        geom = self.data['xy'].to_shapely()
+        return geom
+
     @classmethod
-    def coerce(cls, data):
+    def from_shapely(Points, geom):
+        """
+        Create a Points object from shapely.
+
+        Args:
+            geom (shapely.geometry.multipoint.MultiPoint):
+                a shapely multipoint
+
+        Returns:
+            Self:
+
+        Example:
+            >>> import kwimage
+            >>> self = kwimage.Points.random(3)
+            >>> geom = self.to_shapely()
+            >>> new = kwimage.Points.from_shapely(geom)
+            >>> assert np.isclose(self.xy, new.xy).all()
+        """
+        import kwimage
+        data = {}
+        data['xy'] = kwimage.Coords.from_shapely(geom)
+        self = Points(data)
+        return self
+
+    @classmethod
+    def coerce(cls, data, classes=None):
         """
         Attempt to coerce data into a Points object
+
+        Args:
+            data (list | dict | Points): data to attempt to coerce into points
+            classes (list[str] | kwcoco.CategoryTree):
+                list of all keypoint category names if converting from a
+                coco representation.
         """
         if isinstance(data, cls):
             return data
         elif isinstance(data, (list, dict)):
             # TODO: determine if coco or geojson
-            return cls.from_coco(data)
+            return cls.from_coco(data, classes=classes)
         elif _generic.isinstance_arraytypes(data):
             return cls(data)
+        # TODO: check if a shapely object
         else:
             raise TypeError(type(data))
 
@@ -835,7 +902,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
             class_idxs (list): only needed if using old style
 
-            classes (list | kwcoco.CategoryTree):
+            classes (None | list[str] | kwcoco.CategoryTree):
                 list of all keypoint category names
 
             warn (bool): if True raise warnings
@@ -936,7 +1003,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
             xs = np.array(xs)
             ys = np.array(ys)
-            xy = np.stack([xs, ys], axis=0)
+            xy = np.stack([xs, ys], axis=1)
             self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
                        classes=classes)
 
