@@ -4,7 +4,24 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.11.0 - Unreleased
+## Version 0.11.1 - Unreleased
+
+### Added
+* `Points.to_shapely` and `Coords.to_shapely`
+* `Points.from_shapely` and `Coords.from_shapely`
+* `Points.wkt` and `Coords.wkt`
+* classes arg to `Points.coerce`
+
+
+### Changed
+* `kwcoco.CategoryTree` now returns other metadata with it when converting to COCO dictionaries 
+* Made `Points.to_coco` allow conversion to coco without category ids, by dropping them
+
+### Fixed
+* Issue in Points.coerce where unspecified keypoints categories were interpreted as specified with length zero.
+
+
+## Version 0.11.0 - Released 2024-10-15
 
 ### Added
 

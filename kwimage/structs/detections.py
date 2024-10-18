@@ -913,6 +913,38 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> dets = kwimage.Detections.from_coco_annots(
             >>>     anns, sampler.dset.dataset['categories'], sampler.catgraph,
             >>>     kp_classes, shape=shape)
+
+        Example:
+            >>> from kwimage.structs.detections import *  # NOQA
+            >>> # xdoctest: +REQUIRES(--module:ndsampler)
+            >>> kpclasses = kwcoco.CategoryTree.from_coco([
+            >>>     {'name': 'head', 'id': 1},
+            >>>     {'name': 'backbone', 'id': 2},
+            >>>     {'name': 'stem', 'id': 3},
+            >>> ])
+            >>> points = kwimage.Points.random(3, classes=kpclasses)
+            >>> anns = [{
+            >>>     'id': 0,
+            >>>     'image_id': 1,
+            >>>     'category_id': 2,
+            >>>     'bbox': [2, 3, 10, 10],
+            >>>     'keypoints': points.to_coco('new-v2'),
+            >>> }]
+            >>> dataset = {
+            >>>     'images': [],
+            >>>     'annotations': anns,
+            >>>     'categories': [
+            >>>         {'id': 0, 'name': 'background'},
+            >>>         {'id': 2, 'name': 'class1', 'keypoint_skeleton': [('head', 'backbone'), ('backbone', 'stem')]}
+            >>>     ],
+            >>>     'keypoint_categories': list(kpclasses.to_coco()),
+            >>> }
+            >>> #import ndsampler
+            >>> #dset = ndsampler.CocoDataset(dataset)
+            >>> cats = dataset['categories']
+            >>> dets = Detections.from_coco_annots(anns, cats, kp_classes=kpclasses)
+            >>> # TODO: draw a skeleton
+            >>> dets.data['keypoints'].data[0].meta
         """
         import kwimage
         cnames = None
@@ -921,12 +953,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 classes = dset.object_categories()
             except Exception:
                 pass
-            cats = dset.dataset['categories']
+            cats = dset.dataset['categories']  # redundant with classes, can simplify
             try:
                 kp_classes = dset.keypoint_categories()
             except Exception:
                 pass
-                # kp_classes = None
+            if len(kp_classes) == 0:
+                kp_classes = None
         else:
             if cats is None:
                 cnames = []
@@ -985,7 +1018,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             ]
             dets.data['segmentations'] = kwimage.PolygonList(masks)
 
-        if True:
+        HANDLE_KEYPOINTS = 1
+        if HANDLE_KEYPOINTS:
+            # TODO: loop a skeleton for the Points object.
+
             name_to_cat = {c['name']: c for c in cats}
             def _lookup_kp_class_idxs(cid):
                 kpnames = None
@@ -1013,11 +1049,17 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     if dset is not None:
                         pass
                     kpcidxs = None
-                    if not (isinstance(k, list) and len(k) and isinstance(ub.peek(k), dict)):
+                    is_oldstyle = (isinstance(k, list) and len(k) and not isinstance(ub.peek(k), dict))
+                    if is_oldstyle:
                         # oldstyle
                         if kp_classes is not None:
                             # These are only needed for old-style coco
-                            kpcidxs = _lookup_kp_class_idxs(ann['category_id'])
+                            cid = ann['category_id']
+                            try:
+                                kpcidxs = _lookup_kp_class_idxs(cid)
+                            except KeyError:
+                                # unable to find keypoint category ids
+                                ...
 
                     pts = kwimage.Points.from_coco(
                         k, class_idxs=kpcidxs, classes=kp_classes)
@@ -1750,6 +1792,7 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
         kwplot.show_if_requested()
     """
     import cv2
+    import kwimage
     # In soft mode we made a one-channel segmentation target mask
     cidx_mask = np.full(input_dims, dtype=np.int32, fill_value=bg_idx)
 
@@ -1771,7 +1814,6 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
     cxywh = dets.boxes.to_cxywh().data
     class_idxs = dets.class_idxs
-    import kwimage
 
     if 'segmentations' in dets.data:
         sseg_list = [None if p is None else p.to_mask(input_dims)
@@ -1877,19 +1919,22 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
                     if len(_xys) > 0:
                         _cidxs = pts.data['class_idxs']
                         if _cidxs is None:
+                            # import warnings
+                            # warnings.warn('Cannot rasterize keypoints with undefined categories')
                             raise ValueError(
                                 'cannot rasterize keypoints with undefined categories')
-                        for xy, kp_cidx in zip(_xys, _cidxs):
-                            if kp_cidx < 0:
-                                import warnings
-                                warnings.warn('Cannot rasterize keypoints with unknown classes')
-                            else:
-                                kp_x, kp_y = xy
-                                kp_dx = kp_x - xcoord[mask]
-                                kp_dy = kp_y - ycoord[mask]
-                                kpts_mask[0, kp_cidx][mask] = kp_dx
-                                kpts_mask[1, kp_cidx][mask] = kp_dy
-                                kpts_ignore_mask[kp_cidx][mask] = 0
+                        else:
+                            for xy, kp_cidx in zip(_xys, _cidxs):
+                                if kp_cidx < 0:
+                                    import warnings
+                                    warnings.warn('Cannot rasterize keypoints with unknown classes')
+                                else:
+                                    kp_x, kp_y = xy
+                                    kp_dx = kp_x - xcoord[mask]
+                                    kp_dy = kp_y - ycoord[mask]
+                                    kpts_mask[0, kp_cidx][mask] = kp_dx
+                                    kpts_mask[1, kp_cidx][mask] = kp_dy
+                                    kpts_ignore_mask[kp_cidx][mask] = 0
 
     fcn_target = {
         'cidx': cidx_mask,

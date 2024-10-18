@@ -482,8 +482,8 @@ class _HeatmapDrawMixin(object):
             - [ ] Find a way to visualize offset, diameter, and class_probs
                   either individually or all at the same time
 
-          CommandLine:
-              xdoctest -m /home/joncrall/code/kwimage/kwimage/structs/heatmap.py
+        CommandLine:
+            xdoctest -m /home/joncrall/code/kwimage/kwimage/structs/heatmap.py
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
@@ -619,7 +619,14 @@ class _HeatmapDrawMixin(object):
                     # color = (np.array(vec_colors[k]) * 255).astype(np.uint8)
                     color = vec_colors[i + E]
 
-                    dy, dx = kwarray.ArrayAPI.numpy(keypoints[:, k])
+                    try:
+                        dy, dx = kwarray.ArrayAPI.numpy(keypoints[:, k])
+                    except Exception:
+                        print('!!!!!!!!')
+                        print(f'keypoints = {ub.urepr(keypoints, nl=1)}')
+                        print('!!!!!!!!')
+                        raise
+
                     vecmask = kwimage.make_vector_field(dx, dy, stride=8,
                                                         scale=0.5,
                                                         alpha=with_alpha *
