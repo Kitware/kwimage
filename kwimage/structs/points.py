@@ -772,8 +772,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             if class_idxs is not None:
                 assert 'classes' in self.meta
                 classes = self.meta['classes']
-                keypoint_category_id = [classes.idx_to_id[idx] for idx in class_idxs]
-                new_kpts_v2['keypoint_category_id'] = keypoint_category_id
+                try:
+                    _idx_to_id = classes.idx_to_id
+                except AttributeError:
+                    catnames = [classes[idx] for idx in class_idxs]
+                    new_kpts_v2['keypoint_category_name'] = catnames
+                else:
+                    keypoint_category_id = [_idx_to_id[idx] for idx in class_idxs]
+                    new_kpts_v2['keypoint_category_id'] = keypoint_category_id
             visible = self.data.get('visible', None)
             if visible is not None:
                 new_kpts_v2['visible'] = self.data['visible'].tolist()
@@ -991,7 +997,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             keypoint_category_id = coco_kpts.get('keypoint_category_id', None)
             if keypoint_category_id is not None:
                 if classes is None:
-                    raise Exception('classes should be specified for new-style-v2')
+                    class_idxs = None
+                    # raise Exception('classes should be specified for new-style-v2')
                 else:
                     try:
                         class_idxs = [classes.id_to_idx[cid]
@@ -1017,6 +1024,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 if warn:
                     warnings.warn('class_idxs should not be specified for new-style')
                 class_idxs = None
+
+            drop_cidx = False
 
             # raise NotImplementedError(
             #     '''
@@ -1074,7 +1083,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 else:
                     if 'keypoint_category_id' in kpdict or 'keypoint_category' in kpdict:
                         # warnings.warn('classes should be specified for new-style')
-                        raise Exception('classes should be specified for new-style')
+                        # raise Exception('classes should be specified for new-style')
+                        cidx_list.append(None)
+                        drop_cidx = True
 
                 xy.append(kpdict['xy'])
                 visible.append(kpdict.get('visible', 2))
@@ -1084,7 +1095,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             else:
                 cidx_list = None
 
-            cidx_list = np.array(cidx_list)
+            if drop_cidx:
+                cidx_list = None
+            else:
+                cidx_list = np.array(cidx_list)
 
             xy = np.array(xy)
             visible = np.array(visible)

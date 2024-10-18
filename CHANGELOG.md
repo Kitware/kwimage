@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * `kwcoco.CategoryTree` now returns other metadata with it when converting to COCO dictionaries 
+* Made `Points.to_coco` allow conversion to coco without category ids, by dropping them
 
 ### Fixed
 * Issue in Points.coerce where unspecified keypoints categories were interpreted as specified with length zero.
