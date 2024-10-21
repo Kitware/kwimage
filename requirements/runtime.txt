@@ -54,4 +54,4 @@ parse>=1.14.0
 
 affine>=2.3.0
 
-lazy_loader>=0.3
+lazy_loader>=0.4
