@@ -1224,7 +1224,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         else:
             raise KeyError('Unknown imwrite backend={!r}'.format(backend))
     except Exception as ex:
-        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note.'
+        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note. See above error'
         if ub.Path(fpath).is_dir():
             msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because {fpath!r} is a directory.'
         if not ub.Path(fpath).parent.exists():
@@ -1232,7 +1232,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         try:
             from kwutil import util_exception
             raise util_exception.add_exception_note(ex, msg)
-        except ImportError:
+        except (ImportError, ModuleNotFoundError):
             # TODO: add exception note instead
             raise IOError(msg)
         raise
