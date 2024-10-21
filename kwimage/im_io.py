@@ -1343,9 +1343,10 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         >>> import numpy as np
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
         >>> fpath = dpath / 'foo2.png'  # FIXME: this fails if this is TIF with basic dependencies installed
-        >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
+        >>> kwimage.imwrite(fpath, kwimage.ensure_uint255(np.random.rand(64, 64, 3)))
         >>> shape1 = kwimage.load_image_shape(fpath, backend=['pil', 'gdal'])
         >>> shape2 = kwimage.load_image_shape(fpath, backend=['gdal', 'pil'])
+        >>> shape3 = kwimage.load_image_shape(fpath, backend=['pil'])
         >>> assert shape1 == shape2 == (64, 64, 3)
 
     Ignore:
