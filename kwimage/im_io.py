@@ -541,8 +541,9 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
 
     Args:
         overview (int | str):
-            if specified load a specific overview level.
-            Can be `coarsest` to use the lowest resolution overview.
+            if specified load a specific integer overview level if the image
+            contains it.  Can be `"coarsest"` to use the lowest resolution
+            overview.
 
         ignore_color_table (bool):
             if True and the image has a color table, return its indexes
