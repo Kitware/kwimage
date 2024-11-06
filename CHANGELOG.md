@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.11.2 - Unreleased
 
+### Added
+* Added `none_policy` to `SegmentationList.coerce`
+
 
 ## Version 0.11.1 - Released 2024-10-17
 

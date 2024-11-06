@@ -741,8 +741,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 ### Make it easier to specify keypoints and segmentations
                 if 'segmentations' in data:
                     import kwimage
-                    data['segmentations'] = kwimage.SegmentationList.coerce(
-                        data['segmentations'])
+                    segmentations = data.get('segmentations', None)
+                    if segmentations is not None:
+                        segmentations = kwimage.SegmentationList.coerce(segmentations)
+                        data['segmentations'] = segmentations
 
                 for k, v in data.items():
                     if v is None:
