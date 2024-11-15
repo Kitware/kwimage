@@ -1115,13 +1115,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         import kwarray
         to_collate = {}
-        if 'boxes' in self.data:
-            to_collate['bbox'] = list(self.data['boxes'].to_coco(style=style))
+        boxes = self.data.get('boxes', None)
+        if boxes is not None:
+            to_collate['bbox'] = list(boxes.to_coco(style=style))
 
-        if 'class_idxs' in self.data:
+        class_idxs = self.data.get('class_idxs', None)
+        if class_idxs is not None:
             if 'classes' in self.meta:
                 classes = self.meta['classes']
-                catnames = [classes[cidx] for cidx in self.class_idxs]
+                catnames = [classes[cidx] for cidx in class_idxs]
                 if cname_to_cat is not None:
                     pass
                 if dset is not None:
@@ -1134,25 +1136,27 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     raise NotImplementedError(
                         'Passed a dset to resolve category id, but this '
                         'detection object has no classes meta attribute')
-                to_collate['category_index'] = kwarray.ArrayAPI.tolist(
-                    self.data['class_idxs'])
+                to_collate['category_index'] = kwarray.ArrayAPI.tolist(class_idxs)
 
-        if 'keypoints' in self.data:
-            to_collate['keypoints'] = list(self.data['keypoints'].to_coco(
-                style=style))
+        keypoints = self.data.get('keypoints', None)
+        if keypoints is not None:
+            to_collate['keypoints'] = list(keypoints.to_coco(style=style))
 
-        if 'segmentations' in self.data:
-            to_collate['segmentation'] = list(self.data['segmentations'].to_coco(
-                style=style))
+        segmentations = self.data.get('segmentations', None)
+        if segmentations is not None:
+            to_collate['segmentation'] = list(segmentations.to_coco(style=style))
 
-        if 'scores' in self.data:
-            to_collate['score'] = kwarray.ArrayAPI.tolist(self.data['scores'])
+        scores = self.data.get('scores', None)
+        if scores is not None:
+            to_collate['score'] = kwarray.ArrayAPI.tolist(scores)
 
-        if 'weights' in self.data:
-            to_collate['weight'] = kwarray.ArrayAPI.tolist(self.data['weights'])
+        weights = self.data.get('weights', None)
+        if weights is not None:
+            to_collate['weight'] = kwarray.ArrayAPI.tolist(weights)
 
-        if 'probs' in self.data:
-            to_collate['prob'] = kwarray.ArrayAPI.tolist(self.data['probs'])
+        probs = self.data.get('probs', None)
+        if probs is not None:
+            to_collate['prob'] = kwarray.ArrayAPI.tolist(probs)
 
         if image_id is not None:
             to_collate['image_id'] = [image_id] * len(self)

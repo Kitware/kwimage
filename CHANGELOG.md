@@ -10,6 +10,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Added `none_policy` to `SegmentationList.coerce`
 
 
+### Changed
+
+* `kwimage.Detections.to_coco` now handles the case where an entry in data or meta is None
+
+
 ## Version 0.11.1 - Released 2024-10-17
 
 ### Added
