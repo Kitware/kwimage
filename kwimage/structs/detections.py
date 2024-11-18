@@ -1045,6 +1045,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     kpts.append(k)
                 elif len(k) == 0:
                     kpcidxs = []
+                    kpts.append(None)
                 else:
                     kpcidxs = None
                     # TODO: correctly handle newstyle keypoints
@@ -1066,6 +1067,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     pts = kwimage.Points.from_coco(
                         k, class_idxs=kpcidxs, classes=kp_classes)
                     kpts.append(pts)
+
+            if __debug__:
+                boxes = dets.data.get('boxes', None)
+                if boxes is not None:
+                    assert len(kpts) == len(boxes)
+
             dets.data['keypoints'] = kwimage.PointsList(kpts)
 
             if kp_classes is not None:
@@ -1160,6 +1167,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
         if image_id is not None:
             to_collate['image_id'] = [image_id] * len(self)
+
+        if __debug__:
+            # Error before we silently return bad data
+            collate_lens = ub.udict(to_collate).map_values(len)
+            assert ub.allsame(collate_lens.values())
 
         keys = list(to_collate.keys())
         for item_vals in zip(*to_collate.values()):
