@@ -18,20 +18,14 @@ def test_detections_to_from_coco_missing_parts():
             'category_name': 'cat2',
             'bbox': [2, 3, 10, 10],
             'keypoints': [4.5, 4.5, 2],
-            'segmentation': {
-                'counts': '_11a04M2O0O20N101N3L_5',
-                'size': [20, 20],
-            },
+            'segmentation': kwimage.Polygon.random().to_coco(),
         },
         {
             'id': 0,
             'image_id': 1,
             'category_name': 'cat2',
             'bbox': [2, 3, 10, 10],
-            'segmentation': {
-                'counts': '_11a04M2O0O20N101N3L_5',
-                'size': [20, 20],
-            },
+            'segmentation': kwimage.Polygon.random().to_coco(),
         },
         {
             'id': 0,
