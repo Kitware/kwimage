@@ -3,6 +3,7 @@ import sys
 import kwarray
 import numbers
 import numpy as np
+from collections import abc
 # import abc
 
 # try:
@@ -78,10 +79,106 @@ class Spatial(ub.NiceRepr):
     #     raise NotImplementedError
 
 
-class ObjectList(Spatial):
+# class ListProxy(abc.MutableSequence):
+class _ExperimentalListProxy:
+    """
+    We may modify this implementation to be more generic in the future and
+    directly inherit from :class:`abc.MutableSequence`. This intermediate form
+    helps preserve backwards compatibility of ObjectList, but it is unclear if
+    that is neeeded.
+
+    Partially generated via ChatGPT.
+
+    Requires that the inheriting class has a ``data`` attribute.
+    """
+
+    def __getitem__(self, index):
+        """Retrieve an item by its index."""
+        return self.data[index]
+
+    def __setitem__(self, index, value):
+        """Update an item at the specified index."""
+        self.data[index] = value
+
+    def __delitem__(self, index):
+        """Delete an item at the specified index."""
+        del self.data[index]
+
+    def __len__(self):
+        """Return the length of the sequence."""
+        return len(self.data)
+
+    def insert(self, index, value):
+        """Insert an item at a specific index."""
+        self.data.insert(index, value)
+
+    def append(self, value):
+        """Add an item to the end of the sequence."""
+        self.data.append(value)
+
+    def clear(self):
+        """Remove all items from the sequence."""
+        self.data.clear()
+
+    def reverse(self):
+        """Reverse the sequence in place."""
+        self.data.reverse()
+
+    def extend(self, other):
+        """Extend the sequence by appending elements from an iterable."""
+        self.data.extend(other)
+
+    def pop(self, index=-1):
+        """Remove and return an item at the given index."""
+        return self.data.pop(index)
+
+    def remove(self, value):
+        """Remove the first occurrence of a value."""
+        self.data.remove(value)
+
+    def __iadd__(self, other):
+        """Support in-place addition (+=) to extend the sequence."""
+        return self.data.__iadd__(other)
+
+    def __contains__(self, item):
+        """Check if the item is in the sequence."""
+        return item in self.data
+
+    def __iter__(self):
+        """Return an iterator over the sequence."""
+        return iter(self.data)
+
+    def __reversed__(self):
+        """Return a reverse iterator over the sequence."""
+        return self.data.__reversed__()
+
+    def index(self, value, start=0, stop=None):
+        """
+        Return the index of the first occurrence of a value.
+        Raise ValueError if the value is not present.
+        """
+        return self.data.index(value, start, stop)
+
+    def count(self, value):
+        """Return the number of occurrences of a value."""
+        return self.data.count(value)
+
+
+class ObjectList(Spatial, _ExperimentalListProxy):
     """
     Stores a list of potentially heterogenous structures, each item usually
     corresponds to a different object.
+
+    Example:
+        >>> # TODO: better test that flexes the Spatial inheritence and
+        >>> # method beyond those in _ExperimentalListProxy
+        >>> from kwimage.structs._generic import *  # NOQA
+        >>> class SpatialList(ObjectList):
+        >>>    ...
+        >>> self = SpatialList([])
+        >>> self.append(1)
+        >>> self.extend([1])
+        >>> 1 in self
     """
 
     # __slots__ = ('data', 'meta',)
@@ -109,13 +206,6 @@ class ObjectList(Spatial):
 
     def __nice__(self):
         return 'n={}'.format(len(self))
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def __iter__(self):
-        for index in range(len(self)):
-            yield self[index]
 
     def translate(self, offset, output_dims=None, inplace=False):
         newdata = [None if item is None else

@@ -13,6 +13,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 
 * `kwimage.Detections.to_coco` now handles the case where an entry in data or meta is None
+* Generic spatial list objects used by `kwimage.Detections` now implement the
+  full MutableSequence API, and may explicitly inherit from it in the future.
 
 ### Fixed
 * Fixed issue in `Detections.from_coco_annots` where column arrays would not be
