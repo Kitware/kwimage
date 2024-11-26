@@ -6,7 +6,7 @@ import ubelt as ub
 class StackImagesConfig(scfg.DataConfig):
     __command__ = 'stack_images'
 
-    input_fpaths = scfg.Value(None, nargs='+', position=1, help='input')
+    input_fpaths = scfg.Value(None, nargs='+', position=1, type=str, help='input')
     axis = scfg.Value('grid', help='stack axis')
     pad = scfg.Value(None)
     out = scfg.Value(None, help='output path. If unspecified uses a hash')
