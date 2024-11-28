@@ -958,6 +958,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         # [d.coords for d in z.interiors]
         return self.data['interiors']
 
+    def remove_holes(self):
+        """
+        Removes holes from this polygon
+        """
+        from shapely.geometry import Polygon
+        import kwimage
+        poly = self.to_shapely()
+        fixed_poly = Polygon(poly.exterior)
+        new = kwimage.MultiPolygon.from_shapely(fixed_poly)
+        return new
+
     def __nice__(self):
         """
         Returns:
@@ -2688,6 +2699,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
                 for _ in range(n)]
         self = MultiPolygon(data)
         return self
+
+    def remove_holes(self):
+        """
+        Removes holes from this multipolygon
+        """
+        from shapely.geometry import Polygon, MultiPolygon
+        import kwimage
+        mpoly = self.to_shapely()
+        fixed_mpoly = MultiPolygon([Polygon(p.exterior) for p in mpoly.geoms])
+        new = kwimage.MultiPolygon.from_shapely(fixed_mpoly)
+        return new
 
     def fill(self, image, value=1, pixels_are='points',
              origin_convention='center', assert_inplace=False):

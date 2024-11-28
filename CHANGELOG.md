@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * Added `none_policy` to `SegmentationList.coerce`
+* Added `remove_holes` to `Polygon` and `MultiPolygon`
 
 
 ### Changed
