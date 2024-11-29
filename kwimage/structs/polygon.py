@@ -12,6 +12,7 @@ TODO:
 
 """
 import numbers
+import math
 import ubelt as ub
 import numpy as np
 from kwimage.structs import _generic
@@ -25,6 +26,12 @@ try:
     from line_profiler import profile
 except Exception:
     profile = ub.identity
+
+
+class _PolyMixin:
+    """
+    Methods that are the same between Polygon and MultiPolygon
+    """
 
 
 class _ShapelyMixin:
@@ -1308,7 +1315,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             - [ ] currently not efficient
 
         Args:
-            dims (Tuple[int, int]): height and width of the output mask
+            dims (Tuple[int, int] | None):
+                Height and width of the output mask.
+                If unspecified the bottom right of the polygon is used.
 
             pixels_are (str): either "points" or "areas"
 
@@ -1331,7 +1340,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         """
         import kwimage
         if dims is None:
-            raise ValueError('Must specify output raster dimensions')
+            _, _, x2, y2 = self.to_boxes().to_ltrb().data[0]
+            dims = (int(math.ceil(y2)), int(math.ceil(x2)))
+            # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
         value = 1
         self.fill(c_mask, value, pixels_are=pixels_are,
@@ -2883,6 +2894,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             >>> self = MultiPolygon.random(rng=0).scale(s)
             >>> dims = (s, s)
             >>> mask = self.to_mask(dims)
+            >>> mask2 = self.to_mask()  # test without dims
             >>> # xdoctest: +REQUIRES(--show)
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
@@ -2896,7 +2908,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         """
         import kwimage
         if dims is None:
-            raise ValueError('Must specify output raster dimensions')
+            _, _, x2, y2 = self.to_boxes().to_ltrb().data[0]
+            dims = (int(math.ceil(y2)), int(math.ceil(x2)))
+            # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
         for p in self.data:
             if p is not None:
