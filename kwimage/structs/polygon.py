@@ -33,6 +33,37 @@ class _PolyMixin:
     Methods that are the same between Polygon and MultiPolygon
     """
 
+    def to_relative_mask(self, return_offset=False):
+        """
+        Returns a translated mask such the mask dimensions are minimal.
+
+        In other words, we move the polygon all the way to the top-left and
+        return a mask just big enough to fit the polygon.
+
+        Returns:
+            kwimage.Mask
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random().scale(8).translate(100, 100)
+            >>> mask = self.to_relative_mask()
+            >>> assert mask.shape <= (8, 8)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> mask.draw(color='blue')
+            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
+        """
+        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
+        if return_offset:
+            offset = (x, y)
+            return mask, offset
+        else:
+            return mask
+
 
 class _ShapelyMixin:
     """
@@ -800,7 +831,7 @@ class _PolyWarpMixin:
         return new
 
 
-class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin, ub.NiceRepr):
+class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin, _PolyMixin, ub.NiceRepr):
     """
     Represents a single polygon as set of exterior boundary points and a list
     of internal polygons representing holes.
@@ -1349,37 +1380,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                   origin_convention=origin_convention)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
-
-    def to_relative_mask(self, return_offset=False):
-        """
-        Returns a translated mask such the mask dimensions are minimal.
-
-        In other words, we move the polygon all the way to the top-left and
-        return a mask just big enough to fit the polygon.
-
-        Returns:
-            kwimage.Mask
-
-        Example:
-            >>> # xdoctest: +REQUIRES(module:cv2)
-            >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random().scale(8).translate(100, 100)
-            >>> mask = self.to_relative_mask()
-            >>> assert mask.shape <= (8, 8)
-            >>> # xdoctest: +REQUIRES(--show)
-            >>> import kwplot
-            >>> kwplot.autompl()
-            >>> kwplot.figure(fnum=1, doclf=True)
-            >>> mask.draw(color='blue')
-            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
-        """
-        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
-        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        if return_offset:
-            offset = (x, y)
-            return mask, offset
-        else:
-            return mask
 
     def _to_cv_countours(self, origin_convention='center'):
         """
@@ -2687,7 +2687,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return result
 
 
-class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
+class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     """
     Data structure for storing multiple polygons (typically related to the same
     underlying but potentitally disjoing object)
@@ -2918,28 +2918,6 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
                        origin_convention=origin_convention)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
-
-    def to_relative_mask(self, return_offset=False):
-        """
-        Returns a translated mask such the mask dimensions are minimal.
-
-        In other words, we move the polygon all the way to the top-left and
-        return a mask just big enough to fit the polygon.
-
-        Returns:
-            kwimage.Mask
-        """
-        # dims (Tuple[int, int] | None):
-        #     if you know *exactly* how big the polygon is you can specify
-        #     this, otherwise it will be computed.
-        # if dims is not None:
-        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
-        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        if return_offset:
-            offset = (x, y)
-            return mask, offset
-        else:
-            return mask
 
     @classmethod
     def coerce(cls, data, dims=None):
