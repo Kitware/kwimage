@@ -503,6 +503,10 @@ class _MaskConstructorMixin(object):
             raise KeyError(method)
         return self
 
+    # TODO:
+    # from_c_mask
+    # from_rle
+
 
 class _MaskTransformMixin(object):
     """
