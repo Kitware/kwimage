@@ -1901,9 +1901,11 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
         if sseg_mask is None:
             mask = np.zeros_like(cidx_mask, dtype=np.uint8)
-            mask = cv2.ellipse(mask, center, axes, angle=0.0,
-                               startAngle=0.0, endAngle=360.0, color=1,
-                               thickness=-1).astype(bool)
+            if mask.size > 0:
+                mask = cv2.ellipse(mask, center, axes, angle=0.0,
+                                   startAngle=0.0, endAngle=360.0, color=1,
+                                   thickness=-1)
+            mask = mask.astype(bool)
         else:
             mask = sseg_mask.to_c_mask().data.astype(bool)
         # class index

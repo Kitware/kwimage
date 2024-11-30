@@ -86,6 +86,13 @@ class _PolyMixin:
             >>> mask3.draw(color='red', alpha=.5)
             >>> kwplot.figure(fnum=1, pnum=(2, 2, 4))
             >>> mask4.draw(color='red', alpha=.5)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # Test zero sized output
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(rng=8).scale(8).translate(100, 100)
+            >>> mask = self.to_relative_mask(offset=(-1, -32), dims=(0, 6))
         """
         # x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         # mask = self.translate((-x, -y)).to_mask(dims=(h, w))
@@ -2025,6 +2032,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     2. Is the origin in the center or corner of the top left pixel?
             >>>     '''))
             >>> fig.set_size_inches([11, 9])
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # Test fill on an empty mask
+            >>> import kwimage
+            >>> poly = kwimage.Polygon.star()
+            >>> image = np.empty((0, 0), dtype=np.uint8)
+            >>> assert self.fill(image).size == 0
         """
         import cv2
         # If the dtype if fixed, then the data is not modified inplace
@@ -2037,32 +2052,33 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if assert_inplace and image_ is not image:
             raise AssertionError('Unable to perform requested inplace operation')
 
-        if pixels_are == 'areas':
-            # rasterio hac: todo nicer organization
-            from rasterio import features
-            if origin_convention == 'center':
-                shapes = [self.translate((0.5, 0.5)).to_geojson()]
-            else:
-                shapes = [self.to_geojson()]
-            features.rasterize(shapes, out=image_, default_value=value)
-        elif pixels_are == 'points':
-            # line_type = cv2.LINE_AA
-            cv_contours = self._to_cv_countours(
-                origin_convention=origin_convention)
-            line_type = cv2.LINE_8
-            # Modification happens inplace
-            if len(image_.shape) == 2:
-                cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
-            elif len(image_.shape) == 3 and image_.shape[2] < 4:
-                if isinstance(value, numbers.Number):
-                    value = (value,) * image_.shape[2]
-                cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
-            else:
-                # handle bands > 3
-                for bx in enumerate(range(image_.shape[2])):
-                    tmp = np.ascontiguousarray(image_[..., bx])
-                    cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
-                    image_[..., bx] = tmp
+        if image_.size > 0:
+            if pixels_are == 'areas':
+                # rasterio hac: todo nicer organization
+                from rasterio import features
+                if origin_convention == 'center':
+                    shapes = [self.translate((0.5, 0.5)).to_geojson()]
+                else:
+                    shapes = [self.to_geojson()]
+                features.rasterize(shapes, out=image_, default_value=value)
+            elif pixels_are == 'points':
+                # line_type = cv2.LINE_AA
+                cv_contours = self._to_cv_countours(
+                    origin_convention=origin_convention)
+                line_type = cv2.LINE_8
+                # Modification happens inplace
+                if len(image_.shape) == 2:
+                    cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
+                elif len(image_.shape) == 3 and image_.shape[2] < 4:
+                    if isinstance(value, numbers.Number):
+                        value = (value,) * image_.shape[2]
+                    cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
+                else:
+                    # handle bands > 3
+                    for bx in enumerate(range(image_.shape[2])):
+                        tmp = np.ascontiguousarray(image_[..., bx])
+                        cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
+                        image_[..., bx] = tmp
 
         if final_dtype is not None:
             image_ = image_.astype(final_dtype)

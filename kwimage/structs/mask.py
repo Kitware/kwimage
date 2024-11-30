@@ -697,12 +697,11 @@ class _MaskTransformMixin(object):
             >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # Test case with a zero sized output
             >>> import kwimage
-            >>> self = kwimage.Mask.random(shape=(8, 8), rng=0)
             >>> self = kwimage.Mask.random(shape=(0, 8), rng=0)
-            >>> shape = (10, 10)
-            >>> offset = (1, 1)
+            >>> shape = (0, 28)
+            >>> offset = (-1, -31)
             >>> data2 = self.translate(offset, shape).to_c_mask().data
-            >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
+            >>> assert data2.size == 0
         """
         import kwimage
         if output_dims is None:
@@ -710,7 +709,9 @@ class _MaskTransformMixin(object):
         if not ub.iterable(offset):
             offset = (offset, offset)
 
+        # If the offset is integral we can be more efficient.
         integer_offset = all(isinstance(o, numbers.Integral) for o in offset)
+
         mask_format = self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}
         if mask_format or not integer_offset:
             integer_offset = None  # hack
@@ -974,6 +975,8 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> # check empty masks work
             >>> import kwimage
             >>> kwimage.Mask.random(shape=(0, 0))
+            >>> kwimage.Mask.random(shape=(0, 8))
+            >>> kwimage.Mask.random(shape=(4, 0))
         """
         import kwarray
         import kwimage
@@ -981,7 +984,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # Use random heatmap to make some blobs for the mask
         heatmap = kwimage.Heatmap.random(dims=shape, rng=rng, classes=2)
         probs = heatmap.data['class_probs'][1]
-        c_mask = (probs > probs.mean()).astype(np.uint8)
+        if probs.size > 0:
+            c_mask = (probs > probs.mean()).astype(np.uint8)
+        else:
+            c_mask = np.empty_like(probs, dtype=np.uint8)
         self = Mask(c_mask, MaskFormat.C_MASK)
         return self
 
