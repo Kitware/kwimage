@@ -21,6 +21,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * Fixed issue in `Detections.from_coco_annots` where column arrays would not be
   aligned if an annotation was missing specific data.
+* Fixed an issue that disallowed empty masks / heatmaps in some cases
 
 
 ## Version 0.11.1 - Released 2024-10-17

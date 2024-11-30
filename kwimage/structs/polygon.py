@@ -33,12 +33,20 @@ class _PolyMixin:
     Methods that are the same between Polygon and MultiPolygon
     """
 
-    def to_relative_mask(self, return_offset=False):
+    def to_relative_mask(self, offset=None, dims=None, return_offset=False):
         """
         Returns a translated mask such the mask dimensions are minimal.
 
         In other words, we move the polygon all the way to the top-left and
         return a mask just big enough to fit the polygon.
+
+        Args:
+            offset (None):
+                if specified, return the mask relative to this xy location.
+                If unspecified, it uses the corner of the segmentation.
+
+            dims (None):
+                the h, w of the new mask, relative to the offset
 
         Returns:
             kwimage.Mask
@@ -46,7 +54,7 @@ class _PolyMixin:
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
             >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random().scale(8).translate(100, 100)
+            >>> self = Polygon.random(rng=8).scale(8).translate(100, 100)
             >>> mask = self.to_relative_mask()
             >>> assert mask.shape <= (8, 8)
             >>> # xdoctest: +REQUIRES(--show)
@@ -55,9 +63,43 @@ class _PolyMixin:
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> mask.draw(color='blue')
             >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(rng=8).scale(8).translate(100, 100)
+            >>> # Test when dims and offset are inside/outside polybounds
+            >>> mask1 = self.to_relative_mask()
+            >>> mask2 = self.to_relative_mask(offset=(102, 102), dims=(6, 6))
+            >>> mask3 = self.to_relative_mask(offset=(98, 98), dims=(16, 16))
+            >>> mask4 = self.to_relative_mask(offset=(102, 102), dims=(16, 16))
+            >>> assert mask.shape <= (18, 18)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True, pnum=(2, 2, 1))
+            >>> mask1.draw(color='red', alpha=.5)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 2))
+            >>> mask2.draw(color='red', alpha=.5)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 3))
+            >>> mask3.draw(color='red', alpha=.5)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 4))
+            >>> mask4.draw(color='red', alpha=.5)
         """
+        # x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        # mask = self.translate((-x, -y)).to_mask(dims=(h, w))
         x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
-        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
+        if offset is None:
+            offset = (x, y)
+
+        if dims is None:
+            dims = (
+                x - offset[0] + w,
+                x - offset[1] + h
+            )
+        translation = tuple(-p for p in offset)
+        mask = self.translate(translation).to_mask(dims=dims)
         if return_offset:
             offset = (x, y)
             return mask, offset
@@ -255,13 +297,10 @@ class _ShapelyMixin:
         References:
             .. [SO20833344] https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
         """
-        # from shapely.geometry.base import geom_factory
-        # from shapely.geos import lgeos
         from shapely.validation import make_valid
         a = self.to_shapely()
         if not a.is_valid:
             a = make_valid(a)
-            # a = geom_factory(lgeos.GEOSMakeValid(a._geom))
 
         if drop_non_polygons:
             import shapely
@@ -1586,6 +1625,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> self = self.scale(100)
             >>> geom = self.to_shapely()
             >>> print('geom = {!r}'.format(geom))
+
+        Ignore:
+            # TODO: test degenerate cases
+            # Degenerate case
+            import kwimage
+            self = kwimage.Polygon(exterior=np.array([[105, 102], [105, 124]]))
+            self.to_shapely()
         """
         import shapely
         import shapely.geometry
@@ -1625,7 +1671,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Converts polygon to a geojson structure
 
         Returns:
-            Dict[str, object]
+            Dict[str, object]: geojson compatible dictionary
 
         Example:
             >>> import kwimage
@@ -1644,10 +1690,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
     def to_wkt(self):
         """
-        Convert a kwimage.Polygon to WKT string
+        Convert a kwimage.Polygon to WKT (well known text) string
 
         Returns:
-            str
+            str: converted text
 
         Example:
             >>> import kwimage
