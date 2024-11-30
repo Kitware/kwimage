@@ -692,6 +692,17 @@ class _MaskTransformMixin(object):
             >>> assert ub.allsame(
             >>>     [r.toformat(MaskFormat.C_MASK).data
             >>>     for r in results.values()], eq=np.allclose)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # Test case with a zero sized output
+            >>> import kwimage
+            >>> self = kwimage.Mask.random(shape=(8, 8), rng=0)
+            >>> self = kwimage.Mask.random(shape=(0, 8), rng=0)
+            >>> shape = (10, 10)
+            >>> offset = (1, 1)
+            >>> data2 = self.translate(offset, shape).to_c_mask().data
+            >>> assert np.all(data2[1:7, 1:7] == self.data[:6, :6])
         """
         import kwimage
         if output_dims is None:
@@ -957,6 +968,12 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> kwplot.autompl()
             >>> mask.draw()
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # check empty masks work
+            >>> import kwimage
+            >>> kwimage.Mask.random(shape=(0, 0))
         """
         import kwarray
         import kwimage

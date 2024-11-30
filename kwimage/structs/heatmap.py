@@ -1820,19 +1820,22 @@ def smooth_prob(prob, k=3, inplace=False, eps=1e-9):
         sigma=0.8 @ k=3, sigma=1.1 @ k=5, sigma=1.4 @ k=7
     """
     import cv2
-    sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
-    blur = cv2.GaussianBlur(prob, (k, k), sigma)
-    # Shift and scale the intensities so the maximum and minimum
-    # pixel value in the blurred image match the original image
-    minpos = np.unravel_index(blur.argmin(), blur.shape)
-    maxpos = np.unravel_index(blur.argmax(), blur.shape)
-    shift = prob[minpos] - blur[minpos]
-    scale = prob[maxpos] / np.maximum((blur[maxpos] + shift), eps)
-    if inplace:
-        prob[:] = blur
-        blur = prob
-    np.add(blur, shift, out=blur)
-    np.multiply(blur, scale, out=blur)
+    if prob.size == 0:
+        blur = prob.copy()
+    else:
+        sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
+        blur = cv2.GaussianBlur(prob, (k, k), sigma)
+        # Shift and scale the intensities so the maximum and minimum
+        # pixel value in the blurred image match the original image
+        minpos = np.unravel_index(blur.argmin(), blur.shape)
+        maxpos = np.unravel_index(blur.argmax(), blur.shape)
+        shift = prob[minpos] - blur[minpos]
+        scale = prob[maxpos] / np.maximum((blur[maxpos] + shift), eps)
+        if inplace:
+            prob[:] = blur
+            blur = prob
+        np.add(blur, shift, out=blur)
+        np.multiply(blur, scale, out=blur)
     return blur
 
 

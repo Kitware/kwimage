@@ -545,7 +545,8 @@ class _DetAlgoMixin:
                 sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
                 data = impl.contiguous(class_probs.T)
                 import cv2
-                cv2.GaussianBlur(data, (k, k), sigma, dst=data)
+                if data.size > 0:
+                    cv2.GaussianBlur(data, (k, k), sigma, dst=data)
                 class_probs = impl.contiguous(data.T)
 
             if soften > 1:
