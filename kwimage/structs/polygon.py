@@ -93,6 +93,7 @@ class _PolyMixin:
             >>> import kwimage
             >>> self = kwimage.Polygon.random(rng=8).scale(8).translate(100, 100)
             >>> mask = self.to_relative_mask(offset=(-1, -32), dims=(0, 6))
+            >>> mask = self.to_relative_mask(offset=(1432, 32))
         """
         # x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         # mask = self.translate((-x, -y)).to_mask(dims=(h, w))
@@ -102,8 +103,8 @@ class _PolyMixin:
 
         if dims is None:
             dims = (
-                x - offset[0] + w,
-                x - offset[1] + h
+                max(y - offset[1] + h, 0),
+                max(x - offset[0] + w, 0),
             )
         translation = tuple(-p for p in offset)
         mask = self.translate(translation).to_mask(dims=dims)
