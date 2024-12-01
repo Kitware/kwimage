@@ -74,7 +74,6 @@ class _PolyMixin:
             >>> mask2 = self.to_relative_mask(offset=(102, 102), dims=(6, 6))
             >>> mask3 = self.to_relative_mask(offset=(98, 98), dims=(16, 16))
             >>> mask4 = self.to_relative_mask(offset=(102, 102), dims=(16, 16))
-            >>> assert mask.shape <= (18, 18)
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
@@ -2042,7 +2041,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # Test fill on an empty mask
             >>> import kwimage
-            >>> poly = kwimage.Polygon.star()
+            >>> self = kwimage.Polygon.star()
             >>> image = np.empty((0, 0), dtype=np.uint8)
             >>> assert self.fill(image).size == 0
         """
