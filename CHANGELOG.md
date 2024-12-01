@@ -7,9 +7,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.11.2 - Unreleased
 
 ### Added
+* Added `area` property to `Segmentation`
+* Added `box` property to `Segmentation`
+* Added `box` method to `Mask`
 * Added `none_policy` to `SegmentationList.coerce`
 * Added `remove_holes` to `Polygon` and `MultiPolygon`
 
+
+### Deprecated
+* Deprecate `Mask.to_boxes`
+* Deprecate `Mask.bounding_box`
 
 ### Changed
 

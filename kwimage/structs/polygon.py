@@ -1804,6 +1804,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             kwimage.Box
         """
+        ub.schedule_deprecation(
+            'kwimage', 'Polygon.to_box', 'function',
+            migration='Use the box method instead.', deprecate='0.9.20',
+            error='1.0.0', remove='1.1.0')
         import kwimage
         xys = self.data['exterior'].data
         lt = xys.min(axis=0)
@@ -1878,7 +1882,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             kwimage.Polygon
         """
-        new = self.bounding_box().to_polygons()[0]
+        new = self.box().to_polygons()[0]
         return new
 
     def copy(self):
@@ -2851,11 +2855,16 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
 
     def to_boxes(self):
         """
-        Deprecated: lossy conversion use 'bounding_box' instead
+        Deprecated: lossy conversion use 'box' instead
 
         Returns:
             kwimage.Boxes
         """
+        ub.schedule_deprecation(
+            'kwimage', 'MultiPolygon.to_boxes', 'method',
+            migration='use MultiPolygon.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
         return self.bounding_box()
 
     def to_box(self):
@@ -2863,6 +2872,11 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         Returns:
             kwimage.Box
         """
+        ub.schedule_deprecation(
+            'kwimage', 'MultiPolygon.to_box', 'method',
+            migration='use MultiPolygon.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
         import kwimage
         lt = np.array([np.inf, np.inf])
         rb = np.array([-np.inf, -np.inf])
@@ -2883,15 +2897,6 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         Returns:
             kwimage.Boxes: a Boxes object with one box that encloses all
                 polygons
-
-        Example:
-            >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = MultiPolygon.random(rng=0, n=10)
-            >>> boxes = self.to_boxes()
-            >>> sub_boxes = [d.to_boxes() for d in self.data]
-            >>> areas1 = np.array([s.intersection(boxes).area[0] for s in sub_boxes])
-            >>> areas2 = np.array([s.area[0] for s in sub_boxes])
-            >>> assert np.allclose(areas1, areas2)
         """
         ub.schedule_deprecation(
             'kwimage', 'MultiPolygon.bounding_box', 'function',
@@ -3410,7 +3415,7 @@ class PolygonList(_generic.ObjectList):
             import kwplot
             ax = kwplot.plt.gca()
             _boxes = self.to_boxes()
-            xmin, ymin, xmax, ymax = _boxes.bounding_box().to_ltrb().data[0]
+            xmin, ymin, xmax, ymax = _boxes.box().to_ltrb().data[0]
             _generic._setlim(xmin, ymin, xmax, ymax, setlim=setlim, ax=ax)
         return result
 

@@ -84,6 +84,13 @@ class Segmentation(_WrapperObject):
     def to_mask(self, dims=None, pixels_are='points'):
         return self.data.to_mask(dims=dims, pixels_are=pixels_are)
 
+    def box(self):
+        return self.data.box()
+
+    @property
+    def area(self):
+        return self.data.area
+
     @property
     def meta(self):
         return self.data.meta

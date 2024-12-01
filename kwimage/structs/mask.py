@@ -1416,12 +1416,51 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         Returns an axis-aligned bounding box for this mask
 
+        DEPRECATED:
+            Prefer :func:`Mask.box` instead.
+
         Returns:
             kwimage.Boxes
         """
+        ub.schedule_deprecation(
+            'kwimage', 'Mask.bounding_box', 'method',
+            migration='use Mask.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
         import kwimage
         xywh = self.get_xywh()
         boxes = kwimage.Boxes([xywh], 'xywh')
+        return boxes
+
+    def to_boxes(self):
+        """
+        Returns the bounding box of the mask.
+
+        DEPRECATED:
+            Prefer :func:`Mask.box` instead.
+
+        Returns:
+            kwimage.Boxes
+        """
+        ub.schedule_deprecation(
+            'kwimage', 'Mask.to_boxes', 'method',
+            migration='use Mask.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
+        import kwimage
+        boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
+        return boxes
+
+    def box(self):
+        """
+        Returns an axis-aligned bounding box for this mask
+
+        Returns:
+            kwimage.Box
+        """
+        import kwimage
+        xywh = self.get_xywh()
+        boxes = kwimage.Box.coerce(xywh, format='xywh')
         return boxes
 
     def get_polygon(self):
@@ -1535,17 +1574,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwimage.Mask
         """
         return self
-
-    def to_boxes(self):
-        """
-        Returns the bounding box of the mask.
-
-        Returns:
-            kwimage.Boxes
-        """
-        import kwimage
-        boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
-        return boxes
 
     def to_multi_polygon(self, pixels_are='points', origin_convention='center'):
         r"""
