@@ -2122,7 +2122,7 @@ class _BoxDrawMixins:
         """
         import cv2
         import kwimage
-        def _coords(x, y):
+        def _clamp_coords(x, y):
             # ensure coords don't go out of bounds or cv2 throws weird error
             x = min(max(x, 0), w - 1)
             y = min(max(y, 0), h - 1)
@@ -2211,8 +2211,8 @@ class _BoxDrawMixins:
 
         for ltrb, label, alpha_, edge_col in zip(ltrb_list, labels, alpha, edge_colors):
             x1, y1, x2, y2 = ltrb
-            pt1 = _coords(x1, y1)
-            pt2 = _coords(x2, y2)
+            pt1 = _clamp_coords(x1, y1)
+            pt2 = _clamp_coords(x2, y2)
 
             # Note cv2.rectangle does work inplace
             if alpha_ < 1.0:
