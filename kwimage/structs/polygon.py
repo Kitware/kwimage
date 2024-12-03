@@ -2063,9 +2063,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             if pixels_are == 'areas':
                 # rasterio hac: todo nicer organization
                 from rasterio import features
+                from kwimage import num_channels
+                import warnings
+                if num_channels(image_) > 1:
+                    warnings.warn('rasterio.features.rasterize is only built to accept single channel images. Polygon.fill may produce incorrect results.')
                 if origin_convention == 'center':
                     shapes = [self.translate((0.5, 0.5)).to_geojson()]
                 else:
+                    # TODO: is it faster to use to_shapely instead here?
+                    # shapes = [self.to_shapely()]
                     shapes = [self.to_geojson()]
                 features.rasterize(shapes, out=image_, default_value=value)
             elif pixels_are == 'points':
@@ -2319,7 +2325,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         line_type = cv2.LINE_8
 
         if pixels_are == 'areas':
-            raise NotImplementedError('Only pixels_area=points are implemented here')
+            raise NotImplementedError('Only pixels_are=points are implemented here')
 
         cv_contours = self._to_cv_countours(
             origin_convention=origin_convention)
