@@ -24,7 +24,7 @@ def test_geotiff():
     imdata = kwimage.ensure_float01(imdata)
 
     # Given this information, construct the geotiff metadata
-    wld_box = wld_poly.to_box()
+    wld_box = wld_poly.box()
     img_box = kwimage.Box.from_dsize(img_dsize)
     wld_corners = wld_box.corners()
     img_corners = img_box.corners().astype(float)
