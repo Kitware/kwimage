@@ -2090,10 +2090,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
-                edgecolor=None, facecolor=None, pixels_are='points',
-                origin_convention='center',
-                copy=False):
+    def draw_on(self, image=None, color='blue', fill=True, border=False,
+                alpha=1.0, edgecolor=None, facecolor=None, pixels_are='points',
+                origin_convention='center', copy=False):
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
@@ -2260,12 +2259,35 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     '''))
             >>> fig.set_size_inches([11, 9])
 
+        Example:
+            >>> # Test draw_on works without an image input
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> from kwimage.structs.polygon import _generic
+            >>> import kwimage
+            >>> self = kwimage.Polygon.circle((5, 5), 5)
+            >>> image = self.draw_on()
+            >>> assert image.shape == (14, 14, 3)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+
         Ignore:
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Polygon.draw_on))
         """
         import kwimage
         import cv2
+
+        if image is None:
+            # If image is not given, use the boxes to allocate enough
+            # room to draw
+            bounds = self.box().scale(1.1).quantize()
+            w = bounds.br_x + 2 + 1
+            h = bounds.br_y + 2 + 1
+            image = np.zeros((h, w, 3), dtype=np.float32)
 
         is_empty = len(self.data['exterior']) == 0
         if is_empty:
@@ -3168,8 +3190,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
-    def draw_on(self, image, **kwargs):
+    def draw_on(self, image=None, **kwargs):
         Polygon.draw_on.__doc__
+
+        if image is None:
+            # If image is not given, use the boxes to allocate enough room to
+            # draw
+            bounds = self.box().scale(1.1).quantize()
+            w = bounds.br_x + 2 + 1
+            h = bounds.br_y + 2 + 1
+            image = np.zeros((h, w, 3), dtype=np.float32)
+
         for item in self.data:
             if item is not None:
                 image = item.draw_on(image, **kwargs)

@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Added `box` method to `Mask`
 * Added `none_policy` to `SegmentationList.coerce`
 * Added `remove_holes` to `Polygon` and `MultiPolygon`
+* Handle `Polygon.draw_on` where the input image is None.
 
 
 ### Deprecated
