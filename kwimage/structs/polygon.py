@@ -1065,12 +1065,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         """
         Create a circular or elliptical polygon.
 
-        Might rename to ellipse later?
+        Might rename to ellipse (or at least add an ellipse method) later?
 
         Args:
             xy (Iterable[Number]): x and y center coordinate
+
             r (float | Number | Tuple[Number, Number]):
                 circular radius or major and minor elliptical radius
+                TODO: rename to radius.
+
             resolution (int): number of sides
 
         Returns:
