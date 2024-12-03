@@ -32,6 +32,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fixed an issue that disallowed empty masks / heatmaps in some cases
 * Issue where `Boxes.draw_on` would not allocate a correctly sized image when it was not given.
 * Fix `Polygon.draw` where `facecolor='none'`.
+* `Polygon.circle` now produces polygons with the correct specified number of sides. 
 
 
 ## Version 0.11.1 - Released 2024-10-17

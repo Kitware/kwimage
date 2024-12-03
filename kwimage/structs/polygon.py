@@ -1074,7 +1074,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 circular radius or major and minor elliptical radius
                 TODO: rename to radius.
 
-            resolution (int): number of sides
+            resolution (int): number of sides.
+                NOTE: in 0.11.1 the resulting polygon had one fewer sides.
+                which was fixed in 0.11.2.
 
         Returns:
             Polygon
@@ -1100,8 +1102,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> plt.gca().set_xlim(-0.5, 1.5)
             >>> plt.gca().set_ylim(-0.5, 1.5)
             >>> plt.gca().set_aspect('equal')
-
-            kwimage.Polygon.circle(xy, r, resolution=10).draw()
         """
         tau = 2 * np.pi
 
@@ -1114,7 +1114,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             is_circle = True
 
         if is_circle:
-            theta = np.linspace(0, tau, resolution)
+            theta = np.linspace(0, tau, resolution + 1)
             y_offset = np.sin(theta) * r
             x_offset = np.cos(theta) * r
         else:
@@ -1149,7 +1149,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
             # Sample theta such that the arclengths between points are nearly
             # the same.
-            theta = angles_in_ellipse(resolution, a, b)
+            theta = angles_in_ellipse(resolution + 1, a, b)
             x_offset, y_offset = np.array((a * np.cos(theta), b * np.sin(theta)))
             if need_swap:
                 x_offset, y_offset = y_offset, x_offset
