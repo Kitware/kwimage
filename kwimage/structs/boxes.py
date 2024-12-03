@@ -108,6 +108,11 @@ else:
     _bbox_ious_c = None
 
 
+# NOTE: if developing in IPython, reloading classes with slots will cause
+# issues. Set this to 0 while interactively modifying the code in this file.
+_USE_SLOTS = 1
+
+
 class NeedsWarpCorners(AssertionError):
     pass
 
@@ -364,7 +369,8 @@ class _BoxConversionMixins:
     Extends :class:`Boxes` with methods for converting between different
     bounding box formats.
     """
-    __slots__ = tuple()
+    if _USE_SLOTS:
+        __slots__ = tuple()
 
     convert_funcs = {}
 
@@ -984,7 +990,8 @@ class _BoxPropertyMixins:
     Extends :class:`Boxes` with properties for quick access to common
     information.
     """
-    __slots__ = tuple()
+    if _USE_SLOTS:
+        __slots__ = tuple()
 
     @property
     def xy_center(self):
@@ -1172,7 +1179,8 @@ class _BoxTransformMixins:
     """
     Extends :class:`Boxes` with methods for warping their geometry.
     """
-    __slots__ = tuple()
+    if _USE_SLOTS:
+        __slots__ = tuple()
 
     def _warp_imgaug(self, augmenter, input_dims, inplace=False):
         """
@@ -1941,7 +1949,8 @@ class _BoxDrawMixins:
         >>> # you can draw the boxes on top of that figure via:
         >>> boxes.draw()
     """
-    __slots__ = tuple()
+    if _USE_SLOTS:
+        __slots__ = tuple()
 
     def draw(self, color='blue', alpha=None, labels=None, centers=False,
              fill=False, lw=2, ax=None, setlim=False, **kwargs):
@@ -2110,14 +2119,20 @@ class _BoxDrawMixins:
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
-            >>> self = kwimage.Boxes.random(num=10, scale=256, rng=0, format='ltrb')
-            >>> image = self.draw_on()
+            >>> # Test that draw_on allocates an image if it is not given
+            >>> # Test that we allocate enough space for a single small box
+            >>> self = kwimage.Boxes.coerce([[5, 5, 5, 5]], format='xywh')
+            >>> image1 = self.draw_on()
+            >>> assert image1.shape == (14, 14, 3)
+            >>> # Test that we handle multiple larger boxes
+            >>> self = kwimage.Boxes.random(num=10, scale=128, rng=0)
+            >>> image2 = self.draw_on()
             >>> # xdoctest: +REQUIRES(--show)
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
-            >>> kwplot.figure(fnum=2000, doclf=True)
             >>> kwplot.autompl()
-            >>> kwplot.imshow(image)
+            >>> kwplot.imshow(image1, fnum=2000, pnum=(1, 2, 1), doclf=True)
+            >>> kwplot.imshow(image2, fnum=2000, pnum=(1, 2, 2))
             >>> kwplot.show_if_requested()
         """
         import cv2
@@ -2132,9 +2147,8 @@ class _BoxDrawMixins:
             # If image is not given, use the boxes to allocate enough
             # room to draw
             bounds = self.bounding_box().scale(1.1).quantize()
-            w = bounds.width.item()
-            h = bounds.height.item()
-            w = h = max(w, h)
+            w = bounds.br_x.item() + thickness + 1
+            h = bounds.br_y.item() + thickness + 1
             image = np.zeros((h, w, 3), dtype=np.float32)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
@@ -2471,7 +2485,8 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
         >>>             back = box2.toformat(format1)
         >>>             assert box1 == back
     """
-    __slots__ = ('data', 'format', '__impl')
+    if _USE_SLOTS:
+        __slots__ = ('data', 'format', '__impl')
 
     @profile
     def __init__(self, data, format=None, check=True, canonical=False):
