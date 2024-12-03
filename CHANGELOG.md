@@ -31,6 +31,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   aligned if an annotation was missing specific data.
 * Fixed an issue that disallowed empty masks / heatmaps in some cases
 * Issue where `Boxes.draw_on` would not allocate a correctly sized image when it was not given.
+* Fix `Polygon.draw` where `facecolor='none'`.
 
 
 ## Version 0.11.1 - Released 2024-10-17

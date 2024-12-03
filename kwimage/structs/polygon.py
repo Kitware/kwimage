@@ -2334,7 +2334,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         from kwimage.im_cv2 import _cv2_imputation
         image = _cv2_imputation(image)
 
-        color = kwimage.Color(color, alpha=alpha).forimage(image)
+        color = kwimage.Color.coerce(color, alpha=alpha).forimage(image)
         # print('--- B')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
@@ -2346,7 +2346,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         elif facecolor is True:
             facecolor = color
         else:
-            facecolor = kwimage.Color(facecolor, alpha=alpha).forimage(image)
+            facecolor = kwimage.Color.coerce(facecolor, alpha=alpha).forimage(image)
 
         # TODO: consolidate logic
         # _generic._handle_color_args_for(
@@ -2370,7 +2370,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 mask = cv2.fillPoly(mask, cv_contours, facecolor, line_type, shift=0)
                 # TODO: could use add weighted
                 image = kwimage.overlay_alpha_images(mask, orig)
-                # facecolor = kwimage.Color(facecolor).forimage(image)
+                # facecolor = kwimage.Color.coerce(facecolor).forimage(image)
 
         # print('--- C')
         # print('image.dtype = {!r}'.format(image.dtype))
@@ -2383,7 +2383,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         elif edgecolor is True:
             edgecolor = color
         else:
-            edgecolor = kwimage.Color(edgecolor, alpha=alpha).forimage(image)
+            edgecolor = kwimage.Color.coerce(edgecolor, alpha=alpha).forimage(image)
 
         if edgecolor:
             thickness = 4
@@ -2398,7 +2398,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 mask = cv2.drawContours(mask, cv_contours, contour_idx,
                                         edgecolor, thickness, line_type)
                 image = kwimage.overlay_alpha_images(mask, orig)
-                # edgecolor = kwimage.Color(edgecolor).forimage(image)
+                # edgecolor = kwimage.Color.coerce(edgecolor).forimage(image)
 
         # image = kwimage.ensure_float01(image)[..., 0:3]
         # print('--- D')
@@ -2530,7 +2530,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if len(exterior) == 0:
             return None  # empty
 
-        color = list(kwimage.Color(color).as01())
+        color = list(kwimage.Color.coerce(color).as01())
 
         exterior.append(exterior[0])
         n = len(exterior)
@@ -2558,7 +2558,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if facecolor is None:
             facecolor = color
         else:
-            facecolor = list(kwimage.Color(facecolor).as01())
+            if isinstance(facecolor, str) and facecolor == 'none':
+                ...
+            else:
+                facecolor = list(kwimage.Color.coerce(facecolor).as01())
 
         kw = {}
         # TODO:
@@ -2579,7 +2582,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                     edgecolor[2] -= .1
                     edgecolor = [min(1, max(0, c)) for c in edgecolor]
             else:
-                edgecolor = kwimage.Color(edgecolor).as01('rgba')
+                edgecolor = kwimage.Color.coerce(edgecolor).as01('rgba')
             kw['edgecolor'] = edgecolor
         else:
             kw['linewidth'] = 0
@@ -2685,7 +2688,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> kwplot.figure(doclf=1)
             >>> self.draw(setlim='grow', color='kw_blue', alpha=0.5, vertex=0.02)
             >>> other.draw(setlim='grow', color='kw_green', alpha=0.5, vertex=0.02)
-            >>> colors = kwimage.Color('kw_blue').morph(
+            >>> colors = kwimage.Color.coerce('kw_blue').morph(
             >>>     'kw_green', np.linspace(0, 1, 5))
             >>> for new, c in zip(results, colors):
             >>>     pt = new.exterior.data[0]
@@ -3216,11 +3219,11 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     #     if alpha == 1.0:
     #         image = kwimage.ensure_uint255(image)
     #         image = kwimage.atleast_3channels(image)
-    #         rgba = kwimage.Color(color).as255()
+    #         rgba = kwimage.Color.coerce(color).as255()
     #     else:
     #         image = kwimage.ensure_float01(image)
     #         image = kwimage.ensure_alpha_channel(image)
-    #         rgba = kwimage.Color(color, alpha=alpha).as01()
+    #         rgba = kwimage.Color.coerce(color, alpha=alpha).as01()
 
     #     kwargs = dict(color=color, fill=fill, border=border, alpha=alpha)
 
