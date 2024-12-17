@@ -1275,6 +1275,14 @@ class _BoxTransformMixins:
             ...     return np.zeros_like(xy)
             >>> new = self.warp(func)
             >>> assert np.all(new.area == 0)
+
+        Example:
+            >>> # test case bugged in <11.2
+            >>> import kwimage
+            >>> self = kwimage.Boxes.random(3, rng=0)
+            >>> eye = kwimage.Affine(None)
+            >>> warped = self.warp(eye)
+            >>> assert np.all(self.data == warped.data)
         """
         import kwimage
         import skimage
@@ -1298,7 +1306,7 @@ class _BoxTransformMixins:
             # First try to warp using simple calls to axis-aligned operations
             rotation = 0
             shear = 0
-            scale = 0
+            scale = 1
             translation = 0
             matrix = None
             func = None

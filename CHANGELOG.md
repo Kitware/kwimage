@@ -33,6 +33,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Issue where `Boxes.draw_on` would not allocate a correctly sized image when it was not given.
 * Fix `Polygon.draw` where `facecolor='none'`.
 * `Polygon.circle` now produces polygons with the correct specified number of sides. 
+* Rare case where Boxes.warp with None would warp by a null matrix instead of identity.
 
 
 ## Version 0.11.1 - Released 2024-10-17
