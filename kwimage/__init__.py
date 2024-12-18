@@ -67,7 +67,7 @@ __ignore__ = [
     'TORCH_GRID_SAMPLE_HAS_ALIGN',
 ]
 
-__version__ = '0.11.2'
+__version__ = '0.11.3'
 
 import lazy_loader
 
