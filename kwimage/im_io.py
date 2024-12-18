@@ -69,7 +69,7 @@ IMAGE_EXTENSIONS = (
 
 @profile
 def imread(fpath, space='auto', backend='auto', **kw):
-    """
+    r"""
     Reads image data in a specified format using some backend implementation.
 
     Args:
@@ -95,6 +95,9 @@ def imread(fpath, space='auto', backend='auto', **kw):
 
             The gdal backend accepts:
                 overview, ignore_color_table, nodata_method, band_indices
+
+            The pil backend accepts:
+                exif, todo - document
 
     Returns:
         ndarray: the image data in the specified color space.
@@ -212,6 +215,77 @@ def imread(fpath, space='auto', backend='auto', **kw):
         >>> kwplot.imshow(kwimage.stack_images_grid(recon[0::20]),
         >>>               title='kwimage.imread with a .mha file')
         >>> kwplot.show_if_requested()
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:PIL)
+        >>> # xdoctest: +REQUIRES(module:piexif)
+        >>> # imwrite with EXIF using PIL and piexif
+        >>> from kwimage.im_io import _imread_exif
+        >>> from kwimage.im_io import _rekey_exif_dict
+        >>> import kwimage
+        >>> from PIL import Image, ExifTags
+        >>> from PIL import Image, TiffImagePlugin
+        >>> from PIL.Image import Exif
+        >>> import piexif
+        >>> img = kwimage.grab_test_image()
+        >>> dpath = ub.Path.appdir('kwimage/tests/exif').ensuredir()
+        >>> fpath = dpath / 'test_1.jpg'
+        >>> # Create a basic EXIF dictionary with dummy camera data
+        >>> # Reference: https://piexif.readthedocs.io/en/latest/functions.html#piexif.dump
+        >>> raw_exif = {
+        >>>     "0th": {
+        >>>         piexif.ImageIFD.Make: b"FakeMake",
+        >>>         piexif.ImageIFD.Model: b"FakeModel",
+        >>>         piexif.ImageIFD.Software: b"FakeSoftware 1.0",
+        >>>         piexif.ImageIFD.ImageDescription: b"Sample image with dummy EXIF data",
+        >>>         piexif.ImageIFD.DateTime: b"2345:01:23 12:34:56",  # YYYY:MM:DD HH:MM:SS format
+        >>>     },
+        >>>     "Exif": {
+        >>>         piexif.ExifIFD.ExposureTime: (1, 60),  # Exposure time (1/60 second)
+        >>>         piexif.ExifIFD.FNumber: (28, 10),  # F/2.8 aperture
+        >>>         piexif.ExifIFD.ISOSpeedRatings: 100,  # ISO speed
+        >>>         piexif.ExifIFD.ShutterSpeedValue: (600, 100),  # Shutter speed in APEX value
+        >>>         piexif.ExifIFD.ApertureValue: (280, 100),  # Aperture in APEX value
+        >>>         piexif.ExifIFD.BrightnessValue: (5, 1),  # Brightness level
+        >>>         piexif.ExifIFD.FocalLength: (50, 1),  # Focal length (50mm)
+        >>>         piexif.ExifIFD.LensMake: b"FakeLensMake",  # Lens manufacturer
+        >>>         piexif.ExifIFD.LensModel: b"FakeLensModel",  # Lens model
+        >>>     },
+        >>>     "GPS": {
+        >>>         piexif.GPSIFD.GPSLatitudeRef: b"N",
+        >>>         piexif.GPSIFD.GPSLatitude: [(40, 1), (0, 1), (0, 1)],  # 40°0'0" N
+        >>>         piexif.GPSIFD.GPSLongitudeRef: b"W",
+        >>>         piexif.GPSIFD.GPSLongitude: [(74, 1), (0, 1), (0, 1)],  # 74°0'0" W
+        >>>         piexif.GPSIFD.GPSAltitudeRef: 0,
+        >>>         piexif.GPSIFD.GPSAltitude: (100, 1),  # 100 meters above sea level
+        >>>     },
+        >>>     # Writing 1st doesnot seem to work with piexif, need to understand why
+        >>>     "1st": {},
+        >>>     "thumbnail": None,
+        >>>     #"1st": {
+        >>>     #    piexif.ImageIFD.Make: "Canon",
+        >>>     #    piexif.ImageIFD.XResolution: (40, 1),
+        >>>     #    piexif.ImageIFD.YResolution: (40, 1),
+        >>>     #    piexif.ImageIFD.Software: "piexif"
+        >>>     #},
+        >>>     #"thumbnail": None,
+        >>>     "Interop": {
+        >>>         piexif.InteropIFD.InteroperabilityIndex: b"R98",  # Interoperability index
+        >>>     }
+        >>> }
+        >>> exif_bytes = piexif.dump(raw_exif)
+        >>> kwimage.imwrite(fpath, img, backend='pil', exif=exif_bytes)
+        >>> recon_exif = _imread_exif(fpath)
+        >>> exif_dict = _rekey_exif_dict(raw_exif)
+        >>> print('recon_exif(out) = {}'.format(ub.urepr(recon_exif, nl=2)))
+        >>> print('exif_dict(in) = {}'.format(ub.urepr(exif_dict, nl=2)))
+        >>> diff = ub.IndexableWalker(exif_dict).diff(recon_exif)
+        >>> # some minor differences, should try to find a better API for EXIF
+        >>> assert diff['similarity'] > 0.93
+        >>> unique1 = diff['unique1']
+        >>> unique2 = diff['unique2']
+        >>> print('unique1 = {}'.format(ub.urepr(unique1, nl=1)))
+        >>> print('unique2 = {}'.format(ub.urepr(unique2, nl=1)))
 
     Benchmark:
         >>> import timerit
@@ -541,8 +615,9 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
 
     Args:
         overview (int | str):
-            if specified load a specific overview level.
-            Can be `coarsest` to use the lowest resolution overview.
+            if specified load a specific integer overview level if the image
+            contains it.  Can be `"coarsest"` to use the lowest resolution
+            overview.
 
         ignore_color_table (bool):
             if True and the image has a color table, return its indexes
@@ -1214,7 +1289,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         elif backend == 'pil':
             from PIL import Image
             pil_img = Image.fromarray(image)
-            pil_img.save(fpath)
+            pil_img.save(fpath, **kwargs)
         elif backend == 'itk':
             import itk
             itk_obj = itk.image_view_from_array(image)
@@ -1224,7 +1299,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         else:
             raise KeyError('Unknown imwrite backend={!r}'.format(backend))
     except Exception as ex:
-        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note.'
+        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note. See above error'
         if ub.Path(fpath).is_dir():
             msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because {fpath!r} is a directory.'
         if not ub.Path(fpath).parent.exists():
@@ -1232,7 +1307,7 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         try:
             from kwutil import util_exception
             raise util_exception.add_exception_note(ex, msg)
-        except ImportError:
+        except (ImportError, ModuleNotFoundError):
             # TODO: add exception note instead
             raise IOError(msg)
         raise
@@ -1256,6 +1331,9 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
             Recall this library uses the convention that "shape" is refers to
             height,width,channels array-style ordering and "size" is
             width,height cv2-style ordering.
+
+    TODO:
+        - [ ] May rename to something like imread_shape
 
     Example:
         >>> # xdoctest: +REQUIRES(module:osgeo)
@@ -1343,9 +1421,10 @@ def load_image_shape(fpath, backend='auto', include_channels=True):
         >>> import numpy as np
         >>> dpath = ub.Path.appdir('kwimage/tests', type='cache').ensuredir()
         >>> fpath = dpath / 'foo2.png'  # FIXME: this fails if this is TIF with basic dependencies installed
-        >>> kwimage.imwrite(fpath, np.random.rand(64, 64, 3))
+        >>> kwimage.imwrite(fpath, kwimage.ensure_uint255(np.random.rand(64, 64, 3)))
         >>> shape1 = kwimage.load_image_shape(fpath, backend=['pil', 'gdal'])
         >>> shape2 = kwimage.load_image_shape(fpath, backend=['gdal', 'pil'])
+        >>> shape3 = kwimage.load_image_shape(fpath, backend=['pil'])
         >>> assert shape1 == shape2 == (64, 64, 3)
 
     Ignore:
@@ -1995,3 +2074,89 @@ def _imread_svg(fpath):
     imdata = np.asarray(pil_img)
     src_space = auto_dst_space = 'rgb'
     return imdata, src_space, auto_dst_space
+
+
+def _imread_exif(fpath):
+    """
+    Read EXIF data into a dictionary. API is experimental.
+
+    In EXIF metadata, different "IFDs" (Image File Directories) are used to
+    store different types of information about the image. Here's a breakdown of
+    the 0th, Exif, and 1st IFDs:
+
+    0th IFD
+        Purpose: The 0th IFD is the primary IFD that contains basic information about the image.
+
+        Common Tags:
+        Make: Camera manufacturer (e.g., Canon, Nikon).
+        Model: Camera model (e.g., Canon EOS 5D).
+        Software: Software used to process the image (e.g., Adobe Photoshop).
+        ImageDescription: A description of the image.
+        DateTime: The date and time when the image was created.
+        ImageWidth and ImageLength: Dimensions of the image.
+
+    Exif IFD
+        Purpose: The Exif IFD contains more detailed information specifically
+        related to the image's capture settings and characteristics.
+        Common Tags:
+    ExposureTime: The length of time the camera's shutter was open.
+    FNumber: The aperture setting of the camera.
+    ISOSpeedRatings: The ISO sensitivity setting.
+    FocalLength: The focal length of the lens used.
+    ShutterSpeedValue: The shutter speed in APEX units.
+    ApertureValue: The aperture in APEX units.
+    GPS information: If available, GPS data can also be found here.
+    1st IFD
+    Purpose: The 1st IFD is primarily used for storing additional metadata about the image, such as information for image thumbnails or when multiple images are stored in a single file (like in a TIFF format). It can contain additional tags related to the image, similar to the 0th IFD but typically used when there are multiple images or for different formats.
+    Common Tags:
+    ImageWidth: Width of the image in pixels.
+    ImageLength: Height of the image in pixels.
+    In practice, the 1st IFD may not always be present in JPEG images, and its usage is more common in TIFF files.
+
+    """
+    import ubelt as ub
+
+    USE_PIL_BACKEND = 0
+    if USE_PIL_BACKEND:
+        from PIL import Image, ExifTags
+        from PIL.ExifTags import GPSTAGS
+
+        img = Image.open(fpath)
+        img_exif = img._getexif()
+        if img_exif is None:
+            exif_dict = {}
+        else:
+            exif_dict = {ExifTags.TAGS[k]: v for k, v in img_exif.items()
+                         if k in ExifTags.TAGS}
+            if 'GPSInfo' in exif_dict:
+                # TODO: get raw rationals?
+                exif_dict['GPSInfo'] = ub.map_keys(GPSTAGS, exif_dict['GPSInfo'])
+    else:
+        import piexif
+        raw_exif = piexif.load(os.fspath(fpath))
+        exif_dict = _rekey_exif_dict(raw_exif)
+
+    return exif_dict
+
+
+def _rekey_exif_dict(raw_exif):
+    import piexif
+    mappers = {}
+    mappers['0th'] = {k: r['name'] for k, r in piexif.TAGS['0th'].items()}
+    mappers['1st'] = {k: r['name'] for k, r in piexif.TAGS['1st'].items()}
+    mappers['GPS'] = {k: r['name'] for k, r in piexif.TAGS['GPS'].items()}
+    mappers['Exif'] = {k: r['name'] for k, r in piexif.TAGS['Exif'].items()}
+    mappers['Interop'] = {k: r['name'] for k, r in piexif.TAGS['Interop'].items()}
+    # Convert numbers to tag names.
+    exif_dict = {}
+    for group_key, group in raw_exif.items():
+        if group_key == 'thumbnail':
+            exif_dict[group_key] = group
+        else:
+            mapper = mappers[group_key]
+            if group is None:
+                rekeyed = None
+            else:
+                rekeyed = ub.udict(group).map_keys(mapper.__getitem__)
+            exif_dict[group_key] = rekeyed
+    return exif_dict

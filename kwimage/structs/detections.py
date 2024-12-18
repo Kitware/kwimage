@@ -545,7 +545,8 @@ class _DetAlgoMixin:
                 sigma = 0.3 * ((k - 1) * 0.5 - 1) + 0.8  # opencv formula
                 data = impl.contiguous(class_probs.T)
                 import cv2
-                cv2.GaussianBlur(data, (k, k), sigma, dst=data)
+                if data.size > 0:
+                    cv2.GaussianBlur(data, (k, k), sigma, dst=data)
                 class_probs = impl.contiguous(data.T)
 
             if soften > 1:
@@ -741,8 +742,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 ### Make it easier to specify keypoints and segmentations
                 if 'segmentations' in data:
                     import kwimage
-                    data['segmentations'] = kwimage.SegmentationList.coerce(
-                        data['segmentations'])
+                    segmentations = data.get('segmentations', None)
+                    if segmentations is not None:
+                        segmentations = kwimage.SegmentationList.coerce(segmentations)
+                        data['segmentations'] = segmentations
 
                 for k, v in data.items():
                     if v is None:
@@ -1043,6 +1046,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     kpts.append(k)
                 elif len(k) == 0:
                     kpcidxs = []
+                    kpts.append(None)
                 else:
                     kpcidxs = None
                     # TODO: correctly handle newstyle keypoints
@@ -1064,6 +1068,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     pts = kwimage.Points.from_coco(
                         k, class_idxs=kpcidxs, classes=kp_classes)
                     kpts.append(pts)
+
+            if __debug__:
+                boxes = dets.data.get('boxes', None)
+                if boxes is not None:
+                    assert len(kpts) == len(boxes)
+
             dets.data['keypoints'] = kwimage.PointsList(kpts)
 
             if kp_classes is not None:
@@ -1113,13 +1123,15 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         import kwarray
         to_collate = {}
-        if 'boxes' in self.data:
-            to_collate['bbox'] = list(self.data['boxes'].to_coco(style=style))
+        boxes = self.data.get('boxes', None)
+        if boxes is not None:
+            to_collate['bbox'] = list(boxes.to_coco(style=style))
 
-        if 'class_idxs' in self.data:
+        class_idxs = self.data.get('class_idxs', None)
+        if class_idxs is not None:
             if 'classes' in self.meta:
                 classes = self.meta['classes']
-                catnames = [classes[cidx] for cidx in self.class_idxs]
+                catnames = [classes[cidx] for cidx in class_idxs]
                 if cname_to_cat is not None:
                     pass
                 if dset is not None:
@@ -1132,28 +1144,35 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                     raise NotImplementedError(
                         'Passed a dset to resolve category id, but this '
                         'detection object has no classes meta attribute')
-                to_collate['category_index'] = kwarray.ArrayAPI.tolist(
-                    self.data['class_idxs'])
+                to_collate['category_index'] = kwarray.ArrayAPI.tolist(class_idxs)
 
-        if 'keypoints' in self.data:
-            to_collate['keypoints'] = list(self.data['keypoints'].to_coco(
-                style=style))
+        keypoints = self.data.get('keypoints', None)
+        if keypoints is not None:
+            to_collate['keypoints'] = list(keypoints.to_coco(style=style))
 
-        if 'segmentations' in self.data:
-            to_collate['segmentation'] = list(self.data['segmentations'].to_coco(
-                style=style))
+        segmentations = self.data.get('segmentations', None)
+        if segmentations is not None:
+            to_collate['segmentation'] = list(segmentations.to_coco(style=style))
 
-        if 'scores' in self.data:
-            to_collate['score'] = kwarray.ArrayAPI.tolist(self.data['scores'])
+        scores = self.data.get('scores', None)
+        if scores is not None:
+            to_collate['score'] = kwarray.ArrayAPI.tolist(scores)
 
-        if 'weights' in self.data:
-            to_collate['weight'] = kwarray.ArrayAPI.tolist(self.data['weights'])
+        weights = self.data.get('weights', None)
+        if weights is not None:
+            to_collate['weight'] = kwarray.ArrayAPI.tolist(weights)
 
-        if 'probs' in self.data:
-            to_collate['prob'] = kwarray.ArrayAPI.tolist(self.data['probs'])
+        probs = self.data.get('probs', None)
+        if probs is not None:
+            to_collate['prob'] = kwarray.ArrayAPI.tolist(probs)
 
         if image_id is not None:
             to_collate['image_id'] = [image_id] * len(self)
+
+        if __debug__:
+            # Error before we silently return bad data
+            collate_lens = ub.udict(to_collate).map_values(len)
+            assert ub.allsame(collate_lens.values())
 
         keys = list(to_collate.keys())
         for item_vals in zip(*to_collate.values()):
@@ -1882,9 +1901,11 @@ def _dets_to_fcmaps(dets, bg_size, input_dims, bg_idx=0, pmin=0.6, pmax=1.0,
 
         if sseg_mask is None:
             mask = np.zeros_like(cidx_mask, dtype=np.uint8)
-            mask = cv2.ellipse(mask, center, axes, angle=0.0,
-                               startAngle=0.0, endAngle=360.0, color=1,
-                               thickness=-1).astype(bool)
+            if mask.size > 0:
+                mask = cv2.ellipse(mask, center, axes, angle=0.0,
+                                   startAngle=0.0, endAngle=360.0, color=1,
+                                   thickness=-1)
+            mask = mask.astype(bool)
         else:
             mask = sseg_mask.to_c_mask().data.astype(bool)
         # class index

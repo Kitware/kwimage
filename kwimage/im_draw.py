@@ -593,6 +593,7 @@ def draw_line_segments_on_image(
     Draw line segments between pts1 and pts2 on an image.
 
     Args:
+        img (ndarray): image to draw on
         pts1 (ndarray): xy coordinates of starting points
         pts2 (ndarray): corresponding xy coordinates of ending points
         color (str | List):
@@ -648,6 +649,43 @@ def draw_line_segments_on_image(
         xy2 = tuple(map(int, xy2))
         cv2.line(img, xy1, xy2, color=col, thickness=thickness, **kwargs)
     return img
+
+
+def draw_polyline_on_image(image, xy_pts, edgecolor='blue', thickness=1, **kwargs):
+    """
+    Args:
+        img (ndarray): image to draw on
+        xy_pts (ndarray): sequence of ordered xy coordinates in a polyline
+        edgecolor (Color | list[Color]):
+            a single color or a list of colors for each edge between points
+            (i.e. has length len(xy_pts) - 1)
+
+    Returns:
+        ndarray: the modified image (inplace if possible)
+
+    Example:
+        >>> from kwimage.im_draw import *  # NOQA
+        >>> import kwimage
+        >>> pts = kwimage.Points.random(10).scale(512)
+        >>> xy_pts = pts.xy
+        >>> image = kwimage.checkerboard(dsize=(512, 512))
+        >>> image = kwimage.atleast_3channels(image)
+        >>> image = kwimage.ensure_uint255(image)
+        >>> edgecolor = [kwimage.Color.random().as255() for _ in range(len(xy_pts) - 1)]
+        >>> thickness = 5
+        >>> image = draw_polyline_on_image(image, xy_pts, edgecolor=edgecolor, thickness=thickness)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(image)
+    """
+    pts1 = xy_pts[0:-1]
+    pts2 = xy_pts[1:]
+    if len(pts1):
+        # Draw edges.
+        image = draw_line_segments_on_image(
+            image, pts1, pts2, color=edgecolor, thickness=thickness, **kwargs)
+    return image
 
 
 def _broadcast_colors(color, num, img, colorspace):

@@ -84,6 +84,13 @@ class Segmentation(_WrapperObject):
     def to_mask(self, dims=None, pixels_are='points'):
         return self.data.to_mask(dims=dims, pixels_are=pixels_are)
 
+    def box(self):
+        return self.data.box()
+
+    @property
+    def area(self):
+        return self.data.area
+
     @property
     def meta(self):
         return self.data.meta
@@ -139,17 +146,57 @@ class SegmentationList(_generic.ObjectList):
         return self
 
     @classmethod
-    def coerce(cls, data):
+    def coerce(cls, data, none_policy='raise'):
         """
         Interpret data as a list of Segmentations
+
+        Args:
+            none_policy (str):
+                Determines how to handle None inputs.
+                Can be: 'return-None', or 'raise'.
         """
         if isinstance(data, (list, _generic.ObjectList)):
             data = [None if item is None else Segmentation.coerce(item)
                     for item in data]
         else:
-            raise TypeError(data)
+            if data is None:
+                return _handle_null_policy(none_policy)
+            else:
+                raise TypeError(data)
         self = cls(data)
         return self
+
+
+def _handle_null_policy(policy, ex_type=TypeError,
+                        ex_msg='cannot accept null input'):
+    """
+    For handling a nan or None policy.
+
+    Args:
+        policy (str):
+            How null inputs are handled. Can be:
+                'return-None': returns None
+                'return-nan': returns nan
+                'raise': raises an error
+
+        ex_type (type): Exception type to raise if policy is raise
+
+        ex_msg (msg): Exception arguments
+
+    TODO: rectify with similar logic in kwutil/util_time
+    """
+    if policy == 'return-None':
+        return None
+    elif policy == 'return-nan':
+        return float('nan')
+    elif policy == 'raise':
+        raise ex_type(ex_msg)
+    else:
+        raise KeyError(ub.paragraph(
+            f'''
+            Unknown null policy={policy!r}.
+            Valid choices are "return-None", "return-nan", and "raise".
+            '''))
 
 
 def _coerce_coco_segmentation(data, dims=None):

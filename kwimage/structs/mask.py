@@ -503,6 +503,10 @@ class _MaskConstructorMixin(object):
             raise KeyError(method)
         return self
 
+    # TODO:
+    # from_c_mask
+    # from_rle
+
 
 class _MaskTransformMixin(object):
     """
@@ -688,6 +692,16 @@ class _MaskTransformMixin(object):
             >>> assert ub.allsame(
             >>>     [r.toformat(MaskFormat.C_MASK).data
             >>>     for r in results.values()], eq=np.allclose)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # Test case with a zero sized output
+            >>> import kwimage
+            >>> self = kwimage.Mask.random(shape=(0, 8), rng=0)
+            >>> shape = (0, 28)
+            >>> offset = (-1, -31)
+            >>> data2 = self.translate(offset, shape).to_c_mask().data
+            >>> assert data2.size == 0
         """
         import kwimage
         if output_dims is None:
@@ -695,7 +709,9 @@ class _MaskTransformMixin(object):
         if not ub.iterable(offset):
             offset = (offset, offset)
 
+        # If the offset is integral we can be more efficient.
         integer_offset = all(isinstance(o, numbers.Integral) for o in offset)
+
         mask_format = self.format in {MaskFormat.C_MASK, MaskFormat.F_MASK}
         if mask_format or not integer_offset:
             integer_offset = None  # hack
@@ -953,6 +969,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> kwplot.autompl()
             >>> mask.draw()
             >>> kwplot.show_if_requested()
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # check empty masks work
+            >>> import kwimage
+            >>> kwimage.Mask.random(shape=(0, 0))
+            >>> kwimage.Mask.random(shape=(0, 8))
+            >>> kwimage.Mask.random(shape=(4, 0))
         """
         import kwarray
         import kwimage
@@ -960,7 +984,10 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         # Use random heatmap to make some blobs for the mask
         heatmap = kwimage.Heatmap.random(dims=shape, rng=rng, classes=2)
         probs = heatmap.data['class_probs'][1]
-        c_mask = (probs > probs.mean()).astype(np.uint8)
+        if probs.size > 0:
+            c_mask = (probs > probs.mean()).astype(np.uint8)
+        else:
+            c_mask = np.empty_like(probs, dtype=np.uint8)
         self = Mask(c_mask, MaskFormat.C_MASK)
         return self
 
@@ -1389,12 +1416,51 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         Returns an axis-aligned bounding box for this mask
 
+        DEPRECATED:
+            Prefer :func:`Mask.box` instead.
+
         Returns:
             kwimage.Boxes
         """
+        ub.schedule_deprecation(
+            'kwimage', 'Mask.bounding_box', 'method',
+            migration='use Mask.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
         import kwimage
         xywh = self.get_xywh()
         boxes = kwimage.Boxes([xywh], 'xywh')
+        return boxes
+
+    def to_boxes(self):
+        """
+        Returns the bounding box of the mask.
+
+        DEPRECATED:
+            Prefer :func:`Mask.box` instead.
+
+        Returns:
+            kwimage.Boxes
+        """
+        ub.schedule_deprecation(
+            'kwimage', 'Mask.to_boxes', 'method',
+            migration='use Mask.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
+        import kwimage
+        boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
+        return boxes
+
+    def box(self):
+        """
+        Returns an axis-aligned bounding box for this mask
+
+        Returns:
+            kwimage.Box
+        """
+        import kwimage
+        xywh = self.get_xywh()
+        boxes = kwimage.Box.coerce(xywh, format='xywh')
         return boxes
 
     def get_polygon(self):
@@ -1508,17 +1574,6 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwimage.Mask
         """
         return self
-
-    def to_boxes(self):
-        """
-        Returns the bounding box of the mask.
-
-        Returns:
-            kwimage.Boxes
-        """
-        import kwimage
-        boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
-        return boxes
 
     def to_multi_polygon(self, pixels_are='points', origin_convention='center'):
         r"""

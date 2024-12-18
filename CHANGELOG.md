@@ -4,7 +4,40 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.11.1 - Unreleased
+## Version 0.11.2 - Unreleased
+
+### Added
+* Added `area` property to `Segmentation`
+* Added `box` property to `Segmentation`
+* Added `box` method to `Mask`
+* Added `none_policy` to `SegmentationList.coerce`
+* Added `remove_holes` to `Polygon` and `MultiPolygon`
+* Added `draw_polyline_on_image` to `im_draw.py`
+* Handle `Polygon.draw_on` where the input image is None.
+
+
+### Deprecated
+* Deprecate `Mask.to_boxes`
+* Deprecate `Mask.bounding_box`
+
+### Changed
+
+* `kwimage.Polygon.to_mask` will now pick dimensions to fit the polygon if they are unspecified.
+* `kwimage.Detections.to_coco` now handles the case where an entry in data or meta is None
+* Generic spatial list objects used by `kwimage.Detections` now implement the
+  full MutableSequence API, and may explicitly inherit from it in the future.
+
+### Fixed
+* Fixed issue in `Detections.from_coco_annots` where column arrays would not be
+  aligned if an annotation was missing specific data.
+* Fixed an issue that disallowed empty masks / heatmaps in some cases
+* Issue where `Boxes.draw_on` would not allocate a correctly sized image when it was not given.
+* Fix `Polygon.draw` where `facecolor='none'`.
+* `Polygon.circle` now produces polygons with the correct specified number of sides. 
+* Rare case where Boxes.warp with None would warp by a null matrix instead of identity.
+
+
+## Version 0.11.1 - Released 2024-10-17
 
 ### Added
 * `Points.to_shapely` and `Coords.to_shapely`

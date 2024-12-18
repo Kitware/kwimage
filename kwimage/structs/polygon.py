@@ -12,6 +12,7 @@ TODO:
 
 """
 import numbers
+import math
 import ubelt as ub
 import numpy as np
 from kwimage.structs import _generic
@@ -25,6 +26,92 @@ try:
     from line_profiler import profile
 except Exception:
     profile = ub.identity
+
+
+class _PolyMixin:
+    """
+    Methods that are the same between Polygon and MultiPolygon
+    """
+
+    def to_relative_mask(self, offset=None, dims=None, return_offset=False):
+        """
+        Returns a translated mask such the mask dimensions are minimal.
+
+        In other words, we move the polygon all the way to the top-left and
+        return a mask just big enough to fit the polygon.
+
+        Args:
+            offset (None):
+                if specified, return the mask relative to this xy location.
+                If unspecified, it uses the corner of the segmentation.
+
+            dims (None):
+                the h, w of the new mask, relative to the offset
+
+        Returns:
+            kwimage.Mask
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> self = Polygon.random(rng=8).scale(8).translate(100, 100)
+            >>> mask = self.to_relative_mask()
+            >>> assert mask.shape <= (8, 8)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True)
+            >>> mask.draw(color='blue')
+            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(rng=8).scale(8).translate(100, 100)
+            >>> # Test when dims and offset are inside/outside polybounds
+            >>> mask1 = self.to_relative_mask()
+            >>> mask2 = self.to_relative_mask(offset=(102, 102), dims=(6, 6))
+            >>> mask3 = self.to_relative_mask(offset=(98, 98), dims=(16, 16))
+            >>> mask4 = self.to_relative_mask(offset=(102, 102), dims=(16, 16))
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.figure(fnum=1, doclf=True, pnum=(2, 2, 1))
+            >>> mask1.draw(color='red', alpha=.5)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 2))
+            >>> mask2.draw(color='red', alpha=.5)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 3))
+            >>> mask3.draw(color='red', alpha=.5)
+            >>> kwplot.figure(fnum=1, pnum=(2, 2, 4))
+            >>> mask4.draw(color='red', alpha=.5)
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # Test zero sized output
+            >>> import kwimage
+            >>> self = kwimage.Polygon.random(rng=8).scale(8).translate(100, 100)
+            >>> mask = self.to_relative_mask(offset=(-1, -32), dims=(0, 6))
+            >>> mask = self.to_relative_mask(offset=(1432, 32))
+        """
+        # x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        # mask = self.translate((-x, -y)).to_mask(dims=(h, w))
+        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        if offset is None:
+            offset = (x, y)
+
+        if dims is None:
+            dims = (
+                max(y - offset[1] + h, 0),
+                max(x - offset[0] + w, 0),
+            )
+        translation = tuple(-p for p in offset)
+        mask = self.translate(translation).to_mask(dims=dims)
+        if return_offset:
+            offset = (x, y)
+            return mask, offset
+        else:
+            return mask
 
 
 class _ShapelyMixin:
@@ -217,13 +304,10 @@ class _ShapelyMixin:
         References:
             .. [SO20833344] https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
         """
-        # from shapely.geometry.base import geom_factory
-        # from shapely.geos import lgeos
         from shapely.validation import make_valid
         a = self.to_shapely()
         if not a.is_valid:
             a = make_valid(a)
-            # a = geom_factory(lgeos.GEOSMakeValid(a._geom))
 
         if drop_non_polygons:
             import shapely
@@ -793,7 +877,7 @@ class _PolyWarpMixin:
         return new
 
 
-class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin, ub.NiceRepr):
+class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin, _PolyMixin, ub.NiceRepr):
     """
     Represents a single polygon as set of exterior boundary points and a list
     of internal polygons representing holes.
@@ -958,6 +1042,17 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         # [d.coords for d in z.interiors]
         return self.data['interiors']
 
+    def remove_holes(self):
+        """
+        Removes holes from this polygon
+        """
+        from shapely.geometry import Polygon
+        import kwimage
+        poly = self.to_shapely()
+        fixed_poly = Polygon(poly.exterior)
+        new = kwimage.MultiPolygon.from_shapely(fixed_poly)
+        return new
+
     def __nice__(self):
         """
         Returns:
@@ -970,13 +1065,18 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         """
         Create a circular or elliptical polygon.
 
-        Might rename to ellipse later?
+        Might rename to ellipse (or at least add an ellipse method) later?
 
         Args:
             xy (Iterable[Number]): x and y center coordinate
+
             r (float | Number | Tuple[Number, Number]):
                 circular radius or major and minor elliptical radius
-            resolution (int): number of sides
+                TODO: rename to radius.
+
+            resolution (int): number of sides.
+                NOTE: in 0.11.1 the resulting polygon had one fewer sides.
+                which was fixed in 0.11.2.
 
         Returns:
             Polygon
@@ -1002,8 +1102,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> plt.gca().set_xlim(-0.5, 1.5)
             >>> plt.gca().set_ylim(-0.5, 1.5)
             >>> plt.gca().set_aspect('equal')
-
-            kwimage.Polygon.circle(xy, r, resolution=10).draw()
         """
         tau = 2 * np.pi
 
@@ -1016,7 +1114,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             is_circle = True
 
         if is_circle:
-            theta = np.linspace(0, tau, resolution)
+            theta = np.linspace(0, tau, resolution + 1)
             y_offset = np.sin(theta) * r
             x_offset = np.cos(theta) * r
         else:
@@ -1051,7 +1149,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
             # Sample theta such that the arclengths between points are nearly
             # the same.
-            theta = angles_in_ellipse(resolution, a, b)
+            theta = angles_in_ellipse(resolution + 1, a, b)
             x_offset, y_offset = np.array((a * np.cos(theta), b * np.sin(theta)))
             if need_swap:
                 x_offset, y_offset = y_offset, x_offset
@@ -1297,7 +1395,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             - [ ] currently not efficient
 
         Args:
-            dims (Tuple[int, int]): height and width of the output mask
+            dims (Tuple[int, int] | None):
+                Height and width of the output mask.
+                If unspecified the bottom right of the polygon is used.
 
             pixels_are (str): either "points" or "areas"
 
@@ -1320,44 +1420,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         """
         import kwimage
         if dims is None:
-            raise ValueError('Must specify output raster dimensions')
+            _, _, x2, y2 = self.to_boxes().to_ltrb().data[0]
+            dims = (int(math.ceil(y2)), int(math.ceil(x2)))
+            # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
         value = 1
         self.fill(c_mask, value, pixels_are=pixels_are,
                   origin_convention=origin_convention)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
-
-    def to_relative_mask(self, return_offset=False):
-        """
-        Returns a translated mask such the mask dimensions are minimal.
-
-        In other words, we move the polygon all the way to the top-left and
-        return a mask just big enough to fit the polygon.
-
-        Returns:
-            kwimage.Mask
-
-        Example:
-            >>> # xdoctest: +REQUIRES(module:cv2)
-            >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = Polygon.random().scale(8).translate(100, 100)
-            >>> mask = self.to_relative_mask()
-            >>> assert mask.shape <= (8, 8)
-            >>> # xdoctest: +REQUIRES(--show)
-            >>> import kwplot
-            >>> kwplot.autompl()
-            >>> kwplot.figure(fnum=1, doclf=True)
-            >>> mask.draw(color='blue')
-            >>> mask.to_multi_polygon().draw(color='red', alpha=.5)
-        """
-        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
-        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        if return_offset:
-            offset = (x, y)
-            return mask, offset
-        else:
-            return mask
 
     def _to_cv_countours(self, origin_convention='center'):
         """
@@ -1564,6 +1635,13 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> self = self.scale(100)
             >>> geom = self.to_shapely()
             >>> print('geom = {!r}'.format(geom))
+
+        Ignore:
+            # TODO: test degenerate cases
+            # Degenerate case
+            import kwimage
+            self = kwimage.Polygon(exterior=np.array([[105, 102], [105, 124]]))
+            self.to_shapely()
         """
         import shapely
         import shapely.geometry
@@ -1603,7 +1681,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Converts polygon to a geojson structure
 
         Returns:
-            Dict[str, object]
+            Dict[str, object]: geojson compatible dictionary
 
         Example:
             >>> import kwimage
@@ -1622,10 +1700,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
     def to_wkt(self):
         """
-        Convert a kwimage.Polygon to WKT string
+        Convert a kwimage.Polygon to WKT (well known text) string
 
         Returns:
-            str
+            str: converted text
 
         Example:
             >>> import kwimage
@@ -1728,6 +1806,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             kwimage.Box
         """
+        ub.schedule_deprecation(
+            'kwimage', 'Polygon.to_box', 'function',
+            migration='Use the box method instead.', deprecate='0.9.20',
+            error='1.0.0', remove='1.1.0')
         import kwimage
         xys = self.data['exterior'].data
         lt = xys.min(axis=0)
@@ -1802,7 +1884,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             kwimage.Polygon
         """
-        new = self.bounding_box().to_polygons()[0]
+        new = self.box().to_polygons()[0]
         return new
 
     def copy(self):
@@ -1957,6 +2039,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     2. Is the origin in the center or corner of the top left pixel?
             >>>     '''))
             >>> fig.set_size_inches([11, 9])
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> # Test fill on an empty mask
+            >>> import kwimage
+            >>> self = kwimage.Polygon.star()
+            >>> image = np.empty((0, 0), dtype=np.uint8)
+            >>> assert self.fill(image).size == 0
         """
         import cv2
         # If the dtype if fixed, then the data is not modified inplace
@@ -1969,32 +2059,39 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if assert_inplace and image_ is not image:
             raise AssertionError('Unable to perform requested inplace operation')
 
-        if pixels_are == 'areas':
-            # rasterio hac: todo nicer organization
-            from rasterio import features
-            if origin_convention == 'center':
-                shapes = [self.translate((0.5, 0.5)).to_geojson()]
-            else:
-                shapes = [self.to_geojson()]
-            features.rasterize(shapes, out=image_, default_value=value)
-        elif pixels_are == 'points':
-            # line_type = cv2.LINE_AA
-            cv_contours = self._to_cv_countours(
-                origin_convention=origin_convention)
-            line_type = cv2.LINE_8
-            # Modification happens inplace
-            if len(image_.shape) == 2:
-                cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
-            elif len(image_.shape) == 3 and image_.shape[2] < 4:
-                if isinstance(value, numbers.Number):
-                    value = (value,) * image_.shape[2]
-                cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
-            else:
-                # handle bands > 3
-                for bx in enumerate(range(image_.shape[2])):
-                    tmp = np.ascontiguousarray(image_[..., bx])
-                    cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
-                    image_[..., bx] = tmp
+        if image_.size > 0:
+            if pixels_are == 'areas':
+                # rasterio hac: todo nicer organization
+                from rasterio import features
+                from kwimage import num_channels
+                import warnings
+                if num_channels(image_) > 1:
+                    warnings.warn('rasterio.features.rasterize is only built to accept single channel images. Polygon.fill may produce incorrect results.')
+                if origin_convention == 'center':
+                    shapes = [self.translate((0.5, 0.5)).to_geojson()]
+                else:
+                    # TODO: is it faster to use to_shapely instead here?
+                    # shapes = [self.to_shapely()]
+                    shapes = [self.to_geojson()]
+                features.rasterize(shapes, out=image_, default_value=value)
+            elif pixels_are == 'points':
+                # line_type = cv2.LINE_AA
+                cv_contours = self._to_cv_countours(
+                    origin_convention=origin_convention)
+                line_type = cv2.LINE_8
+                # Modification happens inplace
+                if len(image_.shape) == 2:
+                    cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
+                elif len(image_.shape) == 3 and image_.shape[2] < 4:
+                    if isinstance(value, numbers.Number):
+                        value = (value,) * image_.shape[2]
+                    cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
+                else:
+                    # handle bands > 3
+                    for bx in enumerate(range(image_.shape[2])):
+                        tmp = np.ascontiguousarray(image_[..., bx])
+                        cv2.fillPoly(tmp, cv_contours, value, line_type, shift=0)
+                        image_[..., bx] = tmp
 
         if final_dtype is not None:
             image_ = image_.astype(final_dtype)
@@ -2002,10 +2099,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    def draw_on(self, image, color='blue', fill=True, border=False, alpha=1.0,
-                edgecolor=None, facecolor=None, pixels_are='points',
-                origin_convention='center',
-                copy=False):
+    def draw_on(self, image=None, color='blue', fill=True, border=False,
+                alpha=1.0, edgecolor=None, facecolor=None, pixels_are='points',
+                origin_convention='center', copy=False):
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
@@ -2172,12 +2268,35 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>>     '''))
             >>> fig.set_size_inches([11, 9])
 
+        Example:
+            >>> # Test draw_on works without an image input
+            >>> # xdoctest: +REQUIRES(module:cv2)
+            >>> from kwimage.structs.polygon import *  # NOQA
+            >>> from kwimage.structs.polygon import _generic
+            >>> import kwimage
+            >>> self = kwimage.Polygon.circle((5, 5), 5)
+            >>> image = self.draw_on()
+            >>> assert image.shape == (14, 14, 3)
+            >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(--show)
+            >>> import kwplot
+            >>> kwplot.autompl()
+            >>> kwplot.imshow(image)
+
         Ignore:
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Polygon.draw_on))
         """
         import kwimage
         import cv2
+
+        if image is None:
+            # If image is not given, use the boxes to allocate enough
+            # room to draw
+            bounds = self.box().scale(1.1).quantize()
+            w = bounds.br_x + 2 + 1
+            h = bounds.br_y + 2 + 1
+            image = np.zeros((h, w, 3), dtype=np.float32)
 
         is_empty = len(self.data['exterior']) == 0
         if is_empty:
@@ -2206,7 +2325,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         line_type = cv2.LINE_8
 
         if pixels_are == 'areas':
-            raise NotImplementedError('Only pixels_area=points are implemented here')
+            raise NotImplementedError('Only pixels_are=points are implemented here')
 
         cv_contours = self._to_cv_countours(
             origin_convention=origin_convention)
@@ -2224,7 +2343,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         from kwimage.im_cv2 import _cv2_imputation
         image = _cv2_imputation(image)
 
-        color = kwimage.Color(color, alpha=alpha).forimage(image)
+        color = kwimage.Color.coerce(color, alpha=alpha).forimage(image)
         # print('--- B')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
@@ -2236,7 +2355,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         elif facecolor is True:
             facecolor = color
         else:
-            facecolor = kwimage.Color(facecolor, alpha=alpha).forimage(image)
+            facecolor = kwimage.Color.coerce(facecolor, alpha=alpha).forimage(image)
 
         # TODO: consolidate logic
         # _generic._handle_color_args_for(
@@ -2260,7 +2379,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 mask = cv2.fillPoly(mask, cv_contours, facecolor, line_type, shift=0)
                 # TODO: could use add weighted
                 image = kwimage.overlay_alpha_images(mask, orig)
-                # facecolor = kwimage.Color(facecolor).forimage(image)
+                # facecolor = kwimage.Color.coerce(facecolor).forimage(image)
 
         # print('--- C')
         # print('image.dtype = {!r}'.format(image.dtype))
@@ -2273,7 +2392,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         elif edgecolor is True:
             edgecolor = color
         else:
-            edgecolor = kwimage.Color(edgecolor, alpha=alpha).forimage(image)
+            edgecolor = kwimage.Color.coerce(edgecolor, alpha=alpha).forimage(image)
 
         if edgecolor:
             thickness = 4
@@ -2288,7 +2407,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 mask = cv2.drawContours(mask, cv_contours, contour_idx,
                                         edgecolor, thickness, line_type)
                 image = kwimage.overlay_alpha_images(mask, orig)
-                # edgecolor = kwimage.Color(edgecolor).forimage(image)
+                # edgecolor = kwimage.Color.coerce(edgecolor).forimage(image)
 
         # image = kwimage.ensure_float01(image)[..., 0:3]
         # print('--- D')
@@ -2420,7 +2539,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if len(exterior) == 0:
             return None  # empty
 
-        color = list(kwimage.Color(color).as01())
+        color = list(kwimage.Color.coerce(color).as01())
 
         exterior.append(exterior[0])
         n = len(exterior)
@@ -2448,7 +2567,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         if facecolor is None:
             facecolor = color
         else:
-            facecolor = list(kwimage.Color(facecolor).as01())
+            if isinstance(facecolor, str) and facecolor == 'none':
+                ...
+            else:
+                facecolor = list(kwimage.Color.coerce(facecolor).as01())
 
         kw = {}
         # TODO:
@@ -2469,7 +2591,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                     edgecolor[2] -= .1
                     edgecolor = [min(1, max(0, c)) for c in edgecolor]
             else:
-                edgecolor = kwimage.Color(edgecolor).as01('rgba')
+                edgecolor = kwimage.Color.coerce(edgecolor).as01('rgba')
             kw['edgecolor'] = edgecolor
         else:
             kw['linewidth'] = 0
@@ -2575,7 +2697,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             >>> kwplot.figure(doclf=1)
             >>> self.draw(setlim='grow', color='kw_blue', alpha=0.5, vertex=0.02)
             >>> other.draw(setlim='grow', color='kw_green', alpha=0.5, vertex=0.02)
-            >>> colors = kwimage.Color('kw_blue').morph(
+            >>> colors = kwimage.Color.coerce('kw_blue').morph(
             >>>     'kw_green', np.linspace(0, 1, 5))
             >>> for new, c in zip(results, colors):
             >>>     pt = new.exterior.data[0]
@@ -2665,7 +2787,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return result
 
 
-class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
+class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     """
     Data structure for storing multiple polygons (typically related to the same
     underlying but potentitally disjoing object)
@@ -2688,6 +2810,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
                 for _ in range(n)]
         self = MultiPolygon(data)
         return self
+
+    def remove_holes(self):
+        """
+        Removes holes from this multipolygon
+        """
+        from shapely.geometry import Polygon, MultiPolygon
+        import kwimage
+        mpoly = self.to_shapely()
+        fixed_mpoly = MultiPolygon([Polygon(p.exterior) for p in mpoly.geoms])
+        new = kwimage.MultiPolygon.from_shapely(fixed_mpoly)
+        return new
 
     def fill(self, image, value=1, pixels_are='points',
              origin_convention='center', assert_inplace=False):
@@ -2755,11 +2888,16 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
 
     def to_boxes(self):
         """
-        Deprecated: lossy conversion use 'bounding_box' instead
+        Deprecated: lossy conversion use 'box' instead
 
         Returns:
             kwimage.Boxes
         """
+        ub.schedule_deprecation(
+            'kwimage', 'MultiPolygon.to_boxes', 'method',
+            migration='use MultiPolygon.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
         return self.bounding_box()
 
     def to_box(self):
@@ -2767,6 +2905,11 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         Returns:
             kwimage.Box
         """
+        ub.schedule_deprecation(
+            'kwimage', 'MultiPolygon.to_box', 'method',
+            migration='use MultiPolygon.box instead',
+            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+        )
         import kwimage
         lt = np.array([np.inf, np.inf])
         rb = np.array([-np.inf, -np.inf])
@@ -2787,15 +2930,6 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         Returns:
             kwimage.Boxes: a Boxes object with one box that encloses all
                 polygons
-
-        Example:
-            >>> from kwimage.structs.polygon import *  # NOQA
-            >>> self = MultiPolygon.random(rng=0, n=10)
-            >>> boxes = self.to_boxes()
-            >>> sub_boxes = [d.to_boxes() for d in self.data]
-            >>> areas1 = np.array([s.intersection(boxes).area[0] for s in sub_boxes])
-            >>> areas2 = np.array([s.area[0] for s in sub_boxes])
-            >>> assert np.allclose(areas1, areas2)
         """
         ub.schedule_deprecation(
             'kwimage', 'MultiPolygon.bounding_box', 'function',
@@ -2861,6 +2995,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
             >>> self = MultiPolygon.random(rng=0).scale(s)
             >>> dims = (s, s)
             >>> mask = self.to_mask(dims)
+            >>> mask2 = self.to_mask()  # test without dims
             >>> # xdoctest: +REQUIRES(--show)
             >>> # xdoctest: +REQUIRES(module:kwplot)
             >>> import kwplot
@@ -2874,7 +3009,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         """
         import kwimage
         if dims is None:
-            raise ValueError('Must specify output raster dimensions')
+            _, _, x2, y2 = self.to_boxes().to_ltrb().data[0]
+            dims = (int(math.ceil(y2)), int(math.ceil(x2)))
+            # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
         for p in self.data:
             if p is not None:
@@ -2882,28 +3019,6 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
                        origin_convention=origin_convention)
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
-
-    def to_relative_mask(self, return_offset=False):
-        """
-        Returns a translated mask such the mask dimensions are minimal.
-
-        In other words, we move the polygon all the way to the top-left and
-        return a mask just big enough to fit the polygon.
-
-        Returns:
-            kwimage.Mask
-        """
-        # dims (Tuple[int, int] | None):
-        #     if you know *exactly* how big the polygon is you can specify
-        #     this, otherwise it will be computed.
-        # if dims is not None:
-        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
-        mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        if return_offset:
-            offset = (x, y)
-            return mask, offset
-        else:
-            return mask
 
     @classmethod
     def coerce(cls, data, dims=None):
@@ -3087,8 +3202,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
         """
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
-    def draw_on(self, image, **kwargs):
+    def draw_on(self, image=None, **kwargs):
         Polygon.draw_on.__doc__
+
+        if image is None:
+            # If image is not given, use the boxes to allocate enough room to
+            # draw
+            bounds = self.box().scale(1.1).quantize()
+            w = bounds.br_x + 2 + 1
+            h = bounds.br_y + 2 + 1
+            image = np.zeros((h, w, 3), dtype=np.float32)
+
         for item in self.data:
             if item is not None:
                 image = item.draw_on(image, **kwargs)
@@ -3104,11 +3228,11 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin):
     #     if alpha == 1.0:
     #         image = kwimage.ensure_uint255(image)
     #         image = kwimage.atleast_3channels(image)
-    #         rgba = kwimage.Color(color).as255()
+    #         rgba = kwimage.Color.coerce(color).as255()
     #     else:
     #         image = kwimage.ensure_float01(image)
     #         image = kwimage.ensure_alpha_channel(image)
-    #         rgba = kwimage.Color(color, alpha=alpha).as01()
+    #         rgba = kwimage.Color.coerce(color, alpha=alpha).as01()
 
     #     kwargs = dict(color=color, fill=fill, border=border, alpha=alpha)
 
@@ -3333,7 +3457,7 @@ class PolygonList(_generic.ObjectList):
             import kwplot
             ax = kwplot.plt.gca()
             _boxes = self.to_boxes()
-            xmin, ymin, xmax, ymax = _boxes.bounding_box().to_ltrb().data[0]
+            xmin, ymin, xmax, ymax = _boxes.box().to_ltrb().data[0]
             _generic._setlim(xmin, ymin, xmax, ymax, setlim=setlim, ax=ax)
         return result
 
