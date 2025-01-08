@@ -444,7 +444,7 @@ class Projective(Linear):
         >>> print('homog = {}'.format(ub.urepr(homog.tolist(), nl=1)))
         >>> # This could be prettier
         >>> texts = {
-        >>>     'Translation': sympy.pretty(R, use_unicode=0),
+        >>>     'Translation': sympy.pretty(T, use_unicode=0),
         >>>     'Rotation': sympy.pretty(R, use_unicode=0),
         >>>     'shEar-X': sympy.pretty(E, use_unicode=0),
         >>>     'Scale': sympy.pretty(S, use_unicode=0),
@@ -1090,7 +1090,7 @@ class Affine(Projective):
         >>> print('aff = {}'.format(ub.urepr(aff.tolist(), nl=1)))
         >>> # This could be prettier
         >>> texts = {
-        >>>     'Translation': sympy.pretty(R),
+        >>>     'Translation': sympy.pretty(T),
         >>>     'Rotation': sympy.pretty(R),
         >>>     'shEar-X': sympy.pretty(E),
         >>>     'Scale': sympy.pretty(S),
