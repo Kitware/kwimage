@@ -484,26 +484,59 @@ def _transfer_docstrings():
     Helper to populate Box docstrings from Boxes. In the future we should may
     want to autogenerate better docstrings statically, but for now lets at
     least add some introspection.
+
+    Ignore:
+        from kwimage.structs.single_box import *  # NOQA
     """
     from kwimage.structs import Boxes
     import types
-    for k in dir(Box):
-        if not k.startswith('_') and hasattr(Boxes, k):
-            v1 = getattr(Box, k)
-            if isinstance(v1, types.MethodType):
-                v1 = v1.__func__
-            if isinstance(v1, property):
-                v1 = v1.fget
-            if hasattr(v1, '__doc__') and v1.__doc__ is None:
-                v2 = getattr(Boxes, k)
-                if isinstance(v2, property):
-                    v2 = v2.fget
-                if v2.__doc__ is not None:
-                    v1.__doc__ = (
-                        '\n        This function wraps one of the same name in '
-                        'kwimage.Boxes, but does not have a docstring of its own. '
-                        'In the meantime we will show the docstring from Boxes\n'
-                    ) + v2.__doc__
+
+    DYNAMIC_TRANSFER = True
+
+    # First build up what we are going to transfer between.
+    corresponding_methods = []
+    for name in dir(Box):
+        if not name.startswith('_') and hasattr(Boxes, name):
+            dst_func = getattr(Box, name)
+            if isinstance(dst_func, types.MethodType):
+                dst_func = dst_func.__func__
+            if isinstance(dst_func, property):
+                dst_func = dst_func.fget
+            if hasattr(dst_func, '__doc__') and dst_func.__doc__ is None:
+                src_func = getattr(Boxes, name)
+                if isinstance(src_func, property):
+                    src_func = src_func.fget
+                if src_func.__doc__ is not None:
+                    corresponding_methods.append((name, dst_func, src_func))
+
+    if 0:
+        # FIXME: docscrape google should parse block types generically
+        from xdoctest.docstr import docscrape_google
+        for name, dst_func, src_func in corresponding_methods:
+            blocks = docscrape_google.split_google_docblocks(src_func.__doc__)
+            new_parts = []
+            for block_type, block_value in blocks:
+                # Ignore example transfers
+                if block_type in {'Example', 'CommandLine', 'Returns', 'TODO'}:
+                    # TODO: munge return blocks
+                    continue
+                indent = '    '
+                print(f'block_type={block_type}')
+                if block_type == '__DOC__':
+                    indent = ''
+                else:
+                    new_parts.append(block_type + ':')
+                new_parts.append(ub.indent(block_value.text, indent))
+            new_text = '\n'.join(new_parts)
+            print(new_text)
+
+    if DYNAMIC_TRANSFER:
+        for name, dst_func, src_func in corresponding_methods:
+            dst_func.__doc__ = (
+                '\n        This function wraps one of the same name in '
+                'kwimage.Boxes, but does not have a docstring of its own. '
+                'In the meantime we will show the docstring from Boxes\n'
+            ) + src_func.__doc__
 
 if 0:
     _transfer_docstrings()

@@ -1090,10 +1090,10 @@ class Affine(Projective):
         >>> print('aff = {}'.format(ub.urepr(aff.tolist(), nl=1)))
         >>> # This could be prettier
         >>> texts = {
-        >>>     'Translation': sympy.pretty(T),
-        >>>     'Rotation': sympy.pretty(R),
-        >>>     'shEar-X': sympy.pretty(E),
-        >>>     'Scale': sympy.pretty(S),
+        >>>     'Translation': sympy.pretty(sympy.Matrix(T), use_unicode=0),
+        >>>     'Rotation': sympy.pretty(sympy.Matrix(R), use_unicode=0),
+        >>>     'shEar-X': sympy.pretty(sympy.Matrix(E), use_unicode=0),
+        >>>     'Scale': sympy.pretty(sympy.Matrix(S), use_unicode=0),
         >>> }
         >>> print(ub.urepr(texts, nl=2, sv=1))
         >>> equation_stack = []
@@ -1103,7 +1103,7 @@ class Affine(Projective):
         >>>     render_canvas = kwimage.imresize(render_canvas, scale=1.3)
         >>>     equation_stack.append(render_canvas)
         >>> equation_canvas = kwimage.stack_images(equation_stack, pad=10, axis=1, bg_value='kitware_gray')
-        >>> render_canvas = kwimage.draw_text_on_image(None, sympy.pretty(aff), color='kw_blue', fontScale=1.0)
+        >>> render_canvas = kwimage.draw_text_on_image(None, sympy.pretty(sympy.Array(aff), use_unicode=0), color='kw_blue', fontScale=1.0)
         >>> render_canvas = kwimage.draw_header_text(render_canvas, 'Full Equation With Pre-Shift', color='kw_green')
         >>> # xdoctest: -REQUIRES(module:sympy)
         >>> # xdoctest: +REQUIRES(--show)
