@@ -1335,7 +1335,7 @@ class _BoxTransformMixins:
             else:
                 try:
                     import imgaug
-                except ImportError:
+                except Exception:
                     pass
                     # import warnings
                     # warnings.warn('imgaug is not installed')
