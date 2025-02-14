@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.11.3 - Unreleased
 
 
+### Added
+* Improved stack-images CLI.
+
+
 ## Version 0.11.2 - Released 2024-12-18
 
 ### Added
