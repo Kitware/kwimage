@@ -357,12 +357,12 @@ class _DetDrawMixin:
                 if labels in ['class', 'class+score']:
                     if 'class_idxs' in self.data:
                         if self.classes:
-                            identifers = list(ub.take(self.classes, self.class_idxs))
+                            identifers = ['None' if cx is None else self.classes[cx] for cx in self.class_idxs]
                         else:
                             identifers = ['cx={}'.format(cx) for cx in self.class_idxs]
                     elif 'cids' in self.data:
                         if self.classes and hasattr(self.classes, 'id_to_node'):
-                            identifers = list(ub.take(self.classes.id_to_node, self.data['cids']))
+                            identifers = ['None' if cid is None else self.classes.id_to_node[cid] for cid in self.data['cids']]
                         else:
                             identifers = ['cid={}'.format(cid) for cid in self.data['cids']]
                     else:

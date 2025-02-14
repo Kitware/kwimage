@@ -10,6 +10,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Improved stack-images CLI.
 
+### Fix
+* `Detections.draw_on` no longer breaks if some classes are unknown (i.e. null)
+
 
 ## Version 0.11.2 - Released 2024-12-18
 

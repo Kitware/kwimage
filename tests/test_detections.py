@@ -54,3 +54,26 @@ def test_detections_to_from_coco_missing_parts():
     dets_recon = kwimage.Detections.from_coco_annots(anns_recon)
     anns_recon2 = list(dets_recon.to_coco())
     assert anns_recon == anns_recon2
+
+
+def test_detections_draw_on_corner_cases():
+    import kwimage
+    dets = kwimage.Detections.random().scale((64, 64))
+
+    # Baseline, should work correctly.
+    canvas = dets.draw_on()
+
+    if 0:
+        # for developers
+        import kwplot
+        kwplot.autompl()
+        kwplot.imshow(canvas)
+
+    # Replace class_idxs with null data, and ensure we don't break.
+    dets.data['class_idxs'] = [None] * len(dets)
+    canvas1 = dets.draw_on()
+
+    # Use cids null data, and ensure we don't break.
+    dets.data.pop('class_idxs')
+    dets.data['cids'] = [None] * len(dets)
+    canvas1 = dets.draw_on()
