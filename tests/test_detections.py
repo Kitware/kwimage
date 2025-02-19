@@ -71,9 +71,9 @@ def test_detections_draw_on_corner_cases():
 
     # Replace class_idxs with null data, and ensure we don't break.
     dets.data['class_idxs'] = [None] * len(dets)
-    canvas1 = dets.draw_on()
+    canvas1 = dets.draw_on()  # NOQA
 
     # Use cids null data, and ensure we don't break.
     dets.data.pop('class_idxs')
     dets.data['cids'] = [None] * len(dets)
-    canvas1 = dets.draw_on()
+    canvas2 = dets.draw_on()  # NOQA
