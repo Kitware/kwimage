@@ -133,6 +133,18 @@ class Box:
     @classmethod
     @profile
     def coerce(cls, data, format=None, **kwargs):
+        """
+        Create an instance of a box from data.
+
+        Returns:
+            Box
+
+        Example:
+            >>> import kwimage
+            >>> box = kwimage.Box.coerce([1, 2, 3, 4], 'xywh')
+            >>> print(f'box = {ub.urepr(box, nl=1)}')
+            box = <Box(xywh, [1, 2, 3, 4])>
+        """
         if isinstance(data, Box):
             return data
         else:
