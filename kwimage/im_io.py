@@ -2048,6 +2048,9 @@ def _imread_svg(fpath):
     References:
         https://pypi.org/project/svglib/
 
+    Requirements:
+        pip install reportlab svglib
+
     Ignore:
         # xdoctest: +REQUIRES(module:svglib)
         # xdoctest: +REQUIRES(module:reportlab)
