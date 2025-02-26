@@ -669,3 +669,185 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
     return kwarray.robust_normalize(imdata, return_info=return_info,
                                     nodata=nodata, axis=axis, dtype=dtype,
                                     params=params, mask=mask)
+
+
+def crop_border_by_color(img, fillval=None, thresh=0, channel=None):
+    r"""
+    Crops an image to remove any constant color padding around the edges.
+
+    Args:
+        img (np.ndarray):
+            Input image array of shape (H, W) or (H, W, C).
+
+        fillval (np.ndarray | None, optional):
+            The color to be treated as padding and removed.
+            If None, defaults to white (255 for each channel).
+
+        thresh (int, optional):
+            Allowable deviation from `fillval` when determining padding.
+            Higher values allow near-matching colors to be considered padding.
+            Defaults to 0.
+
+        channel (int | None, optional):
+            If specified, only considers the given channel for distance calculation.
+            Defaults to None (all channels are considered).
+
+    Returns:
+        ndarray: cropped_img
+
+    Example:
+        >>> from kwimage.im_core import *  # NOQA
+        >>> img = np.full((10, 10, 3), 255, dtype=np.uint8)
+        >>> img[2:8, 2:8] = 0  # Add black content in the middle
+        >>> cropped = crop_border_by_color(img)
+        >>> assert cropped.shape == (6, 6, 3)
+    """
+    import kwimage
+    import numpy as np
+    if fillval is None:
+        fillval = np.array([255] * kwimage.num_channels(img))
+    # for colored images
+    pixel = fillval
+    dist = _get_pixel_dist(img, pixel, channel=channel)
+    isfill = dist <= thresh
+    # isfill should just be 2D
+    # Fix shape that comes back as (1, W, H)
+    if len(isfill.shape) == 3 and isfill.shape[0] == 1:
+        if np.all(np.greater(isfill.shape[1:2], [4, 4])):
+            isfill = isfill[0]
+    rowslice, colslice = _get_crop_slices(isfill)
+    cropped_img = img[rowslice, colslice]
+    return cropped_img
+
+
+def _get_pixel_dist(img, pixel, channel=None):
+    """
+    Computes the absolute difference between an image and a reference pixel
+    value.
+
+    Args:
+        img (np.ndarray):
+            Input image array of shape (H, W) or (H, W, C).
+
+        pixel (np.ndarray):
+            Reference pixel value to compare against.
+            Should have shape (C,) or (1, 1, C) for compatibility.
+
+        channel (int | None, optional):
+            If specified, computes the difference only for the given channel.
+            Defaults to None (computes sum across all channels).
+
+    Returns:
+        np.ndarray:
+            An array of shape (H, W) representing the per-pixel distance.
+
+    Example:
+        >>> from kwimage.im_core import _get_pixel_dist
+        >>> import numpy as np
+        >>> img = np.random.rand(256, 256, 3)
+        >>> pixel = np.random.rand(3)
+        >>> channel = None
+        >>> _get_pixel_dist(img, pixel, channel)
+    """
+    import kwimage
+    import numpy as np
+    pixel = np.asarray(pixel)
+    if len(pixel.shape) < 2:
+        pixel = pixel[None, None, :]
+    img, pixel = kwimage.make_channels_comparable(img, pixel)
+    dist = np.abs(img - pixel)
+    if len(img.shape) > 2:
+        if channel is None:
+            dist = np.sum(dist, axis=2)
+        else:
+            dist = dist[:, :, channel]
+    return dist
+
+
+def _get_crop_slices(isfill):
+    r"""
+    Determines the crop slices needed to remove the filled border.
+
+    Args:
+        isfill (np.ndarray):
+            A boolean mask of shape (H, W) indicating fill regions.
+
+    Returns:
+        tuple[slice, slice]:
+            Slices to apply on rows and columns to crop the image.
+
+    Example:
+        >>> from kwimage.im_core import _get_crop_slices
+        >>> isfill = np.array([
+        ...     [1, 1, 1, 1, 1],
+        ...     [1, 0, 0, 0, 1],
+        ...     [1, 0, 0, 0, 1],
+        ...     [1, 1, 1, 1, 1],
+        ... ])
+        >>> rowslice, colslice = _get_crop_slices(isfill)
+        >>> assert rowslice.start == 1 and rowslice.stop == 3
+        >>> assert colslice.start == 1 and colslice.stop == 4
+        >>> ###
+        >>> isfill = np.array([
+        ...     [1, 1, 0, 1, 1],
+        ...     [0, 0, 0, 0, 1],
+        ...     [1, 0, 0, 0, 0],
+        ...     [1, 1, 1, 0, 1],
+        ... ])
+        >>> rowslice, colslice = _get_crop_slices(isfill)
+        >>> assert rowslice.start == 0 and rowslice.stop == 4
+        >>> assert colslice.start == 0 and colslice.stop == 5
+        >>> ###
+        >>> from kwimage.im_core import *  # NOQA
+        >>> isfill = np.array([
+        ...     [1, 1, 1, 1, 1],
+        ...     [1, 1, 1, 1, 1],
+        ...     [1, 1, 0, 1, 1],
+        ...     [1, 1, 0, 1, 1],
+        ...     [1, 1, 1, 1, 1],
+        ...     [1, 1, 1, 1, 1],
+        ... ])
+        >>> rowslice, colslice = _get_crop_slices(isfill)
+        >>> assert rowslice.start == 2 and rowslice.stop == 4
+        >>> assert colslice.start == 2 and colslice.stop == 3
+    """
+    import numpy as np
+    import kwarray
+    from functools import reduce
+    fill_colxs = [np.where(row)[0] for row in isfill]
+    fill_rowxs = [np.where(col)[0] for col in isfill.T]
+    nRows, nCols = isfill.shape[0:2]
+    filled_columns = reduce(np.intersect1d, fill_colxs)
+    filled_rows = reduce(np.intersect1d, fill_rowxs)
+
+    consec_rows_list = kwarray.group_consecutive(filled_rows)
+    consec_cols_list = kwarray.group_consecutive(filled_columns)
+
+    def get_consec_endpoint(consec_index_list, endpoint):
+        """
+        consec_index_list = consec_cols_list
+        endpoint = 0
+        """
+        for consec_index in consec_index_list:
+            if np.any(np.array(consec_index) == endpoint):
+                return consec_index
+
+    def get_min_consec_endpoint(consec_rows_list, endpoint):
+        consec_index = get_consec_endpoint(consec_rows_list, endpoint)
+        if consec_index is None:
+            return endpoint
+        return max(consec_index) + 1
+
+    def get_max_consec_endpoint(consec_rows_list, endpoint):
+        consec_index = get_consec_endpoint(consec_rows_list, endpoint)
+        if consec_index is None:
+            return endpoint + 1
+        return min(consec_index)
+
+    consec_rows_top    = get_min_consec_endpoint(consec_rows_list, 0)
+    consec_rows_bottom = get_max_consec_endpoint(consec_rows_list, nRows - 1)
+    remove_cols_left   = get_min_consec_endpoint(consec_cols_list, 0)
+    remove_cols_right  = get_max_consec_endpoint(consec_cols_list, nCols - 1)
+    rowslice = slice(consec_rows_top, consec_rows_bottom)
+    colslice = slice(remove_cols_left, remove_cols_right)
+    return rowslice, colslice

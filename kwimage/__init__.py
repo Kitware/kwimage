@@ -99,6 +99,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
             'normalize_intensity',
             'num_channels',
             'padded_slice',
+            'crop_border_by_color',
         ],
         'im_cv2': [
             'connected_components',
