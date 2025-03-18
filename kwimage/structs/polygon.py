@@ -1417,6 +1417,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
             origin_convention (str): either "center" or "corner"
 
+        SeeAlso:
+            to_relative_mask
+
         Returns:
             kwimage.Mask
 
