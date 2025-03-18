@@ -653,7 +653,7 @@ def draw_line_segments_on_image(
 
 def draw_polyline_on_image(image, xy_pts, edgecolor='blue', thickness=1, **kwargs):
     """
-    Draw a path (i.e. polyline) on an image.
+    Draw a path (i.e. polyline / linestring) on an image.
 
     Args:
         img (ndarray): image to draw on
