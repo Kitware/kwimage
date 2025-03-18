@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Improved stack-images CLI.
 * New crop-border CLI.
+* Add `contains` to `kwimage.Box`
 
 ### Fix
 * `Detections.draw_on` no longer breaks if some classes are unknown (i.e. null)

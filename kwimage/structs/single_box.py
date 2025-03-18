@@ -257,6 +257,19 @@ class Box:
         new = self.__class__(new_boxes)
         return new
 
+    def contains(self, other):
+        """
+        Examples:
+            >>> import kwimage
+            >>> self = kwimage.Box.random().scale(10).round()
+            >>> other = kwimage.Points.random(10).scale(10).round()
+            >>> flags = self.contains(other)
+            >>> flags = self.contains(np.array(self.center))
+            >>> assert np.all(np.diag(flags))
+        """
+        flags = self.boxes.contains(other)[0]
+        return flags
+
     def to_ltrb(self, *args, **kwargs):
         """
         Example:
