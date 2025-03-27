@@ -1555,7 +1555,6 @@ class Affine(Projective):
             if ub.iterable(kw['scale']) and (not isinstance(kw['scale'], tuple) and len(kw['scale']) == 2):
                 raise NotImplementedError
             else:
-                print(kw['scale'])
                 xscale_dist = _coerce_distri(kw['scale'])
                 yscale_dist = xscale_dist
         else:
