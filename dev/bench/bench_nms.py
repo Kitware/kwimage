@@ -38,7 +38,7 @@ def make_idstr(d):
         return ''
     if not isinstance(d, ub.odict):
         d = ub.odict(sorted(d.items()))
-    return ub.repr2(d, itemsep='', nobr=True, explicit=True, nl=0, si=True)
+    return ub.urepr(d, itemsep='', nobr=True, explicit=True, nl=0, si=True)
 
 
 def benchamrk_det_nms():
