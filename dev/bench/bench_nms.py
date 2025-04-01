@@ -1,7 +1,7 @@
 """
 Timed best=408.694 µs, mean=412.551 ± 3.9 µs for impl=cython_cpu,type=ndarray
-Timed best=599.641 µs, mean=943.981 ± 418.9 µs for impl=cython_cpu,type=tensor0
-Timed best=2.426 ms, mean=2.539 ± 0.1 ms for impl=torch,type=tensor0
+Timed best=599.641 µs, mean=943.981 ± 418.9 µs for impl=cython_cpu,type=tensor-cuda0
+Timed best=2.426 ms, mean=2.539 ± 0.1 ms for impl=torch,type=tensor-cuda0
 Timed best=4.455 ms, mean=4.686 ± 0.2 ms for impl=torch,type=ndarray
 Timed best=12.725 ms, mean=13.007 ± 0.2 ms for impl=numpy,type=ndarray
 """
@@ -105,8 +105,8 @@ def benchamrk_det_nms():
     basis = {
         'type': [
             'ndarray',
-            'tensor',
-            'tensor0'
+            'tensor-cpu',
+            'tensor-cuda0'
         ],
         # 'daq': [True, False],
         # 'daq': [False],
@@ -145,15 +145,15 @@ def benchamrk_det_nms():
         REMOVE_SLOW = True
         if REMOVE_SLOW:
             known_bad = [
-                {'impl': 'torch', 'type': 'tensor'},
-                {'impl': 'numpy', 'type': 'tensor'},
-                # {'impl': 'cython_gpu', 'type': 'tensor'},
-                {'impl': 'cython_cpu', 'type': 'tensor'},
+                {'impl': 'torch', 'type': 'tensor-cpu'},
+                {'impl': 'numpy', 'type': 'tensor-cpu'},
+                # {'impl': 'cython_gpu', 'type': 'tensor-cpu'},
+                {'impl': 'cython_cpu', 'type': 'tensor-cpu'},
 
-                # {'impl': 'torch', 'type': 'tensor0'},
-                {'impl': 'numpy', 'type': 'tensor0'},
-                # {'impl': 'cython_gpu', 'type': 'tensor0'},
-                # {'impl': 'cython_cpu', 'type': 'tensor0'},
+                # {'impl': 'torch', 'type': 'tensor-cuda0'},
+                {'impl': 'numpy', 'type': 'tensor-cuda0'},
+                # {'impl': 'cython_gpu', 'type': 'tensor-cuda0'},
+                # {'impl': 'cython_cpu', 'type': 'tensor-cuda0'},
 
                 {'impl': 'torchvision', 'type': 'ndarray'},
             ]
@@ -227,10 +227,10 @@ def benchamrk_det_nms():
             else:
                 if mode_type == 'ndarray':
                     dets = np_dets.numpy()
-                elif mode_type == 'tensor':
-                    dets = np_dets.tensor(None)
-                elif mode_type == 'tensor0':
-                    dets = np_dets.tensor(0)
+                elif mode_type == 'tensor-cpu':
+                    dets = np_dets.tensor(device='cpu')
+                elif mode_type == 'tensor-cuda0':
+                    dets = np_dets.tensor(device=0)
                 else:
                     raise KeyError
                 typed_data[mode_type] = dets
@@ -308,7 +308,7 @@ def benchamrk_det_nms():
             for key, vals in ydata.items():
                 score_wrt_x[key] = vals[pos]
 
-            typekeys = ['tensor0', 'tensor', 'ndarray']
+            typekeys = ['tensor-cuda0', 'tensor-cpu', 'ndarray']
             type_groups = dict([
                 (b, ub.group_items(score_wrt_x, lambda y: y.endswith(b))[True])
                 for b in typekeys
