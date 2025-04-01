@@ -281,7 +281,7 @@ def available_nms_impls():
 # @ub.memoize
 def _heuristic_auto_nms_impl(code, num, valid=None):
     """
-    Defined with help from ``~/code/kwimage/dev/bench_nms.py``
+    Defined with help from ``~/code/kwimage/dev/bench/bench_nms.py``
 
     Args:
         code (str): text that indicates which type of data you have

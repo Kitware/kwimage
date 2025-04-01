@@ -26,6 +26,21 @@ def ensure_numpy_indices(keep):
     return keep
 
 
+def make_idstr(d):
+    """
+    Make full-length-key id-string
+    """
+    if d is None:
+        return ''
+    elif isinstance(d, str):
+        return d
+    elif len(d) == 0:
+        return ''
+    if not isinstance(d, ub.odict):
+        d = ub.odict(sorted(d.items()))
+    return ub.repr2(d, itemsep='', nobr=True, explicit=True, nl=0, si=True)
+
+
 def benchamrk_det_nms():
     """
     Benchmarks different implementations of non-max-supression on the CPU, GPU,
@@ -196,11 +211,10 @@ def benchamrk_det_nms():
         typed_data = {}
         # ----------------------------------
 
-        import netharn as nh
         for combo in combos:
             print('combo = {}'.format(ub.urepr(combo, nl=0)))
 
-            label = nh.util.make_idstr(combo)
+            label = make_idstr(combo)
             mode = combo.copy()
 
             # if mode['impl'] == 'cython_gpu':
