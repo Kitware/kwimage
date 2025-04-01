@@ -93,7 +93,6 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
 
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', 'invalid value .* true_divide')
-        warnings.filterwarnings("error")
 
         # n_conflicts = 0
         while idxs_remain.size > 0:
