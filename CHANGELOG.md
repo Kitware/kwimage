@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fix
 * `Detections.draw_on` no longer breaks if some classes are unknown (i.e. null)
 * Fix overflow issue in `py_nms` if inputs were float16
+* Fixed issue preventing torchvision nms from being recognized as a backend.
 
 
 ## Version 0.11.2 - Released 2024-12-18
