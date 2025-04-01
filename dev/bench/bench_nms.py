@@ -111,8 +111,8 @@ def benchamrk_det_nms():
         # 'daq': [True, False],
         # 'daq': [False],
         # 'device': [None],
-        # 'impl': valid_impls,
-        'impl': valid_impls + ['auto'],
+        'impl': valid_impls,
+        # 'impl': valid_impls + ['auto'],
     }
 
     if ub.argflag('--daq'):
@@ -336,7 +336,7 @@ def benchamrk_det_nms():
                     ordered_impls.append(d['impl'])
 
                 ordered_impls = list(ub.oset(ordered_impls) - {'auto'})
-                ordered_impls2.pop('auto')
+                ordered_impls2.pop('auto', None)
                 record('        # {}'.format(ub.urepr(ordered_impls2, precision=1, nl=0, explicit=True)))
                 record('        preference = {}'.format(ub.urepr(ordered_impls, nl=0)))
     record('### end times of interest ')
