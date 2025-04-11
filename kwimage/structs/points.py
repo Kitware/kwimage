@@ -882,6 +882,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             classes (list[str] | kwcoco.CategoryTree):
                 list of all keypoint category names if converting from a
                 coco representation.
+
+        Example:
+            >>> import kwimage
+            >>> data = np.random.rand(10, 2)
+            >>> pts = kwimage.Points.coerce(data)
         """
         if isinstance(data, cls):
             return data
@@ -889,7 +894,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             # TODO: determine if coco or geojson
             return cls.from_coco(data, classes=classes)
         elif _generic.isinstance_arraytypes(data):
-            return cls(data)
+            return cls(xy=data)
         # TODO: check if a shapely object
         else:
             raise TypeError(type(data))
