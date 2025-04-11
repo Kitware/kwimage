@@ -2007,52 +2007,99 @@ class Affine(Projective):
             cv2_method = inlier_method_lut[inlier_method]
             A, mask = cv2.estimateAffine2D(pts1, pts2, method=cv2_method)
 
-        x1_mn = pts1[:, 0]
-        y1_mn = pts1[:, 1]
-        x2_mn = pts2[:, 0]
-        y2_mn = pts2[:, 1]
-        num_pts = x1_mn.shape[0]
-        Mx6 = np.empty((2 * num_pts, 6), dtype=float)
-        b = np.empty((2 * num_pts, 1), dtype=float)
-        for ix in range(num_pts):  # Loop over inliers
-            # Concatenate all 2x9 matrices into an Mx6 matrix
-            x1 = x1_mn[ix]
-            x2 = x2_mn[ix]
-            y1 = y1_mn[ix]
-            y2 = y2_mn[ix]
-            Mx6[ix * 2]     = (x1, y1, 0, 0, 1, 0)
-            Mx6[ix * 2 + 1] = ( 0, 0, x1, y1, 0, 1)
-            b[ix * 2] = x2
-            b[ix * 2 + 1] = y2
+        num_pts = len(pts1)
+        if num_pts == 0:
+            # Regularize degenerate 0 correspondence case
+            mat = np.eye(3)  # Identity if no points
+        elif num_pts == 1:
+            # Regularize degenerate 1 correspondence case
+            # Only translation possible
+            t1 = np.mean(pts1, axis=0)
+            t2 = np.mean(pts2, axis=0)
+            tx, ty = t2 - t1
+            mat = np.array([
+                [1, 0, tx],
+                [0, 1, ty],
+                [0, 0, 1]
+            ])
+        elif num_pts == 2:
+            # Regularize degenerate 2 correspondence case
+            # For 2 points, compute rotation and scaling
+            # Center points to estimate rotation/scale
+            t1 = np.mean(pts1, axis=0)
+            t2 = np.mean(pts2, axis=0)
+            centered1 = pts1 - t1
+            centered2 = pts2 - t2
 
-        M = Mx6
-        try:
-            USVt = np.linalg.svd(M, full_matrices=True, compute_uv=True)
-        except MemoryError:
-            import scipy.sparse as sps
-            import scipy.sparse.linalg as spsl
-            M_sparse = sps.lil_matrix(M)
-            USVt = spsl.svds(M_sparse)
-        except np.linalg.LinAlgError:
-            raise
-        except Exception:
-            raise
+            # Solve for rotation and scaling using Kabsch algorithm (simplified)
+            # https://en.wikipedia.org/wiki/Kabsch_algorithm
+            H = centered1.T @ centered2  # Cross-covariance matrix
+            U, _, Vt = np.linalg.svd(H)
+            R = Vt.T @ U.T  # Rotation matrix
 
-        U, s, Vt = USVt
+            # Handle reflection case (enforce proper rotation)
+            if np.linalg.det(R) < 0:
+                Vt[-1, :] *= -1
+                R = Vt.T @ U.T
 
-        # Inefficient, but the math works
-        # We want to solve Ax=b (where A is the Mx6 in this case)
-        # Ax = b
-        # (U S V.T) x = b
-        # x = (U.T inv(S) V) b
-        Sinv = np.zeros((len(Vt), len(U)))
-        Sinv[np.diag_indices(len(s))] = 1 / s
-        a = Vt.T.dot(Sinv).dot(U.T).dot(b).T[0]
-        mat = np.array([
-            [a[0], a[1], a[4]],
-            [a[2], a[3], a[5]],
-            [   0, 0, 1],
-        ])
+            # Estimate scaling
+            s = np.trace(H @ R) / np.trace(centered1.T @ centered1)
+
+            # Build full transform: [sR | t2 - sR t1]
+            mat = np.eye(3)
+            mat[:2, :2] = s * R
+            mat[:2, 2] = t2 - (s * R) @ t1
+        else:
+            x1_mn = pts1[:, 0]
+            y1_mn = pts1[:, 1]
+            x2_mn = pts2[:, 0]
+            y2_mn = pts2[:, 1]
+            num_pts = x1_mn.shape[0]
+            Mx6 = np.empty((2 * num_pts, 6), dtype=float)
+            b = np.empty((2 * num_pts, 1), dtype=float)
+            for ix in range(num_pts):  # Loop over inliers
+                # Concatenate all 2x9 matrices into an Mx6 matrix
+                x1 = x1_mn[ix]
+                x2 = x2_mn[ix]
+                y1 = y1_mn[ix]
+                y2 = y2_mn[ix]
+                Mx6[ix * 2]     = (x1, y1, 0, 0, 1, 0)
+                Mx6[ix * 2 + 1] = ( 0, 0, x1, y1, 0, 1)
+                b[ix * 2] = x2
+                b[ix * 2 + 1] = y2
+
+            M = Mx6
+            try:
+                USVt = np.linalg.svd(M, full_matrices=True, compute_uv=True)
+            except MemoryError:
+                import scipy.sparse as sps
+                import scipy.sparse.linalg as spsl
+                M_sparse = sps.lil_matrix(M)
+                USVt = spsl.svds(M_sparse)
+            except np.linalg.LinAlgError:
+                raise
+            except Exception:
+                raise
+
+            U, s, Vt = USVt
+
+            if s[-1] == 0:
+                a, _, _, _ = np.linalg.lstsq(M, b, rcond=None)
+                a = a.ravel()
+            else:
+                # Inefficient, but the math works
+                # We want to solve Ax=b (where A is the Mx6 in this case)
+                # Ax = b
+                # (U S V.T) x = b
+                # x = (U.T inv(S) V) b
+                Sinv = np.zeros((len(Vt), len(U)))
+                Sinv[np.diag_indices(len(s))] = 1 / s
+                a = Vt.T.dot(Sinv).dot(U.T).dot(b).T[0]
+            mat = np.array([
+                [a[0], a[1], a[4]],
+                [a[2], a[3], a[5]],
+                [   0, 0, 1],
+            ])
         return Affine(mat)
 
     @classmethod

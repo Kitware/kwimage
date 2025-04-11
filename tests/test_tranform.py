@@ -73,3 +73,77 @@ def test_rational_affine():
     warp_pt1 = (A.matrix @ pt).evalf()
     warp_pt2 = (alt.matrix @ pt).evalf()
     assert warp_pt2 == warp_pt1
+
+
+def test_duplicate_points_non_rank_defficient():
+    import kwimage
+    import numpy as np
+    pts1 = np.array([
+        [1, 1],
+        [1, 10],
+        [10, 1],
+        [10, 1],
+        [10, 1],
+        [10, 10],
+    ])
+    pts2 = np.array([
+        [1, 1],
+        [1, 10],
+        [10, 1],
+        [10, 1],
+        [10, 1],
+        [10, 10],
+    ])
+    aff = kwimage.Affine.fit(pts1, pts2)
+    pts2_recon = kwimage.Points(xy=pts1).warp(aff)
+    assert np.allclose(pts2_recon.xy, pts2)
+
+
+def test_rank_defficient_without_duplicates():
+    import kwimage
+    import numpy as np
+    pts1 = np.array([
+        [1, 1],
+        [10, 10],
+    ])
+    pts2 = np.array([
+        [1, 1],
+        [10, 10],
+    ])
+    aff = kwimage.Affine.fit(pts1, pts2)
+    pts2_recon = kwimage.Points(xy=pts1).warp(aff)
+    assert np.allclose(pts2_recon.xy, pts2)
+
+
+def test_rank_defficient_with_duplicates():
+    import kwimage
+    import numpy as np
+    pts1 = np.array([
+        [8, 4],
+        [8, 4],
+        [9, 8],
+        [9, 8],
+    ])
+    pts2 = np.array([
+        [8, 4],
+        [8, 4],
+        [9, 8],
+        [9, 8],
+    ])
+    aff = kwimage.Affine.fit(pts1, pts2)
+    pts2_recon = kwimage.Points(xy=pts1).warp(aff)
+    assert np.allclose(pts2_recon.xy, pts2)
+
+
+def test_single_correspondence():
+    import kwimage
+    import numpy as np
+    pts1 = np.array([
+        [1, 1],
+    ])
+    pts2 = np.array([
+        [10, 10],
+    ])
+    aff = kwimage.Affine.fit(pts1, pts2)
+    pts2_recon = kwimage.Points(xy=pts1).warp(aff)
+    assert np.allclose(pts2_recon.xy, pts2)

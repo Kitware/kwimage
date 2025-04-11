@@ -17,6 +17,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fix overflow issue in `py_nms` if inputs were float16
 * Fixed issue preventing torchvision nms from being recognized as a backend.
 
+### Changed
+* kwimage.Affine.fit now falls back to a similarity transform if fewer than 3 correspondences are given, 
+* kwimage.Affine.fit now falls back on a np.linalg.lstdq solution if the SVD is degenerate.
+
 
 ## Version 0.11.2 - Released 2024-12-18
 
