@@ -135,6 +135,24 @@ def test_rank_defficient_with_duplicates():
     assert np.allclose(pts2_recon.xy, pts2)
 
 
+def test_rank_defficient_with_duplicates_non_exact():
+    import kwimage
+    import numpy as np
+    pts1 = np.array([[200.244, 250.543],
+                     [200.247, 250.545],
+                     [100.754, 0.265],
+                     [100.754, 0.265]])
+
+    pts2 = np.array([[200.25, 250.54],
+                     [200.25, 250.54],
+                     [100.77, 0.26],
+                     [100.77, 0.26]])
+
+    aff = kwimage.Affine.fit(pts1, pts2)
+    pts2_recon = kwimage.Points(xy=pts1).warp(aff)
+    assert np.allclose(pts2_recon.xy, pts2)
+
+
 def test_single_correspondence():
     import kwimage
     import numpy as np
