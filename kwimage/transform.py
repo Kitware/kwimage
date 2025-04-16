@@ -2083,7 +2083,7 @@ class Affine(Projective):
 
             U, s, Vt = USVt
 
-            if math.isclose(s[-1], 0):
+            if np.isclose(s[-1], 0):
                 # SVD solution failed, fallback on lstsq
                 a, _, _, _ = np.linalg.lstsq(M, b, rcond=None)
                 a = a.ravel()
