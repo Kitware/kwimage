@@ -13,11 +13,6 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 
 class _PointsWarpMixin:
 
@@ -88,7 +83,6 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.

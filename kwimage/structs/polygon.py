@@ -22,11 +22,6 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 
 class _PolyMixin:
     """
@@ -475,7 +470,6 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -1864,7 +1858,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return boxes
 
-    @profile
     def box(self):
         """
         Returns an axis-aligned bounding box for the segmentation
