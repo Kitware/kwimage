@@ -1792,6 +1792,12 @@ class _BoxTransformMixins:
             >>>     height=np.arange(10, 18).reshape(2, 2, 2))
             >>> assert np.all(new.width.ravel() == np.arange(0, 8))
             >>> assert np.all(new.height.ravel() == np.arange(10, 18))
+
+        Example:
+            >>> # Test empty case
+            >>> import kwimage
+            >>> self = kwimage.Boxes([], format='xywh')
+            >>> new = self.resize(3, 3, about='xy')
         """
         if about == 'xy':
             if inplace:
@@ -1810,10 +1816,11 @@ class _BoxTransformMixins:
         else:
             raise ValueError(about)
 
-        if width is not None:
-            new.data[..., 2] = width
-        if height is not None:
-            new.data[..., 3] = height
+        if _numel(new.data):
+            if width is not None:
+                new.data[..., 2] = width
+            if height is not None:
+                new.data[..., 3] = height
         new = new.toformat(self.format, copy=False)
         return new
 

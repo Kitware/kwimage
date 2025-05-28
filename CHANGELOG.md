@@ -17,6 +17,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fix overflow issue in `py_nms` if inputs were float16
 * Fixed issue preventing torchvision nms from being recognized as a backend.
 * Issue with Points.coerce when data was a numpy array
+* Issue with resize on empty boxes
 
 ### Changed
 * kwimage.Affine.fit now falls back to a similarity transform if fewer than 3 correspondences are given, 
