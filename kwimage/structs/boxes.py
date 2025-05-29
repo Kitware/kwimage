@@ -1798,6 +1798,7 @@ class _BoxTransformMixins:
             >>> import kwimage
             >>> self = kwimage.Boxes([], format='xywh')
             >>> new = self.resize(3, 3, about='xy')
+            >>> assert len(new) == len(self) == 0
         """
         if about == 'xy':
             if inplace:
