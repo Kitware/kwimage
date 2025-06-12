@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fixed issue preventing torchvision nms from being recognized as a backend.
 * Issue with Points.coerce when data was a numpy array
 * Issue with resize on empty boxes
+* Better errors on `stack_images` with empty input
 
 ### Changed
 * kwimage.Affine.fit now falls back to a similarity transform if fewer than 3 correspondences are given, 
