@@ -976,7 +976,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
 
         src_space (str): input image colorspace. (e.g. BGR, GRAY)
 
-        dst_space (str): desired output colorspace. (e.g. RGB, HSV, LAB)
+        dst_space (str): desired output colorspace. (e.g. RGB, HSV, HLS, LAB)
 
         implicit (bool):
             if False, the user must correctly specify if the input/output
@@ -992,7 +992,7 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
     Note:
         Note the LAB and HSV colorspaces in float do not go into the 0-1 range.
 
-        For HSV the floating point range is:
+        For HSV and HLS the floating point range is:
             0:360, 0:1, 0:1
         For LAB the floating point range is:
             0:100, -86.1875:98.234375, -107.859375:94.46875
@@ -1057,6 +1057,98 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
         # (0-100, -111-111ish, -111-111ish) and (0-360, 0-1, 0-1) respectively
         img2 = cv2.cvtColor(img, code, dst=dst)
     return img2
+
+
+def adjust(img, saturate=0, lighten=0, legacy=False):
+    """
+    Adjust the saturation or lightness of an image.
+
+    Args:
+        saturate (float):
+            between +1 and -1, when positive saturates the color, when
+            negative desaturates the color.
+
+        lighten (float):
+            between +1 and -1, when positive lightens the color, when
+            negative darkens the color
+
+        legacy (bool):
+            defaults to False. If True, uses the old kwimage.Color.adjust
+            logic.
+
+    SeeAlso:
+        :func:`kwimage.Color.adjust` - note this variant of this has
+            considerably different behavior which we may rectify in the future.
+
+    Example:
+        >>> # xdoctest: +REQUIRES(module:cv2)
+        >>> import kwimage
+        >>> import numpy as np
+        >>> img = kwimage.grab_test_image()
+        >>> adjustments = [
+        >>>     {'saturate': -0.2},
+        >>>     {'saturate': +0.2},
+        >>>     {'lighten': +0.2},
+        >>>     {'lighten': -0.2},
+        >>>     {'saturate': -0.9},
+        >>>     {'saturate': +0.9},
+        >>>     {'lighten': +0.9},
+        >>>     {'lighten': -0.9},
+        >>>     {'lighten': 1.0},
+        >>>     {'lighten': -1.0},
+        >>>     {'saturate': 1.0},
+        >>>     {'saturate': -1.0},
+        >>> ]
+        >>> #adjustments += [{'legacy': True, **k} for k in adjustments]
+        >>> self = kwimage.Color.coerce('kitware_green')
+        >>> dsize = (256, 64)
+        >>> to_show = []
+        >>> #to_show.append(img)
+        >>> for kwargs in adjustments:
+        >>>     cell = kwimage.adjust(img, **kwargs)
+        >>>     text = ub.urepr(kwargs, compact=1, nobr=1)
+        >>>     cell, info = kwimage.draw_text_on_image(cell, text, return_info=1, border={'thickness': 2}, color='white', fontScale=1.0)
+        >>>     to_show.append(cell)
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> canvas = kwimage.stack_images_grid(to_show)
+        >>> canvas = kwimage.draw_header_text(canvas, 'kwimage.adjust')
+        >>> kwplot.imshow(canvas, fnum=2)
+    """
+    import kwimage
+    img = kwimage.ensure_float01(img)
+
+    if legacy:
+        hsv = kwimage.convert_colorspace(img, 'rgb', 'hsv')
+        s_ = hsv[..., 1]
+        v_ = hsv[..., 2]
+        if saturate:
+            s_ += saturate
+        if lighten:
+            v_ += lighten
+        s_.clip(0, 1, out=s_)
+        v_.clip(0, 1, out=v_)
+        out = kwimage.convert_colorspace(hsv, 'hsv', 'rgb')
+    else:
+        hls = kwimage.convert_colorspace(img, 'rgb', 'hls')
+        l_ = hls[..., 1]
+        s_ = hls[..., 2]
+
+        if lighten > 0:
+            l_ += (1 - l_) * lighten
+        elif lighten < 0:
+            l_ *= (1 + lighten)
+
+        if saturate > 0:
+            s_ += (1 - s_) * saturate
+        elif saturate < 0:
+            s_ *= (1 + saturate)
+
+        l_.clip(0, 1, out=l_)
+        s_.clip(0, 1, out=s_)
+        out = kwimage.convert_colorspace(hls, 'hls', 'rgb')
+    return out
 
 
 def _lookup_cv2_colorspace_conversion_code(src_space, dst_space):

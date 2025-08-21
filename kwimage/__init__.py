@@ -109,6 +109,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
             'imcrop',
             'imscale',
             'morphology',
+            'adjust',
         ],
         'im_demodata': [
             'checkerboard',

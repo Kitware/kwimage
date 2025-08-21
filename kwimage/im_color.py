@@ -708,6 +708,10 @@ class Color(ub.NiceRepr):
         Returns:
             Self - modified color
 
+        SeeAlso:
+            :func:`kwimage.adjust` - note this variant of this has considerably
+            different behavior which we may rectify in the future.
+
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
             >>> # xdoctest: +REQUIRES(module:colormath)
@@ -770,6 +774,7 @@ class Color(ub.NiceRepr):
             >>> canvas = kwimage.draw_header_text(canvas, 'kwimage.Color.adjust')
             >>> kwplot.imshow(canvas)
         """
+        # TODO: work in hls instead? But don't break backwards compat?
         h, s, v, *a = self.as01(space='hsv')
         assert 0 <= h <= 360
         assert 0 <= s <= 1
