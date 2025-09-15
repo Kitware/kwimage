@@ -87,12 +87,6 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
-
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 __all__ = ['Boxes']
 
 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
@@ -711,7 +705,6 @@ class _BoxConversionMixins:
         return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
 
     @classmethod
-    @profile
     def from_slice(Boxes, slices, shape=None, clip=True, endpoint=True,
                    wrap=False):
         """
@@ -899,7 +892,6 @@ class _BoxConversionMixins:
         #         box.clip(0, 0, width, height, inplace=True)
         return box
 
-    @profile
     def to_slices(self, endpoint=True):
         """
         Convert the boxes into slices
@@ -953,7 +945,6 @@ class _BoxConversionMixins:
         for row in self.to_xywh(copy=False).data.tolist():
             yield [round(x, 4) for x in row]
 
-    @profile
     def to_polygons(self):
         """
         Convert each box to a polygon object
@@ -1335,7 +1326,7 @@ class _BoxTransformMixins:
             else:
                 try:
                     import imgaug
-                except ImportError:
+                except Exception:
                     pass
                     # import warnings
                     # warnings.warn('imgaug is not installed')
@@ -1428,7 +1419,6 @@ class _BoxTransformMixins:
         corners = np.ascontiguousarray(corners)
         return corners
 
-    @profile
     def scale(self, factor, about='origin', output_dims=None, inplace=False):
         """
         Scale a bounding boxes by a factor.
@@ -1647,7 +1637,6 @@ class _BoxTransformMixins:
                 raise NotImplementedError('Cannot translate: {}'.format(self.format))
         return new
 
-    @profile
     def clip(self, x_min, y_min, x_max, y_max, inplace=False):
         """
         Clip boxes to boundaries specified as minimum and maximum coordinates.
@@ -1803,6 +1792,13 @@ class _BoxTransformMixins:
             >>>     height=np.arange(10, 18).reshape(2, 2, 2))
             >>> assert np.all(new.width.ravel() == np.arange(0, 8))
             >>> assert np.all(new.height.ravel() == np.arange(10, 18))
+
+        Example:
+            >>> # Test empty case
+            >>> import kwimage
+            >>> self = kwimage.Boxes([], format='xywh')
+            >>> new = self.resize(3, 3, about='xy')
+            >>> assert len(new) == len(self) == 0
         """
         if about == 'xy':
             if inplace:
@@ -1821,10 +1817,11 @@ class _BoxTransformMixins:
         else:
             raise ValueError(about)
 
-        if width is not None:
-            new.data[..., 2] = width
-        if height is not None:
-            new.data[..., 3] = height
+        if _numel(new.data):
+            if width is not None:
+                new.data[..., 2] = width
+            if height is not None:
+                new.data[..., 3] = height
         new = new.toformat(self.format, copy=False)
         return new
 
@@ -2496,7 +2493,6 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
     if _USE_SLOTS:
         __slots__ = ('data', 'format', '__impl')
 
-    @profile
     def __init__(self, data, format=None, check=True, canonical=False):
         """
         Args:
@@ -2829,7 +2825,6 @@ class Boxes(_BoxConversionMixins, _BoxPropertyMixins, _BoxTransformMixins,
 
     # @ub.memoize_property
     @property
-    @profile
     def _impl(self):
         """
         returns the kwarray.ArrayAPI implementation for the data

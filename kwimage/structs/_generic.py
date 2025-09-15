@@ -3,7 +3,7 @@ import sys
 import kwarray
 import numbers
 import numpy as np
-from collections import abc
+# from collections import abc
 # import abc
 
 # try:
@@ -478,7 +478,8 @@ def _isinstance2(obj, cls):
 
 def _setlim(xmin, ymin, xmax, ymax, setlim=False, ax=None):
     """
-    Helper for setlim argument for draw function
+    Helper for setlim argument for draw function.
+    TODO: replace with _setlim2 and move to kwplot
     """
     if ax is None:
         from matplotlib import pyplot as plt
@@ -511,6 +512,82 @@ def _setlim(xmin, ymin, xmax, ymax, setlim=False, ax=None):
 
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
+
+
+def _setlim2(xmin=None, ymin=None, xmax=None, ymax=None, setlim=False, ax=None):
+    """
+    Helper for setlim argument for draw function.
+    TODO: move to kwplot
+    """
+    if ax is None:
+        from matplotlib import pyplot as plt
+        ax = plt.gca()
+
+    # Parse options
+    growonly_mode = False
+    scale_factor = None
+    if isinstance(setlim, str):
+        if setlim == 'grow':
+            growonly_mode = True
+        else:
+            raise KeyError(setlim)
+    elif isinstance(setlim, float):
+        scale_factor = setlim
+
+    # The logic is the same for both x and y so abstract it a bit.
+    requests = [
+        {'request_min': xmin, 'request_max': xmax, 'getter': ax.get_xlim, 'setter': ax.set_xlim},
+        {'request_min': ymin, 'request_max': ymax, 'getter': ax.get_ylim, 'setter': ax.set_ylim},
+    ]
+
+    for request in requests:
+        _setlim_for_dim(**request, scale_factor=scale_factor, growonly_mode=growonly_mode)
+
+
+def _setlim_for_dim(request_min, request_max, getter, setter, scale_factor, growonly_mode):
+    """
+    Example:
+        >>> def getter():
+        >>>     return (20, 99)
+        >>> def setter(new_min, new_max):
+        >>>     print('new min/max', new_min, new_max)
+        >>> # Todo: run over a grid
+        >>> request_min = 20
+        >>> request_max = 232
+        >>> scale_factor = 1.2
+        >>> growonly_mode = 0
+        >>> _setlim_for_dim(request_min, request_max, getter, setter, scale_factor, growonly_mode)
+    """
+    # If the min/max value is not given we "pin" it to prevent it from
+    # changing.
+    pin_min = request_min is None
+    pin_max = request_max is None
+
+    if pin_min and pin_max:
+        # optimization, dont need to do anything if there is no request
+        return
+
+    orig_min, orig_max = getter()
+    if pin_min:
+        request_min = orig_min
+    if pin_max:
+        request_max = orig_max
+
+    if growonly_mode:
+        if not pin_min:
+            request_min = min(orig_min, request_min)
+        if not pin_max:
+            request_max = max(orig_max, request_max)
+
+    if scale_factor is not None:
+        extent = abs(request_max - request_min)
+        pad = ((extent * scale_factor) - extent) / 2
+        if not pin_min:
+            request_min = request_min - pad
+        if not pin_max:
+            request_max = request_max + pad
+
+    setter(request_min, request_max)
 
 
 def _handle_color_args_for(color, alpha, border, fill, edgecolor, facecolor, image):

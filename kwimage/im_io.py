@@ -1299,11 +1299,11 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
         else:
             raise KeyError('Unknown imwrite backend={!r}'.format(backend))
     except Exception as ex:
-        msg = '\nNOTE[kwimage]: kwimage.imread failed, without a note. See above error'
+        msg = '\nNOTE[kwimage]: kwimage.imwrite failed, without a note. See above error'
         if ub.Path(fpath).is_dir():
-            msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because {fpath!r} is a directory.'
+            msg = f'\nNOTE[kwimage]: kwimage.imwrite failed, likely because {fpath!r} is a directory.'
         if not ub.Path(fpath).parent.exists():
-            msg = f'\nNOTE[kwimage]: kwimage.imread failed, likely because the parent of {fpath!r} does not exist.'
+            msg = f'\nNOTE[kwimage]: kwimage.imwrite failed, likely because the parent of {fpath!r} does not exist.'
         try:
             from kwutil import util_exception
             raise util_exception.add_exception_note(ex, msg)
@@ -2047,6 +2047,9 @@ def _imread_svg(fpath):
     """
     References:
         https://pypi.org/project/svglib/
+
+    Requirements:
+        pip install reportlab svglib
 
     Ignore:
         # xdoctest: +REQUIRES(module:svglib)

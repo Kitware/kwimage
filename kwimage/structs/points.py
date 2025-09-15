@@ -13,11 +13,6 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 
 class _PointsWarpMixin:
 
@@ -88,7 +83,6 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -882,6 +876,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             classes (list[str] | kwcoco.CategoryTree):
                 list of all keypoint category names if converting from a
                 coco representation.
+
+        Example:
+            >>> import kwimage
+            >>> data = np.random.rand(10, 2)
+            >>> pts = kwimage.Points.coerce(data)
         """
         if isinstance(data, cls):
             return data
@@ -889,7 +888,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             # TODO: determine if coco or geojson
             return cls.from_coco(data, classes=classes)
         elif _generic.isinstance_arraytypes(data):
-            return cls(data)
+            return cls(xy=data)
         # TODO: check if a shapely object
         else:
             raise TypeError(type(data))

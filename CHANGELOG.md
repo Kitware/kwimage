@@ -4,7 +4,29 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.11.2 - Unreleased
+## Version 0.11.3 - Unreleased
+
+
+### Added
+* Improved stack-images CLI.
+* New crop-border CLI.
+* Add `contains` to `kwimage.Box`
+* Add `kwimage.adjust` to adjust simple image properties.
+
+### Fix
+* `Detections.draw_on` no longer breaks if some classes are unknown (i.e. null)
+* Fix overflow issue in `py_nms` if inputs were float16
+* Fixed issue preventing torchvision nms from being recognized as a backend.
+* Issue with Points.coerce when data was a numpy array
+* Issue with resize on empty boxes
+* Better errors on `stack_images` with empty input
+
+### Changed
+* kwimage.Affine.fit now falls back to a similarity transform if fewer than 3 correspondences are given, 
+* kwimage.Affine.fit now falls back on a np.linalg.lstdq solution if the SVD is degenerate.
+
+
+## Version 0.11.2 - Released 2024-12-18
 
 ### Added
 * Added `area` property to `Segmentation`
@@ -35,6 +57,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fix `Polygon.draw` where `facecolor='none'`.
 * `Polygon.circle` now produces polygons with the correct specified number of sides. 
 * Rare case where Boxes.warp with None would warp by a null matrix instead of identity.
+* Ignore imgaug if it fails to import.
 
 
 ## Version 0.11.1 - Released 2024-10-17

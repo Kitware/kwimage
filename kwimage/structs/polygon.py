@@ -22,11 +22,6 @@ __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
 
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 
 class _PolyMixin:
     """
@@ -144,12 +139,26 @@ class _ShapelyMixin:
 
     def oriented_bounding_box(self):
         """
+        An oriented bounding box format contains:
+            center: which is the xy centroid of the box
+            extent: which is the width and height of the box (unoriented)
+            theta: which is the clockwise rotation angle in radians
+
+        CommandLine:
+            xdoctest -m /home/joncrall/code/kwimage/kwimage/structs/polygon.py _ShapelyMixin.oriented_bounding_box
+            xdoctest -m kwimage.structs.polygon _ShapelyMixin.oriented_bounding_box
+
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
             >>> import kwimage
-            >>> self = kwimage.Polygon.random().scale(100, 100).round()
+            >>> self = kwimage.Polygon.random(rng=0).scale(100, 100).round()
             >>> obox = self.oriented_bounding_box()
-            >>> print(f'obox={obox}')
+            >>> print(f'obox = {ub.urepr(obox, nl=1)}')
+            obox = (
+                (-9853.733..., -9847.73...),
+                (85.7368..., 97.1090...),
+                1.2537...,
+            )
         """
         import cv2
         from collections import namedtuple
@@ -461,7 +470,6 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    @profile
     def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
         """
         Generalized coordinate transform.
@@ -1403,6 +1411,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
 
             origin_convention (str): either "center" or "corner"
 
+        SeeAlso:
+            to_relative_mask
+
         Returns:
             kwimage.Mask
 
@@ -1847,7 +1858,6 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return boxes
 
-    @profile
     def box(self):
         """
         Returns an axis-aligned bounding box for the segmentation

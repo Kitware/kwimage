@@ -19,6 +19,7 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
         xdoctest -m kwimage.algo._nms_backend.py_nms py_nms
 
     Example:
+        >>> from kwimage.algo._nms_backend.py_nms import *  # NOQA
         >>> np_ltrb = np.array([
         >>>     [0, 0, 100, 100],
         >>>     [0, 0, 100, 100],
@@ -57,13 +58,34 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
         keep@0.2 = [2, 1]
         keep@0.5 = [2, 1, 3]
         keep@1.0 = [2, 1, 3, 0]
+
+    Example:
+        >>> # Test int16 case
+        >>> from kwimage.algo._nms_backend.py_nms import *  # NOQA
+        >>> np_ltrb = np.array([
+        >>>    [  71.75,  -37.25,  373.8 ,  231.2 ],
+        >>>    [ 282.  ,  395.5 ,  609.  ,  639.5 ],
+        >>>    [  36.62,   -5.5 ,  386.  ,  321.8 ],
+        >>>    [ 207.5 ,  546.5 ,  238.6 ,  563.  ]], dtype=np.float16)
+        >>> np_scores = np.linspace(0, 1, len(np_ltrb))
+        >>> thresh = 0.1
+        >>> bias = 0.0
+        >>> keep = sorted(map(int, py_nms(np_ltrb, np_scores, thresh, bias)))
+        >>> print('keep = {!r}'.format(keep))
     """
+    new_dtype = np.result_type(np_ltrb, np.float32)
+    if new_dtype != np_ltrb.dtype:
+        # Upcast if precision is too low
+        np_ltrb = np_ltrb.astype(new_dtype)
+
     x1 = np_ltrb[:, 0]
     y1 = np_ltrb[:, 1]
     x2 = np_ltrb[:, 2]
     y2 = np_ltrb[:, 3]
 
-    areas = (x2 - x1 + bias) * (y2 - y1 + bias)
+    widths = (x2 - x1 + bias)
+    heights = (y2 - y1 + bias)
+    areas = widths * heights
 
     idxs_remain = np_scores.argsort()[::-1]
 
@@ -71,6 +93,7 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
 
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', 'invalid value .* true_divide')
+
         # n_conflicts = 0
         while idxs_remain.size > 0:
             i = idxs_remain[0]
@@ -87,7 +110,8 @@ def py_nms(np_ltrb, np_scores, thresh, bias=1):
             w = np.maximum(0.0, xx2 - xx1 + bias)
             h = np.maximum(0.0, yy2 - yy1 + bias)
             inter = w * h
-            iou = inter / (areas[i] + areas[idxs_remain] - inter)
+            denom = (areas[i] + areas[idxs_remain] - inter)
+            iou = inter / denom
             iou = np.nan_to_num(iou)
             # print('Checking overlap between the i={}-th and remaining boxes'.format(i))
 

@@ -101,7 +101,10 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         >>> kwplot.show_if_requested()
     """
     imgiter = iter(images)
-    img1 = next(imgiter)
+    try:
+        img1 = next(imgiter)
+    except StopIteration:
+        raise ValueError('need at least one image to stack')
 
     if pad is not None:
         overlap = -pad
@@ -211,15 +214,22 @@ def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
         chunksize = int(len(images) ** .5)
     if pad is not None:
         overlap = -pad
+
+    if chunksize == 0:
+        raise ValueError('need at least one image to stack and chunksize cannot be zero')
+
     stack1_list = []
     tfs1_list = []
     assert axis in [0, 1]
-    for batch in ub.chunks(images, chunksize, bordermode='none'):
-        stack1, tfs1 = stack_images(batch, overlap=overlap, return_info=True,
-                                    bg_value=bg_value,
-                                    resize=resize, axis=1 - axis)
-        tfs1_list.append(tfs1)
-        stack1_list.append(stack1)
+    try:
+        for batch in ub.chunks(images, chunksize, bordermode='none'):
+            stack1, tfs1 = stack_images(batch, overlap=overlap, return_info=True,
+                                        bg_value=bg_value,
+                                        resize=resize, axis=1 - axis)
+            tfs1_list.append(tfs1)
+            stack1_list.append(stack1)
+    except ZeroDivisionError:
+        raise ValueError('need at least one image to stack')
 
     img_grid, tfs2 = stack_images(stack1_list, overlap=overlap,
                                   bg_value=bg_value,

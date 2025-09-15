@@ -5,6 +5,7 @@ metadata on top of coordinate data.
 """
 import numpy as np
 import ubelt as ub
+import warnings
 import kwarray
 from kwimage.structs import _generic
 
@@ -19,6 +20,15 @@ try:
     _HAS_IMGAUG_FLIP_BUG = LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9') and not hasattr(imgaug.augmenters.size, '_crop_and_pad_kpsoi')
     _HAS_IMGAUG_XY_ARRAY = LooseVersion(imgaug.__version__) >= LooseVersion('0.2.9')
 except ImportError:
+    imgaug = None
+    _HAS_IMGAUG_FLIP_BUG = None
+    _HAS_IMGAUG_XY_ARRAY = None
+except Exception as ex:
+    imgaug = None
+    warnings.warn(
+        f'The imgaug module was installed, but failed to import. '
+        f'The module is deprecated and is no longer compatible with numpy 2.x. '
+        f'The error was: {ex}')
     _HAS_IMGAUG_FLIP_BUG = None
     _HAS_IMGAUG_XY_ARRAY = None
 
@@ -26,11 +36,6 @@ except ImportError:
 __docstubs__ = """
 from kwimage._typing import SKImageGeometricTransform
 """
-
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
 
 
 class Coords(_generic.Spatial, ub.NiceRepr):
@@ -457,7 +462,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     new.data += 10
         return new
 
-    @profile
     def warp(self, transform, input_dims=None, output_dims=None,
              inplace=False):
         """
@@ -543,13 +547,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         else:
 
             ### Try to accept imgaug tranforms ###
-            try:
-                import imgaug
-            except ImportError:
-                pass
-                # import warnings
-                # warnings.warn('imgaug is not installed')
-            else:
+            if imgaug is not None:
                 if isinstance(transform, imgaug.augmenters.Augmenter):
                     return new._warp_imgaug(transform, input_dims, inplace=True)
 

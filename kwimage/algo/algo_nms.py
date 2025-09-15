@@ -221,7 +221,7 @@ class _NMS_Impls():
                 # why we have an option to disable even trying it
                 try:
                     # TODO: torchvision impl might be the best, need to test
-                    from torchvision import _C as C  # NOQA
+                    # from torchvision import _C as C  # NOQA
                     import torchvision
                     _funcs['torchvision'] = torchvision.ops.nms
                 except (ImportError, UnicodeDecodeError) as ex:
@@ -269,6 +269,7 @@ def available_nms_impls():
         xdoctest -m kwimage.algo.algo_nms available_nms_impls
 
     Example:
+        >>> from kwimage.algo.algo_nms import *  # NOQA
         >>> impls = available_nms_impls()
         >>> assert 'numpy' in impls
         >>> print('impls = {!r}'.format(impls))
@@ -281,7 +282,7 @@ def available_nms_impls():
 # @ub.memoize
 def _heuristic_auto_nms_impl(code, num, valid=None):
     """
-    Defined with help from ``~/code/kwimage/dev/bench_nms.py``
+    Defined with help from ``~/code/kwimage/dev/bench/bench_nms.py``
 
     Args:
         code (str): text that indicates which type of data you have

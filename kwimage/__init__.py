@@ -67,7 +67,7 @@ __ignore__ = [
     'TORCH_GRID_SAMPLE_HAS_ALIGN',
 ]
 
-__version__ = '0.11.2'
+__version__ = '0.11.3'
 
 import lazy_loader
 
@@ -99,6 +99,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
             'normalize_intensity',
             'num_channels',
             'padded_slice',
+            'crop_border_by_color',
         ],
         'im_cv2': [
             'connected_components',
@@ -108,6 +109,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
             'imcrop',
             'imscale',
             'morphology',
+            'adjust',
         ],
         'im_demodata': [
             'checkerboard',

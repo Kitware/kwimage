@@ -11,6 +11,7 @@ def main(cmdline=True, **kw):
     """
     modnames = [
         'stack_images',
+        'crop_border',
     ]
     module_lut = {}
     for name in modnames:
