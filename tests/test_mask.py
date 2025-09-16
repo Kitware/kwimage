@@ -37,6 +37,7 @@ def test_mask_with_bool_data():
 
     mask.translate(3)
     if ub.modname_to_modpath('torch'):
+        import torch  # NOQA
         mask.warp(kwimage.Affine.eye(), output_dims='same')
         mask.scale(2.3)
     mask.get_patch()
