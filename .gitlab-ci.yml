@@ -58,6 +58,9 @@ stages:
   <<: *common_template
   stage: test
   coverage: /TOTAL.+ ([0-9]{1,3}%)/
+  except:
+    refs:
+    - release
 .test_minimal-loose_template: &test_minimal-loose_template
   <<: *common_test_template
   before_script:
@@ -76,9 +79,11 @@ stages:
   - export INSTALL_EXTRAS="tests,headless"
   - echo "Finding the path to the wheel"
   - ls dist || echo "dist does not exist"
-  - echo "Installing helpers"
+  - 'echo "Installing helpers: update pip"'
   - python -m pip install pip uv -U
+  - 'echo "Installing helpers: setuptools"'
   - python -m uv pip install setuptools>=0.8 setuptools_scm wheel build -U
+  - 'echo "Installing helpers: tomli and pkginfo"'
   - python -m uv pip install tomli pkginfo
   - |-
     export WHEEL_FPATH=$(python -c "if 1:
@@ -92,15 +97,18 @@ stages:
   - |-
     export MOD_VERSION=$(python -c "if 1:
         from pkginfo import Wheel, SDist
+        import pathlib
         fpath = '$WHEEL_FPATH'
         cls = Wheel if fpath.endswith('.whl') else SDist
-        print(cls(fpath).version)
+        item = cls(fpath)
+        print(item.version)
     ")
   - python -m uv pip install -r requirements/gdal.txt
   - echo "WHEEL_FPATH=$WHEEL_FPATH"
   - echo "INSTALL_EXTRAS=$INSTALL_EXTRAS"
+  - echo "UV_RESOLUTION=$UV_RESOLUTION"
   - echo "MOD_VERSION=$MOD_VERSION"
-  - python -m uv pip install "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
+  - python -m uv pip install --prerelease=allow "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
   - export WORKSPACE_DNAME="sandbox"
@@ -142,9 +150,11 @@ stages:
   - export INSTALL_EXTRAS="tests,optional,headless"
   - echo "Finding the path to the wheel"
   - ls dist || echo "dist does not exist"
-  - echo "Installing helpers"
+  - 'echo "Installing helpers: update pip"'
   - python -m pip install pip uv -U
+  - 'echo "Installing helpers: setuptools"'
   - python -m uv pip install setuptools>=0.8 setuptools_scm wheel build -U
+  - 'echo "Installing helpers: tomli and pkginfo"'
   - python -m uv pip install tomli pkginfo
   - |-
     export WHEEL_FPATH=$(python -c "if 1:
@@ -158,15 +168,18 @@ stages:
   - |-
     export MOD_VERSION=$(python -c "if 1:
         from pkginfo import Wheel, SDist
+        import pathlib
         fpath = '$WHEEL_FPATH'
         cls = Wheel if fpath.endswith('.whl') else SDist
-        print(cls(fpath).version)
+        item = cls(fpath)
+        print(item.version)
     ")
   - python -m uv pip install -r requirements/gdal.txt
   - echo "WHEEL_FPATH=$WHEEL_FPATH"
   - echo "INSTALL_EXTRAS=$INSTALL_EXTRAS"
+  - echo "UV_RESOLUTION=$UV_RESOLUTION"
   - echo "MOD_VERSION=$MOD_VERSION"
-  - python -m uv pip install "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
+  - python -m uv pip install --prerelease=allow "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
   - export WORKSPACE_DNAME="sandbox"
@@ -208,9 +221,11 @@ stages:
   - export INSTALL_EXTRAS="tests-strict,runtime-strict,headless-strict"
   - echo "Finding the path to the wheel"
   - ls dist || echo "dist does not exist"
-  - echo "Installing helpers"
+  - 'echo "Installing helpers: update pip"'
   - python -m pip install pip uv -U
+  - 'echo "Installing helpers: setuptools"'
   - python -m uv pip install setuptools>=0.8 setuptools_scm wheel build -U
+  - 'echo "Installing helpers: tomli and pkginfo"'
   - python -m uv pip install tomli pkginfo
   - |-
     export WHEEL_FPATH=$(python -c "if 1:
@@ -224,15 +239,19 @@ stages:
   - |-
     export MOD_VERSION=$(python -c "if 1:
         from pkginfo import Wheel, SDist
+        import pathlib
         fpath = '$WHEEL_FPATH'
         cls = Wheel if fpath.endswith('.whl') else SDist
-        print(cls(fpath).version)
+        item = cls(fpath)
+        print(item.version)
     ")
-  - python -m uv pip install -r requirements/gdal.txt
+  - sed 's/>=/==/' "requirements/gdal.txt" > "requirements/gdal-strict.txt"
+  - python -m uv pip install -r requirements/gdal-strict.txt
   - echo "WHEEL_FPATH=$WHEEL_FPATH"
   - echo "INSTALL_EXTRAS=$INSTALL_EXTRAS"
+  - echo "UV_RESOLUTION=$UV_RESOLUTION"
   - echo "MOD_VERSION=$MOD_VERSION"
-  - python -m uv pip install "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
+  - python -m uv pip install --prerelease=allow "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
   - export WORKSPACE_DNAME="sandbox"
@@ -274,9 +293,11 @@ stages:
   - export INSTALL_EXTRAS="tests-strict,runtime-strict,optional-strict,headless-strict"
   - echo "Finding the path to the wheel"
   - ls dist || echo "dist does not exist"
-  - echo "Installing helpers"
+  - 'echo "Installing helpers: update pip"'
   - python -m pip install pip uv -U
+  - 'echo "Installing helpers: setuptools"'
   - python -m uv pip install setuptools>=0.8 setuptools_scm wheel build -U
+  - 'echo "Installing helpers: tomli and pkginfo"'
   - python -m uv pip install tomli pkginfo
   - |-
     export WHEEL_FPATH=$(python -c "if 1:
@@ -290,15 +311,19 @@ stages:
   - |-
     export MOD_VERSION=$(python -c "if 1:
         from pkginfo import Wheel, SDist
+        import pathlib
         fpath = '$WHEEL_FPATH'
         cls = Wheel if fpath.endswith('.whl') else SDist
-        print(cls(fpath).version)
+        item = cls(fpath)
+        print(item.version)
     ")
-  - python -m uv pip install -r requirements/gdal.txt
+  - sed 's/>=/==/' "requirements/gdal.txt" > "requirements/gdal-strict.txt"
+  - python -m uv pip install -r requirements/gdal-strict.txt
   - echo "WHEEL_FPATH=$WHEEL_FPATH"
   - echo "INSTALL_EXTRAS=$INSTALL_EXTRAS"
+  - echo "UV_RESOLUTION=$UV_RESOLUTION"
   - echo "MOD_VERSION=$MOD_VERSION"
-  - python -m uv pip install "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
+  - python -m uv pip install --prerelease=allow "kwimage[$INSTALL_EXTRAS]==$MOD_VERSION" -f dist
   - echo "Install finished."
   - echo "Creating test sandbox directory"
   - export WORKSPACE_DNAME="sandbox"
@@ -445,6 +470,29 @@ test/full-strict/cp313-linux-x86_64:
   image: python:3.13
   needs:
   - build/cp313-linux-x86_64
+build/cp314-linux-x86_64:
+  <<: *build_wheel_template
+  image: python:3.14-rc
+test/minimal-loose/cp314-linux-x86_64:
+  <<: *test_minimal-loose_template
+  image: python:3.14-rc
+  needs:
+  - build/cp314-linux-x86_64
+test/full-loose/cp314-linux-x86_64:
+  <<: *test_full-loose_template
+  image: python:3.14-rc
+  needs:
+  - build/cp314-linux-x86_64
+test/minimal-strict/cp314-linux-x86_64:
+  <<: *test_minimal-strict_template
+  image: python:3.14-rc
+  needs:
+  - build/cp314-linux-x86_64
+test/full-strict/cp314-linux-x86_64:
+  <<: *test_full-strict_template
+  image: python:3.14-rc
+  needs:
+  - build/cp314-linux-x86_64
 lint:
   <<: *common_template
   image: python:3.13
@@ -506,7 +554,7 @@ gpgsign/wheels:
   - ls dist
   - python -m pip install pip uv -U
   - python -m uv pip install opentimestamps-client
-  - ots stamp dist/*.tar.gz dist/*.whl dist/*.asc
+  - ots stamp dist/*.whl dist/*.asc dist/*.tar.gz
   needs:
   - job: build/sdist
     artifacts: true
@@ -520,6 +568,8 @@ gpgsign/wheels:
     artifacts: true
   - job: build/cp313-linux-x86_64
     artifacts: true
+  - job: build/cp314-linux-x86_64
+    artifacts: true
 deploy/wheels:
   <<: *common_template
   image: python:3.13
@@ -529,9 +579,10 @@ deploy/wheels:
     - release
   script:
   - python -m pip install pip uv -U
-  - python -m uv pip install pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U
+  - python -m uv pip install pyopenssl ndg-httpsclient pyasn1 requests[security] setuptools twine -U
   - ls dist
   - |-
+    set -e
     WHEEL_PATHS=(dist/*.whl dist/*.tar.gz)
     WHEEL_PATHS_STR=$(printf '"%s" ' "${WHEEL_PATHS[@]}")
     source dev/secrets_configuration.sh
@@ -540,10 +591,11 @@ deploy/wheels:
     echo "$WHEEL_PATHS_STR"
     for WHEEL_PATH in "${WHEEL_PATHS[@]}"
     do
-        twine check $WHEEL_PATH.asc $WHEEL_PATH
+        twine check $WHEEL_PATH
         twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD $WHEEL_PATH || echo "upload already exists"
     done
   - |-
+    set -e
     # Have the server git-tag the release and push the tags
     export PROJECT_VERSION=$(python -c "import setup; print(setup.VERSION)")
     # do sed twice to handle the case of https clone with and without a read token
@@ -569,6 +621,7 @@ deploy/wheels:
         git push --tags "https://git-push-token:${PUSH_TOKEN}@${URL_HOST}"
     fi
   - |-
+    set -e
     # https://docs.gitlab.com/ee/ci/variables/predefined_variables.html
     echo "CI_PROJECT_ID=$CI_PROJECT_ID"
     echo "CI_PROJECT_NAME=$CI_PROJECT_NAME"
