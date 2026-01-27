@@ -4,12 +4,23 @@ Wrappers around cv2 functions
 Note: all functions in kwimage work with RGB input by default instead of BGR,
 which is what the underlying cv2 functions use.
 """
+from __future__ import annotations
+
 import cv2
 import numpy as np
 import ubelt as ub
 import numbers
 from functools import lru_cache
 from kwimage import im_core
+
+import typing as _t
+if _t.TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Any, TypeAlias
+
+    NDArray: TypeAlias = np.ndarray
+    DTypeLike: TypeAlias = Any
+
 
 __all__ = [
     'connected_components',
@@ -22,7 +33,7 @@ __all__ = [
 ]
 
 
-_CV2_INTERPOLATION_TYPES = {
+_CV2_INTERPOLATION_TYPES: dict[str, int] = {
     'nearest': cv2.INTER_NEAREST,
     'linear':  cv2.INTER_LINEAR,
     'area':    cv2.INTER_AREA,
@@ -32,7 +43,7 @@ _CV2_INTERPOLATION_TYPES = {
 
 
 # https://docs.opencv.org/3.4/d2/de8/group__core__array.html#ga209f2f4869e304c82d07739337eae7c5
-_CV2_BORDER_MODES = {
+_CV2_BORDER_MODES: dict[str, int] = {
     'constant':    cv2.BORDER_CONSTANT,
     'replicate':   cv2.BORDER_REPLICATE,
     'reflect':     cv2.BORDER_REFLECT,
@@ -50,9 +61,13 @@ _CV2_BORDER_MODES = {
 # cv2.BORDER_REFLECT101 - Same as BORDER_REFLECT, but with a slight change in which the outter-most pixels (a or h) are not repeated : gfedcb|abcdefgh|gfedcba
 
 
-def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
-                          grow_default=cv2.INTER_LANCZOS4,
-                          shrink_default=cv2.INTER_AREA, scale=None):
+def _coerce_interpolation(
+    interpolation: int | str | None,
+    default: int | str = cv2.INTER_LANCZOS4,
+    grow_default: int | str = cv2.INTER_LANCZOS4,
+    shrink_default: int | str = cv2.INTER_AREA,
+    scale: float | None = None,
+) -> int:
     """
     Converts interpolation into flags suitable cv2 functions
 
@@ -125,7 +140,10 @@ def _coerce_interpolation(interpolation, default=cv2.INTER_LANCZOS4,
                 interpolation, type(interpolation)))
 
 
-def _coerce_border_mode(border_mode, default=cv2.BORDER_CONSTANT):
+def _coerce_border_mode(
+    border_mode: int | str | None,
+    default: int | str = cv2.BORDER_CONSTANT,
+) -> int:
     """
     Converts border_mode into flags suitable cv2 functions
 
@@ -177,7 +195,11 @@ def _coerce_border_mode(border_mode, default=cv2.BORDER_CONSTANT):
                 border_mode, type(border_mode)))
 
 
-def _coerce_border_value(border_value, default=0, image=None):
+def _coerce_border_value(
+    border_value: int | float | str | "Iterable[int | float]" | None,
+    default: int | float | str | "Iterable[int | float]" = 0,
+    image: NDArray | None = None,
+) -> object:
     """
     Handles cv2 border values
 
@@ -222,7 +244,11 @@ def _coerce_border_value(border_value, default=0, image=None):
     return borderValue
 
 
-def _coerce_border_mode_value(border_mode, border_value, image):
+def _coerce_border_mode_value(
+    border_mode: int | str | None,
+    border_value: int | float | str | "Iterable[int | float]" | None,
+    image: NDArray,
+) -> tuple[int, object]:
     """
     Common code for warp_affine and warp_persepctive
     """
@@ -239,7 +265,12 @@ def _coerce_border_mode_value(border_mode, border_value, image):
     return borderMode, borderValue
 
 
-def imscale(img, scale, interpolation=None, return_scale=False):
+def imscale(
+    img: NDArray,
+    scale: float | tuple[float, float],
+    interpolation: int | str | None = None,
+    return_scale: bool = False,
+) -> None:
     """
     DEPRECATED and removed: use imresize instead
     """
@@ -254,8 +285,14 @@ def imscale(img, scale, interpolation=None, return_scale=False):
     )
 
 
-def imcrop(img, dsize, about=None, origin=None, border_value=None,
-           interpolation='nearest'):
+def imcrop(
+    img: NDArray,
+    dsize: tuple[int | None, int | None],
+    about: tuple[object, object] | None = None,
+    origin: tuple[int, int] | None = None,
+    border_value: int | float | str | "Iterable[int | float]" | None = None,
+    interpolation: str = 'nearest',
+) -> NDArray:
     """
     Crop an image about a specified point, padding if necessary.
 
@@ -448,7 +485,7 @@ def imcrop(img, dsize, about=None, origin=None, border_value=None,
     return new_img
 
 
-def _cv2_input_fixer(img):
+def _cv2_input_fixer(img: NDArray) -> tuple[NDArray, np.dtype | None]:
     """
     OpenCV is very particular about its inputs, we would like to loosen those
     requirements by seemlessly detecting and fixing dtypes when possible
@@ -484,7 +521,7 @@ def _cv2_input_fixer(img):
     return img, final_dtype
 
 
-DTYPE_KEY_TO_DTYPE = {
+DTYPE_KEY_TO_DTYPE: dict[tuple[str, int], object] = {
     ('b', 1): bool,
 
     ('u', 1): np.uint8,
@@ -506,10 +543,10 @@ _HAS_FLOAT128 = hasattr(np, 'float128')
 if _HAS_FLOAT128:
     DTYPE_KEY_TO_DTYPE[('f', 16)] = np.float128
 
-DTYPE_TO_DTYPE_KEY = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
+DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
 
 
-def __build_cv2_allowed_dtypes():
+def __build_cv2_allowed_dtypes() -> dict[str, "ub.udict[tuple[str, int], np.dtype]"]:
     default = ub.udict({
         DTYPE_TO_DTYPE_KEY[bool]: np.uint8,
         DTYPE_TO_DTYPE_KEY[np.uint8]: np.uint8,
@@ -563,11 +600,15 @@ def __build_cv2_allowed_dtypes():
     return CV2_ALLOWED_DTYPE_MAPPINGS
 
 
-CV2_ALLOWED_DTYPE_MAPPINGS = __build_cv2_allowed_dtypes()
+CV2_ALLOWED_DTYPE_MAPPINGS: dict[str, "ub.udict[tuple[str, int], np.dtype]"] = __build_cv2_allowed_dtypes()
 
 
-def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64',
-                        contiguous=True, owndata=False):
+def _cv2_input_fixer_v2(
+    img: NDArray,
+    allowed_types: str = 'uint8,int16,int32,float32,float64',
+    contiguous: bool = True,
+    owndata: bool = False,
+) -> tuple[NDArray, np.dtype | None]:
     """
     OpenCV is very particular about its inputs, we would like to loosen those
     requirements by seemlessly detecting and fixing dtypes when possible
@@ -603,9 +644,19 @@ def _cv2_input_fixer_v2(img, allowed_types='uint8,int16,int32,float32,float64',
     return img, final_dtype
 
 
-def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
-                  interpolation=None, grow_interpolation=None, letterbox=False,
-                  return_info=False, antialias=False, border_value=0):
+def _cv2_imresize(
+    img: NDArray,
+    scale: float | tuple[float, float] | None = None,
+    dsize: tuple[int | None, int | None] | None = None,
+    max_dim: int | None = None,
+    min_dim: int | None = None,
+    interpolation: int | str | None = None,
+    grow_interpolation: int | str | None = None,
+    letterbox: bool = False,
+    return_info: bool = False,
+    antialias: bool = False,
+    border_value: int | float | str | "Iterable[int | float]" = 0,
+) -> NDArray | tuple[NDArray, dict[str, object]]:
     """
     Resize an image via a scale factor, final size, or size and aspect ratio.
 
@@ -964,8 +1015,14 @@ def _cv2_imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         return new_img
 
 
-def convert_colorspace(img, src_space, dst_space, copy=False,
-                       implicit=False, dst=None):
+def convert_colorspace(
+    img: NDArray,
+    src_space: str,
+    dst_space: str,
+    copy: bool = False,
+    implicit: bool = False,
+    dst: NDArray | None = None,
+) -> NDArray:
     """
     Converts colorspace of img.
 
@@ -1059,7 +1116,12 @@ def convert_colorspace(img, src_space, dst_space, copy=False,
     return img2
 
 
-def adjust(img, saturate=0, lighten=0, legacy=False):
+def adjust(
+    img: NDArray,
+    saturate: float = 0,
+    lighten: float = 0,
+    legacy: bool = False,
+) -> NDArray:
     """
     Adjust the saturation or lightness of an image.
 
@@ -1151,7 +1213,7 @@ def adjust(img, saturate=0, lighten=0, legacy=False):
     return out
 
 
-def _lookup_cv2_colorspace_conversion_code(src_space, dst_space):
+def _lookup_cv2_colorspace_conversion_code(src_space: str, dst_space: str) -> int:
     src = src_space.upper()
     dst = dst_space.upper()
     convert_attr = 'COLOR_{}2{}'.format(src, dst)
@@ -1168,7 +1230,10 @@ def _lookup_cv2_colorspace_conversion_code(src_space, dst_space):
     return code
 
 
-def gaussian_patch(shape=(7, 7), sigma=None):
+def gaussian_patch(
+    shape: tuple[int, int] = (7, 7),
+    sigma: float | tuple[float, float] | None = None,
+) -> NDArray:
     """
     Creates a 2D gaussian patch with a specific size and sigma
 
@@ -1239,7 +1304,11 @@ def gaussian_patch(shape=(7, 7), sigma=None):
     return gausspatch
 
 
-def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
+def _auto_kernel_sigma(
+    kernel: int | tuple[int, int] | None = None,
+    sigma: float | tuple[float, float] | None = None,
+    autokernel_mode: str = 'ours',
+) -> tuple[tuple[int, int], tuple[float, float]]:
     """
     Attempt to determine sigma and kernel size from heuristics
 
@@ -1329,7 +1398,13 @@ def _auto_kernel_sigma(kernel=None, sigma=None, autokernel_mode='ours'):
     return kernel, sigma
 
 
-def gaussian_blur(image, kernel=None, sigma=None, border_mode=None, dst=None):
+def gaussian_blur(
+    image: NDArray,
+    kernel: int | tuple[int, int] | None = None,
+    sigma: float | tuple[float, float] | None = None,
+    border_mode: int | str | None = None,
+    dst: NDArray | None = None,
+) -> NDArray:
     """
     Apply a gausian blur to an image.
 
@@ -1722,7 +1797,7 @@ def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
                                       borderValue, pieces_per_dim)
 
 
-def _cv2_imputation(image):
+def _cv2_imputation(image: NDArray) -> NDArray:
     if not image.flags['C_CONTIGUOUS']:
         image = np.ascontiguousarray(image)
     return image
@@ -2005,14 +2080,14 @@ items = {k.split('_')[1].lower(): 'cv2.' + k for k in dir(cv2) if k.startswith('
 items = ub.sorted_vals(items, key=lambda x: eval(x, {'cv2': cv2}))
 print('_CV2_MORPH_MODES = {}'.format(ub.urepr(items, nl=1, sv=1, align=':')))
 """
-_CV2_STRUCT_ELEMENTS = {
+_CV2_STRUCT_ELEMENTS: dict[str, int] = {
     'rect'    : cv2.MORPH_RECT,
     'cross'   : cv2.MORPH_CROSS,
     'ellipse' : cv2.MORPH_ELLIPSE,
 }
 
 
-_CV2_MORPH_MODES = {
+_CV2_MORPH_MODES: dict[str, int] = {
     'erode'   : cv2.MORPH_ERODE,
     'dilate'  : cv2.MORPH_DILATE,
     'open'    : cv2.MORPH_OPEN,
@@ -2064,8 +2139,15 @@ def _morph_kernel(kernel, element='rect'):
         return _morph_kernel_core(w, h, element)
 
 
-def morphology(data, mode, kernel=5, element='rect', iterations=1,
-               border_mode='constant', border_value=0):
+def morphology(
+    data: NDArray,
+    mode: str | int,
+    kernel: int | tuple[int, int] | NDArray = 5,
+    element: str = 'rect',
+    iterations: int = 1,
+    border_mode: str | int = 'constant',
+    border_value: int | float | str | "Iterable[int | float]" = 0,
+) -> NDArray:
     """
     Executes a morphological operation.
 
@@ -2192,8 +2274,13 @@ def morphology(data, mode, kernel=5, element='rect', iterations=1,
     return new
 
 
-def connected_components(image, connectivity=8, ltype=np.int32,
-                         with_stats=True, algo='default'):
+def connected_components(
+    image: NDArray,
+    connectivity: int = 8,
+    ltype: DTypeLike = np.int32,
+    with_stats: bool = True,
+    algo: str = 'default',
+) -> tuple[NDArray, dict[str, object]]:
     """
     Find connected components in a binary image.
 
