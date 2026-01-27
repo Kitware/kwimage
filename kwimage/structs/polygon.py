@@ -153,11 +153,11 @@ class _ShapelyMixin:
             >>> import kwimage
             >>> self = kwimage.Polygon.random(rng=0).scale(100, 100).round()
             >>> obox = self.oriented_bounding_box()
-            >>> print(f'obox = {ub.urepr(obox, nl=1)}')
+            >>> print(f'obox = {ub.urepr(obox, nl=1, precision=3)}')
             obox = (
-                (-9853.733..., -9847.73...),
-                (85.7368..., 97.1090...),
-                1.2537...,
+                (-9853.733, -9847.735),
+                (97.109, 85.737),
+                -0.317,
             )
         """
         import cv2
