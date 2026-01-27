@@ -18,11 +18,6 @@ __docstubs__ = """
 import affine
 """
 
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
-
 
 class Transform(ub.NiceRepr):
     pass
@@ -1612,7 +1607,6 @@ class Affine(Projective):
         )
         return params
 
-    @profile
     def decompose(self):
         r"""
         Decompose the affine matrix into its individual scale, translation,
@@ -1761,7 +1755,6 @@ class Affine(Projective):
         }
         return params
 
-    @profile
     def _decompose_scale(self):
         """
         Scale only decomposition. Experimental method that is faster than

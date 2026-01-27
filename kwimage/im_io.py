@@ -11,11 +11,6 @@ import ubelt as ub
 from kwimage import im_core
 # import warnings
 
-try:
-    from line_profiler import profile
-except ImportError:
-    from ubelt import identity as profile
-
 from kwimage._backend_info import _have_gdal
 from kwimage._backend_info import _have_cv2  # NOQA
 from kwimage._backend_info import _have_turbojpg
@@ -99,7 +94,6 @@ IMAGE_EXTENSIONS: tuple[str, ...] = (
 )
 
 
-@profile
 def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: str = 'auto', **kw) -> np.ndarray:
     r"""
     Reads image data in a specified format using some backend implementation.
@@ -639,7 +633,6 @@ def _imread_cv2(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     return image, src_space, auto_dst_space
 
 
-@profile
 def _imread_gdal(
     fpath: str,
     overview: int | str | None = None,
@@ -828,7 +821,6 @@ def _imread_gdal(
     return image, src_space, auto_dst_space
 
 
-@profile
 def _gdal_read(
     gdal_dset,
     overview: int | str | None,
@@ -984,7 +976,6 @@ def _gdal_read(
     return image, num_channels
 
 
-@profile
 def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None = 'auto', backend: str = 'auto', **kwargs) -> str:
     """
     Writes image data to disk.
@@ -1360,7 +1351,10 @@ def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None 
     return fpath
 
 
-def load_image_shape(fpath: os.PathLike[str] | str, backend: str | list[str] = 'auto', include_channels: bool = True) -> tuple[int, int] | tuple[int, int, int]:
+def load_image_shape(fpath: os.PathLike[str] | str,
+                     backend: str | list[str] = 'auto',
+                     include_channels: bool = True
+                     ) -> tuple[int, int] | tuple[int, int, int]:
     """
     Determine the height/width/channels of an image without reading the entire
     file.
@@ -1582,19 +1576,20 @@ def __inspect_optional_overhead():
     raise NotImplementedError
 
 
-@profile
 def _imwrite_cloud_optimized_geotiff(
-    fpath: os.PathLike[str] | str,
-    data: np.ndarray,
-    compress='auto',
-                                     blocksize=256, overviews=None,
-                                     overview_resample='NEAREST',
-                                     interleave='PIXEL',
-                                     options=None,
-                                     nodata=None,
-                                     nodata_value=None,
-                                     metadata=None,
-                                     crs=None, transform=None):
+        fpath: os.PathLike[str] | str,
+        data: np.ndarray,
+        compress='auto',
+        blocksize=256,
+        overviews=None,
+        overview_resample='NEAREST',
+        interleave='PIXEL',
+        options=None,
+        nodata=None,
+        nodata_value=None,
+        metadata=None,
+        crs=None,
+        transform=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
