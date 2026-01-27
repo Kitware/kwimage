@@ -172,20 +172,13 @@ class _ShapelyMixin:
         # OpenCV gives an equivalent representation that may flip w/h and shift angle by 90 deg.
         theta = np.deg2rad(angle)
 
-        # If it's (effectively) a square, the angle is arbitrary; choose a stable one.
-        eps = 1e-9
-        if abs(w - h) < eps:
-            # Sort extent for stability, and pick a fixed theta
-            w, h = (w, h) if w >= h else (h, w)
-            theta = 0.0
-        else:
-            # Canonicalize: make width the major axis
-            if w < h:
-                w, h = h, w
-                theta += np.pi / 2
+        # Ensure extent is "major, minor"
+        if w < h:
+            w, h = h, w
+            theta += np.pi / 2
 
-            # Optional: wrap to [-pi, pi)
-            theta = (theta + np.pi) % (2 * np.pi) - np.pi
+        # Remove the +/- pi ambiguity: canonical axis direction modulo pi
+        theta = (theta + np.pi / 2) % np.pi - np.pi / 2
 
         extent = (w, h)
         obox = OrientedBBox(center, extent, theta)
