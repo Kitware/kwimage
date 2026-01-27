@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.11.7 - Unreleased
 
+### Changed
+* Normalized the way `oriented_bounding_box` returns coordinates.
+
 
 ## Version 0.11.6 - Released 2025-09-16
 

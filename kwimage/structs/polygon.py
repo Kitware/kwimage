@@ -166,7 +166,28 @@ class _ShapelyMixin:
         hull = self.convex_hull
         cv2_xy = hull.exterior.data.astype(np.float32)
         center, extent, angle = cv2.minAreaRect(cv2_xy)
+
+        w, h = extent
+
+        # OpenCV gives an equivalent representation that may flip w/h and shift angle by 90 deg.
         theta = np.deg2rad(angle)
+
+        # If it's (effectively) a square, the angle is arbitrary; choose a stable one.
+        eps = 1e-9
+        if abs(w - h) < eps:
+            # Sort extent for stability, and pick a fixed theta
+            w, h = (w, h) if w >= h else (h, w)
+            theta = 0.0
+        else:
+            # Canonicalize: make width the major axis
+            if w < h:
+                w, h = h, w
+                theta += np.pi / 2
+
+            # Optional: wrap to [-pi, pi)
+            theta = (theta + np.pi) % (2 * np.pi) - np.pi
+
+        extent = (w, h)
         obox = OrientedBBox(center, extent, theta)
         return obox
 
