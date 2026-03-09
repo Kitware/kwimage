@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 import ubelt as ub
 import numbers
+import re
 from functools import lru_cache
 from kwimage import im_core
 
@@ -59,6 +60,39 @@ _CV2_BORDER_MODES: dict[str, int] = {
 # cv2.BORDER_REFLECT - Border will be mirror reflection of the border elements, like this : fedcba|abcdefgh|hgfedcb
 # cv2.BORDER_WRAP - forms a border like this: ojectPro|ProjectPro|ProjectP
 # cv2.BORDER_REFLECT101 - Same as BORDER_REFLECT, but with a slight change in which the outter-most pixels (a or h) are not repeated : gfedcb|abcdefgh|gfedcba
+
+
+@lru_cache(maxsize=1)
+def _cv2_version_tuple() -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r'\d+', cv2.__version__))
+
+
+@lru_cache(maxsize=1)
+def _cv2_has_warp_affine_float64_nearest_bug() -> bool:
+    """
+    OpenCV 4.13.x regressed nearest-neighbor warpAffine for float64 inputs.
+
+    References:
+        https://github.com/opencv/opencv/issues/28554
+    """
+    return _cv2_version_tuple()[0:2] == (4, 13)
+
+
+def _cv2_warp_affine_impl(image: NDArray, matrix: NDArray, dsize, flags,
+                          borderMode, borderValue,
+                          workaround_opencv_413_nearest_float64: bool = False):
+    matrix = np.asarray(matrix)
+    if workaround_opencv_413_nearest_float64:
+        if matrix.shape == (2, 3):
+            homog = np.eye(3, dtype=matrix.dtype)
+            homog[0:2] = matrix
+            matrix = np.linalg.inv(homog)[0:2]
+        else:
+            matrix = np.linalg.inv(matrix)[0:2]
+    else:
+        matrix = matrix[0:2]
+    return cv2.warpAffine(image, matrix, dsize=dsize, flags=flags,
+                          borderMode=borderMode, borderValue=borderValue)
 
 
 def _coerce_interpolation(
@@ -1646,8 +1680,15 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         'antialias_info': None,
     }
 
+    workaround_opencv_413_nearest_float64 = (
+        _cv2_has_warp_affine_float64_nearest_bug()
+        and flags == cv2.INTER_NEAREST
+        and np.dtype(image.dtype) == np.dtype(np.float64)
+    )
+
     _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
-                           borderMode, borderValue)
+                           borderMode, borderValue,
+                           workaround_opencv_413_nearest_float64)
 
     if origin_convention == 'corner':
         # cv2.warpAffine uses the integer-center convention, but by modifying
@@ -1759,7 +1800,8 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
 
 
 def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
-                         new_origin, flags, borderMode, borderValue):
+                         new_origin, flags, borderMode, borderValue,
+                         workaround_opencv_413_nearest_float64=False):
     """
     Helper for warp_affine
     """
@@ -1777,9 +1819,10 @@ def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
     if large_warp_dim is None or max_dim < large_warp_dim:
         try:
             M = np.asarray(transform_)
-            return cv2.warpAffine(image, M[0:2], dsize=dsize, flags=flags,
-                                  borderMode=borderMode,
-                                  borderValue=borderValue)
+            return _cv2_warp_affine_impl(
+                image, M, dsize=dsize, flags=flags,
+                borderMode=borderMode, borderValue=borderValue,
+                workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64)
         except cv2.error as e:
             if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
                 print(
@@ -1794,7 +1837,8 @@ def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
         pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
         return _cv2_large_warp_affine(image, transform_, dsize, max_dsize,
                                       new_origin, flags, borderMode,
-                                      borderValue, pieces_per_dim)
+                                      borderValue, pieces_per_dim,
+                                      workaround_opencv_413_nearest_float64)
 
 
 def _cv2_imputation(image: NDArray) -> NDArray:
@@ -1804,7 +1848,8 @@ def _cv2_imputation(image: NDArray) -> NDArray:
 
 
 def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
-                           flags, borderMode, borderValue, pieces_per_dim):
+                           flags, borderMode, borderValue, pieces_per_dim,
+                           workaround_opencv_413_nearest_float64=False):
     """
     Split an image into pieces smaller than cv2's limit, perform cv2.warpAffine on each piece,
     and stitch them back together with minimal artifacts.
@@ -1912,19 +1957,17 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
             'xywh')
         result_ix = result_bbox.to_slices()[0]
 
-        warped_piece = cv2.warpAffine(image[img_piece_ix],
-                                      piece_centered_matrix[0:2],
-                                      dsize=warped_dsize,
-                                      flags=flags,
-                                      borderMode=borderMode,
-                                      borderValue=borderValue)
+        warped_piece = _cv2_warp_affine_impl(
+            image[img_piece_ix], piece_centered_matrix,
+            dsize=warped_dsize, flags=flags,
+            borderMode=borderMode, borderValue=borderValue,
+            workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64)
 
-        weight_piece = cv2.warpAffine(np.ones_like(image[img_piece_ix]),
-                                      piece_centered_matrix[0:2],
-                                      dsize=warped_dsize,
-                                      flags=flags,
-                                      borderMode=borderMode,
-                                      borderValue=borderValue)
+        weight_piece = _cv2_warp_affine_impl(
+            np.ones_like(image[img_piece_ix]), piece_centered_matrix,
+            dsize=warped_dsize, flags=flags,
+            borderMode=borderMode, borderValue=borderValue,
+            workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64)
 
         result[result_ix] += warped_piece
         weight[result_ix] += weight_piece
