@@ -1,6 +1,7 @@
 """
 Not sure how to best classify these functions
 """
+from __future__ import annotations
 import ubelt as ub
 import numpy as np
 import typing as _t
