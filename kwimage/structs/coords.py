@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from numpy import ndarray
     from typing import List
     import matplotlib as mpl
-    from kwimage._typing import SKImageGeometricTransform
+    from kwimage._typing import TransformLike
 
 try:
     from packaging.version import parse as LooseVersion
@@ -469,7 +469,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     new.data += 10
         return new
 
-    def warp(self, transform: SKImageGeometricTransform | ArrayLike | Any | Callable, input_dims: Tuple | None=None, output_dims: Tuple | None=None,
+    def warp(self, transform: TransformLike, input_dims: Tuple | None=None, output_dims: Tuple | None=None,
              inplace: bool=False) -> Coords:
         """
         Generalized coordinate transform.

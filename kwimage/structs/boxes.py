@@ -100,7 +100,7 @@ if TYPE_CHECKING:
     from typing import Sequence
     import torch
     from collections.abc import Generator
-    from kwimage._typing import SKImageGeometricTransform
+    from kwimage._typing import TransformLike
 
 
 __all__ = ['Boxes']
@@ -1223,8 +1223,8 @@ class _BoxTransformMixins:
             new = new.tensor()
         return new
 
-    def warp(self, transform: ArrayLike | Callable | kwimage.Affine
-             | SKImageGeometricTransform | Any, input_dims: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False) -> Boxes:
+    def warp(self, transform: TransformLike, input_dims: Tuple | None=None,
+             output_dims: Tuple | None=None, inplace: bool=False) -> Boxes:
         """
         Generalized coordinate transform. Note that transformations that are
         not axis-aligned will lose information (and also may not be

@@ -1,8 +1,10 @@
 # Helpers for typing
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, TypeAlias
+from numpy.typing import ArrayLike
 from skimage.transform import _geometric
+from kwimage.transform import Transform
 if TYPE_CHECKING:
     from typing import Any
 
@@ -11,7 +13,9 @@ if SKImageGeometricTransform is None:
     # Older version compatability
     SKImageGeometricTransform = getattr(_geometric, 'GeometricTransform')
 
+TransformLike: TypeAlias = SKImageGeometricTransform | ArrayLike | Callable | Transform
 
 __all__ = [
-    'SKImageGeometricTransform'
+    'SKImageGeometricTransform',
+    'TransformLike',
 ]

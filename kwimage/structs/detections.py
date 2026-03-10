@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from typing import Sequence
     from numpy.random import RandomState
     from collections.abc import Generator
+    from kwimage._typing import TransformLike
 
 # try:
 #     import torch
@@ -665,7 +666,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # Valid keys for the meta dictionary
     __metakeys__: list[str] = ['classes']
 
-    def __init__(self, data: Dict[str, Any] | None=None, meta: Dict[str, Any] | None=None, datakeys: List[str] | None=None, metakeys: List[str] | None=None,
+    def __init__(self, data: Dict[str, Any] | None=None, meta: Dict[str, Any] | None=None, datakeys: list[str] | None=None, metakeys: list[str] | None=None,
                  checks: bool=True, **kwargs) -> None:
         """
         Construct a Detections object by either explicitly specifying the
@@ -1229,7 +1230,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     # --- Modifiers ---
 
-    def warp(self, transform: kwimage.Affine | ndarray | Callable | Any, input_dims: Tuple[int, int] | None=None, output_dims: Tuple[int, int] | None=None, inplace: bool=False) -> Detections:
+    def warp(self, transform: TransformLike, input_dims: Tuple[int, int] | None=None, output_dims: Tuple[int, int] | None=None, inplace: bool=False) -> Detections:
         """
         Spatially warp the detections.
 

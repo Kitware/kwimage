@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from typing import List
     from typing import Dict
     import kwcoco
-    from kwimage._typing import SKImageGeometricTransform
+    from kwimage._typing import TransformLike
 
 
 class _PointsWarpMixin:
@@ -91,8 +91,8 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    def warp(self, transform: ArrayLike | Callable | kwimage.Affine
-             | SKImageGeometricTransform | Any, input_dims: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False):
+    def warp(self, transform: TransformLike, input_dims: Tuple | None=None,
+             output_dims: Tuple | None=None, inplace: bool=False):
         """
         Generalized coordinate transform.
 

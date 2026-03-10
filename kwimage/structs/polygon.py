@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     import shapely
     from typing import Dict
     import matplotlib
-    from kwimage._typing import SKImageGeometricTransform
+    from kwimage._typing import TransformLike
 
 
 class _PolyMixin:
@@ -495,7 +495,7 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    def warp(self, transform: SKImageGeometricTransform | ArrayLike | Any | Callable, input_dims: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False):
+    def warp(self, transform: TransformLike, input_dims: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False):
         """
         Generalized coordinate transform.
 
