@@ -93,7 +93,10 @@ def test_imresize_multi_channel():
 
     failures = []
     success = []
-    import timerit
+    try:
+        import timerit
+    except ImportError:
+        pytest.skip('requires timerit')
     ti = timerit.Timerit(1, bestof=1, verbose=0)
 
     for imgkw, img in image_variations(image_basis):

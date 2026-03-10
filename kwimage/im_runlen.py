@@ -7,10 +7,16 @@ SeeAlso:
         backend representation. Also contains cython logic for handling
         the coco-rle format.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import numpy as np
+if TYPE_CHECKING:
+    from numpy import ndarray
+    from typing import Dict
+    from typing import Tuple
 
 
-def encode_run_length(img, binary=False, order='C'):
+def encode_run_length(img: ndarray, binary: bool=False, order: str='C') -> Dict[str, object]:
     """
     Construct the run length encoding (RLE) of an image.
 
@@ -124,7 +130,7 @@ def encode_run_length(img, binary=False, order='C'):
     return encoding
 
 
-def decode_run_length(counts, shape, binary=False, dtype=np.uint8, order='C'):
+def decode_run_length(counts: ndarray, shape: Tuple[int, int], binary: bool=False, dtype: type=np.uint8, order: str='C') -> ndarray:
     """
     Decode run length encoding back into an image.
 
@@ -189,7 +195,7 @@ def decode_run_length(counts, shape, binary=False, dtype=np.uint8, order='C'):
     return recon
 
 
-def rle_translate(rle, offset, output_shape=None):
+def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, int] | None=None):
     """
     Translates a run-length encoded image in RLE-space.
 

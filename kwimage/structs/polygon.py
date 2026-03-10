@@ -11,16 +11,27 @@ TODO:
     - [ ] First class shapely support (format='shapely' to mitigate format conversion cost) (or use shapely as the primary format).
 
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, cast
 import numbers
 import math
 import ubelt as ub
 import numpy as np
 from kwimage.structs import _generic
-
-
-__docstubs__ = """
-from kwimage._typing import SKImageGeometricTransform
-"""
+if TYPE_CHECKING:
+    from typing import Any
+    from typing import Tuple
+    from typing import Callable
+    from numpy.typing import ArrayLike
+    import kwimage
+    from typing import List
+    from typing import Iterable
+    from numbers import Number
+    from numpy import ndarray
+    import shapely
+    from typing import Dict
+    import matplotlib
+    from kwimage._typing import SKImageGeometricTransform
 
 
 class _PolyMixin:
@@ -189,7 +200,7 @@ class _ShapelyMixin:
         r = a.buffer(*args, **kwargs)
         return _kwimage_from_shapely(r)
 
-    def simplify(self, tolerance, preserve_topology=True):
+    def simplify(self, tolerance, preserve_topology: bool=True):
         a = self.to_shapely()
         r = a.simplify(tolerance, preserve_topology=preserve_topology)
         return _kwimage_from_shapely(r)
@@ -283,7 +294,7 @@ class _ShapelyMixin:
     # --- Properties
 
     @property
-    def area(self):
+    def area(self) -> float:
         """
         Computes area via shapley conversion
 
@@ -298,7 +309,7 @@ class _ShapelyMixin:
         r = a.convex_hull
         return _kwimage_from_shapely(r)
 
-    def is_invalid(self, explain=False):
+    def is_invalid(self, explain: bool=False) -> bool | str:
         """
         Return True if the polygon is invalid according to shapely.
 
@@ -420,7 +431,7 @@ class _PolyWarpMixin:
     their geometry.
     """
 
-    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace: bool=False):
         """
         Warps by applying an augmenter from the imgaug library
 
@@ -484,7 +495,7 @@ class _PolyWarpMixin:
         iamp = imgaug.MultiPolygon([ia_exterior] + ia_interiors)
         return iamp
 
-    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+    def warp(self, transform: SKImageGeometricTransform | ArrayLike | Any | Callable, input_dims: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False):
         """
         Generalized coordinate transform.
 
@@ -546,7 +557,7 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def scale(self, factor, about=None, output_dims=None, inplace=False):
+    def scale(self, factor: float | Tuple[float, float], about: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False):
         """
         Scale a polygon by a factor
 
@@ -594,7 +605,7 @@ class _PolyWarpMixin:
             for p in new.data['interiors']]
         return new
 
-    def translate(self, offset, output_dims=None, inplace=False):
+    def translate(self, offset, output_dims: Tuple | None=None, inplace: bool=False):
         """
         Shift the polygon up/down left/right
 
@@ -616,7 +627,7 @@ class _PolyWarpMixin:
                                  for p in new.data['interiors']]
         return new
 
-    def rotate(self, theta, about=None, output_dims=None, inplace=False):
+    def rotate(self, theta: float, about: Tuple | None | str=None, output_dims: Tuple | None=None, inplace: bool=False):
         """
         Rotate the polygon
 
@@ -818,7 +829,7 @@ class _PolyWarpMixin:
                 about_ = about if ub.iterable(about) else [about] * 2
         return about_
 
-    def round(self, decimals=0, inplace=False):
+    def round(self, decimals: int=0, inplace: bool=False) -> Polygon:
         """
         Rounds data to the specified decimal place.
         This may make the polygon invalid.
@@ -854,7 +865,7 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def astype(self, dtype, inplace=False):
+    def astype(self, dtype, inplace: bool=False) -> Polygon:
         """
         Changes the data type
 
@@ -880,7 +891,7 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def swap_axes(self, inplace=False):
+    def swap_axes(self, inplace: bool=False) -> Polygon:
         """
         Swap the x and y coordinate axes
 
@@ -991,10 +1002,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         >>> self.draw(setlim=True)
 
     """
-    __datakeys__ = ['exterior', 'interiors']
-    __metakeys__ = ['classes']
+    __datakeys__: Any = ['exterior', 'interiors']
+    __metakeys__: Any = ['classes']
 
-    def __init__(self, data=None, meta=None, datakeys=None, metakeys=None, **kwargs):
+    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: Any | None=None, metakeys: Any | None=None, **kwargs) -> None:
         if kwargs:
             if data or meta:
                 raise ValueError('Cannot specify kwargs AND data/meta dicts')
@@ -1043,7 +1054,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         self.meta = meta
 
     @property
-    def exterior(self):
+    def exterior(self) -> kwimage.Coords:
         """
         Returns:
             kwimage.Coords
@@ -1054,7 +1065,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return self.data['exterior']
 
     @property
-    def interiors(self):
+    def interiors(self) -> List[kwimage.Coords]:
         """
         Returns:
             List[kwimage.Coords]
@@ -1075,15 +1086,15 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         new = kwimage.MultiPolygon.from_shapely(fixed_poly)
         return new
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         """
         Returns:
             str
         """
-        return ub.urepr(self.data, nl=1)
+        return str(ub.urepr(self.data, nl=1))
 
     @classmethod
-    def circle(cls, xy=(0, 0), r=1.0, resolution=64):
+    def circle(cls, xy: tuple[float, float]=(0.0, 0.0), r: float | Number | Tuple[Number, Number]=1.0, resolution: int=64) -> Polygon:
         """
         Create a circular or elliptical polygon.
 
@@ -1184,7 +1195,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return self
 
     @classmethod
-    def regular(cls, num, xy=(0, 0), r=1):
+    def regular(cls, num, xy=(0, 0), r: int=1):
         """
         Make a regular polygon with ``num`` sides.
 
@@ -1209,7 +1220,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return cls.circle(xy=xy, r=r, resolution=num + 1)
 
     @classmethod
-    def star(cls, xy=(0, 0), r=1):
+    def star(cls, xy=(0, 0), r: int=1):
         """
         Make a star polygon
 
@@ -1246,7 +1257,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return star
 
     @classmethod
-    def random(cls, n=6, n_holes=0, convex=True, tight=False, rng=None):
+    def random(cls, n: int=6, n_holes: int=0, convex: bool=True, tight: bool=False, rng: Any | None=None) -> Polygon:
         """
         Args:
             n (int): number of points in the polygon (must be 3 or more)
@@ -1409,7 +1420,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
     def _impl(self):
         return self.data['exterior']._impl
 
-    def to_mask(self, dims=None, pixels_are='points', origin_convention='center'):
+    def to_mask(self, dims: Tuple | None=None, pixels_are: str='points', origin_convention='center') -> kwimage.Mask:
         """
         Convert this polygon to a mask
 
@@ -1467,7 +1478,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 dimension is always 1, and the trailing dimension represents
                 x and y coordinates respectively.
         """
-        data = self.data
+        data: Any = self.data
         coords = [data['exterior']] + data['interiors']
         cv_contour_ = [np.expand_dims(c.data, axis=1) for c in coords]
         WORKAROUND_OPENCV_5473 = 1
@@ -1488,7 +1499,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return cv_contours
 
     @classmethod
-    def coerce(Polygon, data):
+    def coerce(Polygon, data: object) -> kwimage.Polygon:
         """
         Routes the input to the proper constructor
 
@@ -1536,7 +1547,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 type(data)))
 
     @classmethod
-    def from_shapely(Polygon, geom):
+    def from_shapely(Polygon, geom: shapely.geometry.polygon.Polygon) -> kwimage.Polygon:
         """
         Convert a shapely polygon to a kwimage.Polygon
 
@@ -1555,7 +1566,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return self
 
     @classmethod
-    def from_wkt(Polygon, data):
+    def from_wkt(Polygon, data: str) -> kwimage.Polygon:
         """
         Convert a WKT string to a kwimage.Polygon
 
@@ -1577,7 +1588,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return self
 
     @classmethod
-    def from_geojson(Polygon, data_geojson):
+    def from_geojson(Polygon, data_geojson: dict) -> Polygon:
         """
         Convert a geojson polygon to a kwimage.Polygon
 
@@ -1642,7 +1653,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         self = Polygon(exterior=exterior, interiors=interiors)
         return self
 
-    def to_shapely(self, fix=False):
+    def to_shapely(self, fix: bool=False) -> shapely.geometry.polygon.Polygon:
         """
         Args:
             fix (bool):
@@ -1701,7 +1712,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 geom = geom.buffer(0)
         return geom
 
-    def to_geojson(self):
+    def to_geojson(self) -> Dict[str, object]:
         """
         Converts polygon to a geojson structure
 
@@ -1723,7 +1734,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         }
         return geojson
 
-    def to_wkt(self):
+    def to_wkt(self) -> str:
         """
         Convert a kwimage.Polygon to WKT (well known text) string
 
@@ -1742,7 +1753,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             return shp.to_wkt()
 
     @classmethod
-    def from_coco(cls, data, dims=None):
+    def from_coco(cls, data: List[Number] | Dict, dims: None | Tuple[int, ...]=None) -> Polygon:
         """
         Accepts either new-style or old-style coco polygons
 
@@ -1775,7 +1786,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
     def _to_coco(self, style='orig'):
         return self.to_coco(style=style)
 
-    def to_coco(self, style='orig'):
+    def to_coco(self, style: str='orig') -> List | Dict:
         """
         Args:
             style(str): can be "orig" or "new"
@@ -1797,14 +1808,14 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         else:
             raise KeyError(style)
 
-    def to_multi_polygon(self):
+    def to_multi_polygon(self) -> MultiPolygon:
         """
         Returns:
             MultiPolygon
         """
         return MultiPolygon([self])
 
-    def to_boxes(self):
+    def to_boxes(self) -> kwimage.Boxes:
         """
         Deprecated: lossy conversion use 'bounding_box' instead
 
@@ -1814,7 +1825,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         return self.bounding_box()
 
     @property
-    def centroid(self):
+    def centroid(self) -> Tuple[Number, Number]:
         """
         Returns:
             Tuple[Number, Number]
@@ -1823,7 +1834,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         xy = (shp_centroid.x, shp_centroid.y)
         return xy
 
-    def to_box(self):
+    def to_box(self) -> kwimage.Box:
         """
         ## DEPRECATED: Use :func:`box` instead.
         ## Do we deprecate this? Should we stick to the to_ / from_ convention?
@@ -1847,7 +1858,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         #     deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return box
 
-    def bounding_box(self):
+    def bounding_box(self) -> kwimage.Boxes:
         """
         Returns an axis-aligned bounding box for the segmentation
 
@@ -1872,7 +1883,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             deprecate='0.9.19', error='1.0.0', remove='1.1.0')
         return boxes
 
-    def box(self):
+    def box(self) -> kwimage.Box:
         """
         Returns an axis-aligned bounding box for the segmentation
 
@@ -1897,7 +1908,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         box = kwimage.Box(boxes)
         return box
 
-    def bounding_box_polygon(self):
+    def bounding_box_polygon(self) -> kwimage.Polygon:
         """
         Returns an axis-aligned bounding polygon for the segmentation.
 
@@ -1911,7 +1922,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         new = self.box().to_polygons()[0]
         return new
 
-    def copy(self):
+    def copy(self) -> Polygon:
         """
         Returns:
             Polygon: a copy
@@ -1921,7 +1932,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
         return self2
 
-    def clip(self, x_min, y_min, x_max, y_max, inplace=False):
+    def clip(self, x_min, y_min, x_max, y_max, inplace: bool=False) -> Polygon:
         """
         Clip polygon to specified boundaries.
 
@@ -1947,7 +1958,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         np.clip(ys, y_min, y_max, out=ys)
         return self2
 
-    def fill(self, image, value=1, pixels_are='points', origin_convention='center', assert_inplace=False):
+    def fill(self, image: ndarray, value: int | Tuple[int]=1, pixels_are: str='points', origin_convention='center', assert_inplace: bool=False) -> ndarray:
         """
         Fill in an image based on this polyon.
 
@@ -2123,9 +2134,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    def draw_on(self, image=None, color='blue', fill=True, border=False,
-                alpha=1.0, edgecolor=None, facecolor=None, pixels_are='points',
-                origin_convention='center', copy=False):
+    def draw_on(self, image: ndarray=None, color: str | tuple='blue', fill: bool=True, border: bool=False,
+                alpha: float=1.0, edgecolor: str | tuple | None=None, facecolor: str | tuple | None=None, pixels_are='points',
+                origin_convention='center', copy: bool=False) -> np.ndarray:
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
@@ -2441,9 +2452,9 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         image = dtype_fixer(image, copy=False)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=1.0, radius=1, setlim=False,
-             border=None, linewidth=None, edgecolor=None, facecolor=None,
-             fill=True, vertex=False, vertexcolor=None):
+    def draw(self, color: str | Tuple='blue', ax: Any | None=None, alpha: float=1.0, radius: int=1, setlim: bool | str=False,
+             border: bool | None=None, linewidth: bool | None=None, edgecolor: None | Any=None, facecolor: None | Any=None,
+             fill: bool=True, vertex: float=False, vertexcolor: Any | None=None) -> matplotlib.patches.PathPatch | None:
         r"""
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
@@ -2557,7 +2568,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
                 deprecate='0.8.7', error='1.0.0', remove='1.1.0',
             )
 
-        data = self.data
+        data: Any = self.data
 
         exterior = data['exterior'].data.tolist()
         if len(exterior) == 0:
@@ -2676,7 +2687,7 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         )
         return self.morph(other, alpha)
 
-    def morph(self, other, alpha):
+    def morph(self, other: kwimage.Polygon, alpha: float | List[float]) -> Polygon | List[Polygon]:
         """
         Perform polygon-to-polygon morphing.
 
@@ -2821,7 +2832,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     """
 
     @classmethod
-    def random(self, n=3, n_holes=0, rng=None, tight=False):
+    def random(self, n: int=3, n_holes: int=0, rng: Any | None=None, tight: bool=False) -> MultiPolygon:
         """
         Create a random MultiPolygon
 
@@ -2846,8 +2857,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         new = kwimage.MultiPolygon.from_shapely(fixed_mpoly)
         return new
 
-    def fill(self, image, value=1, pixels_are='points',
-             origin_convention='center', assert_inplace=False):
+    def fill(self, image: ndarray, value: int | Tuple[int, ...]=1, pixels_are: str='points',
+             origin_convention='center', assert_inplace: bool=False) -> ndarray:
         """
         Inplace fill in an image based on this multi-polyon.
 
@@ -2903,14 +2914,14 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             raise AssertionError('Unable to perform requested inplace operation')
         return image_
 
-    def to_multi_polygon(self):
+    def to_multi_polygon(self) -> MultiPolygon:
         """
         Returns:
             MultiPolygon
         """
         return self
 
-    def to_boxes(self):
+    def to_boxes(self) -> kwimage.Boxes:
         """
         Deprecated: lossy conversion use 'box' instead
 
@@ -2924,7 +2935,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         )
         return self.bounding_box()
 
-    def to_box(self):
+    def to_box(self) -> kwimage.Box:
         """
         Returns:
             kwimage.Box
@@ -2945,7 +2956,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         boxes = kwimage.Box.coerce(ltrb, format='ltrb')
         return boxes
 
-    def bounding_box(self):
+    def bounding_box(self) -> kwimage.Boxes:
         """
         Return the bounding box of the multi polygon
 
@@ -2970,7 +2981,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         boxes = kwimage.Boxes(ltrb, 'ltrb')
         return boxes
 
-    def box(self):
+    def box(self) -> kwimage.Box:
         """
         Returns an axis-aligned bounding box for the segmentation
 
@@ -2997,7 +3008,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         box = kwimage.Box.coerce(ltrb, format='ltrb')
         return box
 
-    def to_mask(self, dims=None, pixels_are='points', origin_convention='center'):
+    def to_mask(self, dims: Any | None=None, pixels_are: str='points', origin_convention='center') -> kwimage.Mask:
         """
         Returns a mask object indication regions occupied by this multipolygon
 
@@ -3045,7 +3056,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         return mask
 
     @classmethod
-    def coerce(cls, data, dims=None):
+    def coerce(cls, data, dims: Any | None=None) -> None | MultiPolygon:
         """
         Attempts to construct a MultiPolygon instance from the input data
 
@@ -3081,7 +3092,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             self = self.to_multi_polygon()
         return self
 
-    def to_shapely(self, fix=False):
+    def to_shapely(self, fix: bool=False) -> shapely.geometry.MultiPolygon:
         """
         Args:
             fix (bool):
@@ -3109,7 +3120,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         return geom
 
     @classmethod
-    def from_shapely(MultiPolygon, geom):
+    def from_shapely(MultiPolygon, geom: shapely.geometry.MultiPolygon | shapely.geometry.Polygon) -> MultiPolygon:
         """
         Convert a shapely polygon or multipolygon to a kwimage.MultiPolygon
 
@@ -3134,7 +3145,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         return self
 
     @classmethod
-    def from_geojson(MultiPolygon, data_geojson):
+    def from_geojson(MultiPolygon, data_geojson: Dict) -> MultiPolygon:
         """
         Convert a geojson polygon or multipolygon to a kwimage.MultiPolygon
 
@@ -3161,7 +3172,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         self = MultiPolygon(polys)
         return self
 
-    def to_geojson(self):
+    def to_geojson(self) -> Dict:
         """
         Converts polygon to a geojson structure
 
@@ -3176,7 +3187,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         return data_geojson
 
     @classmethod
-    def from_coco(cls, data, dims=None):
+    def from_coco(cls, data: List[List[Number] | Dict], dims: None | Tuple[int, ...]=None) -> MultiPolygon:
         """
         Accepts either new-style or old-style coco multi-polygons
 
@@ -3202,7 +3213,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     def _to_coco(self, style='orig'):
         return self.to_coco(style=style)
 
-    def to_coco(self, style='orig'):
+    def to_coco(self, style: str='orig'):
         """
         Args:
             style(str): can be "orig" or "new"
@@ -3214,7 +3225,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         return [item.to_coco(style=style) for item in self.data]
 
-    def swap_axes(self, inplace=False):
+    def swap_axes(self, inplace: bool=False) -> MultiPolygon:
         """
         Swap x and y axis
 
@@ -3327,7 +3338,7 @@ class PolygonList(_generic.ObjectList):
         self = cls(items)
         return self
 
-    def to_mask_list(self, dims=None, pixels_are='points', origin_convention='center'):
+    def to_mask_list(self, dims: Any | None=None, pixels_are: str='points', origin_convention='center') -> kwimage.MaskList:
         """
         Converts all items to masks
 
@@ -3342,7 +3353,7 @@ class PolygonList(_generic.ObjectList):
         ])
         return new
 
-    def to_polygon_list(self):
+    def to_polygon_list(self) -> PolygonList:
         """
         Returns:
             PolygonList
@@ -3367,7 +3378,7 @@ class PolygonList(_generic.ObjectList):
         boxes = kwimage.Boxes.concatenate(boxes_list)
         return boxes
 
-    def to_segmentation_list(self):
+    def to_segmentation_list(self) -> kwimage.SegmentationList:
         """
         Converts all items to segmentation objects
 
@@ -3381,14 +3392,14 @@ class PolygonList(_generic.ObjectList):
         ])
         return new
 
-    def swap_axes(self, inplace=False):
+    def swap_axes(self, inplace: bool=False) -> PolygonList:
         """
         Returns:
             PolygonList
         """
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
-    def to_geojson(self, as_collection=False):
+    def to_geojson(self, as_collection: bool=False) -> List[Dict] | Dict:
         """
         Converts a list of polygons/multipolygons to a geojson structure
 
@@ -3429,8 +3440,8 @@ class PolygonList(_generic.ObjectList):
         else:
             return items
 
-    def fill(self, image, value=1, pixels_are='points',
-             origin_convention='center', assert_inplace=False):
+    def fill(self, image: ndarray, value: int | Tuple[int, ...]=1, pixels_are: str='points',
+             origin_convention='center', assert_inplace: bool=False) -> ndarray:
         """
         Inplace fill in an image based on these polygons
 

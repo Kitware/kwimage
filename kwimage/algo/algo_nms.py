@@ -1,15 +1,23 @@
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, cast
 import sys
 import numpy as np
 import ubelt as ub
 import warnings
 import kwarray
+if TYPE_CHECKING:
+    from numpy import ndarray
+    from typing import Tuple
 
 
-def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
-                    stop_size=2048, recsize=2048, impl='auto', device_id=None):
+def daq_spatial_nms(ltrb: ndarray, scores: ndarray,
+                    diameter: int | Tuple[int, int], thresh: float,
+                    max_depth: int=6, stop_size: int=2048,
+                    recsize: int=2048, impl: str='auto',
+                    device_id: Any | None=None):
     """
     Divide and conquer speedup non-max-supression algorithm for when bboxes
     have a known max size
@@ -185,13 +193,12 @@ def daq_spatial_nms(ltrb, scores, diameter, thresh, max_depth=6,
     keep = _rectify(ltrb, both_keep, needs_rectify)
     return keep
 
-
 _impls = None
 
 
 class _NMS_Impls():
     # TODO: could make this prettier
-    def __init__(self):
+    def __init__(self) -> None:
         self._funcs = None
 
     def _lazy_init(self):
@@ -367,8 +374,9 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
     return impl
 
 
-def non_max_supression(ltrb, scores, thresh, bias=0.0, classes=None,
-                       impl='auto', device_id=None):
+def non_max_supression(ltrb: ndarray, scores: ndarray, thresh: float,
+                       bias: float=0.0, classes: ndarray | None=None,
+                       impl: str='auto', device_id: int | None=None):
     """
     Non-Maximum Suppression - remove redundant bounding boxes
 

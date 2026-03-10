@@ -1,5 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import numpy as np
 import ubelt as ub
+if TYPE_CHECKING:
+    from typing import Any
 
 
 try:
@@ -39,7 +43,7 @@ class Box:
     """
     __slots__ = ('boxes',)
 
-    def __init__(self, boxes, _check: bool = False):
+    def __init__(self, boxes, _check: bool = False) -> None:
         # if _check:
         #     raise Exception(
         #         'For now, only construct an instance of this using a class '
@@ -81,7 +85,7 @@ class Box:
         if kwargs.get('num', 1) != 1:
             raise ValueError('Cannot specify num for Box. Use Boxes instead.')
         kwargs['num'] = 1
-        boxes = kwimage.Boxes.random(**kwargs)
+        boxes: Any = kwimage.Boxes.random(**kwargs)
         self = Box(boxes, _check=False)
         return self
 
@@ -95,7 +99,7 @@ class Box:
             >>> new = kwimage.Box.from_slice(slice_)
         """
         import kwimage
-        boxes = kwimage.Boxes.from_slice(slice_, shape=shape, clip=clip,
+        boxes: Any = kwimage.Boxes.from_slice(slice_, shape=shape, clip=clip,
                                          endpoint=endpoint, wrap=wrap)
         self = Box(boxes, _check=False)
         return self
@@ -103,7 +107,7 @@ class Box:
     @classmethod
     def from_shapely(self, geom):
         import kwimage
-        boxes = kwimage.Boxes.from_shapely(geom)
+        boxes: Any = kwimage.Boxes.from_shapely(geom)
         self = Box(boxes, _check=False)
         return self
 
@@ -119,20 +123,20 @@ class Box:
         import kwimage
         width, height = dsize
         ltrb = np.array([[0, 0, width, height]])
-        boxes = kwimage.Boxes(ltrb, 'ltrb', canonical=True)
+        boxes: Any = kwimage.Boxes(ltrb, 'ltrb', canonical=True)
         self = Box(boxes, _check=False)
         return self
 
     @classmethod
     def from_data(self, data, format):
         import kwimage
-        boxes = kwimage.Boxes([data], format)
+        boxes: Any = kwimage.Boxes([data], format)
         self = Box(boxes, _check=False)
         return self
 
     @classmethod
     @profile
-    def coerce(cls, data, format=None, **kwargs):
+    def coerce(cls, data, format: Any | None=None, **kwargs):
         """
         Create an instance of a box from data.
 
@@ -416,7 +420,7 @@ class Box:
     def area(self):
         return self.boxes.area.ravel()[0]
 
-    def to_slice(self, endpoint=True):
+    def to_slice(self, endpoint: bool=True):
         """
         Example:
             >>> import kwimage
@@ -449,8 +453,8 @@ class Box:
         """
         return list(self.boxes.to_coco())[0]
 
-    def draw_on(self, image=None, color='blue', alpha=None, label=None,
-                copy=False, thickness=2, label_loc='top_left'):
+    def draw_on(self, image: Any | None=None, color: str='blue', alpha: Any | None=None, label: Any | None=None,
+                copy: bool=False, thickness: int=2, label_loc: str='top_left'):
         """
         Draws a box directly on an image using OpenCV
 
@@ -472,8 +476,8 @@ class Box:
                                   labels=[label], copy=copy,
                                   thickness=thickness, label_loc=label_loc)
 
-    def draw(self, color='blue', alpha=None, label=None, centers=False,
-             fill=False, lw=2, ax=None, setlim=False, **kwargs):
+    def draw(self, color: str='blue', alpha: Any | None=None, label: Any | None=None, centers: bool=False,
+             fill: bool=False, lw: int=2, ax: Any | None=None, setlim: bool=False, **kwargs):
         """
         Draws a box directly on an image using OpenCV
 

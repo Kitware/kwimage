@@ -10,12 +10,17 @@ References:
     .. [WikiBlendModes] https://en.wikipedia.org/wiki/Blend_modes
     .. [PypiBlendModes] https://pypi.org/project/blend-modes/
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import numpy as np
 from . import im_core
+if TYPE_CHECKING:
+    from typing import Sequence
+    from numpy import ndarray
 
 
-def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
+def overlay_alpha_layers(layers: Sequence[ndarray], keepalpha: bool=True, dtype: np.dtype=np.float32) -> ndarray:
     """
     Stacks a sequences of layers on top of one another. The first item is the
     topmost layer and the last item is the bottommost layer.
@@ -55,8 +60,8 @@ def overlay_alpha_layers(layers, keepalpha=True, dtype=np.float32):
     return raster
 
 
-def overlay_alpha_images(img1, img2, keepalpha=True, dtype=np.float32,
-                         impl='inplace'):
+def overlay_alpha_images(img1: ndarray, img2: ndarray, keepalpha: bool=True, dtype: np.dtype=np.float32,
+                         impl: str='inplace') -> ndarray:
     """
     Places img1 on top of img2 respecting alpha channels.
     Works like the Photoshop layers with opacity.
@@ -250,7 +255,7 @@ def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
     return rgb3, alpha3
 
 
-def ensure_alpha_channel(img, alpha=1.0, dtype=np.float32, copy=False):
+def ensure_alpha_channel(img: ndarray, alpha: float | ndarray=1.0, dtype: type=np.float32, copy: bool=False) -> ndarray:
     """
     Returns the input image with 4 channels.
 

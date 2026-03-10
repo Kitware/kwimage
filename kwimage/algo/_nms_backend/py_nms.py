@@ -4,11 +4,12 @@ Copyright (c) 2015 Microsoft
 Licensed under The MIT License [see LICENSE for details]
 Written by Ross Girshick
 """
+from __future__ import annotations
 import numpy as np
 import warnings
 
 
-def py_nms(np_ltrb, np_scores, thresh, bias=1):
+def py_nms(np_ltrb, np_scores, thresh, bias: int=1):
     """
     Pure Python NMS baseline.
 

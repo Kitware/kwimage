@@ -1,7 +1,13 @@
 """
 Keep a manifest of demo images used for testing
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import ubelt as ub
+if TYPE_CHECKING:
+    from typing import Tuple
+    from numpy import ndarray
+    from numbers import Number
 
 
 _TEST_IMAGES = {
@@ -331,8 +337,8 @@ def _update_hashes():
         print('\n'.join(setup_single_dir_commands))
 
 
-def grab_test_image(key='astro', space='rgb', dsize=None,
-                    interpolation='linear'):
+def grab_test_image(key: str='astro', space: str='rgb', dsize: Tuple[int, int] | None=None,
+                    interpolation: str='linear') -> ndarray:
     """
     Ensures that the test image exists (this might use the network), reads it
     and returns the the image pixels.
@@ -421,7 +427,7 @@ def _grabdata_with_mirrors(url, mirror_urls, grabkw):
     return fpath
 
 
-def grab_test_image_fpath(key='astro', dsize=None, overviews=None, allow_fallback=True):
+def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, overviews: None | int=None, allow_fallback=True) -> str:
     """
     Ensures that the test image exists (this might use the network) and returns
     the cached filepath to the requested image.
@@ -593,8 +599,8 @@ grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
 
-def checkerboard(num_squares='auto', square_shape='auto', dsize=(512, 512),
-                 dtype=float, on_value=1, off_value=0, bayer_value=None):
+def checkerboard(num_squares: int | str='auto', square_shape: int | Tuple[int, int] | str='auto', dsize: Tuple[int, int]=(512, 512),
+                 dtype: type=float, on_value: Number | int=1, off_value: Number | int=0, bayer_value=None):
     """
     Creates a checkerboard image, mainly for use in testing.
 

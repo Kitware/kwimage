@@ -1,12 +1,15 @@
 # Helpers for typing
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from skimage.transform import _geometric
+if TYPE_CHECKING:
+    from typing import Any
 
-try:
-    SKImageGeometricTransform = _geometric._GeometricTransform
-except AttributeError:
+SKImageGeometricTransform: Any = getattr(_geometric, '_GeometricTransform', None)
+if SKImageGeometricTransform is None:
     # Older version compatability
-    SKImageGeometricTransform = _geometric.GeometricTransform
+    SKImageGeometricTransform = getattr(_geometric, 'GeometricTransform')
 
 
 __all__ = [

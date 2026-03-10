@@ -3,11 +3,23 @@ Coordinates the fundamental "point" datatype. They do not contain metadata,
 only geometry. See the `Points` data type for a structure that maintains
 metadata on top of coordinate data.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import ubelt as ub
 import warnings
 import kwarray
 from kwimage.structs import _generic
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+    from typing import Sequence
+    from typing import Tuple
+    from typing import Callable
+    from typing import Any
+    from numpy import ndarray
+    from typing import List
+    import matplotlib as mpl
+    from kwimage._typing import SKImageGeometricTransform
 
 try:
     from packaging.version import parse as LooseVersion
@@ -31,11 +43,6 @@ except Exception as ex:
         f'The error was: {ex}')
     _HAS_IMGAUG_FLIP_BUG = None
     _HAS_IMGAUG_XY_ARRAY = None
-
-
-__docstubs__ = """
-from kwimage._typing import SKImageGeometricTransform
-"""
 
 
 class Coords(_generic.Spatial, ub.NiceRepr):
@@ -103,7 +110,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     """
     # __slots__ = ('data', 'meta',)  # turn on when no longer developing
 
-    def __init__(self, data=None, meta=None):
+    def __init__(self, data: Any | None=None, meta: Any | None=None) -> None:
         if isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data and meta are explicitly specified
@@ -147,7 +154,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return new
 
     @classmethod
-    def random(Coords, num=1, dim=2, rng=None, meta=None):
+    def random(Coords, num: int=1, dim: int=2, rng: Any | None=None, meta: Any | None=None):
         """
         Makes random coordinates; typically for testing purposes
         """
@@ -155,21 +162,21 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self = Coords(data=rng.rand(num, dim), meta=meta)
         return self
 
-    def is_numpy(self):
+    def is_numpy(self) -> bool:
         """
         Returns:
             bool
         """
         return self._impl.is_numpy
 
-    def is_tensor(self):
+    def is_tensor(self) -> bool:
         """
         Returns:
             bool
         """
         return self._impl.is_tensor
 
-    def compress(self, flags, axis=0, inplace=False):
+    def compress(self, flags: ArrayLike, axis: int=0, inplace: bool=False) -> Coords:
         """
         Filters items based on a boolean criterion
 
@@ -201,7 +208,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.compress(new.data, flags, axis=axis)
         return new
 
-    def take(self, indices, axis=0, inplace=False):
+    def take(self, indices: ArrayLike, axis: int=0, inplace: bool=False) -> Coords:
         """
         Takes a subset of items at specific indices
 
@@ -227,7 +234,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.take(new.data, indices, axis=axis)
         return new
 
-    def astype(self, dtype, inplace=False):
+    def astype(self, dtype, inplace: bool=False) -> Coords:
         """
         Changes the data type
 
@@ -242,7 +249,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.astype(new.data, dtype, copy=not inplace)
         return new
 
-    def round(self, decimals=0, inplace=False):
+    def round(self, decimals: int=0, inplace: bool=False) -> Coords:
         """
         Rounds data to the specified decimal place
 
@@ -262,7 +269,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.round(new.data, decimals=decimals)
         return new
 
-    def view(self, *shape):
+    def view(self, *shape) -> Coords:
         """
         Passthrough method to view or reshape
 
@@ -283,7 +290,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return self.__class__(data_, self.meta)
 
     @classmethod
-    def concatenate(cls, coords, axis=0):
+    def concatenate(cls, coords: Sequence[Coords], axis: int=0) -> Coords:
         """
         Concatenates lists of coordinates together
 
@@ -332,7 +339,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         return kwarray.ArrayAPI.coerce(self.data)
 
-    def tensor(self, device=ub.NoParam):
+    def tensor(self, device=ub.NoParam) -> Coords:
         """
         Converts numpy to tensors. Does not change memory if possible.
 
@@ -352,7 +359,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def numpy(self):
+    def numpy(self) -> Coords:
         """
         Converts tensors to numpy. Does not change memory if possible.
 
@@ -372,7 +379,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def reorder_axes(self, new_order, inplace=False):
+    def reorder_axes(self, new_order: Tuple[int], inplace: bool=False) -> Coords:
         """
         Change the ordering of the coordinate axes.
 
@@ -462,8 +469,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     new.data += 10
         return new
 
-    def warp(self, transform, input_dims=None, output_dims=None,
-             inplace=False):
+    def warp(self, transform: SKImageGeometricTransform | ArrayLike | Any | Callable, input_dims: Tuple | None=None, output_dims: Tuple | None=None,
+             inplace: bool=False) -> Coords:
         """
         Generalized coordinate transform.
 
@@ -663,7 +670,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = xy
         return new
 
-    def to_imgaug(self, input_dims):
+    def to_imgaug(self, input_dims) -> Any:
         """
         Translate to an imgaug object
 
@@ -763,7 +770,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self = cls(xy)
         return self
 
-    def scale(self, factor, about=None, output_dims=None, inplace=False):
+    def scale(self, factor: float | Tuple[float, float], about: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False) -> Coords:
         """
         Scale coordinates by a factor
 
@@ -794,7 +801,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
-        data = new.data
+        data: Any = new.data
 
         # if not inplace:
         #     data = new.data = impl.copy(data)
@@ -808,7 +815,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 factor_ = factor
 
             if self._impl.dtype_kind(data) != 'f' and self._impl.dtype_kind(factor_) == 'f':
-                data = self._impl.astype(data, factor_.dtype)
+                data: Any = self._impl.astype(data, factor_.dtype)
 
             assert factor_.shape == (dim,)
 
@@ -822,7 +829,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = data
         return new
 
-    def translate(self, offset, output_dims=None, inplace=False):
+    def translate(self, offset: float | Tuple[float, float], output_dims: Tuple | None=None, inplace: bool=False) -> Coords:
         """
         Shift the coordinates
 
@@ -846,7 +853,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         impl = self._impl
         new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
-        data = new.data
+        data: Any = new.data
         if not inplace:
             data = new.data = impl.copy(data)
         if impl.numel(data) > 0:
@@ -862,7 +869,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data += offset_
         return new
 
-    def rotate(self, theta, about=None, output_dims=None, inplace=False):
+    def rotate(self, theta: float, about: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False) -> Coords:
         """
         Rotate the coordinates about a point.
 
@@ -1004,7 +1011,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 about_ = about if ub.iterable(about) else [about] * self.dim
         return about_
 
-    def fill(self, image, value, coord_axes=None, interp='bilinear'):
+    def fill(self, image, value, coord_axes: Tuple | None=None, interp: str='bilinear') -> ndarray:
         """
         Sets sub-coordinate locations in a grid to a particular value
 
@@ -1022,7 +1029,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                                           coord_axes=coord_axes, interp=interp)
         return image
 
-    def soft_fill(self, image, coord_axes=None, radius=5):
+    def soft_fill(self, image, coord_axes: Tuple | None=None, radius: int=5) -> ndarray:
         """
         Used for drawing keypoint truth in heatmaps
 
@@ -1158,8 +1165,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         return image
 
-    def draw_on(self, image=None, fill_value=1, coord_axes=[1, 0],
-                interp='bilinear'):
+    def draw_on(self, image: Any | None=None, fill_value: int=1, coord_axes: Tuple=[1, 0],
+                interp: str='bilinear') -> ndarray:
         """
         Note:
             unlike other methods, the defaults assume x/y internal data
@@ -1207,8 +1214,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                           interp=interp)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=None, coord_axes=[1, 0],
-             radius=1, setlim=False):
+    def draw(self, color: str='blue', ax: Any | None=None, alpha: Any | None=None, coord_axes: Tuple=[1, 0],
+             radius: int=1, setlim: bool=False) -> List[mpl.collections.PatchCollection]:
         """
         Draw these coordinates via matplotlib
 
@@ -1244,7 +1251,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         from matplotlib import pyplot as plt
         if ax is None:
             ax = plt.gca()
-        data = self.data
+        data: Any = self.data
 
         if self.dim != 2:
             raise NotImplementedError('need 2d for mpl')

@@ -29,11 +29,24 @@ If you want to visualize boxes and scores you can do this:
     >>> plt.gca().set_ylim(0, 224)
 
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import ubelt as ub
 import sys
 from kwimage.structs import boxes as _boxes
 from kwimage.structs import _generic
+if TYPE_CHECKING:
+    from numpy import ndarray
+    from typing import Any
+    from typing import List
+    from typing import Dict
+    import kwimage
+    from typing import Callable
+    from typing import Tuple
+    from typing import Sequence
+    from numpy.random import RandomState
+    from collections.abc import Generator
 
 # try:
 #     import torch
@@ -45,9 +58,9 @@ class _DetDrawMixin:
     """
     Non critical methods for visualizing detections
     """
-    def draw(self, color='blue', alpha=None, labels=True, centers=False, lw=2,
-             fill=False, ax=None, radius=5, kpts=True, sseg=True,
-             setlim=False, boxes=True):
+    def draw(self, color: str='blue', alpha: Any | None=None, labels: bool=True, centers: bool=False, lw: int=2,
+             fill: bool=False, ax: Any | None=None, radius: int=5, kpts: bool=True, sseg: bool=True,
+             setlim: bool=False, boxes: bool=True) -> None:
         """
         Draws boxes using matplotlib
 
@@ -93,9 +106,9 @@ class _DetDrawMixin:
             ax.set_xlim(xmin, xmax)
             ax.set_ylim(ymin, ymax)
 
-    def draw_on(self, image=None, color='blue', alpha=None, labels=True, radius=5,
-                kpts=True, sseg=True, boxes=True, ssegkw=None,
-                label_loc='top_left', thickness=2):
+    def draw_on(self, image: ndarray | None=None, color: str | Any | List[Any]='blue', alpha: float | None=None, labels: bool | str | List[str]=True, radius: float=5,
+                kpts: bool=True, sseg: bool=True, boxes: bool=True, ssegkw: dict | None=None,
+                label_loc: str='top_left', thickness: int=2) -> ndarray:
         """
         Draws boxes directly on the image using OpenCV
 
@@ -296,6 +309,7 @@ class _DetDrawMixin:
 
                 # Respect colors stored in classes if given
                 if hasattr(classes, 'idx_to_node'):
+                    classes = cast(Any, classes)
                     cname_to_color = {
                         cid: cat.get('color', None)
                         for cid, cat in classes.cats.items()
@@ -386,8 +400,8 @@ class _DetAlgoMixin:
     Non critical methods for algorithmic manipulation of detections
     """
 
-    def non_max_supression(self, thresh=0.0, perclass=False, impl='auto',
-                           daq=False, device_id=None):
+    def non_max_supression(self, thresh: float=0.0, perclass: bool=False, impl: str='auto',
+                           daq: bool | Dict=False, device_id: Any | None=None) -> Any:
         """
         Find high scoring minimally overlapping detections
 
@@ -464,8 +478,8 @@ class _DetAlgoMixin:
                                               device_id=device_id)
         return keep
 
-    def non_max_supress(self, thresh=0.0, perclass=False, impl='auto',
-                        daq=False):
+    def non_max_supress(self, thresh: float=0.0, perclass: bool=False, impl: str='auto',
+                        daq: bool=False):
         """
         Convinience method. Like `non_max_supression`, but returns to supressed
         boxes instead of the indices to keep.
@@ -474,8 +488,8 @@ class _DetAlgoMixin:
                                        impl=impl, daq=daq)
         return self.take(keep)
 
-    def rasterize(self, bg_size, input_dims, soften=1, tf_data_to_img=None,
-                  img_dims=None, exclude=[]):
+    def rasterize(self, bg_size, input_dims, soften: int=1, tf_data_to_img: Any | None=None,
+                  img_dims: Any | None=None, exclude=[]) -> kwimage.Heatmap:
         """
         Ambiguous conversion from a Heatmap to a Detections object.
 
@@ -645,14 +659,14 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # not sure how to best structure the code to allow this so it is both clear
     # and efficient. Currently I've allowed the user to specify custom datakeys
     # and metakeys as kwargs, but that design might change.
-    __datakeys__ = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
+    __datakeys__: Any = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
                     'keypoints', 'segmentations']
 
     # Valid keys for the meta dictionary
-    __metakeys__ = ['classes']
+    __metakeys__: Any = ['classes']
 
-    def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
-                 checks=True, **kwargs):
+    def __init__(self, data: Dict[str, Any] | None=None, meta: Dict[str, Any] | None=None, datakeys: List[str] | None=None, metakeys: List[str] | None=None,
+                 checks: bool=True, **kwargs) -> None:
         """
         Construct a Detections object by either explicitly specifying the
         internal data and meta dictionary structures or by passing expected
@@ -800,7 +814,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return copy.deepcopy(self)
 
     @classmethod
-    def coerce(cls, data=None, **kwargs):
+    def coerce(cls, data: Any | None=None, **kwargs):
         """
         The "try-anything to get what I want" constructor
 
@@ -836,8 +850,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return self
 
     @classmethod
-    def from_coco_annots(cls, anns, cats=None, classes=None, kp_classes=None,
-                         shape=None, dset=None):
+    def from_coco_annots(cls, anns: List[Dict], cats: List[Dict] | None=None, classes: Any | None=None, kp_classes: Any | None=None,
+                         shape: tuple | None=None, dset: Any | None=None) -> Detections:
         """
         Create a Detections object from a list of coco-like annotations.
 
@@ -1081,7 +1095,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 dets.meta['kp_classes'] = kp_classes
         return dets
 
-    def to_coco(self, cname_to_cat=None, style='orig', image_id=None, dset=None):
+    def to_coco(self, cname_to_cat: Any | None=None, style: str='orig', image_id: int | None=None, dset: Any | None=None) -> Generator[dict, None, None]:
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
@@ -1215,7 +1229,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     # --- Modifiers ---
 
-    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+    def warp(self, transform: kwimage.Affine | ndarray | Callable | Any, input_dims: Tuple[int, int] | None=None, output_dims: Tuple[int, int] | None=None, inplace: bool=False) -> Detections:
         """
         Spatially warp the detections.
 
@@ -1255,7 +1269,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 inplace=inplace)
         return new
 
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, output_dims: Any | None=None, inplace: bool=False):
         """
         Spatially scale the detections.
 
@@ -1277,7 +1291,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 factor, output_dims=output_dims, inplace=inplace)
         return new
 
-    def translate(self, offset, output_dims=None, inplace=False):
+    def translate(self, offset, output_dims: Any | None=None, inplace: bool=False):
         """
         Spatially translate the detections.
 
@@ -1297,7 +1311,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return new
 
     @classmethod
-    def concatenate(cls, dets):
+    def concatenate(cls, dets) -> Detections:
         """
         Args:
             boxes (Sequence[Detections]): list of detections to concatenate
@@ -1344,7 +1358,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         new = cls(newdata, newmeta)
         return new
 
-    def argsort(self, reverse=True):
+    def argsort(self, reverse: bool=True) -> Any:
         """
         Sorts detection indices by descending (or ascending) scores
 
@@ -1361,7 +1375,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 sortx = sortx[::-1]
         return sortx
 
-    def sort(self, reverse=True):
+    def sort(self, reverse: bool=True) -> kwimage.structs.Detections:
         """
         Sorts detections by descending (or ascending) scores
 
@@ -1371,7 +1385,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         sortx = self.argsort(reverse=reverse)
         return self.take(sortx)
 
-    def compress(self, flags, axis=0):
+    def compress(self, flags: Any, axis: int=0) -> Detections:
         """
         Returns a subset where corresponding locations are True.
 
@@ -1417,7 +1431,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                    for k, v in self.data.items()}
         return self.__class__(newdata, self.meta)
 
-    def take(self, indices, axis=0):
+    def take(self, indices: Any, axis: int=0) -> Detections:
         """
         Returns a subset specified by indices
 
@@ -1581,8 +1595,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return self, iminfo, sampler
 
     @classmethod
-    def random(cls, num=10, scale=1.0, classes=3, keypoints=False,
-               segmentations=False, tensor=False, rng=None):
+    def random(cls, num: int=10, scale: float | tuple=1.0, classes: int | Sequence=3, keypoints: bool | str=False,
+               segmentations: bool=False, tensor: bool=False, rng: Any | None=None) -> Detections:
         """
         Creates dummy data, suitable for use in tests and benchmarks
 

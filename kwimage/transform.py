@@ -34,11 +34,6 @@ __all__ = [
 ]
 
 
-__docstubs__ = """
-import affine
-"""
-
-
 class Transform(ub.NiceRepr):
     pass
 

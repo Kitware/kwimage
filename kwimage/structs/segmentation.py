@@ -2,11 +2,15 @@
 Generic segmentation object that can use either a Mask or (Multi)Polygon
 backend.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 # from kwimage.structs import _generic
 import numpy as np
 import numbers
 from . import _generic
 import ubelt as ub
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class _WrapperObject(ub.NiceRepr):
@@ -50,12 +54,12 @@ class Segmentation(_WrapperObject):
         data (object): the underlying object
         format (str): either 'mask', 'polygon', or 'multipolygon'
     """
-    def __init__(self, data, format=None):
+    def __init__(self, data, format: Any | None=None) -> None:
         self.data = data
         self.format = format
 
     @classmethod
-    def random(cls, rng=None):
+    def random(cls, rng: Any | None=None):
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
@@ -73,15 +77,15 @@ class Segmentation(_WrapperObject):
         import kwimage
         rng = kwarray.ensure_rng(rng)
         if rng.rand() > 0.5:
-            data = kwimage.Polygon.random()
+            data: Any = kwimage.Polygon.random()
         else:
-            data = kwimage.Mask.random()
+            data: Any = kwimage.Mask.random()
         return cls.coerce(data)
 
     def to_multi_polygon(self):
         return self.data.to_multi_polygon()
 
-    def to_mask(self, dims=None, pixels_are='points'):
+    def to_mask(self, dims: Any | None=None, pixels_are: str='points'):
         return self.data.to_mask(dims=dims, pixels_are=pixels_are)
 
     def box(self):
@@ -96,7 +100,7 @@ class Segmentation(_WrapperObject):
         return self.data.meta
 
     @classmethod
-    def coerce(cls, data, dims=None):
+    def coerce(cls, data, dims: Any | None=None):
         import kwimage
         if _generic._isinstance2(data, kwimage.Segmentation):
             self = data
@@ -107,7 +111,7 @@ class Segmentation(_WrapperObject):
         elif _generic._isinstance2(data, kwimage.MultiPolygon):
             self = Segmentation(data, 'multipolygon')
         else:
-            data = _coerce_coco_segmentation(data, dims=dims)
+            data: Any = _coerce_coco_segmentation(data, dims=dims)
             if data is None:
                 return None
             self = cls.coerce(data, dims=dims)
@@ -131,7 +135,7 @@ class SegmentationList(_generic.ObjectList):
         ])
         return new
 
-    def to_mask_list(self, dims=None, pixels_are='points'):
+    def to_mask_list(self, dims: Any | None=None, pixels_are: str='points'):
         """
         Converts all mask objects to multi-polygon objects
         """
