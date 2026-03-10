@@ -1273,13 +1273,14 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>> self.draw()
     """
     # Valid keys for the data dictionary
-    __datakeys__: Any = ['class_probs', 'offset', 'diameter', 'keypoints',
-                    'class_idx', 'class_energy']
+    __datakeys__: list[str] = ['class_probs', 'offset', 'diameter',
+                               'keypoints', 'class_idx', 'class_energy']
 
     # Valid keys for the meta dictionary
-    __metakeys__: Any = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
+    __metakeys__: list[str] = ['img_dims', 'tf_data_to_img', 'classes',
+                               'kp_classes']
 
-    __spatialkeys__: Any = ['offset', 'diameter', 'keypoints']
+    __spatialkeys__: list[str] = ['offset', 'diameter', 'keypoints']
 
     def __init__(self, data: Any | None=None, meta: Any | None=None, **kwargs) -> None:
         # Standardize input format

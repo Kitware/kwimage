@@ -157,19 +157,19 @@ class BoxFormat:
     #      r = row = y-coordinate
     #      c = column = x-coordinate
 
-    canonical = []
-    cannonical: Any = canonical  # for backwards compat. FIXME: remove
+    canonical: list[str] = []
+    cannonical: list[str] = canonical  # for backwards compat. FIXME: remove
 
     def _register(k: str, canonical: list[str]=canonical) -> str:
         canonical.append(k)
         return k
 
     # Column-Major-Formats
-    XYWH: Any = _register('xywh')   # (x1, y1, w, h)
-    CXYWH: Any = _register('cxywh')  # (cx, cy, w, h)
-    LTRB: Any = _register('ltrb')   # (x1, y1, x2, y2)
+    XYWH: str = _register('xywh')   # (x1, y1, w, h)
+    CXYWH: str = _register('cxywh')  # (cx, cy, w, h)
+    LTRB: str = _register('ltrb')   # (x1, y1, x2, y2)
     TLBR  = LTRB  # deprecated, but kept for backwards compatability
-    XXYY: Any = _register('xxyy')   # (x1, x2, y1, y2)
+    XXYY: str = _register('xxyy')   # (x1, x2, y1, y2)
 
     # Row-Major-Formats
     # Note: prefix row major format with an underscore.
@@ -179,7 +179,7 @@ class BoxFormat:
 
     del _register
 
-    aliases: Any = {
+    aliases: dict[str, str] = {
         # NOTE: Once a name enters here it is very difficult to remove
         # Once we hit version 1.0, this table cannot be removed from without
         # bumping a major version.
@@ -212,7 +212,7 @@ class BoxFormat:
     # these are old deprecated format codes that were once used and were
     # removed due to inconsistent implementations. Thus we should not re-use
     # then in the future (maybe unless there is a major version bump).
-    blocklist: Any = [
+    blocklist: list[str] = [
         'tlhw',
         # 'tlbr', # eventually
     ]
@@ -381,7 +381,7 @@ class _BoxConversionMixins:
     if _USE_SLOTS:
         __slots__ = tuple()
 
-    convert_funcs: Any = {}
+    convert_funcs: dict[str, Callable] = {}
 
     def _register_convertor(key: str, convert_funcs: dict[str, Any]=convert_funcs):
         def _reg(func):

@@ -235,11 +235,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     # __slots__ = ('data', 'meta',)
 
     # Pre-registered keys for the data dictionary
-    __datakeys__: Any = ['xy', 'class_idxs', 'visible']
+    __datakeys__: list[str] = ['xy', 'class_idxs', 'visible']
     # Pre-registered keys for the meta dictionary
-    __metakeys__: Any = ['classes']
+    __metakeys__: list[str] = ['classes']
 
-    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: Any | None=None, metakeys: Any | None=None,
+    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: list[str] | None=None, metakeys: list[str] | None=None,
                  **kwargs) -> None:
         if kwargs:
             if data or meta:

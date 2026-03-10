@@ -116,18 +116,18 @@ class MaskFormat:
         aliases (Mapping[str, str]):
             maps format aliases to their cannonical name.
     """
-    cannonical: Any = []
+    cannonical: list[str] = []
 
     def _register(k: str, cannonical: list[str]=cannonical) -> str:
         cannonical.append(k)
         return k
 
-    BYTES_RLE: Any = _register('bytes_rle')  # cython compressed RLE
-    ARRAY_RLE: Any = _register('array_rle')  # numpy uncompreesed RLE
-    C_MASK: Any = _register('c_mask')     # row-major raw binary mask
-    F_MASK: Any = _register('f_mask')     # column-major raw binary mask
+    BYTES_RLE: str = _register('bytes_rle')  # cython compressed RLE
+    ARRAY_RLE: str = _register('array_rle')  # numpy uncompreesed RLE
+    C_MASK: str = _register('c_mask')     # row-major raw binary mask
+    F_MASK: str = _register('f_mask')     # column-major raw binary mask
 
-    aliases: Any = {
+    aliases: dict[str, str] = {
     }
     for key in cannonical:
         aliases[key] = key
@@ -140,7 +140,7 @@ class _MaskConversionMixin(object):
     For conversion speeds look into:
         ~/code/kwimage/dev/bench_rle.py
     """
-    convert_funcs: Any = {}
+    convert_funcs: dict[str, Callable] = {}
 
     def _register_convertor(key: str, convert_funcs: dict[str, Any]=convert_funcs):
         def _reg(func):

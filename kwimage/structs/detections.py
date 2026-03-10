@@ -659,11 +659,11 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # not sure how to best structure the code to allow this so it is both clear
     # and efficient. Currently I've allowed the user to specify custom datakeys
     # and metakeys as kwargs, but that design might change.
-    __datakeys__: Any = ['boxes', 'scores', 'class_idxs', 'probs', 'weights',
-                    'keypoints', 'segmentations']
+    __datakeys__: list[str] = ['boxes', 'scores', 'class_idxs', 'probs',
+                               'weights', 'keypoints', 'segmentations']
 
     # Valid keys for the meta dictionary
-    __metakeys__: Any = ['classes']
+    __metakeys__: list[str] = ['classes']
 
     def __init__(self, data: Dict[str, Any] | None=None, meta: Dict[str, Any] | None=None, datakeys: List[str] | None=None, metakeys: List[str] | None=None,
                  checks: bool=True, **kwargs) -> None:

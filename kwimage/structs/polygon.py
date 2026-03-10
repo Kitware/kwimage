@@ -1002,10 +1002,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         >>> self.draw(setlim=True)
 
     """
-    __datakeys__: Any = ['exterior', 'interiors']
-    __metakeys__: Any = ['classes']
+    __datakeys__: list[str] = ['exterior', 'interiors']
+    __metakeys__: list[str] = ['classes']
 
-    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: Any | None=None, metakeys: Any | None=None, **kwargs) -> None:
+    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: list[str] | None=None, metakeys: list[str] | None=None, **kwargs) -> None:
         if kwargs:
             if data or meta:
                 raise ValueError('Cannot specify kwargs AND data/meta dicts')
