@@ -1,9 +1,10 @@
 """
 Raw color data
 """
+from __future__ import annotations
 from collections import OrderedDict
 
-BASE_COLORS = {
+BASE_COLORS: dict[str, tuple[float, float, float]] = {
     'b': (0, 0, 1),
     'g': (0, 0.5, 0),
     'r': (1, 0, 0),
@@ -15,7 +16,7 @@ BASE_COLORS = {
 
 
 # These colors are from Tableau
-TABLEAU_COLORS = (
+_TABLEAU_COLOR_ITEMS: tuple[tuple[str, str], ...] = (
     ('blue', '#1f77b4'),
     ('orange', '#ff7f0e'),
     ('green', '#2ca02c'),
@@ -29,8 +30,8 @@ TABLEAU_COLORS = (
 )
 
 # Normalize name to "tab:<name>" to avoid name collisions.
-TABLEAU_COLORS = OrderedDict(
-    ('tab:' + name, value) for name, value in TABLEAU_COLORS)
+TABLEAU_COLORS: OrderedDict[str, str] = OrderedDict(
+    ('tab:' + name, value) for name, value in _TABLEAU_COLOR_ITEMS)
 
 # This mapping of color names -> hex values is taken from
 # a survey run by Randall Munroe see:
@@ -39,7 +40,7 @@ TABLEAU_COLORS = OrderedDict(
 # https://xkcd.com/color/rgb.txt
 #
 # License: http://creativecommons.org/publicdomain/zero/1.0/
-XKCD_COLORS = {
+XKCD_COLORS: dict[str, str] = {
     'cloudy blue': '#acc2d9',
     'dark pastel green': '#56ae57',
     'dust': '#b2996e',
@@ -995,7 +996,7 @@ XKCD_COLORS = {
 
 
 # https://drafts.csswg.org/css-color-4/#named-colors
-CSS4_COLORS = {
+CSS4_COLORS: dict[str, str] = {
     'aliceblue':            '#F0F8FF',
     'antiquewhite':         '#FAEBD7',
     'aqua':                 '#00FFFF',
@@ -1149,7 +1150,7 @@ CSS4_COLORS = {
 # Kitware color brand guide:
 # https://drive.google.com/file/d/1mUzJw4QrDfxWqqCsPZ_C7QWcQbfR_IBb/view
 
-__note__ = """
+__note__: str = """
 Demo:
     import kwimage
     named_colors = kwimage.Color.named_colors()
@@ -1181,7 +1182,7 @@ Demo:
     kwplot.imshow(canvas)
 """
 
-KITWARE_COLORS = {
+KITWARE_COLORS: dict[str, str] = {
     'kitware_green'     : '#3EAE2B',
     'kitware_blue'      : '#0068C7',
     'kitware_darkgreen' : '#2E5524',

@@ -5,6 +5,8 @@ single image.
 Notes:
     * We may change the "bg_value" argument to "bg_color" in the future.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -12,11 +14,17 @@ import skimage
 import skimage.transform
 from . import im_core
 from . import im_cv2
+if TYPE_CHECKING:
+    from typing import Iterable
+    from numpy import ndarray
+    from numbers import Number
+    from typing import List
+    from typing import Tuple
 
 
-def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
-                 return_info=False, bg_value=None, pad=None,
-                 allow_casting=True):
+def stack_images(images: Iterable[ndarray], axis: int=0, resize: int | str | None=None, interpolation: int | str | None=None, overlap: int=0,
+                 return_info: bool=False, bg_value: Number | ndarray | str | None=None, pad: int | None=None,
+                 allow_casting: bool=True) -> Tuple[ndarray, List]:
     """
     Make a new image with the input images side-by-side
 
@@ -140,9 +148,9 @@ def stack_images(images, axis=0, resize=None, interpolation=None, overlap=0,
         return img1
 
 
-def stack_images_grid(images, chunksize=None, axis=0, overlap=0, pad=None,
-                      return_info=False, bg_value=None, resize=None,
-                      allow_casting=True):
+def stack_images_grid(images: Iterable[ndarray], chunksize: int | None=None, axis: int=0, overlap: int=0, pad: int | None=None,
+                      return_info: bool=False, bg_value: Number | ndarray | str | None=None, resize: int | str | None=None,
+                      allow_casting: bool=True) -> Tuple[ndarray, List]:
     """
     Stacks images in a grid. Optionally return transforms of original image
     positions in the output image.

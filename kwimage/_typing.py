@@ -1,14 +1,23 @@
 # Helpers for typing
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from skimage.transform import _geometric
+if TYPE_CHECKING:
+    from typing import Any
+    from typing import Callable
+    from numpy.typing import ArrayLike
+    from kwimage.transform import Transform
 
-try:
-    SKImageGeometricTransform = _geometric._GeometricTransform
-except AttributeError:
+SKImageGeometricTransform: Any = getattr(_geometric, '_GeometricTransform', None)
+if SKImageGeometricTransform is None:
     # Older version compatability
-    SKImageGeometricTransform = _geometric.GeometricTransform
+    SKImageGeometricTransform = getattr(_geometric, 'GeometricTransform')
 
+if TYPE_CHECKING:
+    TransformLike = SKImageGeometricTransform | ArrayLike | Callable | Transform
 
 __all__ = [
-    'SKImageGeometricTransform'
+    'SKImageGeometricTransform',
+    'TransformLike',
 ]

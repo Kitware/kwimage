@@ -1,8 +1,13 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import numpy as np
 import cv2
+if TYPE_CHECKING:
+    from typing import Any
+    from numpy import ndarray
 
 
-def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
+def radial_fourier_mask(img_hwc: ndarray, radius: int=11, axis: Any | None=None, clip: Any | None=None):
     """
     In [1] they use a radius of 11.0 on CIFAR-10.
 
@@ -95,7 +100,7 @@ def radial_fourier_mask(img_hwc, radius=11, axis=None, clip=None):
     return out_hwc
 
 
-def fourier_mask(img_hwc, mask, axis=None, clip=None, backend='cv2'):
+def fourier_mask(img_hwc: ndarray, mask: ndarray, axis: Any | None=None, clip: Any | None=None, backend: str='cv2'):
     """
     Applies a mask to the fourier spectrum of an image
 

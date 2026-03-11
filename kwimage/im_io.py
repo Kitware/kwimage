@@ -3,6 +3,7 @@ This module provides functions :func:`imread` and :func:`imwrite` which are
 wrappers around concrete readers/writers provided by other libraries. This
 allows us to support a wider array of formats than any of individual backends.
 """
+from __future__ import annotations
 import os
 from os.path import exists, dirname
 import numpy as np
@@ -10,15 +11,41 @@ import ubelt as ub
 from kwimage import im_core
 # import warnings
 
-try:
-    from line_profiler import profile
-except ImportError:
-    from ubelt import identity as profile
-
 from kwimage._backend_info import _have_gdal
 from kwimage._backend_info import _have_cv2  # NOQA
 from kwimage._backend_info import _have_turbojpg
 from kwimage._backend_info import _default_backend
+
+import typing as _t
+
+if _t.TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Literal, overload, TypeAlias
+    # from numpy.typing import NDArray
+
+    PathLike: TypeAlias = str | os.PathLike[str]
+    BackendName: TypeAlias = Literal[
+        'auto', 'gdal', 'skimage', 'itk', 'pil', 'cv2', 'turbojpeg', 'qoi', 'svg'
+    ]
+    ColorSpace: TypeAlias = str | None
+
+    @overload
+    def load_image_shape(
+        fpath: PathLike,
+        backend: BackendName | Sequence[BackendName] = 'auto',
+        *,
+        include_channels: Literal[True] = True,
+    ) -> tuple[int, int, int]:
+        ...
+
+    @overload
+    def load_image_shape(
+        fpath: PathLike,
+        backend: BackendName | Sequence[BackendName] = 'auto',
+        *,
+        include_channels: Literal[False],
+    ) -> tuple[int, int]:
+        ...
 
 __all__ = [
     'imread', 'imwrite', 'load_image_shape',
@@ -26,19 +53,19 @@ __all__ = [
 
 
 # Common image extensions
-JPG_EXTENSIONS = (
+JPG_EXTENSIONS: tuple[str, ...] = (
     '.jpg', '.jpeg'
 )
 
 # These should be supported by opencv / PIL
-_WELL_KNOWN_EXTENSIONS = (
+_WELL_KNOWN_EXTENSIONS: tuple[str, ...] = (
     JPG_EXTENSIONS +
     ('.bmp', '.pgm', '.png', '.qoi',)
 )
 
 
 # Extensions that usually will require GDAL
-GDAL_EXTENSIONS = (
+GDAL_EXTENSIONS: tuple[str, ...] = (
     '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
     '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
     '.jp2', '.vrt',
@@ -46,7 +73,7 @@ GDAL_EXTENSIONS = (
 
 # TODO: ITK Image formats
 # https://insightsoftwareconsortium.github.io/itk-js/docs/image_formats.html
-ITK_EXTENSIONS = (
+ITK_EXTENSIONS: tuple[str, ...] = (
     '.mha',
     '.nrrd',  # http://teem.sourceforge.net/nrrd/format.html
     '.mgh',  # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat
@@ -59,7 +86,7 @@ ITK_EXTENSIONS = (
 # ITK Demo data:
 # https://data.kitware.com/#collection/57b5c9e58d777f126827f5a1
 
-IMAGE_EXTENSIONS = (
+IMAGE_EXTENSIONS: tuple[str, ...] = (
     _WELL_KNOWN_EXTENSIONS +
     ('.tif', '.tiff',) +
     GDAL_EXTENSIONS +
@@ -67,8 +94,7 @@ IMAGE_EXTENSIONS = (
 )
 
 
-@profile
-def imread(fpath, space='auto', backend='auto', **kw):
+def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: str = 'auto', **kw) -> np.ndarray:
     r"""
     Reads image data in a specified format using some backend implementation.
 
@@ -453,7 +479,7 @@ def imread(fpath, space='auto', backend='auto', **kw):
         raise
 
 
-def _imread_qoi(fpath):
+def _imread_qoi(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     """
     """
     import qoi
@@ -462,7 +488,7 @@ def _imread_qoi(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imwrite_qoi(fpath, data):
+def _imwrite_qoi(fpath: str, data: np.ndarray) -> str:
     """
     Only seems to allow RGB 255.
 
@@ -481,7 +507,7 @@ def _imwrite_qoi(fpath, data):
     return fpath
 
 
-def _imread_turbojpeg(fpath):
+def _imread_turbojpeg(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     """
     See: https://www.learnopencv.com/efficient-image-loading/
 
@@ -539,7 +565,7 @@ def _imread_turbojpeg(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_pil(fpath):
+def _imread_pil(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     from PIL import Image
     pil_img = Image.open(fpath)
     image = np.array(pil_img)
@@ -558,7 +584,7 @@ def _imread_pil(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_skimage(fpath):
+def _imread_skimage(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     import skimage.io
     # with warnings.catch_warnings():
     #     warnings.simplefilter("ignore")
@@ -578,7 +604,7 @@ def _imread_skimage(fpath):
     return image, src_space, auto_dst_space
 
 
-def _imread_cv2(fpath):
+def _imread_cv2(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     import cv2
     # opencv reads color in BGR by default
     image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
@@ -607,9 +633,14 @@ def _imread_cv2(fpath):
     return image, src_space, auto_dst_space
 
 
-@profile
-def _imread_gdal(fpath, overview=None, ignore_color_table=False,
-                 nodata_method=None, band_indices=None, nodata=None):
+def _imread_gdal(
+    fpath: str,
+    overview: int | str | None = None,
+    ignore_color_table: bool = False,
+    nodata_method: str | None = None,
+    band_indices: list[int] | None = None,
+    nodata=None,
+) -> tuple[np.ndarray, str | None, str | None]:
     """
     gdal imread backend
 
@@ -790,10 +821,16 @@ def _imread_gdal(fpath, overview=None, ignore_color_table=False,
     return image, src_space, auto_dst_space
 
 
-@profile
-def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
-               band_indices=None, gdalkw=None, nodata_method=None,
-               nodata_value=None):
+def _gdal_read(
+    gdal_dset,
+    overview: int | str | None,
+    nodata=None,
+    ignore_color_table: bool | None = None,
+    band_indices: list[int] | range | None = None,
+    gdalkw: dict[str, int] | None = None,
+    nodata_method: str | None = None,
+    nodata_value=None,
+) -> tuple[np.ndarray, int]:
     """
     Backend for reading data from an open gdal dataset
     """
@@ -939,8 +976,7 @@ def _gdal_read(gdal_dset, overview, nodata=None, ignore_color_table=None,
     return image, num_channels
 
 
-@profile
-def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
+def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None = 'auto', backend: str = 'auto', **kwargs) -> str:
     """
     Writes image data to disk.
 
@@ -1315,7 +1351,10 @@ def imwrite(fpath, image, space='auto', backend='auto', **kwargs):
     return fpath
 
 
-def load_image_shape(fpath, backend='auto', include_channels=True):
+def load_image_shape(fpath: os.PathLike[str] | str,
+                     backend: str | list[str] = 'auto',
+                     include_channels: bool = True
+                     ) -> tuple[int, int] | tuple[int, int, int]:
     """
     Determine the height/width/channels of an image without reading the entire
     file.
@@ -1537,16 +1576,20 @@ def __inspect_optional_overhead():
     raise NotImplementedError
 
 
-@profile
-def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
-                                     blocksize=256, overviews=None,
-                                     overview_resample='NEAREST',
-                                     interleave='PIXEL',
-                                     options=None,
-                                     nodata=None,
-                                     nodata_value=None,
-                                     metadata=None,
-                                     crs=None, transform=None):
+def _imwrite_cloud_optimized_geotiff(
+        fpath: os.PathLike[str] | str,
+        data: np.ndarray,
+        compress='auto',
+        blocksize=256,
+        overviews=None,
+        overview_resample='NEAREST',
+        interleave='PIXEL',
+        options=None,
+        nodata=None,
+        nodata_value=None,
+        metadata=None,
+        crs=None,
+        transform=None):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -1883,7 +1926,7 @@ def _imwrite_cloud_optimized_geotiff(fpath, data, compress='auto',
     return fpath
 
 
-def _numpy_to_gdal_dtype(numpy_dtype):
+def _numpy_to_gdal_dtype(numpy_dtype) -> int:
     """
     maps numpy dtypes to gdal dtypes
     """
@@ -1915,7 +1958,7 @@ def _numpy_to_gdal_dtype(numpy_dtype):
     return eType
 
 
-def _gdal_to_numpy_dtype(gdal_dtype):
+def _gdal_to_numpy_dtype(gdal_dtype) -> type:
     """
     maps gdal dtypes to numpy dtypes
 
@@ -1957,7 +2000,7 @@ def _gdal_to_numpy_dtype(gdal_dtype):
     return _GDAL_DTYPE_LUT[gdal_dtype]
 
 
-def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
+def _gdal_auto_compress(src_fpath: str | None = None, data: np.ndarray | None = None, data_set=None) -> str:
     """
     Heuristic for automatically choosing gdal compression type
 
@@ -2026,7 +2069,7 @@ def _gdal_auto_compress(src_fpath=None, data=None, data_set=None):
     return compress
 
 
-def _dtype_equality(dtype1, dtype2):
+def _dtype_equality(dtype1, dtype2) -> bool:
     """
     Check for numpy dtype equality
 
@@ -2043,7 +2086,7 @@ def _dtype_equality(dtype1, dtype2):
     return dtype1_ == dtype2_
 
 
-def _imread_svg(fpath):
+def _imread_svg(fpath: str) -> tuple[np.ndarray, str, str]:
     """
     References:
         https://pypi.org/project/svglib/
@@ -2079,7 +2122,7 @@ def _imread_svg(fpath):
     return imdata, src_space, auto_dst_space
 
 
-def _imread_exif(fpath):
+def _imread_exif(fpath: os.PathLike[str] | str) -> dict:
     """
     Read EXIF data into a dictionary. API is experimental.
 
@@ -2142,7 +2185,7 @@ def _imread_exif(fpath):
     return exif_dict
 
 
-def _rekey_exif_dict(raw_exif):
+def _rekey_exif_dict(raw_exif: dict) -> dict:
     import piexif
     mappers = {}
     mappers['0th'] = {k: r['name'] for k, r in piexif.TAGS['0th'].items()}

@@ -1,5 +1,15 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import itertools as it
 import numpy as np
+if TYPE_CHECKING:
+    from numpy import ndarray
+    from typing import Tuple
+    from typing import Sequence
+    import kwimage
+    from typing import List
+    from typing import Any
+    from numbers import Number
 
 
 def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
@@ -63,7 +73,7 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
     return new_img
 
 
-def draw_text_on_image(img, text, org=None, return_info=False, **kwargs):
+def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, int] | None=None, return_info: bool=False, **kwargs) -> ndarray | Tuple[ndarray, dict]:
     r"""
     Draws multiline text on an image using opencv
 
@@ -448,7 +458,7 @@ def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
     return text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org
 
 
-def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
+def draw_clf_on_image(im: ndarray, classes: Sequence[str] | Any, tcx: int | None=None, probs: ndarray | None=None, pcx: int | None=None, border: int=1):
     """
     Draws classification label on an image.
 
@@ -540,8 +550,8 @@ def draw_clf_on_image(im, classes, tcx=None, probs=None, pcx=None, border=1):
     return im_
 
 
-def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
-                        box_format=None, colorspace='rgb'):
+def draw_boxes_on_image(img: ndarray, boxes: kwimage.Boxes | ndarray, color: str='blue', thickness: int=1,
+                        box_format: Any | None=None, colorspace: str='rgb'):
     """
     Draws boxes on an image.
 
@@ -587,8 +597,8 @@ def draw_boxes_on_image(img, boxes, color='blue', thickness=1,
 
 
 def draw_line_segments_on_image(
-        img, pts1, pts2, color='blue', colorspace='rgb', thickness=1,
-        **kwargs):
+        img, pts1: ndarray, pts2: ndarray, color: str | List='blue', colorspace: str='rgb', thickness: int=1,
+        **kwargs) -> ndarray:
     """
     Draw line segments between pts1 and pts2 on an image.
 
@@ -738,8 +748,8 @@ def _broadcast_colors(color, num, img, colorspace):
     return colors
 
 
-def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
-                  dsize=None):
+def make_heatmask(probs: ndarray, cmap: str='plasma', with_alpha: float=1.0, space: str='rgb',
+                  dsize: tuple | None=None):
     """
     Colorizes a single-channel intensity mask (with an alpha channel)
 
@@ -788,7 +798,7 @@ def make_heatmask(probs, cmap='plasma', with_alpha=1.0, space='rgb',
     return heatmask
 
 
-def make_orimask(radians, mag=None, alpha=1.0):
+def make_orimask(radians: ndarray, mag: ndarray | None=None, alpha: float | ndarray=1.0) -> ndarray:
     """
     Makes a colormap in HSV space where the orientation changes color and mag
     changes the saturation/value.
@@ -855,8 +865,8 @@ def make_orimask(radians, mag=None, alpha=1.0):
     return orimask
 
 
-def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
-                      color='strawberry', thickness=1, tipLength=0.1, line_type='aa'):
+def make_vector_field(dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh: float=0.0, scale: float=1.0, alpha: float=1.0,
+                      color: str | tuple | kwimage.Color='strawberry', thickness: int=1, tipLength: float=0.1, line_type: int | str='aa') -> ndarray:
     """
     Create an image representing a 2D vector field.
 
@@ -976,9 +986,9 @@ def make_vector_field(dx, dy, stride=0.02, thresh=0.0, scale=1.0, alpha=1.0,
     return vecmask
 
 
-def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
-                      alpha=1.0, color='strawberry', thickness=1, tipLength=0.1,
-                      line_type='aa'):
+def draw_vector_field(image: ndarray, dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh: float=0.0, scale: float=1.0,
+                      alpha: float=1.0, color: str | tuple | kwimage.Color='strawberry', thickness: int=1, tipLength: float=0.1,
+                      line_type: int | str='aa') -> ndarray:
     """
     Create an image representing a 2D vector field.
 
@@ -1102,9 +1112,9 @@ def draw_vector_field(image, dx, dy, stride=0.02, thresh=0.0, scale=1.0,
     return image
 
 
-def draw_header_text(image=None, text=None, fit=False, color='strawberry',
-                     halign='center', stack='auto', bg_color='black',
-                     **kwargs):
+def draw_header_text(image: ndarray | dict | None=None, text: str | None=None, fit: bool | str=False, color: str | Tuple='strawberry',
+                     halign: str='center', stack: bool | str='auto', bg_color: str='black',
+                     **kwargs) -> ndarray:
     """
     Places a black bar on top of an image and writes text in it
 
@@ -1286,8 +1296,8 @@ def draw_header_text(image=None, text=None, fit=False, color='strawberry',
         return header
 
 
-def fill_nans_with_checkers(canvas, square_shape=8,
-                            on_value='auto', off_value='auto'):
+def fill_nans_with_checkers(canvas: np.ndarray, square_shape: int | Tuple[int, int] | str=8,
+                            on_value: Number | str='auto', off_value: Number | str='auto') -> np.ndarray:
     """
     Fills nan or masked values with a 2d checkerboard pattern.
 
@@ -1421,7 +1431,7 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value
     return canvas
 
 
-def nodata_checkerboard(canvas, square_shape=8, on_value='auto', off_value='auto'):
+def nodata_checkerboard(canvas: ndarray, square_shape: int=8, on_value: Number | str='auto', off_value: Number | str='auto') -> ndarray:
     """
     Fills nans or masked values with a checkerbord pattern.
 

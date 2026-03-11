@@ -1,7 +1,11 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import numpy as np
+if TYPE_CHECKING:
+    from typing import Any
 
 
-def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
+def torch_nms(ltrb: Any, scores: Any, classes: Any | None=None, thresh: float=.5, bias: int=0, fast: bool=False) -> Any:
     """
     Non maximum suppression implemented with pytorch tensors
 
@@ -144,7 +148,7 @@ def torch_nms(ltrb, scores, classes=None, thresh=.5, bias=0, fast=False):
     return keep
 
 
-def test_class_torch():
+def test_class_torch() -> None:
     import numpy as np
     import torch
     import ubelt as ub

@@ -104,3 +104,31 @@ def test_warp_affine_with_many_chans():
     M = kwimage.Affine.affine(theta=np.pi / 8)
     warped = kwimage.warp_affine(img, M, border_value=np.nan)
     warped
+
+
+def test_warp_affine_float64_nearest_matches_float32():
+    from kwimage._backend_info import _have_cv2
+    if not _have_cv2():
+        import pytest
+        pytest.skip('requires cv2')
+    import kwimage
+    import numpy as np
+
+    src64 = np.linspace(0, 1, 36).reshape(6, 6).astype(np.float64)
+    src32 = src64.astype(np.float32)
+    transform = kwimage.Affine.affine(scale=(8.6, 8.5))
+
+    warped32 = kwimage.warp_affine(
+        src32, transform, dsize=(52, 51), interpolation='nearest',
+        border_value=np.nan, backend='cv2')
+    warped64 = kwimage.warp_affine(
+        src64, transform, dsize=(52, 51), interpolation='nearest',
+        border_value=np.nan, backend='cv2')
+
+    finite32 = np.isfinite(warped32)
+    finite64 = np.isfinite(warped64)
+
+    assert finite32.any()
+    assert np.array_equal(finite32, finite64)
+    assert np.allclose(
+        warped32[finite32], warped64[finite64], atol=1e-7, rtol=0)

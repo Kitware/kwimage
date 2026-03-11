@@ -1,22 +1,30 @@
 """
 Data structures to represent and manipulate 2D Points
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import ubelt as ub
 import kwarray
 import numbers
 import warnings
 from kwimage.structs import _generic
-
-
-__docstubs__ = """
-from kwimage._typing import SKImageGeometricTransform
-"""
+if TYPE_CHECKING:
+    from typing import Any
+    from typing import Tuple
+    from typing import Callable
+    import kwimage
+    from numpy.typing import ArrayLike
+    from numpy import ndarray
+    from typing import List
+    from typing import Dict
+    import kwcoco
+    from kwimage._typing import TransformLike
 
 
 class _PointsWarpMixin:
 
-    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace: bool=False):
         """
         Warps by applying an augmenter from the imgaug library
 
@@ -69,7 +77,7 @@ class _PointsWarpMixin:
         return self.data['xy'].to_imgaug(input_dims)
 
     @classmethod
-    def from_imgaug(cls, kpoi):
+    def from_imgaug(cls: Any, kpoi):
         import kwimage
         data = kwimage.Coords.from_imgaug(kpoi)
         self = cls(data)
@@ -83,7 +91,8 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+    def warp(self, transform: TransformLike, input_dims: Tuple | None=None,
+             output_dims: Tuple | None=None, inplace: bool=False):
         """
         Generalized coordinate transform.
 
@@ -150,7 +159,7 @@ class _PointsWarpMixin:
             new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
 
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor: float | Tuple[float, float], output_dims: Tuple | None=None, inplace: bool=False):
         """
         Scale a points by a factor
 
@@ -177,7 +186,7 @@ class _PointsWarpMixin:
             new.meta['tf_data_to_img'] = (inv_tf + new.meta['tf_data_to_img'])
         return new
 
-    def translate(self, offset, output_dims=None, inplace=False):
+    def translate(self, offset, output_dims: Tuple | None=None, inplace: bool=False):
         """
         Shift the points
 
@@ -226,12 +235,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     # __slots__ = ('data', 'meta',)
 
     # Pre-registered keys for the data dictionary
-    __datakeys__ = ['xy', 'class_idxs', 'visible']
+    __datakeys__: list[str] = ['xy', 'class_idxs', 'visible']
     # Pre-registered keys for the meta dictionary
-    __metakeys__ = ['classes']
+    __metakeys__: list[str] = ['classes']
 
-    def __init__(self, data=None, meta=None, datakeys=None, metakeys=None,
-                 **kwargs):
+    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: list[str] | None=None, metakeys: list[str] | None=None,
+                 **kwargs) -> None:
         if kwargs:
             if data or meta:
                 raise ValueError('Cannot specify kwargs AND data/meta dicts')
@@ -284,7 +293,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return self.data['xy'].data
 
     @classmethod
-    def random(Points, num=1, classes=None, rng=None):
+    def random(Points, num: int | tuple[int, ...]=1, classes: Any | None=None, rng: Any | None=None):
         """
         Makes random points; typically for testing purposes
 
@@ -295,8 +304,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> print('self.data = {!r}'.format(self.data))
         """
         rng = kwarray.ensure_rng(rng)
-        if ub.iterable(num):
-            shape = tuple(num) + (2,)
+        if isinstance(num, tuple):
+            shape = num + (2,)
         else:
             shape = (num, 2)
         self = Points(xy=rng.rand(*shape))
@@ -332,7 +341,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def round(self, inplace=False):
+    def round(self, inplace: bool=False):
         """
         Rounds data to the nearest integer
 
@@ -362,7 +371,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image=None, color='white', radius=None, copy=False):
+    def draw_on(self, image: ndarray | None=None, color: str | Any | List[Any]='white', radius: None | int=None, copy: bool=False):
         """
 
         Args:
@@ -560,7 +569,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         image = dtype_fixer(image, copy=False)
         return image
 
-    def draw(self, color='blue', ax=None, alpha=None, radius=1, setlim=False, **kwargs):
+    def draw(self, color: str='blue', ax: Any | None=None, alpha: Any | None=None, radius: int=1, setlim: bool=False, **kwargs):
         """
         TODO: can use kwplot.draw_points
 
@@ -614,7 +623,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             'ec': None,
         }
         if 'fc' in kwargs:
-            warnings.warning(
+            warnings.warn(
                 'Warning: specifying fc to Points.draw overrides '
                 'the color argument. Use color instead')
         circlekw.update(kwargs)
@@ -646,7 +655,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
         return collections
 
-    def compress(self, flags, axis=0, inplace=False):
+    def compress(self, flags, axis: int=0, inplace: bool=False):
         """
         Filters items based on a boolean criterion
 
@@ -671,7 +680,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 raise
         return new
 
-    def take(self, indices, axis=0, inplace=False):
+    def take(self, indices, axis: int=0, inplace: bool=False):
         """
         Takes a subset of items at specific indices
 
@@ -693,7 +702,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return new
 
     @classmethod
-    def concatenate(cls, points, axis=0):
+    def concatenate(cls, points, axis: int=0):
         if len(points) == 0:
             raise ValueError('need at least one box to concatenate')
         if axis != 0:
@@ -705,7 +714,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def to_coco(self, style='orig'):
+    def to_coco(self, style: str='orig') -> list[Any] | dict[str, Any]:
         """
         Converts to an mscoco-like representation
 
@@ -861,13 +870,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> assert np.isclose(self.xy, new.xy).all()
         """
         import kwimage
-        data = {}
+        data: Any = {}
         data['xy'] = kwimage.Coords.from_shapely(geom)
         self = Points(data)
         return self
 
     @classmethod
-    def coerce(cls, data, classes=None):
+    def coerce(cls, data, classes: Any | None=None):
         """
         Attempt to coerce data into a Points object
 
@@ -899,7 +908,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return cls.from_coco(coco_kpts, class_idxs=class_idxs, classes=classes)
 
     @classmethod
-    def from_coco(cls, coco_kpts, class_idxs=None, classes=None, warn=False):
+    def from_coco(cls, coco_kpts: list | dict, class_idxs: list | None=None, classes: Any | None=None, warn: bool=False):
         """
         Args:
             coco_kpts (list | dict): either the original list keypoint encoding

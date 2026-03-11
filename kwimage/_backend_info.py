@@ -1,7 +1,6 @@
 """
 Helpers to query information about available backends
 """
-
 try:
     from functools import cache
 except ImportError:

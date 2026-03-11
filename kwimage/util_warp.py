@@ -6,14 +6,15 @@ use multiple backends.
 TODO:
     - [ ] Replace internal padded slice with kwarray.padded_slice
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import ubelt as ub
 import numpy as np
 import kwarray
-
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
+if TYPE_CHECKING:
+    from typing import Any
+    from typing import Tuple
+    from typing import Sequence
 
 
 def _coordinate_grid(dims, align_corners=False):
@@ -83,9 +84,9 @@ def _coordinate_grid(dims, align_corners=False):
     return pixel_coords
 
 
-def warp_tensor(inputs, mat, output_dims, mode='bilinear',
-                padding_mode='zeros', isinv=False, ishomog=None,
-                align_corners=False, new_mode=False):
+def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='bilinear',
+                padding_mode: str='zeros', isinv: bool=False, ishomog: bool | None=None,
+                align_corners: bool=False, new_mode: bool=False) -> Any:
     r"""
     A pytorch implementation of warp affine that works similarly to
     :func:`cv2.warpAffine` and :func:`cv2.warpPerspective`.
@@ -522,7 +523,7 @@ def warp_tensor(inputs, mat, output_dims, mode='bilinear',
     return outputs
 
 
-def subpixel_align(dst, src, index, interp_axes=None):
+def subpixel_align(dst, src, index, interp_axes: Any | None=None):
     """
     Returns an aligned version of the source tensor and destination index.
 
@@ -580,7 +581,6 @@ def subpixel_align(dst, src, index, interp_axes=None):
                                     np.ceil(subpixel_stops).astype(int))])
     # Align the source coordinates with the destination coordinates
     output_shape = [sl.stop - sl.start for sl in aligned_index]
-
     translation_ = [translation[i] for i in interp_axes]
     aligned_src = subpixel_translate(src, translation_,
                                      output_shape=output_shape,
@@ -588,7 +588,7 @@ def subpixel_align(dst, src, index, interp_axes=None):
     return aligned_src, aligned_index
 
 
-def subpixel_set(dst, src, index, interp_axes=None):
+def subpixel_set(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -634,7 +634,7 @@ def subpixel_set(dst, src, index, interp_axes=None):
     return dst
 
 
-def subpixel_accum(dst, src, index, interp_axes=None):
+def subpixel_accum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -742,7 +742,7 @@ def subpixel_accum(dst, src, index, interp_axes=None):
     return dst
 
 
-def subpixel_maximum(dst, src, index, interp_axes=None):
+def subpixel_maximum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
     """
     Take the max of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -781,7 +781,7 @@ def subpixel_maximum(dst, src, index, interp_axes=None):
     return dst
 
 
-def subpixel_minimum(dst, src, index, interp_axes=None):
+def subpixel_minimum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
     """
     Take the min of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -820,7 +820,7 @@ def subpixel_minimum(dst, src, index, interp_axes=None):
     return dst
 
 
-def subpixel_slice(inputs, index):
+def subpixel_slice(inputs: Any, index: tuple[slice, ...]):
     """
     Take a subpixel slice from a larger image.  The returned output is
     left-aligned with the requested slice.
@@ -892,7 +892,7 @@ def subpixel_slice(inputs, index):
     return outputs
 
 
-def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
+def subpixel_translate(inputs: Any, shift: Any, interp_axes: Any=None, output_shape: Any=None):
     """
     Translates an image by a subpixel shift value using bilinear interpolation
 
@@ -974,7 +974,7 @@ def subpixel_translate(inputs, shift, interp_axes=None, output_shape=None):
     #     padkw = dict(pad_mode='constant', constant_value=0)
     # if border_mode == 'edge':
     #     padkw = dict(pad_mode='edge')
-    padkw = {}
+    padkw: dict[str, Any] = {}
 
     if np.all(start % 1 == 0):
         # short circuit common simple cases where no interpolation is needed
@@ -1343,8 +1343,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     return outputs
 
 
-@profile
-def warp_points(matrix, pts, homog_mode='divide'):
+def warp_points(matrix: Any, pts: Any, homog_mode: str='divide'):
     """
     Warp ND points / coordinates using a transformation matrix.
 
@@ -1464,7 +1463,7 @@ def warp_points(matrix, pts, homog_mode='divide'):
     return new_pts
 
 
-def remove_homog(pts, mode='divide'):
+def remove_homog(pts, mode: str='divide'):
     """
     Remove homogenous coordinate to a point array.
 
@@ -1526,8 +1525,8 @@ def add_homog(pts):
     return new_pts
 
 
-def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
-                      bordermode='edge'):
+def subpixel_getvalue(img: Any, pts: Any, coord_axes: Sequence | None=None, interp: str='bilinear',
+                      bordermode: str='edge'):
     """
     Get values at subpixel locations
 
@@ -1612,8 +1611,8 @@ def subpixel_getvalue(img, pts, coord_axes=None, interp='bilinear',
     return subpxl_vals
 
 
-def subpixel_setvalue(img, pts, value, coord_axes=None,
-                      interp='bilinear', bordermode='edge'):
+def subpixel_setvalue(img: Any, pts: Any, value: Any, coord_axes: Sequence | None=None,
+                      interp: str='bilinear', bordermode: str='edge'):
     """
     Set values at subpixel locations
 

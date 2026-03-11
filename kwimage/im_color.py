@@ -1,15 +1,27 @@
 """
 A class to make it easier to work with single colors.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, Iterable, cast
 
 import numpy as np
 import ubelt as ub
 from . import im_core
 from . import _im_color_data
+if TYPE_CHECKING:
+    from typing import Any
+    from typing import Iterable
+    from numpy import ndarray
+    from typing import Tuple
+    from typing import List
+    from typing import TypeAlias
+
+    ColorTuple: TypeAlias = tuple[float, ...]
+    ByteColorTuple: TypeAlias = tuple[int, ...]
 
 __all__ = ['Color']
 
-__todo__ = """
+__todo__: str = """
 
     - [ ] This class badly needs a rewrite to conform to the fast init / easy
           coerce constructor paradigm.
@@ -28,11 +40,11 @@ __todo__ = """
 
 """
 
-BASE_COLORS = _im_color_data.BASE_COLORS
-TABLEAU_COLORS = _im_color_data.TABLEAU_COLORS
-XKCD_COLORS = _im_color_data.XKCD_COLORS
-CSS4_COLORS = _im_color_data.CSS4_COLORS
-KITWARE_COLORS = _im_color_data.KITWARE_COLORS
+BASE_COLORS: Any = _im_color_data.BASE_COLORS
+TABLEAU_COLORS: Any = _im_color_data.TABLEAU_COLORS
+XKCD_COLORS: Any = _im_color_data.XKCD_COLORS
+CSS4_COLORS: Any = _im_color_data.CSS4_COLORS
+KITWARE_COLORS: Any = _im_color_data.KITWARE_COLORS
 
 
 def _lookup_colorspace_object(space):
@@ -110,7 +122,10 @@ class Color(ub.NiceRepr):
         >>> print(Color([1, 1, 1], alpha=255))
         >>> print(Color([1, 1, 1], alpha=255, space='lab'))
     """
-    def __init__(self, color, alpha=None, space=None, coerce=True):
+    color01: list[float] | tuple[float, ...]
+    space: str
+
+    def __init__(self, color: Color | Iterable[int | float] | str, alpha: float | None=None, space: str | None=None, coerce: bool=True) -> None:
         """
         Args:
             color (Color | Iterable[int | float] | str):
@@ -180,7 +195,7 @@ class Color(ub.NiceRepr):
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
         return self.space + ': ' + colorpart
 
-    def forimage(self, image, space='auto'):
+    def forimage(self, image: ndarray, space: str='auto') -> tuple[int | float, ...]:
         """
         Return a numeric value for this color that can be used
         in the given image.
@@ -245,7 +260,7 @@ class Color(ub.NiceRepr):
             deprecate='0.10.0', error='1.0.0', remove='1.1.0')
         return self.forimage(image, space)
 
-    def ashex(self, space=None):
+    def ashex(self, space: None | str=None) -> str:
         """
         Convert to hex values
 
@@ -259,7 +274,7 @@ class Color(ub.NiceRepr):
         c255 = self.as255(space)
         return '#' + ''.join(['{:02x}'.format(c) for c in c255])
 
-    def as255(self, space=None):
+    def as255(self, space: None | str=None) -> tuple[int, ...]:
         """
         Convert to byte values
 
@@ -275,7 +290,7 @@ class Color(ub.NiceRepr):
         color = tuple(int(c * 255) for c in self.as01(space))
         return color
 
-    def as01(self, space=None):
+    def as01(self, space: None | str=None) -> tuple[float, ...]:
         """
         Convert to float values
 
@@ -387,24 +402,24 @@ class Color(ub.NiceRepr):
                 deprecate='0.10.0', error='1.0.0', remove='1.1.0')
             color = random.choice(Color.named_colors())
         if color in BASE_COLORS:
-            color01 = BASE_COLORS[color]
+            color01: Any = BASE_COLORS[color]
         elif color in CSS4_COLORS:
             color_hex = CSS4_COLORS[color]
-            color01 = Color._hex_to_01(color_hex)
+            color01: Any = Color._hex_to_01(color_hex)
         elif color in XKCD_COLORS:
             color_hex = XKCD_COLORS[color]
-            color01 = Color._hex_to_01(color_hex)
+            color01: Any = Color._hex_to_01(color_hex)
         elif color in KITWARE_COLORS:
             color_hex = KITWARE_COLORS[color]
-            color01 = Color._hex_to_01(color_hex)
+            color01: Any = Color._hex_to_01(color_hex)
         elif color.startswith('#'):
-            color01 = Color._hex_to_01(color)
+            color01: Any = Color._hex_to_01(color)
         else:
             raise ValueError('unknown color=%r' % (color,))
         return color01
 
     @classmethod
-    def named_colors(cls):
+    def named_colors(cls) -> List[str]:
         """
         Returns:
             List[str]: names of colors that Color accepts
@@ -427,8 +442,8 @@ class Color(ub.NiceRepr):
         return names
 
     @classmethod
-    def distinct(Color, num, existing=None, space='rgb', legacy='auto',
-                 exclude_black=True, exclude_white=True):
+    def distinct(Color, num, existing: Any | None=None, space: str='rgb', legacy: bool | str='auto',
+                 exclude_black: bool=True, exclude_white: bool=True) -> List[Tuple]:
         """
         Make multiple distinct colors.
 
@@ -514,7 +529,7 @@ class Color(ub.NiceRepr):
             return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
 
     @classmethod
-    def random(Color, pool='named', with_alpha=0, rng=None):
+    def random(Color, pool: str='named', with_alpha: int=0, rng: Any | None=None) -> Color:
         """
         Returns:
             Color
@@ -537,7 +552,7 @@ class Color(ub.NiceRepr):
             color = color + [rng.random()]
         return Color(color)
 
-    def distance(self, other, space='lab'):
+    def distance(self, other: Color, space: str='lab') -> float:
         """
         Distance between self an another color
 
@@ -588,7 +603,7 @@ class Color(ub.NiceRepr):
         """
         vec1 = np.array(self.as01(space))
         vec2 = np.array(other.as01(space))
-        return np.linalg.norm(vec1 - vec2)
+        return float(np.linalg.norm(vec1 - vec2))
 
     def nearest_named(self, with_delta=0, space='lab'):
         """
@@ -619,7 +634,7 @@ class Color(ub.NiceRepr):
         else:
             return name
 
-    def interpolate(self, other, alpha=0.5, ispace=None, ospace=None):
+    def interpolate(self, other: Color, alpha: float | List[float]=0.5, ispace: str | None=None, ospace: str | None=None) -> Color | List[Color]:
         """
         Interpolate between colors
 
@@ -656,8 +671,8 @@ class Color(ub.NiceRepr):
         vec1 = np.array(self.as01(ispace))
         vec2 = np.array(other.as01(ispace))
         if ub.iterable(alpha):
-            alpha = np.asarray(alpha).ravel()
-            vecB = vec1[None, :] * (1 - alpha)[:, None] + (vec2[None, :] * alpha[:, None])
+            alpha_arr = np.asarray(alpha).ravel()
+            vecB = vec1[None, :] * (1 - alpha_arr)[:, None] + (vec2[None, :] * alpha_arr[:, None])
             new = [
                 kwimage.Color(
                     kwimage.Color(c, space=ispace, coerce=False).as01(ospace),
@@ -665,14 +680,15 @@ class Color(ub.NiceRepr):
                 for c in vecB
             ]
         else:
-            vecB = vec1 * (1 - alpha) + (vec2 * alpha)
+            alpha_value = float(cast(float, alpha))
+            vecB = vec1 * (1 - alpha_value) + (vec2 * alpha_value)
             c = vecB
             new = kwimage.Color(
                 kwimage.Color(c, space=ispace, coerce=False).as01(ospace),
                 space=ospace, coerce=False)
         return new
 
-    def to_image(self, dsize=(8, 8)):
+    def to_image(self, dsize: Tuple[int, int]=(8, 8)):
         """
         Create an solid-color image with this color
 
@@ -686,7 +702,7 @@ class Color(ub.NiceRepr):
         cell = np.tile(cell_pixel, (h, w, 1))
         return cell
 
-    def adjust(self, saturate=0, lighten=0, opacity=0):
+    def adjust(self, saturate: float=0, lighten: float=0, opacity=0):
         """
         Adjust the saturation or value of a color.
 
@@ -817,9 +833,11 @@ def _draw_color_swatch(colors, cellshape=9):
     import kwimage
     import math
     if not ub.iterable(cellshape):
-        cellshape = [cellshape, cellshape]
-    cell_h = cellshape[0]
-    cell_w = cellshape[1]
+        cellshape_ = (cellshape, cellshape)
+    else:
+        cellshape_ = cast(tuple[int, int], tuple(cast(Any, cellshape)))
+    cell_h = cellshape_[0]
+    cell_w = cellshape_[1]
     cells = []
     for color in colors:
         cell = kwimage.Color(color).to_image(dsize=(cell_w, cell_h))

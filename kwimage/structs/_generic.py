@@ -1,8 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import ubelt as ub
 import sys
 import kwarray
 import numbers
 import numpy as np
+if TYPE_CHECKING:
+    from typing import Sequence
+    from collections.abc import Generator
+    from typing import Any
 # from collections import abc
 # import abc
 
@@ -183,7 +189,7 @@ class ObjectList(Spatial, _ExperimentalListProxy):
 
     # __slots__ = ('data', 'meta',)
 
-    def __init__(self, data, meta=None):
+    def __init__(self, data, meta: Any | None=None) -> None:
         if meta is None:
             meta = {}
         self.data = data
@@ -207,20 +213,20 @@ class ObjectList(Spatial, _ExperimentalListProxy):
     def __nice__(self):
         return 'n={}'.format(len(self))
 
-    def translate(self, offset, output_dims=None, inplace=False):
+    def translate(self, offset, output_dims: Any | None=None, inplace: bool=False):
         newdata = [None if item is None else
                    item.translate(offset, output_dims=output_dims,
                                   inplace=inplace)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def scale(self, factor, output_dims=None, inplace=False):
+    def scale(self, factor, output_dims: Any | None=None, inplace: bool=False):
         newdata = [None if item is None else
                    item.scale(factor, output_dims=output_dims, inplace=inplace)
                    for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def warp(self, transform, input_dims=None, output_dims=None, inplace=False):
+    def warp(self, transform, input_dims: Any | None=None, output_dims: Any | None=None, inplace: bool=False):
         if inplace:
             for item in self.data:
                 if item is not None:
@@ -238,19 +244,19 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         newdata = [None if item is None else func(item) for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def to_coco(self, style='orig'):
+    def to_coco(self, style: str='orig') -> Generator[Any, None, None]:
         for item in self.data:
             if item is None:
                 yield None
             else:
                 yield item.to_coco(style=style)
 
-    def compress(self, flags, axis=0):
+    def compress(self, flags, axis: int=0):
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))
         return self.__class__(newdata, self.meta)
 
-    def take(self, indices, axis=0):
+    def take(self, indices, axis: int=0):
         assert axis == 0
         newdata = list(ub.take(self.data, indices))
         return self.__class__(newdata, self.meta)
@@ -331,7 +337,7 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         return self.apply(lambda item: item.numpy())
 
     @classmethod
-    def concatenate(cls, items, axis=0):
+    def concatenate(cls, items: Sequence[ObjectList], axis: int | None=0) -> ObjectList:
         """
         Args:
             items (Sequence[ObjectList]): multiple object lists of the same type
@@ -362,10 +368,10 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         new = cls(newdata, newmeta)
         return new
 
-    def is_tensor(cls):
+    def is_tensor(cls) -> None:
         raise NotImplementedError
 
-    def is_numpy(cls):
+    def is_numpy(cls) -> None:
         raise NotImplementedError
 
     # @classmethod

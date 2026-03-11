@@ -2,26 +2,36 @@
 Objects for representing and manipulating image transforms, namely image
 transformation matrices.
 """
+from __future__ import annotations
+import typing as _t
 import ubelt as ub
 import numpy as np
 import kwarray
 import skimage.transform
 import math
 from kwimage import _internal
+if _t.TYPE_CHECKING:
+    from typing import Any
+    import numpy.typing as npt
+    from numbers import Number
+
+    # Type aliases (type-checker only; zero runtime typing overhead)
+    NDArray = npt.NDArray[Any]
+    ArrayLike = npt.ArrayLike
+
+    try:  # pragma: no cover
+        import sympy as _sympy  # type: ignore
+        RationalMatrix = _sympy.Matrix  # type: ignore[attr-defined]
+    except Exception:  # pragma: no cover
+        RationalMatrix = object  # type: ignore[assignment]
+
+    MatrixData = NDArray | None | RationalMatrix
+    DSize = tuple[int, int]
+    XY = tuple[float, float] | tuple[int, int]
 
 __all__ = [
     'Transform', 'Matrix', 'Linear', 'Affine', 'Projective'
 ]
-
-
-__docstubs__ = """
-import affine
-"""
-
-try:
-    from line_profiler import profile
-except Exception:
-    profile = ub.identity
 
 
 class Transform(ub.NiceRepr):
@@ -48,10 +58,10 @@ class Matrix(Transform):
         >>>     print(f'{k}.T = {m.T}')
         >>>     print(f'{k}.det() = {m.det()}')
     """
-    def __init__(self, matrix):
+    def __init__(self, matrix: MatrixData):
         self.matrix = matrix
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         prefix = '<{}('.format(self.__class__.__name__)
         if isinstance(self.matrix, np.ndarray):
             return np.array2string(self.matrix, separator=', ', prefix=prefix)
@@ -64,20 +74,20 @@ class Matrix(Transform):
         return self.__str__()
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, int]:
         if self.matrix is None:
             # Default shape is hard coded here, can be overrided (e.g. Affine)
             return (2, 2)
         return self.matrix.shape
 
-    def __json__(self):
+    def __json__(self) -> dict[str, object]:
         if self.matrix is None:
             return {'type': 'matrix', 'matrix': None}
         else:
             return {'type': 'matrix', 'matrix': self.matrix.tolist()}
 
     @classmethod
-    def coerce(cls, data=None, **kwargs):
+    def coerce(cls, data: object = None, **kwargs: object) -> Matrix:
         """
         Example:
             >>> Matrix.coerce({'type': 'matrix', 'matrix': [[1, 0, 0], [0, 1, 0]]})
@@ -104,7 +114,7 @@ class Matrix(Transform):
             raise TypeError(type(data))
         return self
 
-    def __array__(self):
+    def __array__(self) -> np.ndarray:
         """
         Allow this object to be passed to np.asarray. See [NumpyDispatch]_ for
         details.
@@ -183,7 +193,7 @@ class Matrix(Transform):
             return False
         return isinstance(self.matrix, sympy.Matrix) and isinstance(self.matrix[0, 0], (sympy.Rational, sympy.core.symbol.Symbol, sympy.core.basic.Basic))
 
-    def inv(self):
+    def inv(self) -> Matrix:
         """
         Returns the inverse of this matrix
 
@@ -224,7 +234,7 @@ class Matrix(Transform):
         else:
             return self.__class__(self.matrix.T)
 
-    def det(self):
+    def det(self) -> float:
         """
         Compute the determinant of the underlying matrix
 
@@ -242,7 +252,7 @@ class Matrix(Transform):
             return det
 
     @classmethod
-    def eye(cls, shape=None, rng=None):
+    def eye(cls, shape: int | tuple[int, int] | None = None, rng: object = None) -> Matrix:
         """
         Construct an identity
         """
@@ -255,7 +265,7 @@ class Matrix(Transform):
         return self
 
     @classmethod
-    def random(cls, shape=None, rng=None):
+    def random(cls, shape: int | tuple[int, int] | None = None, rng: object = None) -> Matrix:
         import kwarray
         rng = kwarray.ensure_rng(rng)
         self = cls(None)
@@ -266,12 +276,12 @@ class Matrix(Transform):
         self.matrix = rng.rand(*shape)
         return self
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: object) -> object:
         if self.matrix is None:
             return np.asarray(self)[index]
         return self.matrix[index]
 
-    def rationalize(self):
+    def rationalize(self) -> Matrix:
         """
         Convert the underlying matrix to a rational type to avoid floating
         point errors. This does decrease efficiency.
@@ -322,7 +332,7 @@ class Matrix(Transform):
         new = self.__class__(new_mat)
         return new
 
-    def astype(self, dtype):
+    def astype(self, dtype: object) -> Matrix:
         """
         Convert the underlying matrix to a rational type to avoid floating
         point errors. This does decrease efficiency.
@@ -337,7 +347,7 @@ class Matrix(Transform):
         new = self.__class__(new_mat)
         return new
 
-    def isclose_identity(self, rtol=1e-05, atol=1e-08):
+    def isclose_identity(self, rtol: float = 1e-05, atol: float = 1e-08) -> bool:
         """
         Returns true if the matrix is nearly the identity.
         """
@@ -475,7 +485,7 @@ class Projective(Linear):
     #     .. [AffineDecompColab] https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
 
     @classmethod
-    def fit(cls, pts1, pts2):
+    def fit(cls, pts1: np.ndarray, pts2: np.ndarray) -> Projective:
         """
         Fit an projective transformation between a set of corresponding points.
 
@@ -609,8 +619,13 @@ class Projective(Linear):
             return Projective(M)
 
     @classmethod
-    def projective(cls, scale=None, offset=None, shearx=None, theta=None,
-                   uv=None, about=None):
+    def projective(cls,
+                   scale: Number | tuple[Number, Number] | None = None,
+                   offset: Number | tuple[Number, Number] | None = None,
+                   shearx: float | None = None,
+                   theta: float | None = None,
+                   uv: tuple[float, float] | None = None,
+                   about: object = None) -> Projective:
         """
         Reconstruct from parameters
 
@@ -711,7 +726,7 @@ class Projective(Linear):
         return self
 
     @classmethod
-    def coerce(cls, data=None, **kwargs):
+    def coerce(cls, data: object = None, **kwargs: object) -> Projective:
         """
         Attempt to coerce the data into an Projective object
 
@@ -776,7 +791,7 @@ class Projective(Linear):
             raise TypeError(type(data))
         return self
 
-    def is_affine(self):
+    def is_affine(self) -> bool:
         """
         If the bottom row is [[0, 0, 1]], then this can be safely turned into
         an affine matrix.
@@ -796,7 +811,7 @@ class Projective(Linear):
         else:
             return np.all(self.matrix[2] == [0, 0, 1])
 
-    def to_skimage(self):
+    def to_skimage(self) -> skimage.transform.ProjectiveTransform:
         """
         Returns:
             skimage.transform.AffineTransform
@@ -814,7 +829,7 @@ class Projective(Linear):
         return skimage.transform.ProjectiveTransform(matrix=np.asarray(self))
 
     @classmethod
-    def random(cls, shape=None, rng=None, **kw):
+    def random(cls, shape: object = None, rng: object = None, **kw: object) -> Projective:
         """
         Example/
             >>> import kwimage
@@ -857,7 +872,7 @@ class Projective(Linear):
         self = Projective(aff_part.matrix @ proj_part)
         return self
 
-    def decompose(self):
+    def decompose(self) -> dict[str, object]:
         r"""
         Based on the analysis done in [ME1319680]_.
 
@@ -1140,16 +1155,16 @@ class Affine(Projective):
         >>> print('m = {}'.format(ub.urepr(m)))
     """
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, int]:
         return (3, 3)
 
-    def __json__(self):
+    def __json__(self) -> dict[str, object]:
         if self.matrix is None:
             return {'type': 'affine', 'matrix': None}
         else:
             return {'type': 'affine', 'matrix': self.matrix.tolist()}
 
-    def concise(self):
+    def concise(self) -> dict[str, object]:
         """
         Return a concise coercable dictionary representation of this matrix
 
@@ -1190,6 +1205,10 @@ class Affine(Projective):
         """
         params = self.decompose()
         params['type'] = 'affine'
+        tx: Number
+        ty: Number
+        sx: Number
+        sy: Number
         tx, ty = params['offset']
         sx, sy = params['scale']
         if math.isclose(tx, 0) and math.isclose(ty, 0):
@@ -1207,7 +1226,7 @@ class Affine(Projective):
         return params
 
     @classmethod
-    def from_shapely(cls, sh_aff):
+    def from_shapely(cls, sh_aff: tuple[float, float, float, float, float, float]) -> Affine:
         """
         Shapely affine tuples are in the format (a, b, d, e, x, y)
         """
@@ -1217,14 +1236,14 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def from_affine(cls, aff):
+    def from_affine(cls, aff: object) -> Affine:
         a, b, c, d, e, f = aff.a, aff.b, aff.c, aff.d, aff.e, aff.f
         matrix = np.array([[a, b, c], [d, e, f], [0, 0, 1]])
         self = cls(matrix=matrix)
         return self
 
     @classmethod
-    def from_gdal(cls, gdal_aff):
+    def from_gdal(cls, gdal_aff: tuple[float, float, float, float, float, float]) -> Affine:
         """
         gdal affine tuples are in the format (c, a, b, f, d, e)
         """
@@ -1234,7 +1253,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def from_skimage(cls, sk_aff):
+    def from_skimage(cls, sk_aff: skimage.transform.AffineTransform) -> Affine:
         """
         gdal affine tuples are in the format (c, a, b, f, d, e)
         """
@@ -1242,7 +1261,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def coerce(cls, data=None, **kwargs):
+    def coerce(cls, data: object = None, **kwargs: object) -> Affine:
         """
         Attempt to coerce the data into an affine object
 
@@ -1319,7 +1338,7 @@ class Affine(Projective):
             raise TypeError(type(data))
         return self
 
-    def eccentricity(self):
+    def eccentricity(self) -> float:
         """
         Eccentricity of the ellipse formed by this affine matrix
 
@@ -1351,7 +1370,7 @@ class Affine(Projective):
         ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
         return ecc
 
-    def to_affine(self):
+    def to_affine(self) -> object:
         """
         Convert to an affine module
 
@@ -1363,7 +1382,7 @@ class Affine(Projective):
         aff = affine.Affine(a, b, c, d, e, f)
         return aff
 
-    def to_gdal(self):
+    def to_gdal(self) -> tuple[float, float, float, float, float, float]:
         """
         Convert to a gdal tuple (c, a, b, f, d, e)
 
@@ -1372,7 +1391,7 @@ class Affine(Projective):
         """
         return self.to_affine().to_gdal()
 
-    def to_shapely(self):
+    def to_shapely(self) -> tuple[float, float, float, float, float, float]:
         """
         Returns a matrix suitable for shapely.affinity.affine_transform
 
@@ -1398,7 +1417,7 @@ class Affine(Projective):
         sh_transform = (a, b, d, e, x, y)
         return sh_transform
 
-    def to_skimage(self):
+    def to_skimage(self) -> skimage.transform.ProjectiveTransform:
         """
         Returns:
             skimage.transform.AffineTransform
@@ -1416,7 +1435,7 @@ class Affine(Projective):
         return skimage.transform.AffineTransform(matrix=np.asarray(self))
 
     @classmethod
-    def scale(cls, scale):
+    def scale(cls, scale: float | tuple[float, float] | None):
         """
         Create a scale Affine object
 
@@ -1437,7 +1456,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def translate(cls, offset):
+    def translate(cls, offset: float | tuple[float, float] | None):
         """
         Create a translation Affine object
 
@@ -1475,7 +1494,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def _scale_translate(cls, scale, offset):
+    def _scale_translate(cls, scale: float | tuple[float, float] | None, offset: float | tuple[float, float] | None):
         """ helper method for speed """
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
@@ -1490,7 +1509,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def rotate(cls, theta):
+    def rotate(cls, theta: float) -> Affine:
         """
         Create a rotation Affine object
 
@@ -1503,7 +1522,7 @@ class Affine(Projective):
         return cls.affine(theta=theta)
 
     @classmethod
-    def random(cls, shape=None, rng=None, **kw):
+    def random(cls, shape: object = None, rng: object = None, **kw: object) -> Projective:
         """
         Create a random Affine object
 
@@ -1523,7 +1542,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def random_params(cls, rng=None, **kw):
+    def random_params(cls, rng: object = None, **kw: object) -> dict[str, object]:
         """
         Args:
             rng : random number generator
@@ -1612,8 +1631,7 @@ class Affine(Projective):
         )
         return params
 
-    @profile
-    def decompose(self):
+    def decompose(self) -> dict[str, object]:
         r"""
         Decompose the affine matrix into its individual scale, translation,
         rotation, and skew parameters.
@@ -1761,8 +1779,7 @@ class Affine(Projective):
         }
         return params
 
-    @profile
-    def _decompose_scale(self):
+    def _decompose_scale(self) -> tuple[object, object]:
         """
         Scale only decomposition. Experimental method that is faster than
         decompose when only scale is needed.
@@ -1783,9 +1800,9 @@ class Affine(Projective):
         return scale
 
     @classmethod
-    def affine(cls, scale=None, offset=None, theta=None, shear=None,
-               about=None, shearx=None, array_cls=None, math_mod=None,
-               **kwargs):
+    def affine(cls, scale: object = None, offset: object = None, theta: float | None = None, shear: object = None,
+               about: object = None, shearx: float | None = None, array_cls: object = None, math_mod: object = None,
+               **kwargs: object) -> Affine:
         """
         Create an affine matrix from high-level parameters
 
@@ -1951,7 +1968,7 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def fit(cls, pts1, pts2):
+    def fit(cls, pts1: np.ndarray, pts2: np.ndarray) -> Projective:
         """
         Fit an affine transformation between a set of corresponding points
 
@@ -2104,7 +2121,7 @@ class Affine(Projective):
         return Affine(mat)
 
     @classmethod
-    def fliprot(cls, flip_axis=None, rot_k=0, axes=(0, 1), canvas_dsize=None):
+    def fliprot(cls, flip_axis: tuple[int, ...] | None = None, rot_k: int = 0, axes: tuple[int, int] = (0, 1), canvas_dsize: tuple[int, int] | None = None) -> Affine:
         """
         Creates a flip/rotation transform with respect to an image of a given
         size in the positive quadrent. (i.e. warped data within the specified
@@ -2453,7 +2470,7 @@ class _RationalNDArray(_RationalMatrixBase):
 #         """
 
 #         @property
-#         def shape(self):
+#         def shape(self) -> tuple[int, int]:
 #             return (self.rows, self.cols)
 
 #         def __matmul__(self, other):
@@ -2478,7 +2495,7 @@ class _RationalNDArray(_RationalMatrixBase):
 #     return scalar
 
 
-def _ensure_iterable2(scalar):
+def _ensure_iterable2(scalar: object) -> tuple[object, object]:
     try:
         a, b = scalar
     except TypeError:

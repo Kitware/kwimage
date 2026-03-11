@@ -1,11 +1,13 @@
 """
 Not sure how to best classify these functions
 """
+from __future__ import annotations
 import ubelt as ub
 import numpy as np
+import typing as _t
 
 
-def num_channels(img):
+def num_channels(img: np.ndarray) -> int:
     """
     Returns the number of color channels in an image.
 
@@ -39,7 +41,7 @@ def num_channels(img):
     return n_channels
 
 
-def ensure_float01(img, dtype=np.float32, copy=True):
+def ensure_float01(img: np.ndarray, dtype: _t.Any = np.float32, copy: bool = True) -> np.ndarray:
     """
     Ensure that an image is encoded using a float32 properly
 
@@ -79,7 +81,7 @@ def ensure_float01(img, dtype=np.float32, copy=True):
     return img_
 
 
-def ensure_uint255(img, copy=True):
+def ensure_uint255(img: np.ndarray, copy: bool = True) -> np.ndarray:
     """
     Ensure that an image is encoded using a uint8 properly. Either
 
@@ -134,7 +136,7 @@ def ensure_uint255(img, copy=True):
 #             pass
 
 
-def make_channels_comparable(img1, img2, atleast3d=False):
+def make_channels_comparable(img1: np.ndarray, img2: np.ndarray, atleast3d: bool = False) -> tuple[np.ndarray, np.ndarray]:
     """
     Broadcasts image arrays so they can have elementwise operations applied
 
@@ -219,7 +221,7 @@ def make_channels_comparable(img1, img2, atleast3d=False):
     return img1, img2
 
 
-def _alpha_fill_for(img):
+def _alpha_fill_for(img: np.ndarray) -> np.ndarray:
     """ helper for make_channels_comparable """
     fill_value = (255 if img.dtype.kind in ('i', 'u') else 1)
     alpha_chan = np.full(img.shape[0:2], dtype=img.dtype,
@@ -227,7 +229,7 @@ def _alpha_fill_for(img):
     return alpha_chan
 
 
-def atleast_3channels(arr, copy=True):
+def atleast_3channels(arr: np.ndarray, copy: bool = True) -> np.ndarray:
     r"""
     Ensures that there are 3 channels in the image
 
@@ -271,7 +273,7 @@ def atleast_3channels(arr, copy=True):
     return res
 
 
-def exactly_1channel(image, ndim=2):
+def exactly_1channel(image: np.ndarray, ndim: int = 2) -> np.ndarray:
     """
     Returns a 1-channel image as either a 2D or 3D array.
 
@@ -321,7 +323,13 @@ def exactly_1channel(image, ndim=2):
     return image
 
 
-def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
+def padded_slice(
+    data: _t.Any,
+    in_slice: slice | tuple[slice, ...],
+    pad: int | list[int | tuple[int, int]] | None = None,
+    padkw: dict[str, _t.Any] | None = None,
+    return_info: bool = False,
+) -> np.ndarray | tuple[np.ndarray, dict[str, _t.Any]]:
     """
     Allows slices with out-of-bound coordinates.  Any out of bounds coordinate
     will be sampled via padding.
@@ -381,7 +389,12 @@ def padded_slice(data, in_slice, pad=None, padkw=None, return_info=False):
         return data_sliced
 
 
-def _padded_slice_apply(data_clipped, data_slice, extra_padding, padkw=None):
+def _padded_slice_apply(
+    data_clipped: np.ndarray,
+    data_slice: tuple[slice, ...],
+    extra_padding: list[tuple[int, int]] | tuple[tuple[int, int], ...],
+    padkw: dict[str, _t.Any] | None = None,
+) -> tuple[np.ndarray, dict[str, _t.Any]]:
     """
     Applies requested padding to an extracted data slice.
     """
@@ -410,7 +423,11 @@ def _padded_slice_apply(data_clipped, data_slice, extra_padding, padkw=None):
     return data_sliced, transform
 
 
-def _padded_slice_embed(in_slice, data_dims, pad=None):
+def _padded_slice_embed(
+    in_slice: tuple[slice, ...],
+    data_dims: tuple[int, ...] | list[int],
+    pad: int | list[int | tuple[int, int]] | None = None,
+) -> tuple[tuple[slice, ...], list[tuple[int, int]]]:
     """
     Embeds a "padded-slice" inside known data dimension.
 
@@ -511,7 +528,13 @@ def _padded_slice_embed(in_slice, data_dims, pad=None):
     return data_slice, extra_padding
 
 
-def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
+def normalize(
+    arr: np.ndarray,
+    mode: str = 'linear',
+    alpha: float | None = None,
+    beta: float | None = None,
+    out: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Rebalance pixel intensities via contrast stretching.
 
@@ -529,7 +552,7 @@ def normalize(arr, mode='linear', alpha=None, beta=None, out=None):
     return kwarray.normalize(arr, mode=mode, alpha=alpha, beta=beta, out=out)
 
 
-def find_robust_normalizers(data, params='auto'):
+def find_robust_normalizers(data: np.ndarray, params: str | dict[str, _t.Any] = 'auto') -> _t.Any:
     """
     Finds robust normalization statistics for a single observation
 
@@ -557,8 +580,15 @@ def find_robust_normalizers(data, params='auto'):
     return normalizer
 
 
-def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
-                        dtype=np.float32, params='auto', mask=None):
+def normalize_intensity(
+    imdata: np.ndarray,
+    return_info: bool = False,
+    nodata: int | None = None,
+    axis: int | None = None,
+    dtype: _t.Any = np.float32,
+    params: str | dict[str, _t.Any] = 'auto',
+    mask: np.ndarray | None = None,
+) -> np.ndarray | tuple[np.ndarray, dict[str, _t.Any]]:
     """
     Normalize data intensities using heuristics to help put sensor data with
     extremely high or low contrast into a visible range.
@@ -671,7 +701,12 @@ def normalize_intensity(imdata, return_info=False, nodata=None, axis=None,
                                     params=params, mask=mask)
 
 
-def crop_border_by_color(img, fillval=None, thresh=0, channel=None):
+def crop_border_by_color(
+    img: np.ndarray,
+    fillval: np.ndarray | None = None,
+    thresh: int = 0,
+    channel: int | None = None,
+) -> np.ndarray:
     r"""
     Crops an image to remove any constant color padding around the edges.
 
@@ -720,7 +755,7 @@ def crop_border_by_color(img, fillval=None, thresh=0, channel=None):
     return cropped_img
 
 
-def _get_pixel_dist(img, pixel, channel=None):
+def _get_pixel_dist(img: np.ndarray, pixel: np.ndarray, channel: int | None = None) -> np.ndarray:
     """
     Computes the absolute difference between an image and a reference pixel
     value.
@@ -764,7 +799,7 @@ def _get_pixel_dist(img, pixel, channel=None):
     return dist
 
 
-def _get_crop_slices(isfill):
+def _get_crop_slices(isfill: np.ndarray) -> tuple[slice, slice]:
     r"""
     Determines the crop slices needed to remove the filled border.
 

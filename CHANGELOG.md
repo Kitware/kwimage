@@ -4,7 +4,16 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.11.6 - Unreleased
+## Version 0.12.0 - Unreleased
+
+### Changed
+* Normalized the way `oriented_bounding_box` returns coordinates.
+
+### Fixed
+* Worked around the OpenCV 4.13.x `warpAffine` regression for `float64` inputs with nearest-neighbor interpolation.
+
+
+## Version 0.11.6 - Released 2025-09-16
 
 
 ## Version 0.11.5 - Released 2025-09-16

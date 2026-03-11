@@ -5,8 +5,8 @@ Things like environment variables, are good candidates for living here.
 
 This should be used sparingly.
 """
+from __future__ import annotations
 import os
-import ubelt as ub
 
 
 def _boolean_environ(key, default=False):
@@ -21,9 +21,10 @@ def _boolean_environ(key, default=False):
         return default
 
 
-KWIMAGE_DISABLE_WARNINGS = _boolean_environ('KWIMAGE_DISABLE_WARNINGS')
-KWIMAGE_DISABLE_TRANSFORM_WARNINGS = KWIMAGE_DISABLE_WARNINGS or _boolean_environ('KWIMAGE_DISABLE_TRANSFORM_WARNINGS')
-KWIMAGE_DISABLE_IMPORT_WARNINGS = KWIMAGE_DISABLE_WARNINGS or _boolean_environ('KWIMAGE_DISABLE_IMPORT_WARNINGS')
+KWIMAGE_DISABLE_WARNINGS: bool = _boolean_environ('KWIMAGE_DISABLE_WARNINGS')
+KWIMAGE_DISABLE_TRANSFORM_WARNINGS: bool = KWIMAGE_DISABLE_WARNINGS or _boolean_environ('KWIMAGE_DISABLE_TRANSFORM_WARNINGS')
+KWIMAGE_DISABLE_IMPORT_WARNINGS: bool = KWIMAGE_DISABLE_WARNINGS or _boolean_environ('KWIMAGE_DISABLE_IMPORT_WARNINGS')
 
-KWIMAGE_DISABLE_TORCHVISION_NMS = _boolean_environ('KWIMAGE_DISABLE_TORCHVISION_NMS', default=ub.WIN32)
-KWIMAGE_DISABLE_C_EXTENSIONS = _boolean_environ('KWIMAGE_DISABLE_C_EXTENSIONS')
+# KWIMAGE_DISABLE_TORCHVISION_NMS = _boolean_environ('KWIMAGE_DISABLE_TORCHVISION_NMS', default=ub.WIN32)
+KWIMAGE_DISABLE_TORCHVISION_NMS: bool = _boolean_environ('KWIMAGE_DISABLE_TORCHVISION_NMS', default=True)
+KWIMAGE_DISABLE_C_EXTENSIONS: bool = _boolean_environ('KWIMAGE_DISABLE_C_EXTENSIONS')

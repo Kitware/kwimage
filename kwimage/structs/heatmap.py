@@ -80,16 +80,21 @@ Example:
     >>> kwplot.imshow(raster)
     >>> kwplot.show_if_requested()
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import ubelt as ub
 import kwarray
 import functools
 from . import _generic
-
-
-__docstubs__ = """
-from kwimage._typing import SKImageGeometricTransform
-"""
+if TYPE_CHECKING:
+    from typing import Any
+    from numpy import ndarray
+    from typing import Sequence
+    from typing import Tuple
+    import kwimage
+    from typing import Dict
+    from typing import List
 
 
 class _HeatmapDrawMixin(object):
@@ -164,8 +169,8 @@ class _HeatmapDrawMixin(object):
         colorized = cx_to_color[cidxs]
         return colorized
 
-    def colorize(self, channel=None, invert=False, with_alpha=1.0,
-                 interpolation='linear', imgspace=False, cmap=None):
+    def colorize(self, channel: int | str | None=None, invert: bool=False, with_alpha: float=1.0,
+                 interpolation: str='linear', imgspace: bool=False, cmap: Any | None=None):
         """
         Creates a colorized version of a heatmap channel suitable for
         visualization
@@ -188,6 +193,7 @@ class _HeatmapDrawMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize(0, imgspace=False)
             >>> colormask2 = self.colorize(0, imgspace=True)
@@ -200,6 +206,7 @@ class _HeatmapDrawMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> self = Heatmap.random(rng=0, dims=(32, 32))
             >>> colormask1 = self.colorize('diameter', imgspace=False)
             >>> colormask2 = self.colorize('diameter', imgspace=True)
@@ -263,6 +270,7 @@ class _HeatmapDrawMixin(object):
 
             # try and read colors from classes CategoryTree
             try:
+                classes = cast(Any, classes)
                 cidx_to_color = []
                 for cidx in range(len(data)):
                     node = classes[cidx]
@@ -373,8 +381,8 @@ class _HeatmapDrawMixin(object):
         colormask = kwplot.make_heatmask(mask, with_alpha=with_alpha, cmap=cmap)
         return colormask
 
-    def draw_stacked(self, image=None, dsize=(224, 224), ignore_class_idxs={},
-                     top=None, chosen_cxs=None):
+    def draw_stacked(self, image: Any | None=None, dsize=(224, 224), ignore_class_idxs={},
+                     top: Any | None=None, chosen_cxs: Any | None=None):
         """
         Draws per-class probabilities and stacks them into a single image
 
@@ -442,7 +450,7 @@ class _HeatmapDrawMixin(object):
         stacked = kwimage.stack_images(colorized, overlap=-3, axis=1)
         return stacked
 
-    def draw(self, channel=None, image=None, imgspace=None, **kwargs):
+    def draw(self, channel: int | str | None=None, image: Any | None=None, imgspace: Any | None=None, **kwargs) -> None:
         """
         Accepts same args as draw_on, but uses maplotlib
 
@@ -464,8 +472,8 @@ class _HeatmapDrawMixin(object):
                              **kwargs)
         kwplot.imshow(image)
 
-    def draw_on(self, image=None, channel=None, invert=False, with_alpha=1.0,
-                interpolation='linear', vecs=False, kpts=None, imgspace=None):
+    def draw_on(self, image: ndarray | None=None, channel: int | str | None=None, invert: bool=False, with_alpha: float=1.0,
+                interpolation: str='linear', vecs: bool=False, kpts: Any | None=None, imgspace: bool | None=None):
         """
         Overlays a heatmap channel on top of an image
 
@@ -487,6 +495,7 @@ class _HeatmapDrawMixin(object):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:kwplot)
+            >>> # xdoctest: +REQUIRES(module:torch)
             >>> import kwarray
             >>> import kwimage
             >>> image = kwimage.grab_test_image('astro')
@@ -731,7 +740,7 @@ class _HeatmapWarpMixin(object):
             aligned = outputs[0].cpu().numpy()
         return aligned
 
-    def upscale(self, channel=None, interpolation='linear'):
+    def upscale(self, channel: ndarray | None=None, interpolation: str='linear'):
         """
         Warp the heatmap with the image dimensions
 
@@ -757,9 +766,9 @@ class _HeatmapWarpMixin(object):
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
-    def warp(self, mat=None, input_dims=None, output_dims=None,
-             interpolation='linear', modify_spatial_coords=True,
-             int_interpolation='nearest', mat_is_xy=True, version=None):
+    def warp(self, mat: Any | None=None, input_dims: tuple | None=None, output_dims: tuple | None=None,
+             interpolation: str='linear', modify_spatial_coords: bool=True,
+             int_interpolation: str='nearest', mat_is_xy: bool=True, version: Any | None=None) -> Heatmap:
         """
         Warp all spatial maps. If the map contains spatial data, that data is
         also warped (ignoring the translation component).
@@ -931,7 +940,7 @@ class _HeatmapWarpMixin(object):
         newself = self.__class__(newdata, newmeta)
         return newself
 
-    def scale(self, factor, output_dims=None, interpolation='linear'):
+    def scale(self, factor, output_dims: Any | None=None, interpolation: str='linear'):
         """
         Scale the heatmap
         """
@@ -948,7 +957,7 @@ class _HeatmapWarpMixin(object):
                          version='old',
                          interpolation=interpolation)
 
-    def translate(self, offset, output_dims=None, interpolation='linear'):
+    def translate(self, offset, output_dims: Any | None=None, interpolation: str='linear'):
         if not ub.iterable(offset):
             tx = ty = offset
         else:
@@ -969,7 +978,7 @@ class _HeatmapAlgoMixin(object):
     """
 
     @classmethod
-    def combine(cls, heatmaps, root_index=None, dtype=np.float32):
+    def combine(cls, heatmaps: Sequence[Heatmap], root_index: int | None=None, dtype=np.float32) -> Heatmap:
         """
         Combine multiple heatmaps into a single heatmap.
 
@@ -1040,8 +1049,8 @@ class _HeatmapAlgoMixin(object):
         newself = aligned_root.__class__(newdata, aligned_root.meta)
         return newself
 
-    def detect(self, channel, invert=False, min_score=0.01, num_min=10,
-               max_dims=None, min_dims=None, dim_thresh_space='image'):
+    def detect(self, channel: int | Any, invert: bool=False, min_score: float=0.01, num_min: int=10,
+               max_dims: Tuple[int, int] | None=None, min_dims: Tuple[int, int] | None=None, dim_thresh_space: str='image') -> Any:
         """
         Lossy conversion from a Heatmap to a Detections object.
 
@@ -1153,7 +1162,6 @@ class _HeatmapAlgoMixin(object):
         if max_dims is not None:
             max_dims = max_dims if ub.iterable(max_dims) else (max_dims, max_dims)
             max_dims = np.array(max_dims)
-
         elif min_dims is not None:
             min_dims = min_dims if ub.iterable(min_dims) else (min_dims, min_dims)
             min_dims = np.array(min_dims)
@@ -1265,15 +1273,16 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
         >>> self.draw()
     """
     # Valid keys for the data dictionary
-    __datakeys__ = ['class_probs', 'offset', 'diameter', 'keypoints',
-                    'class_idx', 'class_energy']
+    __datakeys__: list[str] = ['class_probs', 'offset', 'diameter',
+                               'keypoints', 'class_idx', 'class_energy']
 
     # Valid keys for the meta dictionary
-    __metakeys__ = ['img_dims', 'tf_data_to_img', 'classes', 'kp_classes']
+    __metakeys__: list[str] = ['img_dims', 'tf_data_to_img', 'classes',
+                               'kp_classes']
 
-    __spatialkeys__ = ['offset', 'diameter', 'keypoints']
+    __spatialkeys__: list[str] = ['offset', 'diameter', 'keypoints']
 
-    def __init__(self, data=None, meta=None, **kwargs):
+    def __init__(self, data: Any | None=None, meta: Any | None=None, **kwargs) -> None:
         # Standardize input format
         if kwargs:
             if data or meta:
@@ -1365,9 +1374,9 @@ class Heatmap(_generic.Spatial, _HeatmapDrawMixin,
     #     return self.data['class_probs'].device
 
     @classmethod
-    def random(cls, dims=(10, 10), classes=3, diameter=True, offset=True,
-               keypoints=False, img_dims=None, dets=None, nblips=10, noise=0.0,
-               smooth_k=3, rng=None, ensure_background=True):
+    def random(cls, dims: Tuple[int, int]=(10, 10), classes: int | List[str] | Any=3, diameter: bool=True, offset: bool=True,
+               keypoints: bool=False, img_dims: Tuple | None=None, dets: Any | None=None, nblips: int=10, noise: float=0.0,
+               smooth_k: int=3, rng: Any | None=None, ensure_background: bool=True) -> Heatmap:
         """
         Creates dummy data, suitable for use in tests and benchmarks
 
@@ -1698,20 +1707,22 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
 
     diameter_is_uniform = tuple(getattr(diameter, 'shape', []))[1:] != tuple(probs.shape)
     offset_is_uniform = tuple(getattr(offset, 'shape', []))[1:] != tuple(probs.shape)
+    diameter_data = cast(Any, diameter)
+    offset_data = cast(Any, offset)
 
     if diameter_is_uniform:
 
-        if hasattr(diameter, 'shape'):
-            if len(diameter.shape) > 2:
+        if hasattr(diameter_data, 'shape'):
+            if len(diameter_data.shape) > 2:
                 raise Exception('Trailing diameter shape={} does not agree with probs.shape={}'.format(
-                    diameter.shape, probs.shape))
+                    diameter_data.shape, probs.shape))
 
-        if not ub.iterable(diameter):
-            diameter = [diameter, diameter]
+        if not ub.iterable(diameter_data):
+            diameter_data = [diameter_data, diameter_data]
 
     if offset_is_uniform:
-        if not ub.iterable(offset):
-            offset = impl.asarray([offset, offset])
+        if not ub.iterable(offset_data):
+            offset_data = impl.asarray([offset_data, offset_data])
 
     flags = probs > min_score
     if not diameter_is_uniform:
@@ -1720,16 +1731,16 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
             max_height, max_width = max_dims
 
             if max_height is not None:
-                flags &= diameter[0] <= max_height
+                flags &= diameter_data[0] <= max_height
             if max_width is not None:
-                flags &= diameter[1] <= max_width
+                flags &= diameter_data[1] <= max_width
         if min_dims is not None:
             min_dims = min_dims if ub.iterable(min_dims) else (min_dims, min_dims)
             min_height, min_width = min_dims
             if min_height is not None:
-                flags &= diameter[0] >= min_height
+                flags &= diameter_data[0] >= min_height
             if min_width is not None:
-                flags &= diameter[1] >= min_width
+                flags &= diameter_data[1] >= min_width
 
     # Ensure that some detections are returned even if none are above the
     # threshold.
@@ -1748,11 +1759,11 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     yc_ = impl.astype(yc, np.float32)
     xc_ = impl.astype(xc, np.float32)
     if diameter_is_uniform:
-        h = impl.full_like(yc_, fill_value=diameter[0])
-        w = impl.full_like(xc_, fill_value=diameter[1])
+        h = impl.full_like(yc_, fill_value=diameter_data[0])
+        w = impl.full_like(xc_, fill_value=diameter_data[1])
     else:
-        h = impl.astype(diameter[0][flags], np.float32)
-        w = impl.astype(diameter[1][flags], np.float32)
+        h = impl.astype(diameter_data[0][flags], np.float32)
+        w = impl.astype(diameter_data[1][flags], np.float32)
     cxywh = impl.cat([xc_[:, None], yc_[:, None], w[:, None], h[:, None]], axis=1)
 
     import kwimage
@@ -1771,9 +1782,9 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
 
     if offset is not None:
         if offset_is_uniform:
-            det_dxdy = offset[[1, 0]]
+            det_dxdy = offset_data[[1, 0]]
         else:
-            det_dxdy = impl.T(offset[:, yc, xc][[1, 0]])
+            det_dxdy = impl.T(offset_data[:, yc, xc][[1, 0]])
         dets.boxes.translate(det_dxdy, inplace=True)
 
     if keypoints is not None:
@@ -1808,7 +1819,7 @@ def _prob_to_dets(probs, diameter=None, offset=None, class_probs=None,
     return dets
 
 
-def smooth_prob(prob, k=3, inplace=False, eps=1e-9):
+def smooth_prob(prob, k: int=3, inplace: bool=False, eps: float=1e-9):
     """
     Smooths the probability map, but preserves the magnitude of the peaks.
 
