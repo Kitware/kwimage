@@ -52,7 +52,7 @@ omit = [ "kwimage/__main__.py", "*/setup.py",]
 
 [tool.ruff]
 line-length = 80
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.lint]
 # Enable Flake8 (E, F) and isort (I) rules.

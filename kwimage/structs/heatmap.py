@@ -98,7 +98,6 @@ if TYPE_CHECKING:
     from numpy import ndarray
 
 
-
 class _HeatmapDrawMixin(object):
     """
     mixin methods for drawing heatmap details
