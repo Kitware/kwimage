@@ -3,6 +3,7 @@ Test NITF Images:
     https://gwg.nga.mil/ntb/baseline/software/testfile/Nitfv2_1/scen_2_1.html
 
 """
+
 from os.path import basename
 from os.path import splitext
 import ssl
@@ -13,7 +14,9 @@ import urllib
 def have_gov_certs():
     try:
         # Test to see if we have certs
-        ub.download('https://gwg.nga.mil/ntb/baseline/software/testfile/Nitfv2_1/scen_2_1.html')
+        ub.download(
+            'https://gwg.nga.mil/ntb/baseline/software/testfile/Nitfv2_1/scen_2_1.html'
+        )
         return True
     except urllib.request.URLError:
         return False
@@ -22,7 +25,11 @@ def have_gov_certs():
 def description():
     import bs4
     import requests
-    resp = requests.get('https://gwg.nga.mil/ntb/baseline/software/testfile/Nitfv2_1/scen_2_1.html', verify=False)
+
+    resp = requests.get(
+        'https://gwg.nga.mil/ntb/baseline/software/testfile/Nitfv2_1/scen_2_1.html',
+        verify=False,
+    )
     soup = bs4.BeautifulSoup(resp.text, 'html.parser')
     tables = soup.findAll('table')
 
@@ -35,7 +42,12 @@ def description():
         for td in tab.findAll('td'):
             if name is not None:
                 desc = td.text.strip()
-                name_to_desc[name] = desc.replace('\r', '').replace('\n', '').replace('\t', '').replace('\xa0', '')
+                name_to_desc[name] = (
+                    desc.replace('\r', '')
+                    .replace('\n', '')
+                    .replace('\t', '')
+                    .replace('\xa0', '')
+                )
                 name = None
             elif td.text.strip() in names_noext:
                 name = td.text.strip()
@@ -43,24 +55,78 @@ def description():
 
 
 NITF_TEST_NAMES = [
-    'i_3001a.ntf', 'ns3004f.nsf', 'i_3004g.ntf', 'ns3005b.nsf',
-    'i_3008a.ntf', 'ns3010a.nsf', 'i_3015a.ntf', 'ns3017a.nsf',
-    'i_3018a.ntf', 'ns3022b.nsf', 'i_3025b.ntf', 'ns3033b.nsf',
-    'i_3034c.ntf', 'ns3034d.nsf', 'i_3034f.ntf', 'ns3038a.nsf',
-    'i_3041a.ntf', 'ns3050a.nsf', 'i_3051e.ntf', 'ns3051v.nsf',
-    'i_3052a.ntf', 'ns3059a.nsf', 'i_3060a.ntf', 'ns3061a.nsf',
-    'i_3063f.ntf', 'ns3063h.nsf', 'i_3068a.ntf', 'ns3073a.nsf',
-    'i_3076a.ntf', 'ns3090i.nsf', 'i_3090m.ntf', 'ns3090q.nsf',
-    'i_3090u.ntf', 'ns3101b.nsf', 'i_3113g.ntf', 'ns3114a.nsf',
-    'i_3114e.ntf', 'ns3114i.nsf', 'i_3117ax.ntf', 'ns3118b.nsf',
-    'ns3119b.nsf', 'i_3128b.ntf', 'ns3201a.nsf', 'i_3201c.ntf',
-    'ns3228b.nsf', 'i_3228c.ntf', 'ns3228d.nsf', 'i_3228e.ntf',
-    'ns3229b.nsf', 'i_3301a.ntf', 'ns3301b.nsf', 'i_3301c.ntf',
-    'ns3301e.nsf', 'i_3301h.ntf', 'ns3301j.nsf', 'i_3301k.ntf',
-    'ns3302a.nsf', 'i_3303a.ntf', 'ns3304a.nsf', 'i_3309a.ntf',
-    'ns3310a.nsf', 'i_3311a.ntf', 'ns3321a.nsf', 'ns3361c.nsf',
-    'i_3405a.ntf', 'ns3417c.nsf', 'i_3430a.ntf', 'ns3437a.nsf',
-    'i_3450c.ntf', 'ns3450e.nsf', 'i_5012c.ntf', 'ns5600a.nsf'
+    'i_3001a.ntf',
+    'ns3004f.nsf',
+    'i_3004g.ntf',
+    'ns3005b.nsf',
+    'i_3008a.ntf',
+    'ns3010a.nsf',
+    'i_3015a.ntf',
+    'ns3017a.nsf',
+    'i_3018a.ntf',
+    'ns3022b.nsf',
+    'i_3025b.ntf',
+    'ns3033b.nsf',
+    'i_3034c.ntf',
+    'ns3034d.nsf',
+    'i_3034f.ntf',
+    'ns3038a.nsf',
+    'i_3041a.ntf',
+    'ns3050a.nsf',
+    'i_3051e.ntf',
+    'ns3051v.nsf',
+    'i_3052a.ntf',
+    'ns3059a.nsf',
+    'i_3060a.ntf',
+    'ns3061a.nsf',
+    'i_3063f.ntf',
+    'ns3063h.nsf',
+    'i_3068a.ntf',
+    'ns3073a.nsf',
+    'i_3076a.ntf',
+    'ns3090i.nsf',
+    'i_3090m.ntf',
+    'ns3090q.nsf',
+    'i_3090u.ntf',
+    'ns3101b.nsf',
+    'i_3113g.ntf',
+    'ns3114a.nsf',
+    'i_3114e.ntf',
+    'ns3114i.nsf',
+    'i_3117ax.ntf',
+    'ns3118b.nsf',
+    'ns3119b.nsf',
+    'i_3128b.ntf',
+    'ns3201a.nsf',
+    'i_3201c.ntf',
+    'ns3228b.nsf',
+    'i_3228c.ntf',
+    'ns3228d.nsf',
+    'i_3228e.ntf',
+    'ns3229b.nsf',
+    'i_3301a.ntf',
+    'ns3301b.nsf',
+    'i_3301c.ntf',
+    'ns3301e.nsf',
+    'i_3301h.ntf',
+    'ns3301j.nsf',
+    'i_3301k.ntf',
+    'ns3302a.nsf',
+    'i_3303a.ntf',
+    'ns3304a.nsf',
+    'i_3309a.ntf',
+    'ns3310a.nsf',
+    'i_3311a.ntf',
+    'ns3321a.nsf',
+    'ns3361c.nsf',
+    'i_3405a.ntf',
+    'ns3417c.nsf',
+    'i_3430a.ntf',
+    'ns3437a.nsf',
+    'i_3450c.ntf',
+    'ns3450e.nsf',
+    'i_5012c.ntf',
+    'ns5600a.nsf',
 ]
 
 NITF_DESC = {
@@ -188,6 +254,7 @@ def check_nitfs():
 
     for fpath in nitfs:
         import kwimage
+
         try:
             kwimage.imread(fpath)
             passed_fpaths.append(fpath)
@@ -213,6 +280,7 @@ def check_nitfs():
         print('\n-----')
 
     from ndsampler.abstract_frames import _cog_cache_write
+
     for gpath in passed_fpaths:
         cache_gpath = ub.augpath(gpath, ext='.test.api.cog')
         ub.delete(cache_gpath)
@@ -221,6 +289,7 @@ def check_nitfs():
         _cog_cache_write(gpath, cache_gpath, config=config)
 
     from ndsampler.abstract_frames import _cog_cache_write
+
     for gpath in passed_fpaths:
         cache_gpath = ub.augpath(gpath, ext='.test.cli.cog')
         ub.delete(cache_gpath)
@@ -229,6 +298,7 @@ def check_nitfs():
         _cog_cache_write(gpath, cache_gpath, config=config)
 
     from ndsampler.abstract_frames import _cog_cache_write
+
     for gpath in passed_fpaths:
         cache_gpath = ub.augpath(gpath, ext='.test.cli.cog')
         ub.delete(cache_gpath)

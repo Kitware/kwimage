@@ -4,44 +4,55 @@ def main():
     """
     import ubelt as ub
     import sympy
+
     # Shows the symbolic construction of the code
     # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
     x0, y0, sx, sy, theta, shearx, tx, ty, u, v = sympy.symbols(
-        'x0, y0, s_x, s_y, theta, e_x, t_x, t_y, u, v')
+        'x0, y0, s_x, s_y, theta, e_x, t_x, t_y, u, v'
+    )
 
     a, b, c, d, e, f, g, h, i = sympy.symbols('a, b, c, d, e, f, g, h, i')
-    M = sympy.Matrix([[a, b, c],
-                      [d, e, f],
-                      [g, h, i]])
+    M = sympy.Matrix([[a, b, c], [d, e, f], [g, h, i]])
 
-    tr1_ = sympy.Matrix([[1, 0,  -x0],
-                         [0, 1,  -y0],
-                         [0, 0,    1]])
-    P = sympy.Matrix([  # projective part
-        [ 1,  0,  0],
-        [ 0,  1,  0],
-        [ u,  v,  1]])
+    tr1_ = sympy.Matrix([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]])
+    P = sympy.Matrix(
+        [  # projective part
+            [1, 0, 0],
+            [0, 1, 0],
+            [u, v, 1],
+        ]
+    )
     # Define core components of the affine transform
-    S = sympy.Matrix([  # scale
-        [sx,  0, 0],
-        [ 0, sy, 0],
-        [ 0,  0, 1]])
-    E = sympy.Matrix([  # x-shear
-        [1,  shearx, 0],
-        [0,  1, 0],
-        [0,  0, 1]])
-    R = sympy.Matrix([  # rotation
-        [sympy.cos(theta), -sympy.sin(theta), 0],
-        [sympy.sin(theta),  sympy.cos(theta), 0],
-        [               0,                 0, 1]])
-    T = sympy.Matrix([  # translation
-        [ 1,  0, tx],
-        [ 0,  1, ty],
-        [ 0,  0,  1]])
+    S = sympy.Matrix(
+        [  # scale
+            [sx, 0, 0],
+            [0, sy, 0],
+            [0, 0, 1],
+        ]
+    )
+    E = sympy.Matrix(
+        [  # x-shear
+            [1, shearx, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+    R = sympy.Matrix(
+        [  # rotation
+            [sympy.cos(theta), -sympy.sin(theta), 0],
+            [sympy.sin(theta), sympy.cos(theta), 0],
+            [0, 0, 1],
+        ]
+    )
+    T = sympy.Matrix(
+        [  # translation
+            [1, 0, tx],
+            [0, 1, ty],
+            [0, 0, 1],
+        ]
+    )
     # move 0, 0 back to the specified origin
-    tr2_ = sympy.Matrix([[1, 0,  x0],
-                         [0, 1,  y0],
-                         [0, 0,   1]])
+    tr2_ = sympy.Matrix([[1, 0, x0], [0, 1, y0], [0, 0, 1]])
 
     # combine transformations
     affine_components = sympy.MatMul(tr2_, T, R, E, S, tr1_)
@@ -66,17 +77,22 @@ def main():
 
     # Dont use fontenc, lmodern, or textcomp
     # https://tex.stackexchange.com/questions/179778/xelatex-under-ubuntu
-    doc = pylatex.Document('matrix_doc', inputenc=None,
-                           page_numbers=False, indent=False, fontenc=None,
-                           lmodern=1,
-                           textcomp=False,
-                           geometry_options='paperheight=10in,paperwidth=18in,margin=.1in',
-                           )
+    doc = pylatex.Document(
+        'matrix_doc',
+        inputenc=None,
+        page_numbers=False,
+        indent=False,
+        fontenc=None,
+        lmodern=1,
+        textcomp=False,
+        geometry_options='paperheight=10in,paperwidth=18in,margin=.1in',
+    )
     doc.preamble.append(pylatex.Package('hyperref'))  # For PNG images
 
     doc.append(pylatex.Section('Transformation Ingredients'))
-    doc.append(pylatex.NoEscape(
-        fr'''
+    doc.append(
+        pylatex.NoEscape(
+            rf"""
         The following matrices represent simple linear transformations, which
         can be used to build more complex linear transforms. These matrices are
         minimal in that you can always decompose a 3x3 matrix into some product
@@ -107,45 +123,84 @@ def main():
                 direction and $t_y$ in the y direction.
 
         \end{{itemize}}
-        '''
-        ))
+        """
+        )
+    )
 
-    doc.append(pylatex.NoEscape(ub.paragraph(
-        f'''
+    doc.append(
+        pylatex.NoEscape(
+            ub.paragraph(
+                f"""
         It is also useful to be able to modify which point we are considering
         the origin. By default it is $(0, 0)$, but if we have some arbitrary
         linear transform $M = {sympy.latex(M)}$, we can always transform about a new origin
         $(x_0, y_0)$ by "wrapping" the matrix two translation matrices, one that
         shifts the desired origin to $(0, 0)$ and a final translation that
         shifts it back.
-        ''')))
+        """
+            )
+        )
+    )
 
     shift_components = sympy.MatMul(tr2_, M, tr1_)
     shift = shift_components.doit()
 
-    doc.append(pylatex.Math(data=[sympy.latex(shift_components), '=', sympy.latex(shift)], escape=False))
+    doc.append(
+        pylatex.Math(
+            data=[sympy.latex(shift_components), '=', sympy.latex(shift)],
+            escape=False,
+        )
+    )
 
     doc.append(pylatex.Section('Affine Matrix Components'))
-    doc.append(pylatex.NoEscape('An affine matrix $A$ about the origin can be constructed as a scale, shear, rotation, and translation. $T R E S = A$. Expanded out this looks like:'))
-    doc.append(pylatex.Math(data=[affine_noshift_components_tex, '=', affine_noshift_tex], escape=False))
+    doc.append(
+        pylatex.NoEscape(
+            'An affine matrix $A$ about the origin can be constructed as a scale, shear, rotation, and translation. $T R E S = A$. Expanded out this looks like:'
+        )
+    )
+    doc.append(
+        pylatex.Math(
+            data=[affine_noshift_components_tex, '=', affine_noshift_tex],
+            escape=False,
+        )
+    )
     doc.append('And adding an origin shift the general form is:')
-    doc.append(pylatex.Math(data=[affine_components_tex, '=', affine_tex], escape=False))
+    doc.append(
+        pylatex.Math(
+            data=[affine_components_tex, '=', affine_tex], escape=False
+        )
+    )
 
     doc.append(pylatex.Section('Homography Matrix Components'))
-    doc.append(pylatex.NoEscape('An projective (or homography) matrix $H$ about the origin is generalizes and affine transform adding a projection as the first operation. Explicitly, homography matrix can be constructed as a projection, scale, shear, rotation, and translation. $T R E S P = H$. Expanded out this looks like:'))
-    doc.append(pylatex.Math(data=[homog_noshift_components_tex, '=', homog_noshift_tex], escape=False))
+    doc.append(
+        pylatex.NoEscape(
+            'An projective (or homography) matrix $H$ about the origin is generalizes and affine transform adding a projection as the first operation. Explicitly, homography matrix can be constructed as a projection, scale, shear, rotation, and translation. $T R E S P = H$. Expanded out this looks like:'
+        )
+    )
+    doc.append(
+        pylatex.Math(
+            data=[homog_noshift_components_tex, '=', homog_noshift_tex],
+            escape=False,
+        )
+    )
     doc.append('And adding an origin shift the general form is:')
-    doc.append(pylatex.Math(data=[homog_components_tex, '=', homog_tex], escape=False))
+    doc.append(
+        pylatex.Math(data=[homog_components_tex, '=', homog_tex], escape=False)
+    )
 
     print(doc.dumps())
     print('generate pdf')
 
-    pdf_fpath = ub.Path('~/code/kwimage/docs/temp/projective_maths/projective_maths.pdf').expand()
+    pdf_fpath = ub.Path(
+        '~/code/kwimage/docs/temp/projective_maths/projective_maths.pdf'
+    ).expand()
     pdf_fpath.parent.ensuredir()
     doc.generate_pdf(pdf_fpath.augment(ext=''), clean_tex=True)
 
     import xdev
+
     xdev.startfile(pdf_fpath)
+
 
 if __name__ == '__main__':
     """

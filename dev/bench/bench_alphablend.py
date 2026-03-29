@@ -15,6 +15,7 @@ def benchmark_alphablend_impls():
     import kwimage
     import xdev
     import ubelt as ub
+
     H = W = 32
     rng = np.random.RandomState(0)
 
@@ -31,16 +32,26 @@ def benchmark_alphablend_impls():
     # If num is set too low it may seem like simple beats inplace, but that is
     # actually not the case. inplace is slightly faster as expected.
     ti = ub.Timerit(num=2000, bestof=100, unit='us', verbose=1)
-    ti.reset(label='simple').call(lambda: _alpha_blend_simple(rgb1, alpha1, rgb2, alpha2))
-    ti.reset(label='inplace').call(lambda: _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2))
-    ti.reset(label='numexpr1').call(lambda: _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2))
-    ti.reset(label='numexpr2').call(lambda: _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2))
+    ti.reset(label='simple').call(
+        lambda: _alpha_blend_simple(rgb1, alpha1, rgb2, alpha2)
+    )
+    ti.reset(label='inplace').call(
+        lambda: _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2)
+    )
+    ti.reset(label='numexpr1').call(
+        lambda: _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2)
+    )
+    ti.reset(label='numexpr2').call(
+        lambda: _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2)
+    )
 
     # It looks like the simple algorithm is winning ATM
     ub.Timerit(label='inplace', unit='us').call(
-        lambda: overlay_alpha_images(rgb1, rgb2, impl='inplace'))
+        lambda: overlay_alpha_images(rgb1, rgb2, impl='inplace')
+    )
     ub.Timerit(label='simple', unit='us').call(
-        lambda: overlay_alpha_images(rgb1, rgb2, impl='simple'))
+        lambda: overlay_alpha_images(rgb1, rgb2, impl='simple')
+    )
 
     _ = xdev.profile_now(overlay_alpha_images)(rgb1, rgb2, impl='simple')
     _ = xdev.profile_now(overlay_alpha_images)(rgb1, rgb2, impl='inplace')

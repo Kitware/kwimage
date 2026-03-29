@@ -1,6 +1,7 @@
 """
 A class to make it easier to work with single colors.
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Iterable, cast
 
@@ -8,6 +9,7 @@ import numpy as np
 import ubelt as ub
 from . import im_core
 from . import _im_color_data
+
 if TYPE_CHECKING:
     from typing import Any
     from typing import Iterable
@@ -49,6 +51,7 @@ KITWARE_COLORS: Any = _im_color_data.KITWARE_COLORS
 
 def _lookup_colorspace_object(space):
     from colormath import color_objects
+
     if space == 'rgb':
         cls = color_objects.AdobeRGBColor
     elif space == 'lab':
@@ -92,6 +95,7 @@ def _colormath_convert(src_color, src_space, dst_space):
         hsv_color = (175.39, 1.00, 0.88)
     """
     from colormath.color_conversions import convert_color
+
     src_cls = _lookup_colorspace_object(src_space)
     dst_cls = _lookup_colorspace_object(dst_space)
     src = src_cls(*src_color)
@@ -122,10 +126,17 @@ class Color(ub.NiceRepr):
         >>> print(Color([1, 1, 1], alpha=255))
         >>> print(Color([1, 1, 1], alpha=255, space='lab'))
     """
+
     color01: list[float] | tuple[float, ...]
     space: str
 
-    def __init__(self, color: Color | Iterable[int | float] | str, alpha: float | None=None, space: str | None=None, coerce: bool=True) -> None:
+    def __init__(
+        self,
+        color: Color | Iterable[int | float] | str,
+        alpha: float | None = None,
+        space: str | None = None,
+        coerce: bool = True,
+    ) -> None:
         """
         Args:
             color (Color | Iterable[int | float] | str):
@@ -195,7 +206,9 @@ class Color(ub.NiceRepr):
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
         return self.space + ': ' + colorpart
 
-    def forimage(self, image: ndarray, space: str='auto') -> tuple[int | float, ...]:
+    def forimage(
+        self, image: ndarray, space: str = 'auto'
+    ) -> tuple[int | float, ...]:
         """
         Return a numeric value for this color that can be used
         in the given image.
@@ -253,14 +266,19 @@ class Color(ub.NiceRepr):
         return color
 
     def _forimage(self, image, space='rgb'):
-        """ backwards compat, deprecate """
+        """backwards compat, deprecate"""
         ub.schedule_deprecation(
-            'kwimage', 'Color._forimage', 'method',
+            'kwimage',
+            'Color._forimage',
+            'method',
             migration='Use forimage instead',
-            deprecate='0.10.0', error='1.0.0', remove='1.1.0')
+            deprecate='0.10.0',
+            error='1.0.0',
+            remove='1.1.0',
+        )
         return self.forimage(image, space)
 
-    def ashex(self, space: None | str=None) -> str:
+    def ashex(self, space: None | str = None) -> str:
         """
         Convert to hex values
 
@@ -274,7 +292,7 @@ class Color(ub.NiceRepr):
         c255 = self.as255(space)
         return '#' + ''.join(['{:02x}'.format(c) for c in c255])
 
-    def as255(self, space: None | str=None) -> tuple[int, ...]:
+    def as255(self, space: None | str = None) -> tuple[int, ...]:
         """
         Convert to byte values
 
@@ -290,7 +308,7 @@ class Color(ub.NiceRepr):
         color = tuple(int(c * 255) for c in self.as01(space))
         return color
 
-    def as01(self, space: None | str=None) -> tuple[float, ...]:
+    def as01(self, space: None | str = None) -> tuple[float, ...]:
         """
         Convert to float values
 
@@ -342,21 +360,27 @@ class Color(ub.NiceRepr):
 
     @classmethod
     def _is_base01(channels):
-        """ check if a color is in base 01 """
+        """check if a color is in base 01"""
+
         def _test_base01(channels):
             tests01 = {
-                'is_float': all([isinstance(c, (float, np.float64)) for c in channels]),
+                'is_float': all(
+                    [isinstance(c, (float, np.float64)) for c in channels]
+                ),
                 'is_01': all([c >= 0.0 and c <= 1.0 for c in channels]),
             }
             return tests01
+
         if isinstance(channels, str):
             return False
         return all(_test_base01(channels).values())
 
     @classmethod
     def _is_base255(Color, channels):
-        """ there is a one corner case where all pixels are 1 or less """
-        if (all(c > 0.0 and c <= 255.0 for c in channels) and any(c > 1.0 for c in channels)):
+        """there is a one corner case where all pixels are 1 or less"""
+        if all(c > 0.0 and c <= 255.0 for c in channels) and any(
+            c > 1.0 for c in channels
+        ):
             # Definately in 255 space
             return True
         else:
@@ -370,12 +394,14 @@ class Color(ub.NiceRepr):
         """
         assert hex_color.startswith('#'), 'not a hex string %r' % (hex_color,)
         parts = hex_color[1:].strip()
-        color255 = tuple(int(parts[i: i + 2], 16) for i in range(0, len(parts), 2))
+        color255 = tuple(
+            int(parts[i : i + 2], 16) for i in range(0, len(parts), 2)
+        )
         assert len(color255) in [3, 4], 'must be length 3 or 4'
         return Color._255_to_01(color255)
 
     def _ensure_color01(Color, color):
-        """ Infer what type color is and normalize to 01 """
+        """Infer what type color is and normalize to 01"""
         if isinstance(color, str):
             color = Color._string_to_01(color)
         elif Color._is_base255(color):
@@ -384,7 +410,7 @@ class Color(ub.NiceRepr):
 
     @classmethod
     def _255_to_01(Color, color255):
-        """ converts base 255 color to base 01 color """
+        """converts base 255 color to base 01 color"""
         return [channel / 255.0 for channel in color255]
 
     @classmethod
@@ -396,10 +422,16 @@ class Color(ub.NiceRepr):
         """
         if color == 'random':
             import random
+
             ub.schedule_deprecation(
-                'kwimage', 'Color._string_to_01 with random', 'method',
+                'kwimage',
+                'Color._string_to_01 with random',
+                'method',
                 migration='Use Color.random instead',
-                deprecate='0.10.0', error='1.0.0', remove='1.1.0')
+                deprecate='0.10.0',
+                error='1.0.0',
+                remove='1.1.0',
+            )
             color = random.choice(Color.named_colors())
         if color in BASE_COLORS:
             color01: Any = BASE_COLORS[color]
@@ -437,13 +469,25 @@ class Color(ub.NiceRepr):
             >>> canvas = kwplot.make_legend_img(color_lut)
             >>> kwplot.imshow(canvas)
         """
-        NAMED_COLORS = set(BASE_COLORS) | set(CSS4_COLORS) | set(XKCD_COLORS) | set(KITWARE_COLORS)
+        NAMED_COLORS = (
+            set(BASE_COLORS)
+            | set(CSS4_COLORS)
+            | set(XKCD_COLORS)
+            | set(KITWARE_COLORS)
+        )
         names = sorted(NAMED_COLORS)
         return names
 
     @classmethod
-    def distinct(Color, num, existing: Any | None=None, space: str='rgb', legacy: bool | str='auto',
-                 exclude_black: bool=True, exclude_white: bool=True) -> List[Tuple]:
+    def distinct(
+        Color,
+        num,
+        existing: Any | None = None,
+        space: str = 'rgb',
+        legacy: bool | str = 'auto',
+        exclude_black: bool = True,
+        exclude_white: bool = True,
+    ) -> List[Tuple]:
         """
         Make multiple distinct colors.
 
@@ -486,50 +530,61 @@ class Color(ub.NiceRepr):
             >>> kwplot.show_if_requested()
         """
         if legacy == 'auto':
-            legacy = (existing is None)
+            legacy = existing is None
 
         if legacy:
             import matplotlib as mpl
-            import matplotlib._cm  as _cm
+            import matplotlib._cm as _cm
+
             assert existing is None
             # Old behavior
             cm = mpl.colors.LinearSegmentedColormap.from_list(
-                'gist_rainbow', _cm.datad['gist_rainbow'],
-                mpl.rcParams['image.lut'])
+                'gist_rainbow',
+                _cm.datad['gist_rainbow'],
+                mpl.rcParams['image.lut'],
+            )
 
             distinct_colors = [
-                np.array(cm(i / num)).tolist()[0:3]
-                for i in range(num)
+                np.array(cm(i / num)).tolist()[0:3] for i in range(num)
             ]
             if space == 'rgb':
                 return distinct_colors
             else:
-                return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
+                return [
+                    Color(c, space='rgb').as01(space=space)
+                    for c in distinct_colors
+                ]
         else:
             from distinctipy import distinctipy
+
             if space != 'rgb':
                 raise NotImplementedError
             exclude_colors = existing
             if exclude_colors is None:
                 exclude_colors = []
             if exclude_black:
-                exclude_colors = exclude_colors + [(0., 0., 0.)]
+                exclude_colors = exclude_colors + [(0.0, 0.0, 0.0)]
             if exclude_white:
-                exclude_colors = exclude_colors + [(1., 1., 1.)]
+                exclude_colors = exclude_colors + [(1.0, 1.0, 1.0)]
             # convert string to int for seed
             seed = int(ub.hash_data(exclude_colors, base=10)) + num
             distinct_colors = distinctipy.get_colors(
-                num, exclude_colors=exclude_colors, rng=seed)
+                num, exclude_colors=exclude_colors, rng=seed
+            )
             distinct_colors = [tuple(map(float, c)) for c in distinct_colors]
             return distinct_colors
 
         if space == 'rgb':
             return distinct_colors
         else:
-            return [Color(c, space='rgb').as01(space=space) for c in distinct_colors]
+            return [
+                Color(c, space='rgb').as01(space=space) for c in distinct_colors
+            ]
 
     @classmethod
-    def random(Color, pool: str='named', with_alpha: int=0, rng: Any | None=None) -> Color:
+    def random(
+        Color, pool: str = 'named', with_alpha: int = 0, rng: Any | None = None
+    ) -> Color:
         """
         Returns:
             Color
@@ -540,6 +595,7 @@ class Color(ub.NiceRepr):
             >>> kwimage.Color.random(pool='named')
         """
         import kwarray
+
         rng = kwarray.ensure_rng(rng, api='python')
         if pool == 'named':
             color_name = rng.choice(Color.named_colors())
@@ -552,7 +608,7 @@ class Color(ub.NiceRepr):
             color = color + [rng.random()]
         return Color(color)
 
-    def distance(self, other: Color, space: str='lab') -> float:
+    def distance(self, other: Color, space: str = 'lab') -> float:
         """
         Distance between self an another color
 
@@ -623,8 +679,7 @@ class Color(ub.NiceRepr):
         # TODO: efficient lookup
         names = self.__class__.named_colors()
         named_color = [self.__class__.coerce(n) for n in names]
-        distances = [self.distance(other, space=space)
-                     for other in named_color]
+        distances = [self.distance(other, space=space) for other in named_color]
         idx = np.argmin(distances)
         color = named_color[idx]
         name = names[idx]
@@ -634,7 +689,13 @@ class Color(ub.NiceRepr):
         else:
             return name
 
-    def interpolate(self, other: Color, alpha: float | List[float]=0.5, ispace: str | None=None, ospace: str | None=None) -> Color | List[Color]:
+    def interpolate(
+        self,
+        other: Color,
+        alpha: float | List[float] = 0.5,
+        ispace: str | None = None,
+        ospace: str | None = None,
+    ) -> Color | List[Color]:
         """
         Interpolate between colors
 
@@ -667,16 +728,21 @@ class Color(ub.NiceRepr):
             >>> kwplot.show_if_requested()
         """
         import kwimage
+
         other = kwimage.Color.coerce(other)
         vec1 = np.array(self.as01(ispace))
         vec2 = np.array(other.as01(ispace))
         if ub.iterable(alpha):
             alpha_arr = np.asarray(alpha).ravel()
-            vecB = vec1[None, :] * (1 - alpha_arr)[:, None] + (vec2[None, :] * alpha_arr[:, None])
+            vecB = vec1[None, :] * (1 - alpha_arr)[:, None] + (
+                vec2[None, :] * alpha_arr[:, None]
+            )
             new = [
                 kwimage.Color(
                     kwimage.Color(c, space=ispace, coerce=False).as01(ospace),
-                    space=ospace, coerce=False)
+                    space=ospace,
+                    coerce=False,
+                )
                 for c in vecB
             ]
         else:
@@ -685,10 +751,12 @@ class Color(ub.NiceRepr):
             c = vecB
             new = kwimage.Color(
                 kwimage.Color(c, space=ispace, coerce=False).as01(ospace),
-                space=ospace, coerce=False)
+                space=ospace,
+                coerce=False,
+            )
         return new
 
-    def to_image(self, dsize: Tuple[int, int]=(8, 8)):
+    def to_image(self, dsize: Tuple[int, int] = (8, 8)):
         """
         Create an solid-color image with this color
 
@@ -702,7 +770,7 @@ class Color(ub.NiceRepr):
         cell = np.tile(cell_pixel, (h, w, 1))
         return cell
 
-    def adjust(self, saturate: float=0, lighten: float=0, opacity=0):
+    def adjust(self, saturate: float = 0, lighten: float = 0, opacity=0):
         """
         Adjust the saturation or value of a color.
 
@@ -832,6 +900,7 @@ def _draw_color_swatch(colors, cellshape=9):
     """
     import kwimage
     import math
+
     if not ub.iterable(cellshape):
         cellshape_ = (cellshape, cellshape)
     else:
@@ -850,15 +919,15 @@ def _draw_color_swatch(colors, cellshape=9):
     num_null_cells = num_cells - num_colors
     if num_null_cells > 0:
         null_cell = np.zeros((cell_h, cell_w, 3), dtype=np.float32)
-        pts1 = np.array([(0, 0),                   (cell_w - 1, 0)])
+        pts1 = np.array([(0, 0), (cell_w - 1, 0)])
         pts2 = np.array([(cell_w - 1, cell_h - 1), (0, cell_h - 1)])
         null_cell = kwimage.draw_line_segments_on_image(
-            null_cell, pts1, pts2, color='red')
+            null_cell, pts1, pts2, color='red'
+        )
         # null_cell = kwimage.draw_text_on_image(
         #     {'width': cell_w, 'height': cell_h}, text='X', color='red',
         #     halign='center', valign='center')
         null_cell = kwimage.ensure_float01(null_cell)
         cells.extend([null_cell] * num_null_cells)
-    swatch = kwimage.stack_images_grid(
-        cells, chunksize=num_cells_side0, axis=0)
+    swatch = kwimage.stack_images_grid(cells, chunksize=num_cells_side0, axis=0)
     return swatch

@@ -3,6 +3,7 @@ This module provides functions :func:`imread` and :func:`imwrite` which are
 wrappers around concrete readers/writers provided by other libraries. This
 allows us to support a wider array of formats than any of individual backends.
 """
+
 from __future__ import annotations
 import os
 from os.path import exists, dirname
@@ -25,7 +26,15 @@ if _t.TYPE_CHECKING:
 
     PathLike: TypeAlias = str | os.PathLike[str]
     BackendName: TypeAlias = Literal[
-        'auto', 'gdal', 'skimage', 'itk', 'pil', 'cv2', 'turbojpeg', 'qoi', 'svg'
+        'auto',
+        'gdal',
+        'skimage',
+        'itk',
+        'pil',
+        'cv2',
+        'turbojpeg',
+        'qoi',
+        'svg',
     ]
     ColorSpace: TypeAlias = str | None
 
@@ -35,8 +44,7 @@ if _t.TYPE_CHECKING:
         backend: BackendName | Sequence[BackendName] = 'auto',
         *,
         include_channels: Literal[True] = True,
-    ) -> tuple[int, int, int]:
-        ...
+    ) -> tuple[int, int, int]: ...
 
     @overload
     def load_image_shape(
@@ -44,31 +52,44 @@ if _t.TYPE_CHECKING:
         backend: BackendName | Sequence[BackendName] = 'auto',
         *,
         include_channels: Literal[False],
-    ) -> tuple[int, int]:
-        ...
+    ) -> tuple[int, int]: ...
+
 
 __all__ = [
-    'imread', 'imwrite', 'load_image_shape',
+    'imread',
+    'imwrite',
+    'load_image_shape',
 ]
 
 
 # Common image extensions
-JPG_EXTENSIONS: tuple[str, ...] = (
-    '.jpg', '.jpeg'
-)
+JPG_EXTENSIONS: tuple[str, ...] = ('.jpg', '.jpeg')
 
 # These should be supported by opencv / PIL
-_WELL_KNOWN_EXTENSIONS: tuple[str, ...] = (
-    JPG_EXTENSIONS +
-    ('.bmp', '.pgm', '.png', '.qoi',)
+_WELL_KNOWN_EXTENSIONS: tuple[str, ...] = JPG_EXTENSIONS + (
+    '.bmp',
+    '.pgm',
+    '.png',
+    '.qoi',
 )
 
 
 # Extensions that usually will require GDAL
 GDAL_EXTENSIONS: tuple[str, ...] = (
-    '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif',
-    '.r0', '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
-    '.jp2', '.vrt',
+    '.ntf',
+    '.nitf',
+    '.ptif',
+    '.cog.tiff',
+    '.cog.tif',
+    '.r0',
+    '.r1',
+    '.r2',
+    '.r3',
+    '.r4',
+    '.r5',
+    '.nsf',
+    '.jp2',
+    '.vrt',
 )
 
 # TODO: ITK Image formats
@@ -87,14 +108,22 @@ ITK_EXTENSIONS: tuple[str, ...] = (
 # https://data.kitware.com/#collection/57b5c9e58d777f126827f5a1
 
 IMAGE_EXTENSIONS: tuple[str, ...] = (
-    _WELL_KNOWN_EXTENSIONS +
-    ('.tif', '.tiff',) +
-    GDAL_EXTENSIONS +
-    ITK_EXTENSIONS
+    _WELL_KNOWN_EXTENSIONS
+    + (
+        '.tif',
+        '.tiff',
+    )
+    + GDAL_EXTENSIONS
+    + ITK_EXTENSIONS
 )
 
 
-def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: str = 'auto', **kw) -> np.ndarray:
+def imread(
+    fpath: os.PathLike[str] | str,
+    space: str | None = 'auto',
+    backend: str = 'auto',
+    **kw,
+) -> np.ndarray:
     r"""
     Reads image data in a specified format using some backend implementation.
 
@@ -403,13 +432,13 @@ def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: s
             # file header
             USE_FILE_HEADER = 0
             if USE_FILE_HEADER:
-                '''
+                """
                 for key in kwimage.grab_test_image_fpath.keys():
                     fpath = kwimage.grab_test_image_fpath(key)
                     with open(fpath, 'rb') as file:
                         header_bytes = file.read(4)
                         print(header_bytes)
-                '''
+                """
                 JPEG_HEADER = b'\xff\xd8\xff'
                 PNG_HEADER = b'\x89PNG'
                 NITF_HEADER = b'NITF'
@@ -447,6 +476,7 @@ def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: s
         elif backend == 'itk':
             src_space, auto_dst_space = None, None
             import itk
+
             itk_obj = itk.imread(fpath)
             image = np.asarray(itk_obj)
         elif backend == 'svg':
@@ -461,16 +491,19 @@ def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: s
 
         if dst_space is not None:
             if src_space is None:
-                raise ValueError((
-                    'Cannot convert to destination colorspace ({}) because'
-                    ' the source colorspace could not be determined. Use '
-                    ' space=None to return the raw data.'
-                ).format(dst_space))
+                raise ValueError(
+                    (
+                        'Cannot convert to destination colorspace ({}) because'
+                        ' the source colorspace could not be determined. Use '
+                        ' space=None to return the raw data.'
+                    ).format(dst_space)
+                )
 
             from kwimage import im_cv2
-            image = im_cv2.convert_colorspace(image, src_space=src_space,
-                                              dst_space=dst_space,
-                                              implicit=False)
+
+            image = im_cv2.convert_colorspace(
+                image, src_space=src_space, dst_space=dst_space, implicit=False
+            )
 
         return image
     except Exception as ex:
@@ -480,9 +513,9 @@ def imread(fpath: os.PathLike[str] | str, space: str | None = 'auto', backend: s
 
 
 def _imread_qoi(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
-    """
-    """
+    """ """
     import qoi
+
     image = qoi.read(fpath)
     src_space, auto_dst_space = None, None
     return image, src_space, auto_dst_space
@@ -502,6 +535,7 @@ def _imwrite_qoi(fpath: str, data: np.ndarray) -> str:
     """
     import kwimage
     import qoi
+
     data = kwimage.atleast_3channels(data)
     qoi.write(fpath, data)
     return fpath
@@ -545,10 +579,13 @@ def _imread_turbojpeg(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
         >>>         im_cv2 = _imread_cv2(fpath)
     """
     import turbojpeg
+
     jpeg = turbojpeg.TurboJPEG()
     with open(fpath, 'rb') as file:
         data = file.read()
-        (width, height, jpeg_subsample, jpeg_colorspace) = jpeg.decode_header(data)
+        (width, height, jpeg_subsample, jpeg_colorspace) = jpeg.decode_header(
+            data
+        )
         # print('width = {!r}'.format(width))
         # print('height = {!r}'.format(height))
         # print('jpeg_subsample = {!r}'.format(jpeg_subsample))
@@ -567,6 +604,7 @@ def _imread_turbojpeg(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
 
 def _imread_pil(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     from PIL import Image
+
     pil_img = Image.open(fpath)
     image = np.array(pil_img)
     if pil_img.mode == 'RGB':
@@ -586,6 +624,7 @@ def _imread_pil(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
 
 def _imread_skimage(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     import skimage.io
+
     # with warnings.catch_warnings():
     #     warnings.simplefilter("ignore")
     # skimage reads color in RGB by default
@@ -606,17 +645,23 @@ def _imread_skimage(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
 
 def _imread_cv2(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
     import cv2
+
     # opencv reads color in BGR by default
     image = cv2.imread(fpath, flags=cv2.IMREAD_UNCHANGED)
     if image is None:
         if exists(fpath):
             # TODO: this could be a permissions error. We could test for that.
             # and print a better error message in that case.
-            raise IOError('OpenCV cannot read this image: "{}", '
-                          'but it exists'.format(fpath))
+            raise IOError(
+                'OpenCV cannot read this image: "{}", but it exists'.format(
+                    fpath
+                )
+            )
         else:
-            raise IOError('OpenCV cannot read this image: "{}", '
-                          'because it does not exist'.format(fpath))
+            raise IOError(
+                'OpenCV cannot read this image: "{}", '
+                'because it does not exist'.format(fpath)
+            )
 
     n_channels = im_core.num_channels(image)
     if n_channels == 3:
@@ -776,16 +821,24 @@ def _imread_gdal(
     try:
         if nodata is not None:
             ub.schedule_deprecation(
-                modname='kwimage', name='nodata',
+                modname='kwimage',
+                name='nodata',
                 type='argument to _imread_gdal',
                 migration='use nodata_method instead',
-                deprecate='0.9.5', error='0.10.0', remove='0.11.0')
+                deprecate='0.9.5',
+                error='0.10.0',
+                remove='0.11.0',
+            )
             nodata_method = nodata
 
         if nodata_method is not None:
             if isinstance(nodata_method, str):
                 if nodata_method not in {'ma', 'nan', 'float'}:
-                    raise KeyError('nodata_method={} must be ma, nan, (or float), or None'.format(nodata_method))
+                    raise KeyError(
+                        'nodata_method={} must be ma, nan, (or float), or None'.format(
+                            nodata_method
+                        )
+                    )
             else:
                 raise TypeError(type(nodata_method))
 
@@ -795,9 +848,11 @@ def _imread_gdal(
 
         gdalkw = {}  # xoff, yoff, win_xsize, win_ysize
         image, num_channels = _gdal_read(
-            gdal_dset, overview=overview,
+            gdal_dset,
+            overview=overview,
             ignore_color_table=ignore_color_table,
-            band_indices=band_indices, gdalkw=gdalkw,
+            band_indices=band_indices,
+            gdalkw=gdalkw,
             nodata_method=nodata_method,
             nodata_value=None,
         )
@@ -870,10 +925,13 @@ def _gdal_read(
                 raise KeyError(overview)
         if overview < 0:
             ub.schedule_deprecation(
-                'kwimage', name='overviews',
+                'kwimage',
+                name='overviews',
                 type='as a negative integer argument to kwimage.imread',
                 migration='Use overviews="coarsest" to get the lowest resolution overview',
-                deprecate='0.9.21', error='1.0.0', remove='1.1.0',
+                deprecate='0.9.21',
+                error='1.0.0',
+                remove='1.1.0',
             )
             # warnings.warn('Using negative overviews is deprecated. '
             #               'Use coarsest to get the lowest resolution overview')
@@ -884,7 +942,8 @@ def _gdal_read(
             bands = [b.GetOverview(overview - 1) for b in default_bands]
             if any(b is None for b in bands):
                 raise AssertionError(
-                    'Band was None in {}'.format(gdal_dset.GetDescription()))
+                    'Band was None in {}'.format(gdal_dset.GetDescription())
+                )
         else:
             bands = default_bands
     else:
@@ -951,11 +1010,14 @@ def _gdal_read(
             ret = band.ReadAsArray(buf_obj=buf, **gdalkw)
             # ret = buf = band.ReadAsArray(**gdalkw)
             if ret is None:
-                raise IOError(ub.paragraph(
-                    '''
+                raise IOError(
+                    ub.paragraph(
+                        """
                     GDAL was unable to read band: {}, {}'
                     from {!r}
-                    '''.format(idx, band, gdal_dset.GetDescription())))
+                    """.format(idx, band, gdal_dset.GetDescription())
+                    )
+                )
             # image[:, :, idx] = buf
             if nodata_method is not None:
                 band_nodata = band.GetNoDataValue()
@@ -976,7 +1038,13 @@ def _gdal_read(
     return image, num_channels
 
 
-def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None = 'auto', backend: str = 'auto', **kwargs) -> str:
+def imwrite(
+    fpath: os.PathLike[str] | str,
+    image: np.ndarray,
+    space: str | None = 'auto',
+    backend: str = 'auto',
+    **kwargs,
+) -> str:
     """
     Writes image data to disk.
 
@@ -1284,50 +1352,63 @@ def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None 
             else:
                 raise AssertionError('impossible state')
         from kwimage import im_cv2
+
         image = im_cv2.convert_colorspace(
-            image, src_space=src_space, dst_space=dst_space,
-            implicit=False)
+            image, src_space=src_space, dst_space=dst_space, implicit=False
+        )
 
     try:
         if backend == 'cv2':
             import cv2
+
             try:
                 flag = cv2.imwrite(fpath, image, **kwargs)
             except cv2.error as ex:
-                if 'could not find a writer for the specified extension' in str(ex):
+                if 'could not find a writer for the specified extension' in str(
+                    ex
+                ):
                     raise ValueError(
                         'Image fpath {!r} does not have a known image extension '
-                        '(e.g. png/jpg)'.format(fpath))
+                        '(e.g. png/jpg)'.format(fpath)
+                    )
                 else:
                     raise
             else:
                 # TODO: generalize error handling and diagnostics for all backends
                 if not flag:
                     if not exists(dirname(fpath)):
-                        raise IOError((
-                            'kwimage failed to write with opencv backend. '
-                            'Reason: destination fpath {!r} is in a directory that '
-                            'does not exist.').format(fpath))
+                        raise IOError(
+                            (
+                                'kwimage failed to write with opencv backend. '
+                                'Reason: destination fpath {!r} is in a directory that '
+                                'does not exist.'
+                            ).format(fpath)
+                        )
                     elif image.size > 4e10:
                         raise IOError(
                             'kwimage failed to write with opencv backend. '
-                            f'Reason: unknown, but could image with shape {image.shape} is too big.')
+                            f'Reason: unknown, but could image with shape {image.shape} is too big.'
+                        )
                     else:
                         raise IOError(
                             'kwimage failed to write with opencv backend. '
-                            'Reason: unknown.')
+                            'Reason: unknown.'
+                        )
 
         elif backend == 'skimage':
             import skimage.io
+
             skimage.io.imsave(fpath, image, **kwargs)
         elif backend == 'gdal':
             _imwrite_cloud_optimized_geotiff(fpath, image, **kwargs)
         elif backend == 'pil':
             from PIL import Image
+
             pil_img = Image.fromarray(image)
             pil_img.save(fpath, **kwargs)
         elif backend == 'itk':
             import itk
+
             itk_obj = itk.image_view_from_array(image)
             itk.imwrite(itk_obj, fpath, **kwargs)
         elif backend == 'turbojpeg':
@@ -1342,6 +1423,7 @@ def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None 
             msg = f'\nNOTE[kwimage]: kwimage.imwrite failed, likely because the parent of {fpath!r} does not exist.'
         try:
             from kwutil import util_exception
+
             raise util_exception.add_exception_note(ex, msg)
         except (ImportError, ModuleNotFoundError):
             # TODO: add exception note instead
@@ -1351,10 +1433,11 @@ def imwrite(fpath: os.PathLike[str] | str, image: np.ndarray, space: str | None 
     return fpath
 
 
-def load_image_shape(fpath: os.PathLike[str] | str,
-                     backend: str | list[str] = 'auto',
-                     include_channels: bool = True
-                     ) -> tuple[int, int] | tuple[int, int, int]:
+def load_image_shape(
+    fpath: os.PathLike[str] | str,
+    backend: str | list[str] = 'auto',
+    include_channels: bool = True,
+) -> tuple[int, int] | tuple[int, int, int]:
     """
     Determine the height/width/channels of an image without reading the entire
     file.
@@ -1485,8 +1568,11 @@ def load_image_shape(fpath: os.PathLike[str] | str,
                 if not _have_gdal():
                     continue
             try:
-                shape = load_image_shape(fpath, backend=candidate_backend,
-                                         include_channels=include_channels)
+                shape = load_image_shape(
+                    fpath,
+                    backend=candidate_backend,
+                    include_channels=include_channels,
+                )
             except Exception as ex:
                 candidate_errors.append((candidate_backend, ex))
             else:
@@ -1504,6 +1590,7 @@ def load_image_shape(fpath: os.PathLike[str] | str,
         # which gives little context and is ultimately not an issue if we can
         # fallback on gdal.
         from PIL import Image
+
         fpath = os.fspath(fpath)
         with Image.open(fpath) as pil_img:
             width, height = pil_img.size
@@ -1514,6 +1601,7 @@ def load_image_shape(fpath: os.PathLike[str] | str,
                 shape = (height, width)
     elif backend == 'gdal':
         from osgeo import gdal
+
         fpath = os.fspath(fpath)
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
         if gdal_dset is None:
@@ -1528,8 +1616,11 @@ def load_image_shape(fpath: os.PathLike[str] | str,
         gdal_dset = None
     elif backend == 'imagesize':
         import imagesize
+
         if include_channels:
-            raise NotImplementedError('no way to get number of channels with imagesize')
+            raise NotImplementedError(
+                'no way to get number of channels with imagesize'
+            )
         width, height = imagesize.get(fpath)
         shape = (height, width)
     else:
@@ -1577,19 +1668,20 @@ def __inspect_optional_overhead():
 
 
 def _imwrite_cloud_optimized_geotiff(
-        fpath: os.PathLike[str] | str,
-        data: np.ndarray,
-        compress='auto',
-        blocksize=256,
-        overviews=None,
-        overview_resample='NEAREST',
-        interleave='PIXEL',
-        options=None,
-        nodata=None,
-        nodata_value=None,
-        metadata=None,
-        crs=None,
-        transform=None):
+    fpath: os.PathLike[str] | str,
+    data: np.ndarray,
+    compress='auto',
+    blocksize=256,
+    overviews=None,
+    overview_resample='NEAREST',
+    interleave='PIXEL',
+    options=None,
+    nodata=None,
+    nodata_value=None,
+    metadata=None,
+    crs=None,
+    transform=None,
+):
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -1775,6 +1867,7 @@ def _imwrite_cloud_optimized_geotiff(
         >>>         assert np.all(loaded == data)
     """
     from osgeo import gdal
+
     if len(data.shape) == 2:
         data = data[:, :, None]
 
@@ -1792,7 +1885,11 @@ def _imwrite_cloud_optimized_geotiff(
     # JPEG/LZW/PACKBITS/DEFLATE/CCITTRLE/CCITTFAX3/CCITTFAX4/LZMA/ZSTD/LERC/LERC_DEFLATE/LERC_ZSTD/WEBP/NONE
 
     if compress == 'JPEG' and num_bands >= 5:
-        raise ValueError('Cannot use JPEG with more than 4 channels (got {})'.format(num_bands))
+        raise ValueError(
+            'Cannot use JPEG with more than 4 channels (got {})'.format(
+                num_bands
+            )
+        )
     eType = _numpy_to_gdal_dtype(data.dtype)
     if compress == 'JPEG':
         if eType not in [gdal.GDT_Byte, gdal.GDT_UInt16]:
@@ -1878,10 +1975,14 @@ def _imwrite_cloud_optimized_geotiff(
 
     if nodata is not None:
         ub.schedule_deprecation(
-            modname='kwimage', name='nodata',
+            modname='kwimage',
+            name='nodata',
             type='argument to _imwrite_gdal',
             migration='use nodata_value instead',
-            deprecate='0.9.5', error='0.10.0', remove='0.11.0')
+            deprecate='0.9.5',
+            error='0.10.0',
+            remove='0.11.0',
+        )
 
     if nodata_value is None:
         nodata_value = nodata
@@ -1917,7 +2018,9 @@ def _imwrite_cloud_optimized_geotiff(
             ex_cls = Exception
         raise ex_cls(
             'Unable to create gtiff driver for fpath={}, options={}, last_gdal_error={}'.format(
-                fpath, _options, last_gdal_error))
+                fpath, _options, last_gdal_error
+            )
+        )
     data_set2.FlushCache()
 
     # Dereference everything
@@ -1931,6 +2034,7 @@ def _numpy_to_gdal_dtype(numpy_dtype) -> int:
     maps numpy dtypes to gdal dtypes
     """
     from osgeo import gdal
+
     if not hasattr(numpy_dtype, 'kind'):
         # convert to the dtype instance object
         numpy_dtype = numpy_dtype().dtype
@@ -1995,12 +2099,14 @@ def _gdal_to_numpy_dtype(gdal_dtype) -> type:
         gdal.GDT_CInt16: complex_,
         gdal.GDT_CInt32: complex_,
         gdal.GDT_CFloat32: np.complex64,
-        gdal.GDT_CFloat64: np.complex128
+        gdal.GDT_CFloat64: np.complex128,
     }
     return _GDAL_DTYPE_LUT[gdal_dtype]
 
 
-def _gdal_auto_compress(src_fpath: str | None = None, data: np.ndarray | None = None, data_set=None) -> str:
+def _gdal_auto_compress(
+    src_fpath: str | None = None, data: np.ndarray | None = None, data_set=None
+) -> str:
     """
     Heuristic for automatically choosing gdal compression type
 
@@ -2038,7 +2144,6 @@ def _gdal_auto_compress(src_fpath: str | None = None, data: np.ndarray | None = 
             compress = 'LZW'
 
     if compress is None:
-
         if data_set is not None:
             if dtype is None:
                 main_band = data_set.GetRasterBand(1)
@@ -2112,9 +2217,10 @@ def _imread_svg(fpath: str) -> tuple[np.ndarray, str, str]:
     from svglib.svglib import svg2rlg
     import io
     from PIL import Image
+
     file = io.BytesIO()
     drawing = svg2rlg(fpath)
-    renderPM.drawToFile(drawing, file, fmt="PNG")
+    renderPM.drawToFile(drawing, file, fmt='PNG')
     file.seek(0)
     pil_img = Image.open(file)
     imdata = np.asarray(pil_img)
@@ -2172,13 +2278,19 @@ def _imread_exif(fpath: os.PathLike[str] | str) -> dict:
         if img_exif is None:
             exif_dict = {}
         else:
-            exif_dict = {ExifTags.TAGS[k]: v for k, v in img_exif.items()
-                         if k in ExifTags.TAGS}
+            exif_dict = {
+                ExifTags.TAGS[k]: v
+                for k, v in img_exif.items()
+                if k in ExifTags.TAGS
+            }
             if 'GPSInfo' in exif_dict:
                 # TODO: get raw rationals?
-                exif_dict['GPSInfo'] = ub.map_keys(GPSTAGS, exif_dict['GPSInfo'])
+                exif_dict['GPSInfo'] = ub.map_keys(
+                    GPSTAGS, exif_dict['GPSInfo']
+                )
     else:
         import piexif
+
         raw_exif = piexif.load(os.fspath(fpath))
         exif_dict = _rekey_exif_dict(raw_exif)
 
@@ -2187,12 +2299,15 @@ def _imread_exif(fpath: os.PathLike[str] | str) -> dict:
 
 def _rekey_exif_dict(raw_exif: dict) -> dict:
     import piexif
+
     mappers = {}
     mappers['0th'] = {k: r['name'] for k, r in piexif.TAGS['0th'].items()}
     mappers['1st'] = {k: r['name'] for k, r in piexif.TAGS['1st'].items()}
     mappers['GPS'] = {k: r['name'] for k, r in piexif.TAGS['GPS'].items()}
     mappers['Exif'] = {k: r['name'] for k, r in piexif.TAGS['Exif'].items()}
-    mappers['Interop'] = {k: r['name'] for k, r in piexif.TAGS['Interop'].items()}
+    mappers['Interop'] = {
+        k: r['name'] for k, r in piexif.TAGS['Interop'].items()
+    }
     # Convert numbers to tag names.
     exif_dict = {}
     for group_key, group in raw_exif.items():

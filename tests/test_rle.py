@@ -17,15 +17,23 @@ def test_from_mask_rle_translate():
         # automated tests.
         N, M = 2, 3
         offset_choices = [
-            (1, 1), (0, 0), (-1, -1),
+            (1, 1),
+            (0, 0),
+            (-1, -1),
         ]
         shape_choices = [
-            (4, 4), (N, M), (2, 2),
+            (4, 4),
+            (N, M),
+            (2, 2),
         ]
     else:
         N, M = 3, 5
         offset_choices = [
-            (1, 2), (0, 0), (-1, 0), (0, -1), (-1, -2),
+            (1, 2),
+            (0, 0),
+            (-1, 0),
+            (0, -1),
+            (-1, -2),
         ]
         shape_choices = [
             (N + 2, M + 2),
@@ -73,15 +81,23 @@ def test_rle_translate():
         # automated tests.
         N, M = 2, 3
         offset_choices = [
-            (1, 1), (0, 0), (-1, -1),
+            (1, 1),
+            (0, 0),
+            (-1, -1),
         ]
         shape_choices = [
-            (4, 4), (N, M), (2, 2),
+            (4, 4),
+            (N, M),
+            (2, 2),
         ]
     else:
         N, M = 3, 5
         offset_choices = [
-            (1, 2), (0, 0), (-1, 0), (0, -1), (-1, -2),
+            (1, 2),
+            (0, 0),
+            (-1, 0),
+            (0, -1),
+            (-1, -2),
         ]
         shape_choices = [
             (N + 2, M + 2),

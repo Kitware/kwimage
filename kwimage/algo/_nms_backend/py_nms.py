@@ -4,12 +4,13 @@ Copyright (c) 2015 Microsoft
 Licensed under The MIT License [see LICENSE for details]
 Written by Ross Girshick
 """
+
 from __future__ import annotations
 import numpy as np
 import warnings
 
 
-def py_nms(np_ltrb, np_scores, thresh, bias: int=1):
+def py_nms(np_ltrb, np_scores, thresh, bias: int = 1):
     """
     Pure Python NMS baseline.
 
@@ -84,8 +85,8 @@ def py_nms(np_ltrb, np_scores, thresh, bias: int=1):
     x2 = np_ltrb[:, 2]
     y2 = np_ltrb[:, 3]
 
-    widths = (x2 - x1 + bias)
-    heights = (y2 - y1 + bias)
+    widths = x2 - x1 + bias
+    heights = y2 - y1 + bias
     areas = widths * heights
 
     idxs_remain = np_scores.argsort()[::-1]
@@ -111,7 +112,7 @@ def py_nms(np_ltrb, np_scores, thresh, bias: int=1):
             w = np.maximum(0.0, xx2 - xx1 + bias)
             h = np.maximum(0.0, yy2 - yy1 + bias)
             inter = w * h
-            denom = (areas[i] + areas[idxs_remain] - inter)
+            denom = areas[i] + areas[idxs_remain] - inter
             iou = inter / denom
             iou = np.nan_to_num(iou)
             # print('Checking overlap between the i={}-th and remaining boxes'.format(i))
@@ -131,4 +132,5 @@ if __name__ == '__main__':
         xdoctest -m kwimage.algo._nms_backend.py_nms
     """
     import xdoctest
+
     xdoctest.doctest_module(__file__)

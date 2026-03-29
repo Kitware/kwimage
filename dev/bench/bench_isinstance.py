@@ -5,6 +5,7 @@ class Base1(object):
 
 class Base2(object):
     class_attr1 = True
+
     def __init__(self):
         self.attr1 = True
 
@@ -21,13 +22,13 @@ def bench_isinstance_vs_attr():
     }
 
     import ubelt as ub
+
     ti = ub.Timerit(100000, bestof=500, verbose=1, unit='us')
 
     # Do this twice, but keep the second measure
     data = ub.AutoDict()
 
     for selfname, self in instances.items():
-
         print(ub.color_text('--- SELF = {} ---'.format(selfname), 'blue'))
 
         subdata = data[selfname] = {}
@@ -59,9 +60,11 @@ def bench_isinstance_vs_attr():
 
     try:
         import pandas as pd
+
         df = pd.DataFrame(data) * 1e9
         try:
             from kwil.util.util_pandas import _to_string_monkey
+
             print(_to_string_monkey(df, key='minima'))
         except Exception:
             print(df)

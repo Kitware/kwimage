@@ -1,7 +1,14 @@
 def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
     # FIXME
     # Format boxes in lightnet format
-    cpu_ln_boxes = torch.cat([cpu_boxes.to_cxywh().data, cpu_scores[:, None], cpu_cls.float()[:, None]], dim=-1)
+    cpu_ln_boxes = torch.cat(
+        [
+            cpu_boxes.to_cxywh().data,
+            cpu_scores[:, None],
+            cpu_cls.float()[:, None],
+        ],
+        dim=-1,
+    )
     gpu_ln_boxes = cpu_ln_boxes.to(gpu)
 
     def _ln_output_to_keep(ln_output, ln_boxes):
@@ -15,9 +22,12 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
         return keep
 
     from lightnet.data.transform._postprocess import NonMaxSupression
+
     for timer in ti.reset('lightnet-slow(gpu)'):
         with timer:
-            ln_output = NonMaxSupression._nms(gpu_ln_boxes, nms_thresh=thresh, class_nms=False, fast=False)
+            ln_output = NonMaxSupression._nms(
+                gpu_ln_boxes, nms_thresh=thresh, class_nms=False, fast=False
+            )
             torch.cuda.synchronize()
     # convert lightnet NMS output to keep for consistency
     keep = _ln_output_to_keep(ln_output, gpu_ln_boxes)
@@ -27,7 +37,9 @@ def time_lightnet_nms(ti, cpu_boxes, gpu, ydata, outputs, thresh):
     if False:
         for timer in ti.reset('lightnet-fast(gpu)'):
             with timer:
-                ln_output = NonMaxSupression._nms(gpu_ln_boxes, nms_thresh=thresh, class_nms=False, fast=True)
+                ln_output = NonMaxSupression._nms(
+                    gpu_ln_boxes, nms_thresh=thresh, class_nms=False, fast=True
+                )
                 torch.cuda.synchronize()
         # convert lightnet NMS output to keep for consistency
         keep = _ln_output_to_keep(ln_output, gpu_ln_boxes)

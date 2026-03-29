@@ -1,18 +1,19 @@
-
-
 def test_mask_with_bool_data():
     """
     Ensure that `to_multi_polygon` doesn't break when the mask is a boolean
     type. We mainly just run these to ensure there is no crash.
     """
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
     import kwimage
     import ubelt as ub
     import numpy as np
     import kwarray
+
     rng = kwarray.ensure_rng(42134)
     mask_data = rng.rand(32, 32) > 0.5
     mask = kwimage.Mask(mask_data, 'c_mask')
@@ -38,6 +39,7 @@ def test_mask_with_bool_data():
     mask.translate(3)
     if ub.modname_to_modpath('torch'):
         import torch  # NOQA
+
         mask.warp(kwimage.Affine.eye(), output_dims='same')
         mask.scale(2.3)
     mask.get_patch()

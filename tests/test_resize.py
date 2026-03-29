@@ -60,12 +60,12 @@ def test_imresize_multi_channel():
             # 'area',
             # 'linear',
             # 'cubic',
-            'nearest'
+            'nearest',
         ],
         'antialias': [
             True,
             # False,
-        ]
+        ],
     }
 
     image_basis = {
@@ -82,11 +82,7 @@ def test_imresize_multi_channel():
             20,
             1024,
         ],
-        'dtype': [
-            'uint8',
-            'float32',
-            'float64'
-        ],
+        'dtype': ['uint8', 'float32', 'float64'],
     }
 
     resize_kw_list = list(ub.named_product(resize_kw_basis))
@@ -103,7 +99,9 @@ def test_imresize_multi_channel():
         for resize_kw in resize_kw_list:
             params = dict(resize_kw=resize_kw, imgkw=imgkw)
             try:
-                label = ub.urepr(params, nl=0, nobr=True, si=1, sv=1, kvsep='=', itemsep='')
+                label = ub.urepr(
+                    params, nl=0, nobr=True, si=1, sv=1, kvsep='=', itemsep=''
+                )
                 for timer in ti.reset(label):
                     with timer:
                         kwimage.imresize(img, **resize_kw)
@@ -125,6 +123,7 @@ def test_resize_shapes():
     except ImportError:
         pytest.skip('requires cv2')
     import kwimage
+
     data = np.random.rand(32, 32)
     new = kwimage.imresize(data, scale=2)
     assert new.shape == (64, 64)
@@ -144,6 +143,7 @@ def test_resize_bool():
     except ImportError:
         pytest.skip('requires cv2')
     import kwimage
+
     img = (np.random.rand(32, 32, 1) > 0.5).astype(bool)
     new = kwimage.imresize(img, scale=2)
     assert new.dtype.kind == 'b'

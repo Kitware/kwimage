@@ -1,11 +1,12 @@
-
 def test_interlaced():
     """
     sudo apt install imagemagick
     """
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
     import ubelt as ub
     import cv2
@@ -13,13 +14,17 @@ def test_interlaced():
     from os.path import join
 
     import pytest
-    pytest.skip('This is an exploration of an issue, not a test that we should run')
+
+    pytest.skip(
+        'This is an exploration of an issue, not a test that we should run'
+    )
 
     # https://stackoverflow.com/questions/19742548/how-to-de-interlace-png-files
     convert_ext = ub.find_exe('convert')
 
     if not convert_ext:
         import pytest
+
         pytest.skip('need image magick for this test')
 
     dpath = ub.Path.appdir('kwimage/tests/io').ensuredir()
@@ -39,12 +44,18 @@ def test_interlaced():
     ]
 
     for interlace_type in interlace_types:
-
-        interlaced_fpath = join(dpath, 'interlaced_{}.png'.format(interlace_type))
+        interlaced_fpath = join(
+            dpath, 'interlaced_{}.png'.format(interlace_type)
+        )
 
         info = ub.cmd(
-            'convert {orig_fpath} -interlace {interlace_type} {interlaced_fpath}'.format(**locals()),
-            cwd=dpath, verbose=2, check=1)
+            'convert {orig_fpath} -interlace {interlace_type} {interlaced_fpath}'.format(
+                **locals()
+            ),
+            cwd=dpath,
+            verbose=2,
+            check=1,
+        )
 
         ret1 = kwimage.imread(interlaced_fpath)
         ret2 = cv2.imread(interlaced_fpath, cv2.IMREAD_UNCHANGED)
@@ -57,6 +68,7 @@ def test_interlaced():
 
         if 0:
             import kwplot
+
             kwplot.autompl()
             kwplot.imshow(data, pnum=(1, 3, 1))
             kwplot.imshow(ret1, pnum=(1, 3, 2))
@@ -82,11 +94,16 @@ def test_cross_backend_reads():
     itself is also using a backend plugin system.
     """
     import pytest
-    pytest.skip('This is a demonstration of an issue, not a test that we should run yet')
+
+    pytest.skip(
+        'This is a demonstration of an issue, not a test that we should run yet'
+    )
 
     from kwimage import im_io
+
     if not im_io._have_gdal():
         import pytest
+
         pytest.skip()
 
     import kwimage
@@ -116,20 +133,25 @@ def test_cross_backend_reads():
 
     import os
     from osgeo import gdal
+
     infos = {}
     infos['skim'] = gdal.Info(os.fspath(skim_fpath), format='json')
     infos['tif'] = gdal.Info(os.fspath(tiff_fpath), format='json')
     infos['gdal'] = gdal.Info(os.fspath(gdal_fpath), format='json')
 
-    print('infos["gdal"] = {}'.format(ub.urepr(infos["gdal"], nl=-1)))
-    print('infos["tif"] = {}'.format(ub.urepr(infos["tif"], nl=-1)))
-    print('infos["skim"] = {}'.format(ub.urepr(infos["skim"], nl=-1)))
+    print('infos["gdal"] = {}'.format(ub.urepr(infos['gdal'], nl=-1)))
+    print('infos["tif"] = {}'.format(ub.urepr(infos['tif'], nl=-1)))
+    print('infos["skim"] = {}'.format(ub.urepr(infos['skim'], nl=-1)))
 
     results = {}
     results['recon_skim_with_gdal'] = kwimage.imread(skim_fpath, backend='gdal')
     results['recon_gdal_with_gdal'] = kwimage.imread(gdal_fpath, backend='gdal')
-    results['recon_skim_with_skim'] = kwimage.imread(skim_fpath, backend='skimage')
-    results['recon_gdal_with_skim'] = kwimage.imread(gdal_fpath, backend='skimage')
+    results['recon_skim_with_skim'] = kwimage.imread(
+        skim_fpath, backend='skimage'
+    )
+    results['recon_gdal_with_skim'] = kwimage.imread(
+        gdal_fpath, backend='skimage'
+    )
 
     shapes = ub.map_vals(lambda x: x.shape, results)
     print('shapes = {}'.format(ub.urepr(shapes, nl=1)))

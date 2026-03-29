@@ -2,6 +2,7 @@ import numpy as np
 from shapely import geometry
 import kwplot
 import kwimage
+
 plt = kwplot.autoplt()
 
 kwplot.figure(doclf=1)
@@ -29,29 +30,36 @@ offset2 = shape2.exterior.project(geometry.Point(cannon2))
 # shape1.exterior.xy
 
 # Find the fractional point along the exterior that each vertex lives on
-ring_dist1 = [shape1.exterior.project(geometry.Point(pt), normalized=True)
-              for pt in poly1.exterior.data]
+ring_dist1 = [
+    shape1.exterior.project(geometry.Point(pt), normalized=True)
+    for pt in poly1.exterior.data
+]
 
 # Find the fractional point along the exterior that each vertex lives on
-ring_dist2 = [shape2.exterior.project(geometry.Point(pt), normalized=True)
-              for pt in poly2.exterior.data]
+ring_dist2 = [
+    shape2.exterior.project(geometry.Point(pt), normalized=True)
+    for pt in poly2.exterior.data
+]
 
 ring_distB = sorted(set(ring_dist1 + ring_dist2))
 interps = np.array(ring_distB)
 
 
-coords1 = np.array([
-    shape1.exterior.interpolate(i).xy
-    for i in ((interps * shape1.exterior.length)) % shape1.exterior.length
-]).squeeze()
-coords2 = np.array([
-    shape2.exterior.interpolate(i).xy
-    for i in ((interps * shape2.exterior.length)) % shape2.exterior.length
-]).squeeze()
+coords1 = np.array(
+    [
+        shape1.exterior.interpolate(i).xy
+        for i in (interps * shape1.exterior.length) % shape1.exterior.length
+    ]
+).squeeze()
+coords2 = np.array(
+    [
+        shape2.exterior.interpolate(i).xy
+        for i in (interps * shape2.exterior.length) % shape2.exterior.length
+    ]
+).squeeze()
 
 interpolated_shapes = [
-    geometry.Polygon(coords)
-    for coords in np.linspace(coords1, coords2, 5)
+    geometry.Polygon(coords) for coords in np.linspace(coords1, coords2, 5)
 ]
 
 for shape in interpolated_shapes:

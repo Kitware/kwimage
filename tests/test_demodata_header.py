@@ -9,6 +9,7 @@ def test_demodata_headers():
 
     if not ub.argflag('--network'):
         import pytest
+
         pytest.skip('requires network')
 
     for key in kwimage.grab_test_image.keys():

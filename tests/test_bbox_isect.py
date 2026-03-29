@@ -1,10 +1,34 @@
-
 def test_bbox_isect_failure_case():
     import ubelt as ub
     import numpy as np
     import kwimage
-    small_box = kwimage.Boxes(np.array([[119.86356797952962, -0.8880716867719497, 119.86816351547256, -0.892667222714885]]), 'ltrb')
-    big_box = kwimage.Boxes(np.array([[119.8631329409319, -0.8610904994264246, 119.92872610984104, -0.9266836683730109]]), 'ltrb')
+
+    small_box = kwimage.Boxes(
+        np.array(
+            [
+                [
+                    119.86356797952962,
+                    -0.8880716867719497,
+                    119.86816351547256,
+                    -0.892667222714885,
+                ]
+            ]
+        ),
+        'ltrb',
+    )
+    big_box = kwimage.Boxes(
+        np.array(
+            [
+                [
+                    119.8631329409319,
+                    -0.8610904994264246,
+                    119.92872610984104,
+                    -0.9266836683730109,
+                ]
+            ]
+        ),
+        'ltrb',
+    )
 
     print('big_box.height = {!r}'.format(big_box.height))
     print('small_box.height = {!r}'.format(small_box.height))

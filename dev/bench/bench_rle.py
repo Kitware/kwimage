@@ -4,6 +4,7 @@ def benchmark_select_rle_conversions():
     """
     import kwimage
     import ubelt as ub
+
     c_mask = kwimage.Mask.random(shape=(256, 256))
     f_mask = c_mask.to_fortran_mask(copy=True)
 
@@ -44,6 +45,7 @@ def benchmark_all_mask_conversions():
     ti = ub.Timerit(1000, bestof=50, verbose=1, unit='us')
 
     from kwimage.structs.mask import MaskFormat  # NOQA
+
     for format1 in MaskFormat.cannonical:
         print('--- {} ---'.format(format1))
         mask1 = base_mask.toformat(format1)
@@ -55,6 +57,7 @@ def benchmark_all_mask_conversions():
 
 def _test_array_from_bytes():
     import kwimage
+
     base_mask = kwimage.Mask.random(shape=(256, 256), rng=0)
     array_mask = base_mask.to_array_rle()
     bytes_mask = base_mask.to_bytes_rle()
@@ -67,6 +70,7 @@ def _test_array_from_bytes():
 
     def _unpack(s):
         import numpy as np
+
         # verbatim inefficient impl
         cnts = np.empty(len(s), dtype=np.int64)
         p = 0
@@ -77,12 +81,12 @@ def _test_array_from_bytes():
             more = 1
             while more != 0:
                 c = s[p] - 48
-                x |= (c & 0x1f) << 5 * k
+                x |= (c & 0x1F) << 5 * k
                 more = c & 0x20
                 p += 1
                 k += 1
                 if more == 0 and (c & 0x10):
-                    x |= (-1 << 5 * k)
+                    x |= -1 << 5 * k
             if m > 2:
                 x += np.int64(cnts[m - 2])
             cnts[m] = x

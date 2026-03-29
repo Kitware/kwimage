@@ -5,6 +5,7 @@ def test_cv2_func_dtypes():
     import kwimage
     from functools import partial
     import numpy as np
+
     try:
         import cv2  # NOQA
     except ImportError:
@@ -14,7 +15,9 @@ def test_cv2_func_dtypes():
     funcs = {
         'resize': partial(kwimage.imresize, scale=2),
         'morphology': partial(kwimage.morphology, mode='erode'),
-        'warp_affine': partial(kwimage.warp_affine, transform=kwimage.Affine.random()),
+        'warp_affine': partial(
+            kwimage.warp_affine, transform=kwimage.Affine.random()
+        ),
         'gaussian_blur': partial(kwimage.gaussian_blur),
         'imcrop': partial(kwimage.imcrop, dsize=(10, 10)),
     }
@@ -44,12 +47,14 @@ def test_cv2_func_dtypes():
             else:
                 status = 'pass'
                 success = True
-            rows.append({
-                'func': k,
-                'dtype': dtk,
-                'success': success,
-                'status': status,
-            })
+            rows.append(
+                {
+                    'func': k,
+                    'dtype': dtk,
+                    'success': success,
+                    'status': status,
+                }
+            )
 
     must_work = ['uint8', 'int16', 'uint16']
     for row in rows:
@@ -59,6 +64,7 @@ def test_cv2_func_dtypes():
     if 0:
         import pandas as pd
         import rich
+
         df = pd.DataFrame(rows)
         rich.print(df)
         rich.print(df.pivot(['func'], ['dtype'], ['success']).to_string())

@@ -14,10 +14,12 @@ I've setup two matrices `A_params` and `A_matrix`, where the former represents
 the raw matrix values and the latter is the matrix constructed from its
 underlying parameters.
 """
+
 import sympy
 import itertools as it
 import ubelt as ub
 import numpy as np
+
 # domain = {'real': True, 'negative': False}
 # domain = {}
 domain = {'real': True}
@@ -27,23 +29,31 @@ sx, sy = sympy.symbols('sx, sy', **domain)
 m = sympy.symbols('m', **domain)
 params = [sx, theta, sy, m]
 
-S = sympy.Matrix([  # scale
-    [sx,  0],
-    [ 0, sy]])
+S = sympy.Matrix(
+    [  # scale
+        [sx, 0],
+        [0, sy],
+    ]
+)
 
-H = sympy.Matrix([  # shear
-    [1, m],
-    [0, 1]])
+H = sympy.Matrix(
+    [  # shear
+        [1, m],
+        [0, 1],
+    ]
+)
 
-R = sympy.Matrix((  # rotation
-    [sympy.cos(theta), -sympy.sin(theta)],
-    [sympy.sin(theta),  sympy.cos(theta)]))
+R = sympy.Matrix(
+    (  # rotation
+        [sympy.cos(theta), -sympy.sin(theta)],
+        [sympy.sin(theta), sympy.cos(theta)],
+    )
+)
 # R = sympy.matrices.dense.rot_axis3(theta)[0:2, 0:2]
 
 
 A_params = sympy.simplify((R @ H @ S))
-a11, a12, a21, a22 = sympy.symbols(
-    'a11, a12, a21, a22', real=True)
+a11, a12, a21, a22 = sympy.symbols('a11, a12, a21, a22', real=True)
 A_matrix = sympy.Matrix(((a11, a12), (a21, a22)))
 elements = list(it.chain.from_iterable(A_matrix.tolist()))
 
@@ -78,7 +88,7 @@ if 0:
     shear = sympy.symbols('shear', **domain)
     shear_equations = [
         sympy.Eq(A_params[0, 1], -sy * sympy.sin(theta + shear)),
-        sympy.Eq(A_params[1, 1],  sy * sympy.cos(theta + shear))
+        sympy.Eq(A_params[1, 1], sy * sympy.cos(theta + shear)),
     ]
     sympy.solve(shear_equations, shear)
     sympy.solvers.solveset(shear_equations, shear)
@@ -102,7 +112,9 @@ First, if I just try to solve for "sx", I get no result.
 mat_equation = sympy.Eq(A_matrix, A_params)
 if 0:
     ## Option 1: Matrix equality
-    soln_sx = sympy.solve(mat_equation, sx, exclude=[theta, sy, m], manual=True, dict=True)
+    soln_sx = sympy.solve(
+        mat_equation, sx, exclude=[theta, sy, m], manual=True, dict=True
+    )
     print('soln_sx = {!r}'.format(soln_sx))
 
     ## Option 2: List of equations
@@ -115,7 +127,13 @@ if 0:
     if 0:
         sympy.solveset(mat_equation, sx, sympy.Reals)
         sympy.nonlinsolve(equations, sx)
-        sympy.solve(equations, (m, sx, sy, theta), particular=True, manual=True, quintics=False)
+        sympy.solve(
+            equations,
+            (m, sx, sy, theta),
+            particular=True,
+            manual=True,
+            quintics=False,
+        )
 
     """
     soln_sx = []
@@ -149,17 +167,26 @@ for sol in solutions:
 
     A_matrix[0, :].dot(A_matrix[1, :]) / A_matrix.det()
 
-S = sympy.Matrix([  # scale
-    [sx,  0],
-    [ 0, sy]])
+S = sympy.Matrix(
+    [  # scale
+        [sx, 0],
+        [0, sy],
+    ]
+)
 
-H = sympy.Matrix([  # shear
-    [1, m],
-    [0, 1]])
+H = sympy.Matrix(
+    [  # shear
+        [1, m],
+        [0, 1],
+    ]
+)
 
-R = sympy.Matrix((  # rotation
-    [sympy.cos(theta), -sympy.sin(theta)],
-    [sympy.sin(theta),  sympy.cos(theta)]))
+R = sympy.Matrix(
+    (  # rotation
+        [sympy.cos(theta), -sympy.sin(theta)],
+        [sympy.sin(theta), sympy.cos(theta)],
+    )
+)
 
 A_solved_recon = sympy.simplify(A_params.subs(solved))
 
@@ -347,7 +374,9 @@ A_recon = ⎡a₁₁  a₁₂⎤
 params = [sx, theta, sy, m]
 params_rand = {p: np.random.rand() for p in params}
 A_params_rand = A_params.subs(params_rand)
-matrix_rand = {lhs: rhs for lhs, rhs in zip(elements, ub.flatten(A_params_rand.tolist()))}
+matrix_rand = {
+    lhs: rhs for lhs, rhs in zip(elements, ub.flatten(A_params_rand.tolist()))
+}
 A_matrix_rand = A_matrix.subs(matrix_rand)
 A_solved_rand = A_solved_recon.subs(matrix_rand)
 A_recon_rand = A_recon.subs(matrix_rand)

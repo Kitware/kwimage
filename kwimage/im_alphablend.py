@@ -10,17 +10,23 @@ References:
     .. [WikiBlendModes] https://en.wikipedia.org/wiki/Blend_modes
     .. [PypiBlendModes] https://pypi.org/project/blend-modes/
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
 from . import im_core
+
 if TYPE_CHECKING:
     from typing import Sequence
     from numpy import ndarray
 
 
-def overlay_alpha_layers(layers: Sequence[ndarray], keepalpha: bool=True, dtype: np.dtype=np.float32) -> ndarray:
+def overlay_alpha_layers(
+    layers: Sequence[ndarray],
+    keepalpha: bool = True,
+    dtype: np.dtype = np.float32,
+) -> ndarray:
     """
     Stacks a sequences of layers on top of one another. The first item is the
     topmost layer and the last item is the bottommost layer.
@@ -60,8 +66,13 @@ def overlay_alpha_layers(layers: Sequence[ndarray], keepalpha: bool=True, dtype:
     return raster
 
 
-def overlay_alpha_images(img1: ndarray, img2: ndarray, keepalpha: bool=True, dtype: np.dtype=np.float32,
-                         impl: str='inplace') -> ndarray:
+def overlay_alpha_images(
+    img1: ndarray,
+    img2: ndarray,
+    keepalpha: bool = True,
+    dtype: np.dtype = np.float32,
+    impl: str = 'inplace',
+) -> ndarray:
     """
     Places img1 on top of img2 respecting alpha channels.
     Works like the Photoshop layers with opacity.
@@ -163,11 +174,11 @@ def _alpha_blend_simple(rgb1, alpha1, rgb2, alpha2):
     SeeAlso:
         _alpha_blend_inplace - alternative implementation
     """
-    c_alpha1 = (1.0 - alpha1)
+    c_alpha1 = 1.0 - alpha1
     alpha3 = alpha1 + alpha2 * c_alpha1
 
-    numer1 = (rgb1 * alpha1[..., None])
-    numer2 = (rgb2 * (alpha2 * c_alpha1)[..., None])
+    numer1 = rgb1 * alpha1[..., None]
+    numer2 = rgb2 * (alpha2 * c_alpha1)[..., None]
     with np.errstate(invalid='ignore'):
         rgb3 = (numer1 + numer2) / alpha3[..., None]
     rgb3[alpha3 == 0] = 0
@@ -226,19 +237,23 @@ def _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2):
 
 
 def _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2):
-    """ Alternative. Not well optimized """
+    """Alternative. Not well optimized"""
     import numexpr
+
     alpha1_ = alpha1[..., None]  # NOQA
     alpha2_ = alpha2[..., None]  # NOQA
     alpha3 = numexpr.evaluate('alpha1 + alpha2 * (1.0 - alpha1)')
     alpha3_ = alpha3[..., None]  # NOQA
-    rgb3 = numexpr.evaluate('((rgb1 * alpha1_) + (rgb2 * alpha2_ * (1.0 - alpha1_))) / alpha3_')
+    rgb3 = numexpr.evaluate(
+        '((rgb1 * alpha1_) + (rgb2 * alpha2_ * (1.0 - alpha1_))) / alpha3_'
+    )
     rgb3[alpha3 == 0] = 0
 
 
 def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
-    """ Alternative. Not well optimized """
+    """Alternative. Not well optimized"""
     import numexpr
+
     c_alpha1 = numexpr.evaluate('1.0 - alpha1')
     alpha3 = numexpr.evaluate('alpha1 + alpha2 * c_alpha1')
 
@@ -255,7 +270,12 @@ def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
     return rgb3, alpha3
 
 
-def ensure_alpha_channel(img: ndarray, alpha: float | ndarray=1.0, dtype: type=np.float32, copy: bool=False) -> ndarray:
+def ensure_alpha_channel(
+    img: ndarray,
+    alpha: float | ndarray = 1.0,
+    dtype: type = np.float32,
+    copy: bool = False,
+) -> ndarray:
     """
     Returns the input image with 4 channels.
 
@@ -321,11 +341,14 @@ def ensure_alpha_channel(img: ndarray, alpha: float | ndarray=1.0, dtype: type=n
         if isinstance(alpha, np.ndarray):
             alpha_channel = alpha
         else:
-            alpha_channel = np.full(img.shape[0:2], fill_value=alpha, dtype=img.dtype)
+            alpha_channel = np.full(
+                img.shape[0:2], fill_value=alpha, dtype=img.dtype
+            )
         if c == 3:
             return np.dstack([img, alpha_channel])
         elif c == 1:
             return np.dstack([img, img, img, alpha_channel])
         else:
             raise ValueError(
-                'Cannot ensure alpha. Input image has c={} channels'.format(c))
+                'Cannot ensure alpha. Input image has c={} channels'.format(c)
+            )

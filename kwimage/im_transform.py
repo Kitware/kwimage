@@ -2,13 +2,23 @@
 Contains functions that used to belong to im_cv2, but have been generalized to
 accept different backends.
 """
+
 from kwimage._backend_info import _default_backend
 
 
-def warp_image(image, transform, dsize=None, antialias=False,
-               interpolation='linear', border_mode=None, border_value=0,
-               large_warp_dim=None, origin_convention='center',
-               return_info=False, backend='auto'):
+def warp_image(
+    image,
+    transform,
+    dsize=None,
+    antialias=False,
+    interpolation='linear',
+    border_mode=None,
+    border_value=0,
+    large_warp_dim=None,
+    origin_convention='center',
+    return_info=False,
+    backend='auto',
+):
     """
     Applies an transformation to an image with optional antialiasing.
 
@@ -111,22 +121,38 @@ def warp_image(image, transform, dsize=None, antialias=False,
         >>> kwplot.show_if_requested()
     """
     import kwimage
+
     transform = kwimage.Projective.coerce(transform)
-    kwargs = dict(dsize=dsize, antialias=antialias,
-                  interpolation=interpolation, border_mode=border_mode,
-                  border_value=border_value, large_warp_dim=large_warp_dim,
-                  origin_convention=origin_convention,
-                  return_info=return_info, backend=backend)
+    kwargs = dict(
+        dsize=dsize,
+        antialias=antialias,
+        interpolation=interpolation,
+        border_mode=border_mode,
+        border_value=border_value,
+        large_warp_dim=large_warp_dim,
+        origin_convention=origin_convention,
+        return_info=return_info,
+        backend=backend,
+    )
     if transform.is_affine():
         return kwimage.warp_affine(image, transform, **kwargs)
     else:
         return kwimage.warp_projective(image, transform, **kwargs)
 
 
-def warp_projective(image, transform, dsize=None, antialias=False,
-                    interpolation='linear', border_mode=None, border_value=0,
-                    large_warp_dim=None, origin_convention='center',
-                    return_info=False, backend='auto'):
+def warp_projective(
+    image,
+    transform,
+    dsize=None,
+    antialias=False,
+    interpolation='linear',
+    border_mode=None,
+    border_value=0,
+    large_warp_dim=None,
+    origin_convention='center',
+    return_info=False,
+    backend='auto',
+):
     """
     Applies an projective transformation to an image with optional antialiasing.
 
@@ -207,6 +233,7 @@ def warp_projective(image, transform, dsize=None, antialias=False,
 
     if backend == 'cv2':
         from kwimage.im_cv2 import _cv2_warp_projective
+
         return _cv2_warp_projective(
             image=image,
             transform=transform,
@@ -220,19 +247,34 @@ def warp_projective(image, transform, dsize=None, antialias=False,
             return_info=return_info,
         )
     elif backend == 'itk':
-        raise NotImplementedError(f'no kwimage backend={backend} for warp_projective')
+        raise NotImplementedError(
+            f'no kwimage backend={backend} for warp_projective'
+        )
     elif backend == 'torch':
-        raise NotImplementedError(f'no kwimage backend={backend} for warp_projective')
+        raise NotImplementedError(
+            f'no kwimage backend={backend} for warp_projective'
+        )
     elif backend == 'skimage':
-        raise NotImplementedError(f'no kwimage backend={backend} for warp_projective')
+        raise NotImplementedError(
+            f'no kwimage backend={backend} for warp_projective'
+        )
     else:
         raise KeyError(f'no kwimage backend={backend} for warp_projective')
 
 
-def warp_affine(image, transform, dsize=None, antialias=False,
-                interpolation='linear', border_mode=None, border_value=0,
-                large_warp_dim=None, origin_convention='center',
-                return_info=False, backend='auto'):
+def warp_affine(
+    image,
+    transform,
+    dsize=None,
+    antialias=False,
+    interpolation='linear',
+    border_mode=None,
+    border_value=0,
+    large_warp_dim=None,
+    origin_convention='center',
+    return_info=False,
+    backend='auto',
+):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -548,6 +590,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
 
     if backend == 'cv2':
         from kwimage.im_cv2 import _cv2_warp_affine
+
         return _cv2_warp_affine(
             image=image,
             transform=transform,
@@ -562,6 +605,7 @@ def warp_affine(image, transform, dsize=None, antialias=False,
         )
     elif backend == 'itk':
         from kwimage.im_itk import _itk_warp_affine
+
         if large_warp_dim is not None:
             raise ValueError('itk backend does not support large_warp_dim')
         return _itk_warp_affine(
@@ -576,16 +620,31 @@ def warp_affine(image, transform, dsize=None, antialias=False,
             return_info=return_info,
         )
     elif backend == 'torch':
-        raise NotImplementedError(f'no kwimage backend={backend} for warp_affine')
+        raise NotImplementedError(
+            f'no kwimage backend={backend} for warp_affine'
+        )
     elif backend == 'skimage':
-        raise NotImplementedError(f'no kwimage backend={backend} for warp_affine')
+        raise NotImplementedError(
+            f'no kwimage backend={backend} for warp_affine'
+        )
     else:
         raise KeyError(f'no kwimage backend={backend} for warp_affine')
 
 
-def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
-             interpolation=None, grow_interpolation=None, letterbox=False,
-             return_info=False, antialias=False, border_value=0, backend='auto'):
+def imresize(
+    img,
+    scale=None,
+    dsize=None,
+    max_dim=None,
+    min_dim=None,
+    interpolation=None,
+    grow_interpolation=None,
+    letterbox=False,
+    return_info=False,
+    antialias=False,
+    border_value=0,
+    backend='auto',
+):
     """
     Resize an image via a scale factor, final size, or size and aspect ratio.
 
@@ -781,16 +840,31 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
 
     if backend == 'cv2':
         from kwimage.im_cv2 import _cv2_imresize
+
         return _cv2_imresize(
-            img=img, scale=scale, dsize=dsize, max_dim=max_dim, min_dim=min_dim,
-            interpolation=interpolation, grow_interpolation=grow_interpolation,
-            letterbox=letterbox, return_info=return_info, antialias=antialias,
+            img=img,
+            scale=scale,
+            dsize=dsize,
+            max_dim=max_dim,
+            min_dim=min_dim,
+            interpolation=interpolation,
+            grow_interpolation=grow_interpolation,
+            letterbox=letterbox,
+            return_info=return_info,
+            antialias=antialias,
         )
     elif backend == 'skimage':
         return _skimage_resize(
-            img=img, scale=scale, dsize=dsize, max_dim=max_dim, min_dim=min_dim,
-            interpolation=interpolation, grow_interpolation=grow_interpolation,
-            letterbox=letterbox, return_info=return_info, antialias=antialias,
+            img=img,
+            scale=scale,
+            dsize=dsize,
+            max_dim=max_dim,
+            min_dim=min_dim,
+            interpolation=interpolation,
+            grow_interpolation=grow_interpolation,
+            letterbox=letterbox,
+            return_info=return_info,
+            antialias=antialias,
         )
     elif backend == 'torch':
         raise NotImplementedError(backend)
@@ -798,9 +872,19 @@ def imresize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         raise KeyError(backend)
 
 
-def _skimage_resize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
-                    interpolation=None, grow_interpolation=None, letterbox=False,
-                    return_info=False, antialias=False, border_value=0):
+def _skimage_resize(
+    img,
+    scale=None,
+    dsize=None,
+    max_dim=None,
+    min_dim=None,
+    interpolation=None,
+    grow_interpolation=None,
+    letterbox=False,
+    return_info=False,
+    antialias=False,
+    border_value=0,
+):
     """
     Example:
         >>> import numpy as np
@@ -810,9 +894,15 @@ def _skimage_resize(img, scale=None, dsize=None, max_dim=None, min_dim=None,
         >>> assert new_img.shape[0:2] == (21, 20)
     """
     from skimage.transform import resize
+
     not_implemented_params = [
-        letterbox, min_dim, max_dim, scale, grow_interpolation,
-        return_info, antialias
+        letterbox,
+        min_dim,
+        max_dim,
+        scale,
+        grow_interpolation,
+        return_info,
+        antialias,
     ]
     for p in not_implemented_params:
         if p:
@@ -837,7 +927,7 @@ def _coerce_skimage_interpolation_order(interpolation):
      - 5: Bi-quintic
     """
     if interpolation is None:
-        interpolation = 'linear'   # TODO: make consistent with the cv2 default interpolation, which is currently lanczos
+        interpolation = 'linear'  # TODO: make consistent with the cv2 default interpolation, which is currently lanczos
 
     if interpolation == 'nearest':
         order = 0

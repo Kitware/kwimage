@@ -1,5 +1,3 @@
-
-
 def gen_api_for_docs():
     """
     import sys, ubelt
@@ -7,18 +5,22 @@ def gen_api_for_docs():
     from gen_api_for_docs import *  # NOQA
     """
     from count_usage_freq import count_usage
+
     config, usage = count_usage(modname='kwimage')
     modname = config['modname']
 
-    gaurd = ('=' * 64 + ' ' + '=' * 16)
+    gaurd = '=' * 64 + ' ' + '=' * 16
     print(gaurd)
     print('{:<64} {:>8}'.format(' Function name ', 'Usefulness'))
     print(gaurd)
     for key, value in usage.items():
-        print('{:<64} {:>16}'.format(':func:`' + modname + '.' + key + '`', value))
+        print(
+            '{:<64} {:>16}'.format(':func:`' + modname + '.' + key + '`', value)
+        )
     print(gaurd)
 
     import ubelt as ub
+
     module = ub.import_module_from_name(modname)
 
     attrnames = module.__all__
@@ -38,6 +40,7 @@ def gen_api_for_docs():
         # if attrname.startswith('util_'):
         if not submembers:
             from mkinit.static_mkinit import _extract_attributes
+
             try:
                 submembers = _extract_attributes(member.__file__)
             except AttributeError:
@@ -52,6 +55,7 @@ def gen_api_for_docs():
             submembers = dir(member)
 
     print('config = ' + ub.urepr(config.asdict(), nl=1))
+
 
 if __name__ == '__main__':
     """

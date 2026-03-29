@@ -26,6 +26,7 @@ def benchmark_template():
     # Some bookkeeping needs to be done to build a dictionary that maps the
     # method names to the functions themselves.
     method_lut = {}
+
     def register_method(func):
         method_lut[func.__name__] = func
         return func
@@ -106,7 +107,9 @@ def benchmark_template():
         # 'size': ['zparam'],
     }
     group_labels['hue'] = list(
-        (ub.oset(basis) - {xlabel}) - set.union(set(), *map(set, group_labels.values())))
+        (ub.oset(basis) - {xlabel})
+        - set.union(set(), *map(set, group_labels.values()))
+    )
     grid_iter = list(ub.named_product(basis))
 
     # For each variation of your experiment, create a row.
@@ -116,11 +119,13 @@ def benchmark_template():
         group_keys = {}
         for gname, labels in group_labels.items():
             group_keys[gname + '_key'] = ub.urepr(
-                params & labels, compact=1, si=1)
+                params & labels, compact=1, si=1
+            )
         key = ub.urepr(params, compact=1, si=1)
         # Make any modifications you need to compute input kwargs for each
         # method here.
         import numpy as np
+
         data = (np.random.rand(params['num_boxes'], 4) - 0.5) * 100
         if params['backend'] == 'torch':
             data = torch.from_numpy(data)
@@ -179,7 +184,11 @@ def benchmark_template():
     if RECORD_ALL:
         # Show the min / mean if we record all
         min_times = data.groupby('key').min().rename({'time': 'min'}, axis=1)
-        mean_times = data.groupby('key')[['time']].mean().rename({'time': 'mean'}, axis=1)
+        mean_times = (
+            data.groupby('key')[['time']]
+            .mean()
+            .rename({'time': 'mean'}, axis=1)
+        )
         stats_data = pd.concat([min_times, mean_times], axis=1)
         stats_data = stats_data.sort_values('min')
     else:
@@ -190,9 +199,13 @@ def benchmark_template():
         # Lets try a real ranking method
         # https://github.com/OpenDebates/openskill.py
         import openskill
+
         method_ratings = {m: openskill.Rating() for m in basis['method']}
 
-    other_keys = sorted(set(stats_data.columns) - {'key', 'method', 'min', 'mean', 'hue_key', 'size_key', 'style_key'})
+    other_keys = sorted(
+        set(stats_data.columns)
+        - {'key', 'method', 'min', 'mean', 'hue_key', 'size_key', 'style_key'}
+    )
     for params, variants in stats_data.groupby(other_keys):
         variants = variants.sort_values('mean')
         ranking = variants['method'].reset_index(drop=True)
@@ -219,8 +232,11 @@ def benchmark_template():
 
     if USE_OPENSKILL:
         from openskill import predict_win
+
         win_prob = predict_win([[r] for r in method_ratings.values()])
-        skill_agg = pd.Series(ub.dzip(method_ratings.keys(), win_prob)).sort_values(ascending=False)
+        skill_agg = pd.Series(
+            ub.dzip(method_ratings.keys(), win_prob)
+        ).sort_values(ascending=False)
         print('Aggregated Rankings =\n{}'.format(skill_agg))
 
     plot = True
@@ -229,6 +245,7 @@ def benchmark_template():
         # kwplot autosns works well for IPython and script execution.
         # not sure about notebooks.
         import kwplot
+
         sns = kwplot.autosns()
         plt = kwplot.autoplt()
 
@@ -239,7 +256,9 @@ def benchmark_template():
 
         # Your variables may change
         ax = kwplot.figure(fnum=1, doclf=True).gca()
-        sns.lineplot(data=data, x=xlabel, y=time_key, marker='o', ax=ax, **plotkw)
+        sns.lineplot(
+            data=data, x=xlabel, y=time_key, marker='o', ax=ax, **plotkw
+        )
         ax.set_title(plot_labels['title'])
         ax.set_xlabel(plot_labels['x'])
         ax.set_ylabel(plot_labels['y'])
@@ -258,4 +277,3 @@ if __name__ == '__main__':
         python ~/code/timerit/examples/benchmark_template.py
     """
     benchmark_template()
-

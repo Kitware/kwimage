@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import numpy as np
 import ubelt as ub
+
 if TYPE_CHECKING:
     from typing import Any
 
@@ -41,6 +42,7 @@ class Box:
         >>> box = Box.from_slice(sl)
         >>> print(f'box={box}')
     """
+
     __slots__ = ('boxes',)
 
     def __init__(self, boxes, _check: bool = False) -> None:
@@ -82,6 +84,7 @@ class Box:
     @classmethod
     def random(self, **kwargs):
         import kwimage
+
         if kwargs.get('num', 1) != 1:
             raise ValueError('Cannot specify num for Box. Use Boxes instead.')
         kwargs['num'] = 1
@@ -90,8 +93,9 @@ class Box:
         return self
 
     @classmethod
-    def from_slice(self, slice_, shape=None, clip=True, endpoint=True,
-                   wrap=False):
+    def from_slice(
+        self, slice_, shape=None, clip=True, endpoint=True, wrap=False
+    ):
         """
         Example:
             >>> import kwimage
@@ -99,14 +103,17 @@ class Box:
             >>> new = kwimage.Box.from_slice(slice_)
         """
         import kwimage
-        boxes: Any = kwimage.Boxes.from_slice(slice_, shape=shape, clip=clip,
-                                         endpoint=endpoint, wrap=wrap)
+
+        boxes: Any = kwimage.Boxes.from_slice(
+            slice_, shape=shape, clip=clip, endpoint=endpoint, wrap=wrap
+        )
         self = Box(boxes, _check=False)
         return self
 
     @classmethod
     def from_shapely(self, geom):
         import kwimage
+
         boxes: Any = kwimage.Boxes.from_shapely(geom)
         self = Box(boxes, _check=False)
         return self
@@ -121,6 +128,7 @@ class Box:
             Self
         """
         import kwimage
+
         width, height = dsize
         ltrb = np.array([[0, 0, width, height]])
         boxes: Any = kwimage.Boxes(ltrb, 'ltrb', canonical=True)
@@ -130,13 +138,14 @@ class Box:
     @classmethod
     def from_data(self, data, format):
         import kwimage
+
         boxes: Any = kwimage.Boxes([data], format)
         self = Box(boxes, _check=False)
         return self
 
     @classmethod
     @profile
-    def coerce(cls, data, format: Any | None=None, **kwargs):
+    def coerce(cls, data, format: Any | None = None, **kwargs):
         """
         Create an instance of a box from data.
 
@@ -154,6 +163,7 @@ class Box:
         else:
             import numbers
             import sys
+
             torch = sys.modules.get('torch', None)
             if isinstance(data, list):
                 if data and isinstance(data[0], numbers.Number):
@@ -165,6 +175,7 @@ class Box:
             # inline new coerce code until new version lands
             from kwimage import Boxes
             from shapely.geometry import Polygon
+
             if isinstance(data, Boxes):
                 self = data
             elif isinstance(data, Polygon):
@@ -420,7 +431,7 @@ class Box:
     def area(self):
         return self.boxes.area.ravel()[0]
 
-    def to_slice(self, endpoint: bool=True):
+    def to_slice(self, endpoint: bool = True):
         """
         Example:
             >>> import kwimage
@@ -453,8 +464,16 @@ class Box:
         """
         return list(self.boxes.to_coco())[0]
 
-    def draw_on(self, image: Any | None=None, color: str='blue', alpha: Any | None=None, label: Any | None=None,
-                copy: bool=False, thickness: int=2, label_loc: str='top_left'):
+    def draw_on(
+        self,
+        image: Any | None = None,
+        color: str = 'blue',
+        alpha: Any | None = None,
+        label: Any | None = None,
+        copy: bool = False,
+        thickness: int = 2,
+        label_loc: str = 'top_left',
+    ):
         """
         Draws a box directly on an image using OpenCV
 
@@ -472,12 +491,28 @@ class Box:
             >>> kwplot.imshow(image)
             >>> kwplot.show_if_requested()
         """
-        return self.boxes.draw_on(image=image, color=color, alpha=alpha,
-                                  labels=[label], copy=copy,
-                                  thickness=thickness, label_loc=label_loc)
+        return self.boxes.draw_on(
+            image=image,
+            color=color,
+            alpha=alpha,
+            labels=[label],
+            copy=copy,
+            thickness=thickness,
+            label_loc=label_loc,
+        )
 
-    def draw(self, color: str='blue', alpha: Any | None=None, label: Any | None=None, centers: bool=False,
-             fill: bool=False, lw: int=2, ax: Any | None=None, setlim: bool=False, **kwargs):
+    def draw(
+        self,
+        color: str = 'blue',
+        alpha: Any | None = None,
+        label: Any | None = None,
+        centers: bool = False,
+        fill: bool = False,
+        lw: int = 2,
+        ax: Any | None = None,
+        setlim: bool = False,
+        **kwargs,
+    ):
         """
         Draws a box directly on an image using OpenCV
 
@@ -503,9 +538,17 @@ class Box:
             labels = None
         else:
             labels = [label]
-        return self.boxes.draw(color=color, alpha=alpha, labels=labels,
-                               centers=centers, fill=fill, lw=lw, ax=ax,
-                               setlim=setlim, **kwargs)
+        return self.boxes.draw(
+            color=color,
+            alpha=alpha,
+            labels=labels,
+            centers=centers,
+            fill=fill,
+            lw=lw,
+            ax=ax,
+            setlim=setlim,
+            **kwargs,
+        )
 
 
 def _transfer_docstrings():
@@ -541,6 +584,7 @@ def _transfer_docstrings():
     if 0:
         # FIXME: docscrape google should parse block types generically
         from xdoctest.docstr import docscrape_google
+
         for name, dst_func, src_func in corresponding_methods:
             blocks = docscrape_google.split_google_docblocks(src_func.__doc__)
             new_parts = []
@@ -566,6 +610,7 @@ def _transfer_docstrings():
                 'kwimage.Boxes, but does not have a docstring of its own. '
                 'In the meantime we will show the docstring from Boxes\n'
             ) + src_func.__doc__
+
 
 if 0:
     _transfer_docstrings()

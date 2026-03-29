@@ -5,6 +5,7 @@ single image.
 Notes:
     * We may change the "bg_value" argument to "bg_color" in the future.
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ import skimage
 import skimage.transform
 from . import im_core
 from . import im_cv2
+
 if TYPE_CHECKING:
     from typing import Iterable
     from numpy import ndarray
@@ -22,9 +24,17 @@ if TYPE_CHECKING:
     from typing import Tuple
 
 
-def stack_images(images: Iterable[ndarray], axis: int=0, resize: int | str | None=None, interpolation: int | str | None=None, overlap: int=0,
-                 return_info: bool=False, bg_value: Number | ndarray | str | None=None, pad: int | None=None,
-                 allow_casting: bool=True) -> Tuple[ndarray, List]:
+def stack_images(
+    images: Iterable[ndarray],
+    axis: int = 0,
+    resize: int | str | None = None,
+    interpolation: int | str | None = None,
+    overlap: int = 0,
+    return_info: bool = False,
+    bg_value: Number | ndarray | str | None = None,
+    pad: int | None = None,
+    allow_casting: bool = True,
+) -> Tuple[ndarray, List]:
     """
     Make a new image with the input images side-by-side
 
@@ -118,17 +128,23 @@ def stack_images(images: Iterable[ndarray], axis: int=0, resize: int | str | Non
         overlap = -pad
 
     if return_info:
-        transforms_ = [skimage.transform.AffineTransform(
-            scale=[1.0, 1.0], translation=[0.0, 0.0]
-        )]
+        transforms_ = [
+            skimage.transform.AffineTransform(
+                scale=[1.0, 1.0], translation=[0.0, 0.0]
+            )
+        ]
 
     for img2 in imgiter:
-        img1, offset_tup, sf_tup = _stack_two_images(img1, img2, axis=axis,
-                                                     resize=resize,
-                                                     bg_value=bg_value,
-                                                     interpolation=interpolation,
-                                                     overlap=overlap,
-                                                     allow_casting=allow_casting)
+        img1, offset_tup, sf_tup = _stack_two_images(
+            img1,
+            img2,
+            axis=axis,
+            resize=resize,
+            bg_value=bg_value,
+            interpolation=interpolation,
+            overlap=overlap,
+            allow_casting=allow_casting,
+        )
         if return_info:
             off1, off2 = offset_tup
             sf1, sf2 = sf_tup
@@ -148,9 +164,17 @@ def stack_images(images: Iterable[ndarray], axis: int=0, resize: int | str | Non
         return img1
 
 
-def stack_images_grid(images: Iterable[ndarray], chunksize: int | None=None, axis: int=0, overlap: int=0, pad: int | None=None,
-                      return_info: bool=False, bg_value: Number | ndarray | str | None=None, resize: int | str | None=None,
-                      allow_casting: bool=True) -> Tuple[ndarray, List]:
+def stack_images_grid(
+    images: Iterable[ndarray],
+    chunksize: int | None = None,
+    axis: int = 0,
+    overlap: int = 0,
+    pad: int | None = None,
+    return_info: bool = False,
+    bg_value: Number | ndarray | str | None = None,
+    resize: int | str | None = None,
+    allow_casting: bool = True,
+) -> Tuple[ndarray, List]:
     """
     Stacks images in a grid. Optionally return transforms of original image
     positions in the output image.
@@ -218,33 +242,45 @@ def stack_images_grid(images: Iterable[ndarray], chunksize: int | None=None, axi
         >>> kwplot.show_if_requested()
     """
     import ubelt as ub
+
     if chunksize is None:
-        chunksize = int(len(images) ** .5)
+        chunksize = int(len(images) ** 0.5)
     if pad is not None:
         overlap = -pad
 
     if chunksize == 0:
-        raise ValueError('need at least one image to stack and chunksize cannot be zero')
+        raise ValueError(
+            'need at least one image to stack and chunksize cannot be zero'
+        )
 
     stack1_list = []
     tfs1_list = []
     assert axis in [0, 1]
     try:
         for batch in ub.chunks(images, chunksize, bordermode='none'):
-            stack1, tfs1 = stack_images(batch, overlap=overlap, return_info=True,
-                                        bg_value=bg_value,
-                                        resize=resize, axis=1 - axis)
+            stack1, tfs1 = stack_images(
+                batch,
+                overlap=overlap,
+                return_info=True,
+                bg_value=bg_value,
+                resize=resize,
+                axis=1 - axis,
+            )
             tfs1_list.append(tfs1)
             stack1_list.append(stack1)
     except ZeroDivisionError:
         raise ValueError('need at least one image to stack')
 
-    img_grid, tfs2 = stack_images(stack1_list, overlap=overlap,
-                                  bg_value=bg_value,
-                                  return_info=True, axis=axis)
-    transforms_ = [tf1 + tf2
-                   for tfs1, tf2 in zip(tfs1_list, tfs2)
-                   for tf1 in tfs1]
+    img_grid, tfs2 = stack_images(
+        stack1_list,
+        overlap=overlap,
+        bg_value=bg_value,
+        return_info=True,
+        axis=axis,
+    )
+    transforms_ = [
+        tf1 + tf2 for tfs1, tf2 in zip(tfs1_list, tfs2) for tf1 in tfs1
+    ]
 
     if return_info:
         return img_grid, transforms_
@@ -252,8 +288,16 @@ def stack_images_grid(images: Iterable[ndarray], chunksize: int | None=None, axi
         return img_grid
 
 
-def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
-                      overlap=0, bg_value=None, allow_casting=True):
+def _stack_two_images(
+    img1,
+    img2,
+    axis=0,
+    resize=None,
+    interpolation=None,
+    overlap=0,
+    bg_value=None,
+    allow_casting=True,
+):
     """
     Returns:
         Tuple[ndarray, Tuple, Tuple]: imgB, offset_tup, sf_tup
@@ -266,15 +310,15 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
     """
 
     def _rectify_axis(img1, img2, axis):
-        """ determine if we are stacking in horzontally or vertically """
-        (h1, w1) = img1.shape[0: 2]  # get chip dimensions
-        (h2, w2) = img2.shape[0: 2]
+        """determine if we are stacking in horzontally or vertically"""
+        (h1, w1) = img1.shape[0:2]  # get chip dimensions
+        (h2, w2) = img2.shape[0:2]
         xoff2, yoff2 = 0, 0
-        vert_wh  = max(w1, w2), h1 + h2
+        vert_wh = max(w1, w2), h1 + h2
         horiz_wh = w1 + w2, max(h1, h2)
         if axis is None:
             # Display the orientation with the better (closer to 1) aspect ratio
-            vert_ar  = max(vert_wh) / min(vert_wh)
+            vert_ar = max(vert_wh) / min(vert_wh)
             horiz_ar = max(horiz_wh) / min(horiz_wh)
             axis = 0 if vert_ar < horiz_ar else 1
         if axis == 0:  # vertical stack
@@ -308,7 +352,7 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         return new_dsize, new_scale
 
     def _ramp(shape, axis):
-        """ nd ramp function """
+        """nd ramp function"""
         newshape = [1] * len(shape)
         reps = list(shape)
         newshape[axis] = -1
@@ -318,14 +362,15 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         return np.tile(data, reps)
 
     def _blend(part1, part2, alpha):
-        """ blending based on an alpha mask """
+        """blending based on an alpha mask"""
         part1, alpha = im_core.make_channels_comparable(part1, alpha)
         part2, alpha = im_core.make_channels_comparable(part2, alpha)
         partB = (part1 * (1.0 - alpha)) + (part2 * (alpha))
         return partB
 
-    interpolation = im_cv2._coerce_interpolation(interpolation,
-                                                 default=cv2.INTER_NEAREST)
+    interpolation = im_cv2._coerce_interpolation(
+        interpolation, default=cv2.INTER_NEAREST
+    )
 
     if allow_casting:
         if img1.dtype.kind == 'f' and img2.dtype.kind == 'u':
@@ -344,7 +389,8 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
 
     if img1.dtype != img2.dtype:
         raise TypeError(
-            'img1.dtype=%r, img2.dtype=%r' % (img1.dtype, img2.dtype))
+            'img1.dtype=%r, img2.dtype=%r' % (img1.dtype, img2.dtype)
+        )
 
     axis, h1, h2, w1, w2, wB, hB, xoff2, yoff2 = _rectify_axis(img1, img2, axis)
 
@@ -361,19 +407,21 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
 
         if resize == 0:
             # Resize the first image
-            sf2 = (1., 1.)
+            sf2 = (1.0, 1.0)
             scale = length2 / length1
             dsize, sf1 = _round_dsize(img1.shape[0:2][::-1], scale)
             img1 = cv2.resize(img1, dsize, interpolation=interpolation)
         elif resize == 1:
             # Resize the second image
-            sf1 = (1., 1.)
+            sf1 = (1.0, 1.0)
             scale = length1 / length2
             dsize, sf2 = _round_dsize(img2.shape[0:2][::-1], scale)
             img2 = cv2.resize(img2, dsize, interpolation=interpolation)
         else:
             raise ValueError('resize can only be 0 or 1 - or a special key')
-        axis, h1, h2, w1, w2, wB, hB, xoff2, yoff2 = _rectify_axis(img1, img2, axis)
+        axis, h1, h2, w1, w2, wB, hB, xoff2, yoff2 = _rectify_axis(
+            img1, img2, axis
+        )
     else:
         sf1 = (1.0, 1.0)
         sf2 = (1.0, 1.0)
@@ -396,6 +444,7 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
     if bg_value is not None:
         if isinstance(bg_value, str):
             import kwimage
+
             bg_value = kwimage.Color(bg_value).forimage(imgB)
         try:
             imgB[:, :] = bg_value
@@ -407,7 +456,7 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
 
     # Insert the first image
     xoff1 = yoff1 = 0
-    imgB[yoff1:(yoff1 + h1), xoff1:(xoff1 + w1)] = img1
+    imgB[yoff1 : (yoff1 + h1), xoff1 : (xoff1 + w1)] = img1
 
     if overlap:
         if axis == 0:
@@ -415,24 +464,24 @@ def _stack_two_images(img1, img2, axis=0, resize=None, interpolation=None,
         elif axis == 1:
             xoff2 -= overlap
 
-        imgB[yoff2:(yoff2 + h2), xoff2:(xoff2 + w2)] = img2
+        imgB[yoff2 : (yoff2 + h2), xoff2 : (xoff2 + w2)] = img2
 
         if overlap > 0:
             # Blend the overlapping part
             if axis == 0:
                 part1 = img1[-overlap:, :]
-                part2 = imgB[yoff2:(yoff2 + overlap), 0:w1]
+                part2 = imgB[yoff2 : (yoff2 + overlap), 0:w1]
                 alpha = _ramp(part1.shape[0:2], axis=axis)
                 blended = _blend(part1, part2, alpha)
-                imgB[yoff2:(yoff2 + overlap), 0:w1] = blended
+                imgB[yoff2 : (yoff2 + overlap), 0:w1] = blended
             elif axis == 1:
                 part1 = img1[:, -overlap:]
-                part2 = imgB[0:h1, xoff2:(xoff2 + overlap)]
+                part2 = imgB[0:h1, xoff2 : (xoff2 + overlap)]
                 alpha = _ramp(part1.shape[0:2], axis=axis)
                 blended = _blend(part1, part2, alpha)
-                imgB[0:h1, xoff2:(xoff2 + overlap)] = blended
+                imgB[0:h1, xoff2 : (xoff2 + overlap)] = blended
     else:
-        imgB[yoff2:(yoff2 + h2), xoff2:(xoff2 + w2)] = img2
+        imgB[yoff2 : (yoff2 + h2), xoff2 : (xoff2 + w2)] = img2
 
     offset1 = (xoff1, yoff1)
     offset2 = (xoff2, yoff2)

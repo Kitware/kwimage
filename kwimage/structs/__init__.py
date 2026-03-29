@@ -41,16 +41,55 @@ they should keep in mind that all items in `data` should be aligned, whereas
 `meta` can contain arbitrary information.
 
 """
-from .boxes import (Boxes,)
-from .coords import (Coords,)
-from .detections import (Detections,)
-from .heatmap import (Heatmap, smooth_prob,)
-from .mask import (Mask, MaskList,)
-from .points import (Points, PointsList,)
-from .polygon import (MultiPolygon, Polygon, PolygonList,)
-from .segmentation import (Segmentation, SegmentationList,)
-from .single_box import (Box,)
 
-__all__ = ['Box', 'Boxes', 'Coords', 'Detections', 'Heatmap', 'Mask',
-           'MaskList', 'MultiPolygon', 'Points', 'PointsList', 'Polygon',
-           'PolygonList', 'Segmentation', 'SegmentationList', 'smooth_prob']
+from .boxes import (
+    Boxes,
+)
+from .coords import (
+    Coords,
+)
+from .detections import (
+    Detections,
+)
+from .heatmap import (
+    Heatmap,
+    smooth_prob,
+)
+from .mask import (
+    Mask,
+    MaskList,
+)
+from .points import (
+    Points,
+    PointsList,
+)
+from .polygon import (
+    MultiPolygon,
+    Polygon,
+    PolygonList,
+)
+from .segmentation import (
+    Segmentation,
+    SegmentationList,
+)
+from .single_box import (
+    Box,
+)
+
+__all__ = [
+    'Box',
+    'Boxes',
+    'Coords',
+    'Detections',
+    'Heatmap',
+    'Mask',
+    'MaskList',
+    'MultiPolygon',
+    'Points',
+    'PointsList',
+    'Polygon',
+    'PolygonList',
+    'Segmentation',
+    'SegmentationList',
+    'smooth_prob',
+]

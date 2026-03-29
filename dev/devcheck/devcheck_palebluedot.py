@@ -31,7 +31,9 @@ import kwplot
 
 
 def main():
-    url = 'https://upload.wikimedia.org/wikipedia/commons/7/73/Pale_Blue_Dot.png'
+    url = (
+        'https://upload.wikimedia.org/wikipedia/commons/7/73/Pale_Blue_Dot.png'
+    )
     fpath = ub.grabdata(url)
     im = kwimage.imread(fpath)
 
@@ -42,7 +44,9 @@ def main():
     sl = annot_imgspace_box.to_slices()[0]
 
     scale_factor = 4
-    scaled_imgspace_box = annot_imgspace_box.scale(scale_factor, about='center').quantize()
+    scaled_imgspace_box = annot_imgspace_box.scale(
+        scale_factor, about='center'
+    ).quantize()
     crop_imgspace_box = scaled_imgspace_box
     sl = scaled_imgspace_box.to_slices()[0]
 
@@ -50,11 +54,17 @@ def main():
     crop = kwimage.ensure_float01(crop)
 
     # Get the relative offset
-    offset_x = annot_imgspace_box.tl_x.ravel()[0] - crop_imgspace_box.tl_x.ravel()[0]
-    offset_y = annot_imgspace_box.tl_y.ravel()[0] - crop_imgspace_box.tl_y.ravel()[0]
+    offset_x = (
+        annot_imgspace_box.tl_x.ravel()[0] - crop_imgspace_box.tl_x.ravel()[0]
+    )
+    offset_y = (
+        annot_imgspace_box.tl_y.ravel()[0] - crop_imgspace_box.tl_y.ravel()[0]
+    )
 
     # Approximate the location of the earth
-    earth_polygon = kwimage.Polygon.circle(xy=np.array([0.5 + offset_x, 0.5 + offset_y]), r=0.12)
+    earth_polygon = kwimage.Polygon.circle(
+        xy=np.array([0.5 + offset_x, 0.5 + offset_y]), r=0.12
+    )
     earth_polygon = earth_polygon.translate((-0.35, +0.30))
     # Handle inconsistant pixel grid definition
     earth_centroid = earth_polygon.translate((0.5, -0.5)).centroid
@@ -65,11 +75,19 @@ def main():
 
     # Draw Plots
     plt = kwplot.autoplt()
-    kwplot.imshow(im, doclf=True, fnum=1, title='Pale Blue Dot\n(Image from WikiMedia)', pnum=(2, 2, 1))
+    kwplot.imshow(
+        im,
+        doclf=True,
+        fnum=1,
+        title='Pale Blue Dot\n(Image from WikiMedia)',
+        pnum=(2, 2, 1),
+    )
     # scaled_imgspace_box.translate((-0.5, -0.5)).draw()
 
     plt = kwplot.autoplt()
-    kwplot.imshow(im, fnum=1, title='Pale Blue Dot\n(Annotated)', pnum=(2, 2, 3))
+    kwplot.imshow(
+        im, fnum=1, title='Pale Blue Dot\n(Annotated)', pnum=(2, 2, 3)
+    )
     scaled_imgspace_box.translate((-0.5, -0.5)).draw()
 
     kwplot.imshow(crop, fnum=1, pnum=(2, 2, 2))

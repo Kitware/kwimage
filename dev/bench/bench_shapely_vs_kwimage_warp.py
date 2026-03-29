@@ -1,5 +1,3 @@
-
-
 def main():
     import kwimage
     from shapely.affinity import affine_transform
@@ -13,6 +11,7 @@ def main():
     transform = kwimage.Affine.random()
 
     import timerit
+
     ti = timerit.Timerit(100, bestof=10, verbose=2)
     for timer in ti.reset('shapely'):
         with timer:

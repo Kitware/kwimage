@@ -2,19 +2,21 @@
 Generic segmentation object that can use either a Mask or (Multi)Polygon
 backend.
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
 # from kwimage.structs import _generic
 import numpy as np
 import numbers
 from . import _generic
 import ubelt as ub
+
 if TYPE_CHECKING:
     from typing import Any
 
 
 class _WrapperObject(ub.NiceRepr):
-
     def __nice__(self):
         return self.data.__nice__()
 
@@ -54,12 +56,13 @@ class Segmentation(_WrapperObject):
         data (object): the underlying object
         format (str): either 'mask', 'polygon', or 'multipolygon'
     """
-    def __init__(self, data, format: Any | None=None) -> None:
+
+    def __init__(self, data, format: Any | None = None) -> None:
         self.data = data
         self.format = format
 
     @classmethod
-    def random(cls, rng: Any | None=None):
+    def random(cls, rng: Any | None = None):
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
@@ -75,6 +78,7 @@ class Segmentation(_WrapperObject):
 
         import kwarray
         import kwimage
+
         rng = kwarray.ensure_rng(rng)
         if rng.rand() > 0.5:
             data: Any = kwimage.Polygon.random()
@@ -85,7 +89,7 @@ class Segmentation(_WrapperObject):
     def to_multi_polygon(self):
         return self.data.to_multi_polygon()
 
-    def to_mask(self, dims: Any | None=None, pixels_are: str='points'):
+    def to_mask(self, dims: Any | None = None, pixels_are: str = 'points'):
         return self.data.to_mask(dims=dims, pixels_are=pixels_are)
 
     def box(self):
@@ -100,8 +104,9 @@ class Segmentation(_WrapperObject):
         return self.data.meta
 
     @classmethod
-    def coerce(cls, data, dims: Any | None=None):
+    def coerce(cls, data, dims: Any | None = None):
         import kwimage
+
         if _generic._isinstance2(data, kwimage.Segmentation):
             self = data
         elif _generic._isinstance2(data, kwimage.Mask):
@@ -129,21 +134,26 @@ class SegmentationList(_generic.ObjectList):
         Converts all mask objects to multi-polygon objects
         """
         import kwimage
-        new = kwimage.PolygonList([
-            None if item is None else item.to_multi_polygon()
-            for item in self
-        ])
+
+        new = kwimage.PolygonList(
+            [None if item is None else item.to_multi_polygon() for item in self]
+        )
         return new
 
-    def to_mask_list(self, dims: Any | None=None, pixels_are: str='points'):
+    def to_mask_list(self, dims: Any | None = None, pixels_are: str = 'points'):
         """
         Converts all mask objects to multi-polygon objects
         """
         import kwimage
-        new = kwimage.MaskList([
-            None if item is None else item.to_mask(dims=dims, pixels_are=pixels_are)
-            for item in self
-        ])
+
+        new = kwimage.MaskList(
+            [
+                None
+                if item is None
+                else item.to_mask(dims=dims, pixels_are=pixels_are)
+                for item in self
+            ]
+        )
         return new
 
     def to_segmentation_list(self):
@@ -160,8 +170,10 @@ class SegmentationList(_generic.ObjectList):
                 Can be: 'return-None', or 'raise'.
         """
         if isinstance(data, (list, _generic.ObjectList)):
-            data = [None if item is None else Segmentation.coerce(item)
-                    for item in data]
+            data = [
+                None if item is None else Segmentation.coerce(item)
+                for item in data
+            ]
         else:
             if data is None:
                 return _handle_null_policy(none_policy)
@@ -171,8 +183,9 @@ class SegmentationList(_generic.ObjectList):
         return self
 
 
-def _handle_null_policy(policy, ex_type=TypeError,
-                        ex_msg='cannot accept null input'):
+def _handle_null_policy(
+    policy, ex_type=TypeError, ex_msg='cannot accept null input'
+):
     """
     For handling a nan or None policy.
 
@@ -196,11 +209,14 @@ def _handle_null_policy(policy, ex_type=TypeError,
     elif policy == 'raise':
         raise ex_type(ex_msg)
     else:
-        raise KeyError(ub.paragraph(
-            f'''
+        raise KeyError(
+            ub.paragraph(
+                f"""
             Unknown null policy={policy!r}.
             Valid choices are "return-None", "return-nan", and "raise".
-            '''))
+            """
+            )
+        )
 
 
 def _coerce_coco_segmentation(data, dims=None):
@@ -252,6 +268,7 @@ def _coerce_coco_segmentation(data, dims=None):
     """
     import kwimage
     from kwimage.structs.mask import MaskFormat
+
     if isinstance(data, np.ndarray):
         # INPUT TYPE: RAW MASK
         if dims is not None:
@@ -264,12 +281,15 @@ def _coerce_coco_segmentation(data, dims=None):
         if 'counts' in data:
             # INPUT TYPE: COCO RLE DICTIONARY
             if dims is not None:
-                data_shape = data.get('dims', data.get('shape', data.get('size', None)))
+                data_shape = data.get(
+                    'dims', data.get('shape', data.get('size', None))
+                )
                 if data_shape is None:
                     data['shape'] = data_shape
                 else:
-                    assert tuple(map(int, dims)) == tuple(map(int, data_shape)), (
-                        '{} {}'.format(dims, data_shape))
+                    assert tuple(map(int, dims)) == tuple(
+                        map(int, data_shape)
+                    ), '{} {}'.format(dims, data_shape)
             if isinstance(data['counts'], (str, bytes)):
                 self = kwimage.Mask(data, MaskFormat.BYTES_RLE)
             else:
@@ -286,7 +306,9 @@ def _coerce_coco_segmentation(data, dims=None):
             else:
                 raise NotImplementedError(data['type'])
         else:
-            raise TypeError('Unable to interpret dictionary format {}'.format(data))
+            raise TypeError(
+                'Unable to interpret dictionary format {}'.format(data)
+            )
     elif isinstance(data, list):
         # THIS IS NOT AN IDEAL FORMAT. IDEALLY WE WILL MODIFY COCO TO USE
         # DICTIONARIES FOR POLYGONS, WHICH ARE UNAMBIGUOUS
@@ -297,37 +319,55 @@ def _coerce_coco_segmentation(data, dims=None):
             if isinstance(first, dict):
                 # TODO: kwimage.MultiPolygon.from_coco
                 self = kwimage.MultiPolygon(
-                    [kwimage.Polygon(**item) for item in data])
+                    [kwimage.Polygon(**item) for item in data]
+                )
             elif isinstance(first, numbers.Number):
                 # TODO: kwimage.Polygon.from_coco
                 exterior = np.array(data).reshape(-1, 2)
                 self = kwimage.Polygon(exterior=exterior)
             elif isinstance(first, list):
                 # TODO: kwimage.MultiPolygon.from_coco
-                poly_list = [kwimage.Polygon(exterior=np.array(item).reshape(-1, 2))
-                             for item in data]
+                poly_list = [
+                    kwimage.Polygon(exterior=np.array(item).reshape(-1, 2))
+                    for item in data
+                ]
                 if len(poly_list) == 1:
                     self = poly_list[0]
                 else:
                     self = kwimage.MultiPolygon(poly_list)
             elif isinstance(first, np.ndarray):
-                poly_list = [kwimage.Polygon(exterior=item.reshape(-1, 2))
-                             for item in data]
+                poly_list = [
+                    kwimage.Polygon(exterior=item.reshape(-1, 2))
+                    for item in data
+                ]
                 if len(poly_list) == 1:
                     self = poly_list[0]
                 else:
                     self = kwimage.MultiPolygon(poly_list)
             else:
-                raise TypeError('Unable to interpret list format {}'.format(data))
-    elif isinstance(data, (kwimage.Polygon, kwimage.MultiPolygon, kwimage.Mask, kwimage.Segmentation)):
+                raise TypeError(
+                    'Unable to interpret list format {}'.format(data)
+                )
+    elif isinstance(
+        data,
+        (
+            kwimage.Polygon,
+            kwimage.MultiPolygon,
+            kwimage.Mask,
+            kwimage.Segmentation,
+        ),
+    ):
         self = data
     else:
         from shapely.geometry.polygon import Polygon
         from shapely.geometry.multipolygon import MultiPolygon
+
         if isinstance(data, MultiPolygon):
             self = kwimage.MultiPolygon.from_shapely(data)
         elif isinstance(data, Polygon):
             self = kwimage.Polygon.from_shapely(data)
         else:
-            raise TypeError(f'Unable to coerce type={type(data)!r} into a segmentation. data={data!r}')
+            raise TypeError(
+                f'Unable to coerce type={type(data)!r} into a segmentation. data={data!r}'
+            )
     return self

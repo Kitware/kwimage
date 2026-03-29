@@ -22,25 +22,31 @@ def main(cmdline=True, **kw):
     cli_modules = list(module_lut.values())
 
     from scriptconfig.modal import ModalCLI
-    modal = ModalCLI(description=ub.codeblock(
-        '''
+
+    modal = ModalCLI(
+        description=ub.codeblock(
+            """
         The Kitware Image CLI
-        '''))
+        """
+        )
+    )
 
     def get_version(self):
         import kwimage
+
         return kwimage.__version__
+
     modal.__class__.version = property(get_version)
 
     for cli_module in cli_modules:
-
         cli_config = None
         if hasattr(cli_module, '_CLI'):
             # Old way
             cli_cls = cli_module._CLI
             cli_cls.CLIConfig.__command__ = cli_cls.name
             assert hasattr(cli_cls, 'CLIConfig'), (
-                'We are only supporting scriptconfig CLIs')
+                'We are only supporting scriptconfig CLIs'
+            )
             # scriptconfig cli pattern
             cli_config = cli_cls.CLIConfig
 
@@ -64,10 +70,14 @@ def main(cmdline=True, **kw):
         # cli_modname = cli_module.__name__
         # cli_rel_modname = cli_modname.split('.')[-1]
         cmdname_aliases = ub.oset()
-        alias = getattr(cli_module, '__alias__', getattr(cli_config, '__alias__', []))
+        alias = getattr(
+            cli_module, '__alias__', getattr(cli_config, '__alias__', [])
+        )
         if isinstance(alias, str):
             alias = [alias]
-        command = getattr(cli_module, '__command__', getattr(cli_config, '__command__', None))
+        command = getattr(
+            cli_module, '__command__', getattr(cli_config, '__command__', None)
+        )
         if command is not None:
             cmdname_aliases.add(command)
         cmdname_aliases.update(alias)

@@ -1,5 +1,3 @@
-
-
 import scriptconfig as scfg
 
 
@@ -14,7 +12,6 @@ class UsageConfig(scfg.Config):
 
 
 def count_usage(cmdline=True, **kw):
-
     config = UsageConfig(default=kw, cmdline=cmdline)
 
     modname = config['modname']
@@ -23,8 +20,13 @@ def count_usage(cmdline=True, **kw):
     import ubelt as ub
     import glob
     from os.path import join
+
     names = [
-        'netharn', 'ndsampler', 'kwimage', 'kwplot', 'kwcoco',
+        'netharn',
+        'ndsampler',
+        'kwimage',
+        'kwplot',
+        'kwcoco',
     ] + config['extra_modnames']
 
     all_fpaths = []
@@ -40,12 +42,15 @@ def count_usage(cmdline=True, **kw):
     import re
 
     import ubelt as ub
+
     module = ub.import_module_from_name(modname)
 
     package_name = module.__name__
     package_allvar = module.__all__
 
-    pat = re.compile(r'\b' + package_name + r'\.(?P<attr>[a-zA-Z_][A-Za-z_0-9]*)\b')
+    pat = re.compile(
+        r'\b' + package_name + r'\.(?P<attr>[a-zA-Z_][A-Za-z_0-9]*)\b'
+    )
 
     pkg_to_hist = ub.ddict(lambda: ub.ddict(int))
     for name, fpath in ub.ProgIter(all_fpaths):
@@ -66,7 +71,9 @@ def count_usage(cmdline=True, **kw):
         usage[attr] += 0
 
     for name in pkg_to_hist.keys():
-        pkg_to_hist[name] = ub.odict(sorted(pkg_to_hist[name].items(), key=lambda t: t[1])[::-1])
+        pkg_to_hist[name] = ub.odict(
+            sorted(pkg_to_hist[name].items(), key=lambda t: t[1])[::-1]
+        )
 
     usage = ub.odict(sorted(usage.items(), key=lambda t: t[1])[::-1])
 

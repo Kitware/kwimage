@@ -5,8 +5,10 @@ import numpy as np
 
 def _random_drawables():
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
     drawables = {
         'boxes': kwimage.Boxes.random(),
@@ -39,8 +41,10 @@ def test_draw_on_extreme_sizes():
     general.
     """
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
     drawables = _random_drawables()
     images = _random_extreme_images()
@@ -48,7 +52,6 @@ def test_draw_on_extreme_sizes():
     errors = []
     for draw_key, drawable in drawables.items():
         for im_key, image in images.items():
-
             try:
                 result = drawable.draw_on(image)
                 assert result.shape[0:2] == image.shape[0:2]

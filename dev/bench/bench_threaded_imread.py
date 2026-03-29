@@ -17,7 +17,6 @@ def parallel_read_images(fpaths, backend, mode, workers):
 
 
 def bench_threaded_imread():
-
     dset = kwcoco.CocoDataset.demo('vidshapes256')
     fpaths = []
     for coco_img in dset.images().coco_images:
@@ -82,16 +81,20 @@ def bench_threaded_imread():
         # kwplot autosns works well for IPython and script execution.
         # not sure about notebooks.
         import kwplot
+
         sns = kwplot.autosns()
         plt = kwplot.autoplt()
 
         # Your variables may change
         ax = kwplot.figure(fnum=1, doclf=True).gca()
-        sns.lineplot(data=data, x=xlabel, y='min', hue='hue_key', marker='o', ax=ax)
+        sns.lineplot(
+            data=data, x=xlabel, y='min', hue='hue_key', marker='o', ax=ax
+        )
         ax.set_title('Benchmark')
         ax.set_xlabel('A better x-variable description')
         ax.set_ylabel('A better y-variable description')
         plt.show()
+
 
 if __name__ == '__main__':
     """

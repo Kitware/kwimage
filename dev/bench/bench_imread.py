@@ -15,11 +15,13 @@ Ignore:
         python -m ndsampler.validate_cog --verbose test.cog.tif
         python -m ndsampler.validate_cog --verbose foo.png
 """
+
 import numpy as np
 
 
 def _read_gdal_v1(fpath):
     from osgeo import gdal
+
     try:
         gdal_dset = gdal.Open(fpath)
         if gdal_dset.RasterCount == 1:
@@ -36,8 +38,10 @@ def _read_gdal_v1(fpath):
             image = np.dstack(channels)
         else:
             raise NotImplementedError(
-                'Can only read 1 or 3 channel NTF images. '
-                'Got {}'.format(gdal_dset.RasterCount))
+                'Can only read 1 or 3 channel NTF images. Got {}'.format(
+                    gdal_dset.RasterCount
+                )
+            )
     except Exception:
         raise
     finally:
@@ -47,6 +51,7 @@ def _read_gdal_v1(fpath):
 
 def _read_gdal_v2(fpath):
     import gdal
+
     try:
         gdal_dset = gdal.Open(fpath)
         if gdal_dset.RasterCount == 1:
@@ -65,23 +70,36 @@ def _read_gdal_v2(fpath):
                 # For numpy >= 2.0
                 complex_ = np.complex128
             _gdal_dtype_lut = {
-                1: np.uint8,     2: np.uint16,
-                3: np.int16,     4: np.uint32,      5: np.int32,
-                6: np.float32,   7: np.float64,     8: complex_,
-                9: complex_,  10: np.complex64,  11: np.complex128
+                1: np.uint8,
+                2: np.uint16,
+                3: np.int16,
+                4: np.uint32,
+                5: np.int32,
+                6: np.float32,
+                7: np.float64,
+                8: complex_,
+                9: complex_,
+                10: np.complex64,
+                11: np.complex128,
             }
             bands = [gdal_dset.GetRasterBand(i) for i in [1, 2, 3]]
             gdal_type_code = bands[0].DataType
             dtype = _gdal_dtype_lut[gdal_type_code]
-            shape = (gdal_dset.RasterYSize, gdal_dset.RasterXSize, gdal_dset.RasterCount)
+            shape = (
+                gdal_dset.RasterYSize,
+                gdal_dset.RasterXSize,
+                gdal_dset.RasterCount,
+            )
             # Preallocate and populate image
             image = np.empty(shape, dtype=dtype)
             for i, band in enumerate(bands):
                 image[:, :, i] = band.ReadAsArray()
         else:
             raise NotImplementedError(
-                'Can only read 1 or 3 channel NTF images. '
-                'Got {}'.format(gdal_dset.RasterCount))
+                'Can only read 1 or 3 channel NTF images. Got {}'.format(
+                    gdal_dset.RasterCount
+                )
+            )
     except Exception:
         raise
     finally:
@@ -91,6 +109,7 @@ def _read_gdal_v2(fpath):
 
 def _read_rasterio(fpath):
     import rasterio
+
     dataset = rasterio.open(fpath)
     image = dataset.read().transpose((1, 2, 0))
     return image
@@ -98,6 +117,7 @@ def _read_rasterio(fpath):
 
 def _read_pil(fpath):
     from PIL import Image
+
     pil_img = Image.open(fpath)
     image = np.asarray(pil_img)
     return image
@@ -108,6 +128,7 @@ def bench_imread():
     # fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
 
     import kwimage
+
     fpath = kwimage.grab_test_image_fpath('airport')
 
     # A color-table geotiff
@@ -138,6 +159,7 @@ def bench_imread():
         results[ti.label] = image.sum()
 
     import skimage.io
+
     """
     pip install tifffile
     pip install imagecodecs
@@ -149,12 +171,14 @@ def bench_imread():
     results[ti.label] = image.sum()
 
     import kwimage
+
     for timer in ti.reset('kwimage'):
         with timer:
             image = kwimage.imread(fpath)
     results[ti.label] = image.sum()
 
     import cv2
+
     for timer in ti.reset('cv2'):
         with timer:
             image = cv2.imread(fpath)

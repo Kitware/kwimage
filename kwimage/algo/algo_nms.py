@@ -1,6 +1,7 @@
 """
 Generic Non-Maximum Suppression API with efficient backend implementations
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 import sys
@@ -8,16 +9,23 @@ import numpy as np
 import ubelt as ub
 import warnings
 import kwarray
+
 if TYPE_CHECKING:
     from numpy import ndarray
     from typing import Tuple
 
 
-def daq_spatial_nms(ltrb: ndarray, scores: ndarray,
-                    diameter: int | Tuple[int, int], thresh: float,
-                    max_depth: int=6, stop_size: int=2048,
-                    recsize: int=2048, impl: str='auto',
-                    device_id: Any | None=None):
+def daq_spatial_nms(
+    ltrb: ndarray,
+    scores: ndarray,
+    diameter: int | Tuple[int, int],
+    thresh: float,
+    max_depth: int = 6,
+    stop_size: int = 2048,
+    recsize: int = 2048,
+    impl: str = 'auto',
+    device_id: Any | None = None,
+):
     """
     Divide and conquer speedup non-max-supression algorithm for when bboxes
     have a known max size
@@ -96,6 +104,7 @@ def daq_spatial_nms(ltrb: ndarray, scores: ndarray,
         >>> similarity = len(set(keep1) & set(keep2)) / len(set(keep1) | set(keep2))
         >>> print('similarity = {!r}'.format(similarity))
     """
+
     def _rectify(ltrb, both_keep, needs_rectify):
         if len(needs_rectify) == 0:
             keep = sorted(both_keep)
@@ -104,8 +113,12 @@ def daq_spatial_nms(ltrb: ndarray, scores: ndarray,
             nr = needs_rectify
             bk = set(both_keep)
             rectified_keep = non_max_supression(
-                ltrb[nr_arr], scores[nr_arr], thresh=thresh,
-                impl=impl, device_id=device_id)
+                ltrb[nr_arr],
+                scores[nr_arr],
+                thresh=thresh,
+                impl=impl,
+                device_id=device_id,
+            )
             rk = set(nr_arr[rectified_keep])
             keep = sorted((bk - nr) | rk)
         return keep
@@ -145,12 +158,20 @@ def daq_spatial_nms(ltrb: ndarray, scores: ndarray,
 
             # Solve each subproblem
             left_keep_, lrec_ = _recurse(
-                left_ltrb, left_scores, depth=next_depth, dim=next_dim,
-                diameter_wh=diameter_wh)
+                left_ltrb,
+                left_scores,
+                depth=next_depth,
+                dim=next_dim,
+                diameter_wh=diameter_wh,
+            )
 
             right_keep_, rrec_ = _recurse(
-                right_ltrb, right_scores, depth=next_depth, dim=next_dim,
-                diameter_wh=diameter_wh)
+                right_ltrb,
+                right_scores,
+                depth=next_depth,
+                dim=next_dim,
+                diameter_wh=diameter_wh,
+            )
 
             # Recombine the results (note that because we have a diameter_wh,
             # we have to check less results)
@@ -188,15 +209,17 @@ def daq_spatial_nms(ltrb: ndarray, scores: ndarray,
 
     depth = 0
     dim = 0
-    both_keep, needs_rectify = _recurse(ltrb, scores, dim=dim, depth=depth,
-                                        diameter_wh=diameter_wh)
+    both_keep, needs_rectify = _recurse(
+        ltrb, scores, dim=dim, depth=depth, diameter_wh=diameter_wh
+    )
     keep = _rectify(ltrb, both_keep, needs_rectify)
     return keep
+
 
 _impls = None
 
 
-class _NMS_Impls():
+class _NMS_Impls:
     # TODO: could make this prettier
     def __init__(self) -> None:
         self._funcs = None
@@ -204,6 +227,7 @@ class _NMS_Impls():
     def _lazy_init(self):
         _funcs = {}
         from kwimage import _internal
+
         try:
             import torch
         except ImportError:
@@ -212,6 +236,7 @@ class _NMS_Impls():
         # These are pure python and should always be available
         from kwimage.algo._nms_backend import py_nms
         from kwimage.algo._nms_backend import torch_nms
+
         _funcs['numpy'] = py_nms.py_nms
 
         try:
@@ -230,11 +255,14 @@ class _NMS_Impls():
                     # TODO: torchvision impl might be the best, need to test
                     # from torchvision import _C as C  # NOQA
                     import torchvision
+
                     _funcs['torchvision'] = torchvision.ops.nms
                 except (ImportError, UnicodeDecodeError) as ex:
                     warnings.warn(
                         'optional torchvision C nms is not available: {}'.format(
-                            str(ex)))
+                            str(ex)
+                        )
+                    )
 
         if recent_numpy:
             # Only use cython extensions if numpy is > 1.20.
@@ -246,21 +274,25 @@ class _NMS_Impls():
             try:
                 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
                     from kwimage_ext.algo._nms_backend import cpu_nms
+
                     _funcs['cython_cpu'] = cpu_nms.cpu_nms
             except Exception as ex:
                 warnings.warn(
-                    'optional cpu_nms is not available: {}'.format(str(ex)))
+                    'optional cpu_nms is not available: {}'.format(str(ex))
+                )
             try:
                 if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
                     if torch is not None and torch.cuda.is_available():
                         from kwimage_ext.algo._nms_backend import gpu_nms
+
                         _funcs['cython_gpu'] = gpu_nms.gpu_nms
                         # NOTE: GPU is not the fastests on all systems.
                         # See the benchmarks for more info.
                         # ~/code/kwimage/dev/bench_nms.py
             except Exception as ex:
                 warnings.warn(
-                    'optional gpu_nms is not available: {}'.format(str(ex)))
+                    'optional gpu_nms is not available: {}'.format(str(ex))
+                )
         self._funcs = _funcs
         self._valid = frozenset(_impls._funcs.keys())
 
@@ -322,7 +354,13 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
     elif num <= 100:
         if code == 'tensor0':
             # dict(cython_cpu=4160.7, torchvision=3089.9, cython_gpu=2261.8, torch=846.8)
-            preference = ['cython_cpu', 'torchvision', 'cython_gpu', 'torch', 'numpy']
+            preference = [
+                'cython_cpu',
+                'torchvision',
+                'cython_gpu',
+                'torch',
+                'numpy',
+            ]
         if code == 'tensor':
             # dict(torchvision=5875.3, cython_gpu=3076.9)
             preference = ['torchvision', 'cython_gpu', 'torch', 'numpy']
@@ -368,15 +406,23 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
     if not valid_pref:
         raise Exception(
             'no valid nms algo: code={}, num={}, valid={}, preference={}, valid_pref={}'.format(
-                code, num, valid, preference, valid_pref))
+                code, num, valid, preference, valid_pref
+            )
+        )
 
     impl = valid_pref[0]
     return impl
 
 
-def non_max_supression(ltrb: ndarray, scores: ndarray, thresh: float,
-                       bias: float=0.0, classes: ndarray | None=None,
-                       impl: str='auto', device_id: int | None=None):
+def non_max_supression(
+    ltrb: ndarray,
+    scores: ndarray,
+    thresh: float,
+    bias: float = 0.0,
+    classes: ndarray | None = None,
+    impl: str = 'auto',
+    device_id: int | None = None,
+):
     """
     Non-Maximum Suppression - remove redundant bounding boxes
 
@@ -526,17 +572,20 @@ def non_max_supression(ltrb: ndarray, scores: ndarray, thresh: float,
     if impl == 'cpu':
         warnings.warn(
             'impl="cpu" is deprecated use impl="cython_cpu" instead',
-            DeprecationWarning)
+            DeprecationWarning,
+        )
         impl = 'cython_cpu'
     elif impl == 'gpu':
         warnings.warn(
             'impl="gpu" is deprecated use impl="cython_gpu" instead',
-            DeprecationWarning)
+            DeprecationWarning,
+        )
         impl = 'cython_gpu'
     elif impl == 'py':
         warnings.warn(
             'impl="py" is deprecated use impl="numpy" instead',
-            DeprecationWarning)
+            DeprecationWarning,
+        )
         impl = 'numpy'
 
     if not _impls._funcs:
@@ -580,12 +629,12 @@ def non_max_supression(ltrb: ndarray, scores: ndarray, thresh: float,
             # cls_scores = scores.take(idxs, axis=0)
             cls_ltrb = ltrb[idxs]
             cls_scores = scores[idxs]
-            cls_keep = non_max_supression(cls_ltrb, cls_scores, thresh=thresh,
-                                          bias=bias, impl=impl)
+            cls_keep = non_max_supression(
+                cls_ltrb, cls_scores, thresh=thresh, bias=bias, impl=impl
+            )
             keep.extend(list(ub.take(idxs, cls_keep)))
         return keep
     else:
-
         if impl == 'numpy':
             api = kwarray.ArrayAPI.coerce(ltrb)
             ltrb = api.numpy(ltrb)
@@ -623,8 +672,13 @@ def non_max_supression(ltrb: ndarray, scores: ndarray, thresh: float,
                 # HACK: we should parameterize which device is used
                 if device_id is None:
                     device_id = torch.cuda.current_device()
-                keep = nms(ltrb, scores, float(thresh), bias=float(bias),
-                           device_id=device_id)
+                keep = nms(
+                    ltrb,
+                    scores,
+                    float(thresh),
+                    bias=float(bias),
+                    device_id=device_id,
+                )
             elif impl == 'cython_cpu':
                 keep = nms(ltrb, scores, float(thresh), bias=float(bias))
             else:
@@ -641,4 +695,5 @@ if __name__ == '__main__':
         xdoctest -m kwimage.algo.algo_nms
     """
     import xdoctest
+
     xdoctest.doctest_module(__file__)

@@ -1,6 +1,7 @@
 """
 Helpers to query information about available backends
 """
+
 try:
     from functools import cache
 except ImportError:
@@ -15,6 +16,7 @@ def _have_turbojpg():
     """
     try:
         import turbojpeg  # NOQA
+
         turbojpeg.TurboJPEG()
     except Exception:
         return False

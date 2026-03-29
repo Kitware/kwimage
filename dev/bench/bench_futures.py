@@ -4,6 +4,7 @@ Determine if opencv / numpy release the GIL, if they do then there is
 some advantage to using TheadPoolExecutor
 
 """
+
 import numpy as np
 import cv2
 import kwimage
@@ -51,7 +52,10 @@ def main():
             executor = util_futures.Executor(mode, max_workers=max_workers)
             with executor:
                 with timer:
-                    fs = [executor.submit(opencv_io_work, fpath) for i in range(njobs)]
+                    fs = [
+                        executor.submit(opencv_io_work, fpath)
+                        for i in range(njobs)
+                    ]
                     for f in futures.as_completed(fs):
                         f.result()
     print('ti.measures = {}'.format(ub.urepr(ti.measures, nl=2, precision=4)))
@@ -63,7 +67,10 @@ def main():
             executor = util_futures.Executor(mode, max_workers=max_workers)
             with executor:
                 with timer:
-                    fs = [executor.submit(opencv_cpu_io_work, fpath) for i in range(njobs)]
+                    fs = [
+                        executor.submit(opencv_cpu_io_work, fpath)
+                        for i in range(njobs)
+                    ]
                     for f in futures.as_completed(fs):
                         f.result()
     print('ti.measures = {}'.format(ub.urepr(ti.measures, nl=2, precision=4)))

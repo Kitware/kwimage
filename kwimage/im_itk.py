@@ -1,8 +1,14 @@
-
-
-def _itk_warp_affine(image, transform, dsize=None, antialias=False,
-                     interpolation='linear', border_mode=None, border_value=0,
-                     origin_convention='center', return_info=False):
+def _itk_warp_affine(
+    image,
+    transform,
+    dsize=None,
+    antialias=False,
+    interpolation='linear',
+    border_mode=None,
+    border_value=0,
+    origin_convention='center',
+    return_info=False,
+):
     """
     ITK backend for warp affine
 
@@ -121,6 +127,7 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
     import itk
     import numpy as np
     from kwimage._common import _coerce_warp_dsize_inputs
+
     if 0:
         [n for n in dir(itk) if 'resample' in n.lower()]
         [n for n in dir(itk) if 'affine' in n.lower()]
@@ -153,7 +160,7 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
         dsize=dsize,
         input_dsize=input_dsize,
         transform=transform,
-        require_warped_info=require_warped_info
+        require_warped_info=require_warped_info,
     )
     # max_dsize = dsize_inputs['max_dsize']
     # new_origin = dsize_inputs['new_origin']
@@ -185,7 +192,9 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
 
     # Setup ITK interpolation
     if interpolation == 'nearest':
-        itk_interpolator = itk.NearestNeighborInterpolateImageFunction.New(itk_image)
+        itk_interpolator = itk.NearestNeighborInterpolateImageFunction.New(
+            itk_image
+        )
     elif interpolation == 'linear':
         itk_interpolator = itk.LinearInterpolateImageFunction.New(itk_image)
     else:
@@ -197,7 +206,8 @@ def _itk_warp_affine(image, transform, dsize=None, antialias=False,
         if sx < 1 or sy < 1:
             # Requires antialias
             raise NotImplementedError(
-                'TODO: need to implement antialiasing in ITK backend')
+                'TODO: need to implement antialiasing in ITK backend'
+            )
             # AntiAliasFilterType = itk.AntiAliasBinaryImageFilter[ImageType, ImageType]
             # antialiasfilter = AntiAliasFilterType.New()
             # antialiasfilter.SetInput(reader.GetOutput())
