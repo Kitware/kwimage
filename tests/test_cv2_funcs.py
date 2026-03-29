@@ -2,9 +2,11 @@ import pytest
 
 
 def test_cv2_func_dtypes():
-    import kwimage
     from functools import partial
+
     import numpy as np
+
+    import kwimage
 
     try:
         import cv2  # NOQA

@@ -1,5 +1,5 @@
-import numpy as np
 import cv2
+import numpy as np
 
 flags = cv2.INTER_LINEAR
 borderMode = cv2.BORDER_CONSTANT

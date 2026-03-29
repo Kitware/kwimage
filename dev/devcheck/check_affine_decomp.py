@@ -1,6 +1,7 @@
-import ubelt as ub
 import sympy
 import sympy as sym  # NOQA
+import ubelt as ub
+
 # Shows the symbolic construction of the code
 # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
 # G

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import numpy as np
 
 if TYPE_CHECKING:
@@ -70,6 +72,7 @@ def torch_nms(
         >>> bboxes[keep]
     """
     import torch
+
     import kwimage
 
     if ltrb.numel() == 0:
@@ -159,10 +162,11 @@ def torch_nms(
 
 
 def test_class_torch() -> None:
+    import kwarray
     import numpy as np
     import torch
     import ubelt as ub
-    import kwarray
+
     import kwimage
 
     thresh = 0.5

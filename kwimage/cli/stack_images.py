@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import scriptconfig as scfg
 import ubelt as ub
 
 if TYPE_CHECKING:
-    from typing import Any
+    pass
 
 
 class StackImagesCLI(scfg.DataConfig):

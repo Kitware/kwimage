@@ -1,16 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import itertools as it
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 if TYPE_CHECKING:
-    from numpy import ndarray
-    from typing import Tuple
-    from typing import Sequence
-    import kwimage
-    from typing import List
-    from typing import Any
     from numbers import Number
+    from typing import Any, List, Sequence, Tuple
+
+    from numpy import ndarray
+
+    import kwimage
 
 
 def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
@@ -254,8 +255,9 @@ def draw_text_on_image(
         >>> kwplot.imshow(canvas)
         >>> kwplot.show_if_requested()
     """
-    import kwimage
     import cv2
+
+    import kwimage
 
     if 'color' not in kwargs:
         # kwargs['color'] = 'red'
@@ -644,8 +646,9 @@ def draw_boxes_on_image(
         >>> kwplot.figure(doclf=True, fnum=1)
         >>> kwplot.imshow(img2)
     """
-    import kwimage
     import cv2
+
+    import kwimage
 
     if not isinstance(boxes, kwimage.Boxes):
         if box_format is None:
@@ -804,9 +807,11 @@ def _broadcast_colors(color, num, img, colorspace):
     """
     # Note there is an ambiguity when num=3 and color=[int, int, int]
     # that must be resolved by checking num channels in the image
-    import kwimage
-    import ubelt as ub
     import numbers
+
+    import ubelt as ub
+
+    import kwimage
 
     needs_broadcast = True  # assume the list wasnt given by default
     if ub.iterable(color):
@@ -861,9 +866,10 @@ def make_heatmask(
         >>>               title='make_heatmask')
         >>> kwplot.show_if_requested()
     """
-    import kwimage
     import matplotlib as mpl
     import matplotlib.cm  # NOQA
+
+    import kwimage
 
     assert len(probs.shape) == 2
     try:
@@ -1033,6 +1039,7 @@ def make_vector_field(
         remove='1.1.0',
     )
     import cv2
+
     import kwimage
 
     color = kwimage.Color(color).as255('rgb')
@@ -1168,6 +1175,7 @@ def draw_vector_field(
         >>> kwplot.show_if_requested()
     """
     import cv2
+
     import kwimage
 
     if image is None:
@@ -1342,8 +1350,9 @@ def draw_header_text(
         >>> kwplot.show_if_requested()
     """
     # import cv2
-    import kwimage
     import ubelt as ub
+
+    import kwimage
 
     if text is None:
         raise ValueError('text must be provided')
@@ -1544,8 +1553,9 @@ def fill_nans_with_checkers(
 def _masked_checkerboard(
     canvas, invalid_mask, square_shape, on_value, off_value
 ):
-    import kwimage
     import kwarray
+
+    import kwimage
 
     canvas = kwarray.atleast_nd(canvas, 3)
     invalid_mask = kwarray.atleast_nd(invalid_mask, 3)

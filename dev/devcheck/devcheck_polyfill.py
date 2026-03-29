@@ -1,11 +1,11 @@
-import skimage
-import numpy as np
-import kwplot
-import ubelt as ub
 import cv2
 import kwplot
-import kwimage
+import numpy as np
 import shapely
+import skimage
+import ubelt as ub
+
+import kwimage
 
 
 def check_fill_poly_properties():

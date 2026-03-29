@@ -9,11 +9,11 @@ This code is based on a template that lives in:
 
 
 def benchmark_template():
-    import ubelt as ub
-    import pandas as pd
     import kwarray
-    import torch
+    import pandas as pd
     import timerit
+    import torch
+    import ubelt as ub
     from line_profiler import profile
     # import inspect
 

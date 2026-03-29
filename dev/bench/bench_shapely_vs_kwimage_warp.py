@@ -1,6 +1,7 @@
 def main():
-    import kwimage
     from shapely.affinity import affine_transform
+
+    import kwimage
 
     # Test kwimage versus shapley warp
 

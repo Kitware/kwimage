@@ -1,8 +1,10 @@
 def rasterio_mwe():
     import tempfile
-    import kwimage
-    from osgeo import osr
+
     import ubelt as ub
+    from osgeo import osr
+
+    import kwimage
 
     img_dpath = ub.Path(tempfile.mkdtemp())
 

@@ -126,6 +126,7 @@ def _itk_warp_affine(
     """
     import itk
     import numpy as np
+
     from kwimage._common import _coerce_warp_dsize_inputs
 
     if 0:

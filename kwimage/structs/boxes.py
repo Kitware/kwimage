@@ -75,33 +75,32 @@ SeeAlso:
 """
 
 from __future__ import annotations
+
+import numbers  # NOQA
+import sys
+import warnings
 from typing import TYPE_CHECKING, Any, cast
+
+import kwarray
 import numpy as np
 import ubelt as ub
-import warnings
-import kwarray
-import numbers  # NOQA
-from kwimage.structs import _generic  # NOQA
+
 from kwimage import _internal
-import sys
+from kwimage.structs import _generic  # NOQA
 
 if TYPE_CHECKING:
-    from numpy import ndarray
-    from typing import List
-    import shapely
-    from typing import Any
-    from typing import Tuple
-    import kwimage
-    from typing import Callable
-    from numpy.typing import ArrayLike
-    from numbers import Number
-    from typing import Optional
-    import matplotlib
-    from torch import Tensor
-    from numpy.random import RandomState
-    from typing import Sequence
-    import torch
     from collections.abc import Generator
+    from numbers import Number
+    from typing import Any, Callable, List, Optional, Sequence, Tuple
+
+    import matplotlib
+    import shapely
+    import torch
+    from numpy import ndarray
+    from numpy.typing import ArrayLike
+    from torch import Tensor
+
+    import kwimage
     from kwimage._typing import TransformLike
 
 
@@ -1360,8 +1359,9 @@ class _BoxTransformMixins:
             >>> warped = self.warp(eye)
             >>> assert np.all(self.data == warped.data)
         """
-        import kwimage
         import skimage
+
+        import kwimage
         from kwimage._typing import SKImageGeometricTransform
 
         torch = sys.modules.get('torch', None)
@@ -2331,6 +2331,7 @@ class _BoxDrawMixins:
             >>> kwplot.show_if_requested()
         """
         import cv2
+
         import kwimage
 
         def _clamp_coords(x, y):

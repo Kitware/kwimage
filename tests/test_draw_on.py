@@ -1,6 +1,7 @@
-import kwimage
-import ubelt as ub
 import numpy as np
+import ubelt as ub
+
+import kwimage
 
 
 def _random_drawables():

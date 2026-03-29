@@ -4,13 +4,15 @@ backend.
 """
 
 from __future__ import annotations
+
+import numbers
 from typing import TYPE_CHECKING
 
 # from kwimage.structs import _generic
 import numpy as np
-import numbers
-from . import _generic
 import ubelt as ub
+
+from . import _generic
 
 if TYPE_CHECKING:
     from typing import Any
@@ -77,6 +79,7 @@ class Segmentation(_WrapperObject):
         """
 
         import kwarray
+
         import kwimage
 
         rng = kwarray.ensure_rng(rng)
@@ -359,8 +362,8 @@ def _coerce_coco_segmentation(data, dims=None):
     ):
         self = data
     else:
-        from shapely.geometry.polygon import Polygon
         from shapely.geometry.multipolygon import MultiPolygon
+        from shapely.geometry.polygon import Polygon
 
         if isinstance(data, MultiPolygon):
             self = kwimage.MultiPolygon.from_shapely(data)

@@ -38,8 +38,9 @@ class CropBorderCLI(scfg.DataConfig):
             >>> cls.main(argv=argv, **config)
         """
         import rich
-        import kwimage
         from rich.markup import escape
+
+        import kwimage
         from kwimage.im_core import crop_border_by_color
 
         config = cls.cli(argv=argv, data=kwargs, strict=True)

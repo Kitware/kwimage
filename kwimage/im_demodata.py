@@ -3,13 +3,16 @@ Keep a manifest of demo images used for testing
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import ubelt as ub
 
 if TYPE_CHECKING:
-    from typing import Tuple
-    from numpy import ndarray
     from numbers import Number
+    from typing import Tuple
+
+    from numpy import ndarray
 
 
 _TEST_IMAGES = {
@@ -565,8 +568,9 @@ def grab_test_image_fpath(
             # if all mirrors fail. In that case, create a random image according
             # to the specs. Ideally use a different path, so if networking comes
             # back on we get the real image if we can.
-            import numpy as np
             import kwarray
+            import numpy as np
+
             import kwimage
 
             cache_dpath = ub.Path.appdir(grabkw['appname'])

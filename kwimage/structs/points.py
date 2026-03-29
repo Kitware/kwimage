@@ -3,24 +3,22 @@ Data structures to represent and manipulate 2D Points
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
-import numpy as np
-import ubelt as ub
-import kwarray
+
 import numbers
 import warnings
+from typing import TYPE_CHECKING, Any
+
+import kwarray
+import numpy as np
+import ubelt as ub
+
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Tuple
-    from typing import Callable
-    import kwimage
-    from numpy.typing import ArrayLike
+    from typing import Any, List, Tuple
+
     from numpy import ndarray
-    from typing import List
-    from typing import Dict
-    import kwcoco
+
     from kwimage._typing import TransformLike
 
 
@@ -130,8 +128,9 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(3)).xy == self.xy)
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
-        import kwimage
         import skimage
+
+        import kwimage
         from kwimage._typing import SKImageGeometricTransform
 
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
@@ -659,9 +658,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = Points.random(10, classes=['a', 'b', 'c'])
             >>> self.draw(radius=0.01, color='classes')
         """
-        import kwimage
         import matplotlib as mpl
         from matplotlib import pyplot as plt
+
+        import kwimage
 
         if ax is None:
             ax = plt.gca()

@@ -7,21 +7,21 @@ Notes:
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 import skimage
 import skimage.transform
-from . import im_core
-from . import im_cv2
+
+from . import im_core, im_cv2
 
 if TYPE_CHECKING:
-    from typing import Iterable
-    from numpy import ndarray
     from numbers import Number
-    from typing import List
-    from typing import Tuple
+    from typing import Iterable, List, Tuple
+
+    from numpy import ndarray
 
 
 def stack_images(

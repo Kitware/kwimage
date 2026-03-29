@@ -82,21 +82,21 @@ Example:
 """
 
 from __future__ import annotations
+
+import functools
 from typing import TYPE_CHECKING, Any, cast
+
+import kwarray
 import numpy as np
 import ubelt as ub
-import kwarray
-import functools
+
 from . import _generic
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, List, Sequence, Tuple
+
     from numpy import ndarray
-    from typing import Sequence
-    from typing import Tuple
-    import kwimage
-    from typing import Dict
-    from typing import List
+
 
 
 class _HeatmapDrawMixin(object):
@@ -124,6 +124,7 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.imshow(overlay)
         """
         import networkx as nx
+
         import kwimage
 
         # Ignore cases where index is negative?
@@ -422,9 +423,10 @@ class _HeatmapDrawMixin(object):
             >>> kwplot.autompl()
             >>> kwplot.imshow(stacked)
         """
-        import kwimage
-        import matplotlib as mpl
         import cv2
+        import matplotlib as mpl
+
+        import kwimage
 
         mat = None
         if image is not None:
@@ -498,8 +500,8 @@ class _HeatmapDrawMixin(object):
 
         """
         # If draw doesnt exist use draw_on
-        import numpy as np
         import kwplot
+        import numpy as np
 
         if image is None:
             if imgspace:
@@ -777,8 +779,9 @@ class _HeatmapWarpMixin(object):
 
         DEPRICATE
         """
-        import kwimage
         import cv2
+
+        import kwimage
 
         M = self.tf_data_to_img.params[0:3]
         dsize = tuple(map(int, self.img_dims[::-1]))
@@ -910,8 +913,9 @@ class _HeatmapWarpMixin(object):
             >>> kwplot.figure(fnum=1, doclf=True)
             >>> kwplot.imshow(toshow)
         """
-        import kwimage
         import skimage
+
+        import kwimage
 
         if mat is None:
             mat = self.tf_data_to_img.params

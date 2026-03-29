@@ -6,8 +6,10 @@ Written by Ross Girshick
 """
 
 from __future__ import annotations
-import numpy as np
+
 import warnings
+
+import numpy as np
 
 
 def py_nms(np_ltrb, np_scores, thresh, bias: int = 1):

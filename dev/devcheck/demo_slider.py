@@ -1,6 +1,6 @@
 import kwarray
-import tqdm
 import numpy as np
+import tqdm
 
 
 def demo_with_heatmap():
@@ -88,8 +88,9 @@ def _stitcher_center_weighted_add(stitcher, space_slice, data):
 
 
 def demo_with_boxes():
-    import kwimage
     import kwarray
+
+    import kwimage
 
     rng = kwarray.ensure_rng(0)
 

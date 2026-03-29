@@ -2,8 +2,9 @@ def benchmark_select_rle_conversions():
     """
     Check what is the fastest way to encode an RLE
     """
-    import kwimage
     import ubelt as ub
+
+    import kwimage
 
     c_mask = kwimage.Mask.random(shape=(256, 256))
     f_mask = c_mask.to_fortran_mask(copy=True)
@@ -38,8 +39,9 @@ def benchmark_select_rle_conversions():
 
 
 def benchmark_all_mask_conversions():
-    import kwimage
     import ubelt as ub
+
+    import kwimage
 
     base_mask = kwimage.Mask.random(shape=(256, 256))
     ti = ub.Timerit(1000, bestof=50, verbose=1, unit='us')

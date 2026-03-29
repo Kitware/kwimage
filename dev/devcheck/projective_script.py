@@ -2,8 +2,8 @@ def main():
     """
     Posted to: https://github.com/opencv/opencv/issues/11784
     """
-    import ubelt as ub
     import sympy
+    import ubelt as ub
 
     # Shows the symbolic construction of the code
     # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA

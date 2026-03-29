@@ -1,7 +1,7 @@
 def bench_mask_to_polygon():
-    import ubelt as ub
     import pandas as pd
     import timerit
+    import ubelt as ub
 
     import kwimage
     from kwimage.structs.mask import MaskFormat  # NOQA

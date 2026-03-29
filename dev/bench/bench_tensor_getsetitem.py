@@ -1,9 +1,9 @@
+import netharn as nh
+import networkx as nx
 import timerit
 import torch
-import netharn as nh
-import ubelt as ub
-import networkx as nx
 import torch.nn.functional as F
+import ubelt as ub
 
 
 class CudaTimer(timerit.Timer):

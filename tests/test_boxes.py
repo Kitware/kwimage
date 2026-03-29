@@ -1,5 +1,6 @@
-import kwimage
 import pytest
+
+import kwimage
 
 
 def _is_torch_available():

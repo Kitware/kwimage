@@ -6,13 +6,16 @@ Timed best=4.455 ms, mean=4.686 ± 0.2 ms for impl=torch,type=ndarray
 Timed best=12.725 ms, mean=13.007 ± 0.2 ms for impl=numpy,type=ndarray
 """
 
-import torch
-import numpy as np
-import kwimage
 import copy
-import ubelt as ub
-import timerit
 import itertools as it
+
+import numpy as np
+import timerit
+import torch
+import ubelt as ub
+
+import kwimage
+
 # from kwimage.algo._nms_backend.torch_nms import torch_nms
 
 

@@ -3,9 +3,11 @@ Not sure how to best classify these functions
 """
 
 from __future__ import annotations
-import ubelt as ub
-import numpy as np
+
 import typing as _t
+
+import numpy as np
+import ubelt as ub
 
 
 def num_channels(img: np.ndarray) -> int:
@@ -789,8 +791,9 @@ def crop_border_by_color(
         >>> cropped = crop_border_by_color(img)
         >>> assert cropped.shape == (6, 6, 3)
     """
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     if fillval is None:
         fillval = np.array([255] * kwimage.num_channels(img))
@@ -839,8 +842,9 @@ def _get_pixel_dist(
         >>> channel = None
         >>> _get_pixel_dist(img, pixel, channel)
     """
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     pixel = np.asarray(pixel)
     if len(pixel.shape) < 2:
@@ -902,9 +906,10 @@ def _get_crop_slices(isfill: np.ndarray) -> tuple[slice, slice]:
         >>> assert rowslice.start == 2 and rowslice.stop == 4
         >>> assert colslice.start == 2 and colslice.stop == 3
     """
-    import numpy as np
-    import kwarray
     from functools import reduce
+
+    import kwarray
+    import numpy as np
 
     fill_colxs = [np.where(row)[0] for row in isfill]
     fill_rowxs = [np.where(col)[0] for col in isfill.T]

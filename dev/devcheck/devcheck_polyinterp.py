@@ -1,6 +1,7 @@
+import kwplot
 import numpy as np
 from shapely import geometry
-import kwplot
+
 import kwimage
 
 plt = kwplot.autoplt()

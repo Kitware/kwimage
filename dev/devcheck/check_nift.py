@@ -4,11 +4,11 @@ Test NITF Images:
 
 """
 
-from os.path import basename
-from os.path import splitext
 import ssl
-import ubelt as ub
 import urllib
+from os.path import basename, splitext
+
+import ubelt as ub
 
 
 def have_gov_certs():
@@ -239,8 +239,8 @@ def unsafe_grab_nitfs():
 def check_nitfs():
     nitfs = unsafe_grab_nitfs()
 
-    import xdev
     import netharn as nh
+    import xdev
 
     total = 0
     for fpath in nitfs:

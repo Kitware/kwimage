@@ -13,26 +13,25 @@ TODO:
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
-import numbers
+
 import math
-import ubelt as ub
+import numbers
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
+import ubelt as ub
+
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Tuple
-    from typing import Callable
-    from numpy.typing import ArrayLike
-    import kwimage
-    from typing import List
-    from typing import Iterable
     from numbers import Number
-    from numpy import ndarray
-    import shapely
-    from typing import Dict
+    from typing import Any, Dict, List, Tuple
+
     import matplotlib
+    import shapely
+    from numpy import ndarray
+
+    import kwimage
     from kwimage._typing import TransformLike
 
 
@@ -173,8 +172,9 @@ class _ShapelyMixin:
                 -0.317,
             )
         """
-        import cv2
         from collections import namedtuple
+
+        import cv2
 
         OrientedBBox = namedtuple('OrientedBBox', ('center', 'extent', 'theta'))
         hull = self.convex_hull
@@ -1170,6 +1170,7 @@ class Polygon(
         Removes holes from this polygon
         """
         from shapely.geometry import Polygon
+
         import kwimage
 
         poly = self.to_shapely()
@@ -1250,8 +1251,8 @@ class Polygon(
             # If we have an ellipse (i.e. different radius in each direction),
             # then the problem gets a lot harder, but we can do it! WE JUST
             # GOTTA BELIEVE IN OURSELVES!
-            import scipy.optimize
             import scipy
+            import scipy.optimize
 
             need_swap = a > b
             if need_swap:
@@ -2278,9 +2279,11 @@ class Polygon(
         if image_.size > 0:
             if pixels_are == 'areas':
                 # rasterio hac: todo nicer organization
-                from rasterio import features
-                from kwimage import num_channels
                 import warnings
+
+                from rasterio import features
+
+                from kwimage import num_channels
 
                 if num_channels(image_) > 1:
                     warnings.warn(
@@ -2521,8 +2524,9 @@ class Polygon(
             import xdev
             globals().update(xdev.get_func_kwargs(kwimage.Polygon.draw_on))
         """
-        import kwimage
         import cv2
+
+        import kwimage
 
         if image is None:
             # If image is not given, use the boxes to allocate enough
@@ -2788,8 +2792,9 @@ class Polygon(
             >>> kwplot.show_if_requested()
         """
         import matplotlib as mpl
-        from matplotlib.patches import Path
         from matplotlib import pyplot as plt
+        from matplotlib.patches import Path
+
         import kwimage
 
         if ax is None:
@@ -2988,6 +2993,7 @@ class Polygon(
             >>>     plt.plot(*interp_line.T, '--x')
         """
         from shapely import geometry
+
         import kwimage
 
         # Create a variant of each polygon
@@ -3109,7 +3115,8 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         Removes holes from this multipolygon
         """
-        from shapely.geometry import Polygon, MultiPolygon
+        from shapely.geometry import MultiPolygon, Polygon
+
         import kwimage
 
         mpoly = self.to_shapely()
@@ -3615,9 +3622,10 @@ class PolygonList(_generic.ObjectList):
             >>> self = kwimage.PolygonList.random(length, rng=rng)
             >>> assert len(self) == 10
         """
-        import kwimage
         import kwarray
         import kwarray.distributions
+
+        import kwimage
 
         rng = kwarray.ensure_rng(rng)
 
@@ -3873,6 +3881,7 @@ class PolygonList(_generic.ObjectList):
 
     def unary_union(self):
         from shapely.ops import unary_union
+
         from kwimage.structs.polygon import _kwimage_from_shapely
 
         polys_sh = [p.to_shapely() for p in self]

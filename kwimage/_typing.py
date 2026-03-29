@@ -1,13 +1,16 @@
 # Helpers for typing
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from skimage.transform import _geometric
 
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Callable
+    from typing import Any, Callable
+
     from numpy.typing import ArrayLike
+
     from kwimage.transform import Transform
 
 SKImageGeometricTransform: Any = getattr(

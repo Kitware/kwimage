@@ -5,22 +5,23 @@ metadata on top of coordinate data.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
+
+import warnings
+from typing import TYPE_CHECKING, Any
+
+import kwarray
 import numpy as np
 import ubelt as ub
-import warnings
-import kwarray
+
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
-    from typing import Sequence
-    from typing import Tuple
-    from typing import Callable
-    from typing import Any
-    from numpy import ndarray
-    from typing import List
+    from typing import Any, List, Sequence, Tuple
+
     import matplotlib as mpl
+    from numpy import ndarray
+    from numpy.typing import ArrayLike
+
     from kwimage._typing import TransformLike
 
 try:
@@ -1340,8 +1341,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> plt.gca().set_aspect('equal')
         """
         import matplotlib as mpl
-        import kwimage
         from matplotlib import pyplot as plt
+
+        import kwimage
 
         if ax is None:
             ax = plt.gca()

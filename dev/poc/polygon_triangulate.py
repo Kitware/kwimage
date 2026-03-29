@@ -9,14 +9,14 @@ def triangulate_polygon_interior(polygon):
     References:
         https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
     """
-    import numpy as np
-
     # from shapely.geometry import Polygon
     # import shapely.wkt
     # from shapely.ops import triangulate
     import geopandas as gpd
+    import numpy as np
     from geovoronoi import voronoi_regions_from_coords
     from scipy.spatial import Delaunay
+
     import kwimage
 
     poly_points = []

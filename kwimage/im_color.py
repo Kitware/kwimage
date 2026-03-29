@@ -3,20 +3,18 @@ A class to make it easier to work with single colors.
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Iterable, cast
 
 import numpy as np
 import ubelt as ub
-from . import im_core
-from . import _im_color_data
+
+from . import _im_color_data, im_core
 
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Iterable
+    from typing import Any, Iterable, List, Tuple, TypeAlias
+
     from numpy import ndarray
-    from typing import Tuple
-    from typing import List
-    from typing import TypeAlias
 
     ColorTuple: TypeAlias = tuple[float, ...]
     ByteColorTuple: TypeAlias = tuple[int, ...]
@@ -898,8 +896,9 @@ def _draw_color_swatch(colors, cellshape=9):
         swatch = _draw_color_swatch(colors)
         kwplot.imshow(swatch)
     """
-    import kwimage
     import math
+
+    import kwimage
 
     if not ub.iterable(cellshape):
         cellshape_ = (cellshape, cellshape)

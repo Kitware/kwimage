@@ -1,4 +1,5 @@
 import itertools as it
+
 import numpy as np
 import ubelt as ub
 
@@ -7,8 +8,10 @@ def test_from_mask_rle_translate():
     """
     Ensure that RLE translation works on a variety of data
     """
-    from kwimage.structs.mask import Mask
-    from kwimage.structs.mask import MaskFormat  # NOQA
+    from kwimage.structs.mask import (
+        Mask,
+        MaskFormat,  # NOQA
+    )
 
     SMALL = True
 

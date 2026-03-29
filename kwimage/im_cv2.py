@@ -7,15 +7,16 @@ which is what the underlying cv2 functions use.
 
 from __future__ import annotations
 
+import numbers
+import re
+import typing as _t
+from functools import lru_cache
+
 import cv2
 import numpy as np
 import ubelt as ub
-import numbers
-import re
-from functools import lru_cache
-from kwimage import im_core
 
-import typing as _t
+from kwimage import im_core
 
 if _t.TYPE_CHECKING:
     from collections.abc import Iterable
@@ -1740,9 +1741,9 @@ def _cv2_warp_affine(
         >>> kwplot.imshow(warped)
         >>> kwplot.show_if_requested()
     """
-    from kwimage.transform import Affine
     import kwimage
     from kwimage._common import _coerce_warp_dsize_inputs
+    from kwimage.transform import Affine
 
     if isinstance(image, np.ma.MaskedArray):
         mask = image.mask
@@ -2061,9 +2062,9 @@ def _cv2_large_warp_affine(
         >>> kwplot.imshow(res, pnum=(1, 2, 1))
         >>> kwplot.imshow(res2, pnum=(1, 2, 2))
     """
-    from kwimage import Affine, Boxes
-    import cv2
     import itertools as it
+
+    from kwimage import Affine, Boxes
 
     def _split_2d(arr):
         # provide indexes to view arr in 2d blocks like 2 uses of

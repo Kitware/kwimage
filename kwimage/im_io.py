@@ -5,23 +5,27 @@ allows us to support a wider array of formats than any of individual backends.
 """
 
 from __future__ import annotations
+
 import os
-from os.path import exists, dirname
+import typing as _t
+from os.path import dirname, exists
+
 import numpy as np
 import ubelt as ub
+
 from kwimage import im_core
+
 # import warnings
-
-from kwimage._backend_info import _have_gdal
-from kwimage._backend_info import _have_cv2  # NOQA
-from kwimage._backend_info import _have_turbojpg
-from kwimage._backend_info import _default_backend
-
-import typing as _t
+from kwimage._backend_info import (
+    _default_backend,
+    _have_cv2,  # NOQA
+    _have_gdal,
+    _have_turbojpg,
+)
 
 if _t.TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Literal, overload, TypeAlias
+    from typing import Literal, TypeAlias, overload
     # from numpy.typing import NDArray
 
     PathLike: TypeAlias = str | os.PathLike[str]
@@ -533,8 +537,9 @@ def _imwrite_qoi(fpath: str, data: np.ndarray) -> str:
         >>> _imwrite_qoi(fpath, data)
         >>> recon, _, _ = _imread_qoi(fpath)
     """
-    import kwimage
     import qoi
+
+    import kwimage
 
     data = kwimage.atleast_3channels(data)
     qoi.write(fpath, data)
@@ -2213,10 +2218,11 @@ def _imread_svg(fpath: str) -> tuple[np.ndarray, str, str]:
         kwplot.autompl()
         kwplot.imshow(image)
     """
+    import io
+
+    from PIL import Image
     from reportlab.graphics import renderPM
     from svglib.svglib import svg2rlg
-    import io
-    from PIL import Image
 
     file = io.BytesIO()
     drawing = svg2rlg(fpath)
@@ -2270,7 +2276,7 @@ def _imread_exif(fpath: os.PathLike[str] | str) -> dict:
 
     USE_PIL_BACKEND = 0
     if USE_PIL_BACKEND:
-        from PIL import Image, ExifTags
+        from PIL import ExifTags, Image
         from PIL.ExifTags import GPSTAGS
 
         img = Image.open(fpath)

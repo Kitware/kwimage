@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-import numpy as np
+
 import cv2
+import numpy as np
 
 if TYPE_CHECKING:
     from typing import Any
+
     from numpy import ndarray
 
 
@@ -332,8 +335,9 @@ def _benchmark():
 
 
 def _benchmark2():
-    import kwimage
     import timerit
+
+    import kwimage
 
     ti = timerit.Timerit(100, bestof=10, verbose=3)
     img_hwc = kwimage.grab_test_image(space='gray')

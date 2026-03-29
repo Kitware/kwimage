@@ -25,6 +25,7 @@ def resize_all():
     )
     import os
     from os.path import join, relpath
+
     import kwimage
 
     recursive = False

@@ -8,10 +8,11 @@ def warp_image_test(image, transform, dsize=None):
     transform = Affine.random() @ Affine.scale(0.01)
 
     """
-    from kwimage.transform import Affine
-    import kwimage
     import numpy as np
     import ubelt as ub
+
+    import kwimage
+    from kwimage.transform import Affine
 
     # Choose a random affine transform that probably has a small scale
     # transform = Affine.random() @ Affine.scale((0.3, 2))
@@ -25,9 +26,10 @@ def warp_image_test(image, transform, dsize=None):
 
     image = kwimage.ensure_float01(image)
 
-    from kwimage import im_cv2
-    import kwarray
     import cv2
+    import kwarray
+
+    from kwimage import im_cv2
 
     transform = Affine.coerce(transform)
 
@@ -269,12 +271,13 @@ def warp_affine(
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
     """
+    import cv2
+    import numpy as np
+    import ubelt as ub
+
+    import kwimage
     from kwimage import im_cv2
     from kwimage.transform import Affine
-    import kwimage
-    import numpy as np
-    import cv2
-    import ubelt as ub
 
     transform = Affine.coerce(transform)
     flags = im_cv2._coerce_interpolation(interpolation)

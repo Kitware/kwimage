@@ -31,24 +31,23 @@ If you want to visualize boxes and scores you can do this:
 """
 
 from __future__ import annotations
+
+import sys
 from typing import TYPE_CHECKING, Any, cast
+
 import numpy as np
 import ubelt as ub
-import sys
-from kwimage.structs import boxes as _boxes
+
 from kwimage.structs import _generic
+from kwimage.structs import boxes as _boxes
 
 if TYPE_CHECKING:
-    from numpy import ndarray
-    from typing import Any
-    from typing import List
-    from typing import Dict
-    import kwimage
-    from typing import Callable
-    from typing import Tuple
-    from typing import Sequence
-    from numpy.random import RandomState
     from collections.abc import Generator
+    from typing import Any, Dict, List, Sequence, Tuple
+
+    from numpy import ndarray
+
+    import kwimage
     from kwimage._typing import TransformLike
 
 # try:
@@ -606,6 +605,7 @@ class _DetAlgoMixin:
         """
         import kwarray
         import skimage
+
         import kwimage
 
         classes = self.meta['classes']
@@ -1880,8 +1880,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> import kwimage
             >>> kwimage.Detections.random(num=10, segmentations=True).scale(128).draw()
         """
-        import kwimage
         import kwarray
+
+        import kwimage
 
         rng = kwarray.ensure_rng(rng)
         boxes = kwimage.Boxes.random(num=num, rng=rng)
@@ -2054,6 +2055,7 @@ def _dets_to_fcmaps(
         kwplot.show_if_requested()
     """
     import cv2
+
     import kwimage
 
     # In soft mode we made a one-channel segmentation target mask

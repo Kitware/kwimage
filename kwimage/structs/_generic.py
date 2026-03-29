@@ -1,15 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import ubelt as ub
-import sys
-import kwarray
+
 import numbers
+import sys
+from typing import TYPE_CHECKING
+
+import kwarray
 import numpy as np
+import ubelt as ub
 
 if TYPE_CHECKING:
-    from typing import Sequence
     from collections.abc import Generator
-    from typing import Any
+    from typing import Any, Sequence
 # from collections import abc
 # import abc
 

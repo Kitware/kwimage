@@ -3,6 +3,7 @@ Raw color data
 """
 
 from __future__ import annotations
+
 from collections import OrderedDict
 
 BASE_COLORS: dict[str, tuple[float, float, float]] = {

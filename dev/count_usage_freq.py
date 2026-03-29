@@ -17,9 +17,10 @@ def count_usage(cmdline=True, **kw):
     modname = config['modname']
     assert modname is not None
 
-    import ubelt as ub
     import glob
     from os.path import join
+
+    import ubelt as ub
 
     names = [
         'netharn',

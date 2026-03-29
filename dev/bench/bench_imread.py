@@ -125,8 +125,8 @@ def _read_pil(fpath):
 
 def bench_imread():
     import ubelt as ub
-    # fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
 
+    # fpath = ub.grabdata('http://www.topcoder.com/contest/problem/UrbanMapper3D/JAX_Tile_043_DTM.tif')
     import kwimage
 
     fpath = kwimage.grab_test_image_fpath('airport')

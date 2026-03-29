@@ -9,10 +9,11 @@ def test_mask_with_bool_data():
         import pytest
 
         pytest.skip('requires cv2')
-    import kwimage
-    import ubelt as ub
-    import numpy as np
     import kwarray
+    import numpy as np
+    import ubelt as ub
+
+    import kwimage
 
     rng = kwarray.ensure_rng(42134)
     mask_data = rng.rand(32, 32) > 0.5

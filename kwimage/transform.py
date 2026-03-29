@@ -4,18 +4,22 @@ transformation matrices.
 """
 
 from __future__ import annotations
-import typing as _t
-import ubelt as ub
-import numpy as np
-import kwarray
-import skimage.transform
+
 import math
+import typing as _t
+
+import kwarray
+import numpy as np
+import skimage.transform
+import ubelt as ub
+
 from kwimage import _internal
 
 if _t.TYPE_CHECKING:
-    from typing import Any
-    import numpy.typing as npt
     from numbers import Number
+    from typing import Any
+
+    import numpy.typing as npt
 
     # Type aliases (type-checker only; zero runtime typing overhead)
     NDArray = npt.NDArray[Any]
@@ -1616,8 +1620,9 @@ class Affine(Projective):
         TODO:
             - [ ] improve kwargs parameterization
         """
-        from kwarray import distributions
         import numbers
+
+        from kwarray import distributions
 
         TN = distributions.TruncNormal
         rng = kwarray.ensure_rng(rng)

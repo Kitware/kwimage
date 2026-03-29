@@ -6,15 +6,18 @@ def benchmark_alphablend_impls():
     Ignore:
         from kwimage.imutil.im_alphablend import *
     """
-    from kwimage.im_alphablend import overlay_alpha_images
-    from kwimage.im_alphablend import _prep_rgb_alpha
-    from kwimage.im_alphablend import _alpha_blend_inplace
-    from kwimage.im_alphablend import _alpha_blend_simple
-    from kwimage.im_alphablend import _alpha_blend_numexpr1
-    from kwimage.im_alphablend import _alpha_blend_numexpr2
-    import kwimage
-    import xdev
     import ubelt as ub
+    import xdev
+
+    import kwimage
+    from kwimage.im_alphablend import (
+        _alpha_blend_inplace,
+        _alpha_blend_numexpr1,
+        _alpha_blend_numexpr2,
+        _alpha_blend_simple,
+        _prep_rgb_alpha,
+        overlay_alpha_images,
+    )
 
     H = W = 32
     rng = np.random.RandomState(0)

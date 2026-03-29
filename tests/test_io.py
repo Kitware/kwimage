@@ -8,12 +8,13 @@ def test_interlaced():
         import pytest
 
         pytest.skip('requires cv2')
-    import ubelt as ub
-    import cv2
-    import kwimage
     from os.path import join
 
+    import cv2
     import pytest
+    import ubelt as ub
+
+    import kwimage
 
     pytest.skip(
         'This is an exploration of an issue, not a test that we should run'
@@ -106,9 +107,10 @@ def test_cross_backend_reads():
 
         pytest.skip()
 
-    import kwimage
-    import ubelt as ub
     import numpy as np
+    import ubelt as ub
+
+    import kwimage
 
     # Using 3 or 4 channels is fine, 5... not so much
     data = np.random.rand(8, 8, 5)
@@ -132,6 +134,7 @@ def test_cross_backend_reads():
     kwimage.imwrite(gdal_fpath, data, backend='gdal')
 
     import os
+
     from osgeo import gdal
 
     infos = {}

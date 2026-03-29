@@ -8,15 +8,15 @@ TODO:
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-import ubelt as ub
-import numpy as np
+
 import kwarray
+import numpy as np
+import ubelt as ub
 
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Tuple
-    from typing import Sequence
+    from typing import Any, Sequence, Tuple
 
 
 def _coordinate_grid(dims, align_corners=False):
@@ -1419,6 +1419,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> kwplot.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
     """
     import cv2
+
     import kwimage
 
     impl = kwarray.ArrayAPI.impl(inputs)

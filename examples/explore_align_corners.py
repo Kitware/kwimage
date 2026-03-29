@@ -28,6 +28,7 @@ SeeAlso:
 """
 
 import numpy as np
+
 import kwimage
 
 
@@ -72,8 +73,8 @@ def main():
     )[0, :, :, 0].numpy()
 
     import pandas as pd
-    import ubelt as ub
     import rich
+    import ubelt as ub
 
     df = pd.DataFrame(ub.udict(results).map_values(lambda x: x.ravel()))
     rich.print(df.to_string())

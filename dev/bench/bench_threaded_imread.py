@@ -1,7 +1,8 @@
-import ubelt as ub
+import kwcoco
 import pandas as pd
 import timerit
-import kwcoco
+import ubelt as ub
+
 import kwimage
 
 

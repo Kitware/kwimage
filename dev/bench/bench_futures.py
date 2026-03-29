@@ -5,13 +5,15 @@ some advantage to using TheadPoolExecutor
 
 """
 
-import numpy as np
-import cv2
-import kwimage
 from concurrent import futures
-from ndsampler.utils import util_futures
+
+import cv2
+import numpy as np
 import timerit
 import ubelt as ub
+from ndsampler.utils import util_futures
+
+import kwimage
 
 
 def numpy_work():

@@ -24,10 +24,11 @@ References:
     [SE2867] https://skeptics.stackexchange.com/questions/2867
 """
 
-import kwimage
-import ubelt as ub
-import numpy as np
 import kwplot
+import numpy as np
+import ubelt as ub
+
+import kwimage
 
 
 def main():

@@ -7,8 +7,9 @@ def test_geotiff():
 
         pytest.skip()
 
-    import kwimage
     import ubelt as ub
+
+    import kwimage
 
     dpath = ub.Path.appdir('kwimage/tests/geotiff').ensuredir()
     fpath = dpath / 'dummy_geotiff.tif'
@@ -70,8 +71,9 @@ def test_geotiff():
         metadata=metadata,
     )
 
-    from osgeo import gdal
     import os
+
+    from osgeo import gdal
 
     dset = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
     info = gdal.Info(dset, format='json', allMetadata=True, listMDD=True)

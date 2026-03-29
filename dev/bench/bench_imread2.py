@@ -34,9 +34,11 @@ def imread2_bench():
         # {'backend': 'cv2', 'space': None},
     ]
 
+    from os.path import join
+
     import numpy as np
     import ubelt as ub
-    from os.path import join
+
     import kwimage
 
     dpath = ub.Path.appdir('kwimage/bench/imread2').ensuredir()

@@ -2,10 +2,12 @@ def test_demodata_headers():
     """
     Check that the extensions on all of our demo images are accurate
     """
-    from PIL import Image
     from os.path import splitext
-    import kwimage
+
     import ubelt as ub
+    from PIL import Image
+
+    import kwimage
 
     if not ub.argflag('--network'):
         import pytest

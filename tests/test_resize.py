@@ -1,8 +1,9 @@
-import kwimage
 import kwarray
 import numpy as np
-import ubelt as ub
 import pytest
+import ubelt as ub
+
+import kwimage
 
 
 def image_variations(image_basis):

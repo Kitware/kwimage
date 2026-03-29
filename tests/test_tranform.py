@@ -1,10 +1,12 @@
 def test_rational_affine():
-    from kwimage import Affine
     import numbers
-    import ubelt as ub
-    import numpy as np
+
     import kwarray
+    import numpy as np
     import pytest
+    import ubelt as ub
+
+    from kwimage import Affine
 
     try:
         import sympy
@@ -82,8 +84,9 @@ def test_rational_affine():
 
 
 def test_duplicate_points_non_rank_defficient():
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     pts1 = np.array(
         [
@@ -111,8 +114,9 @@ def test_duplicate_points_non_rank_defficient():
 
 
 def test_rank_defficient_without_duplicates():
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     pts1 = np.array(
         [
@@ -132,8 +136,9 @@ def test_rank_defficient_without_duplicates():
 
 
 def test_rank_defficient_with_duplicates():
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     pts1 = np.array(
         [
@@ -157,8 +162,9 @@ def test_rank_defficient_with_duplicates():
 
 
 def test_rank_defficient_with_duplicates_non_exact():
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     pts1 = np.array(
         [
@@ -179,8 +185,9 @@ def test_rank_defficient_with_duplicates_non_exact():
 
 
 def test_single_correspondence():
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     pts1 = np.array(
         [

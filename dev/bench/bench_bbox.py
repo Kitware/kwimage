@@ -1,9 +1,11 @@
-import kwimage
-import torch
-import ubelt as ub
-import numpy as np
 import itertools as it
 from functools import partial
+
+import numpy as np
+import torch
+import ubelt as ub
+
+import kwimage
 
 
 def bench_bbox_iou_method():
@@ -11,9 +13,9 @@ def bench_bbox_iou_method():
     On my system the torch impl was fastest (when the data was on the GPU).
     """
     from kwimage.structs.boxes import (
-        _box_ious_torch,
-        _box_ious_py,
         _bbox_ious_c,
+        _box_ious_py,
+        _box_ious_torch,
     )
 
     ydata = ub.ddict(list)

@@ -44,6 +44,7 @@ def _coerce_warp_dsize_inputs(
             ...
     """
     import numpy as np
+
     import kwimage
 
     w, h = input_dsize

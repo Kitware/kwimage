@@ -34,24 +34,26 @@ Note:
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
-import sys
+
 import copy
+import itertools as it
+import numbers
+import warnings
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import ubelt as ub
-import itertools as it
-import warnings
-import numbers
+
 from . import _generic
 
 if TYPE_CHECKING:
-    from typing import List
-    from numpy import ndarray
-    from typing import Tuple
     from numbers import Number
+    from typing import Any, List, Tuple
+
+    from numpy import ndarray
     from numpy.random import RandomState
+
     import kwimage
-    from typing import Any
 
 
 class _Mask_Backends:
@@ -900,8 +902,9 @@ class _MaskDrawMixin(object):
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
         """
-        import kwimage
         import cv2
+
+        import kwimage
 
         if image is None:
             image = np.zeros(self.shape[0:2] + (3,), dtype=np.float32)
@@ -972,8 +975,9 @@ class _MaskDrawMixin(object):
             color (str | tuple): color code/rgb of the mask
             alpha (float): mask alpha value
         """
-        import kwimage
         import cv2
+
+        import kwimage
 
         if ax is None:
             from matplotlib import pyplot as plt
@@ -1101,6 +1105,7 @@ class Mask(
             >>> kwimage.Mask.random(shape=(4, 0))
         """
         import kwarray
+
         import kwimage
 
         rng = kwarray.ensure_rng(rng)
@@ -1717,6 +1722,7 @@ class Mask(
 
         if False:
             import kwplot
+
             import kwimage
 
             kwplot.autompl()
@@ -1978,7 +1984,7 @@ class Mask(
             >>>     '''))
             >>> fig.set_size_inches([12.8, 13.37])
         """
-        from kwimage.structs.polygon import Polygon, MultiPolygon
+        from kwimage.structs.polygon import MultiPolygon, Polygon
 
         # Note: it is not necessarilly faster to to only exact the patch of
         # non-zero values

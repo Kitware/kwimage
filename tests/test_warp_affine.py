@@ -6,8 +6,9 @@ def test_warp_affine():
 
         pytest.skip('requires cv2')
     # Demo how of how we also handle masked arrays
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     _image = kwimage.grab_test_image('pm5644')
     _image = kwimage.ensure_float01(_image)
@@ -50,8 +51,9 @@ def test_warp_affine_with_nan_border():
         import pytest
 
         pytest.skip('requires cv2')
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     img = kwimage.ensure_float01(kwimage.grab_test_image())
     M = kwimage.Affine.affine(theta=np.pi / 8)
@@ -109,8 +111,9 @@ def test_warp_affine_with_many_chans():
         import pytest
 
         pytest.skip('requires cv2')
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     img = np.random.rand(5, 5, 4)
     M = kwimage.Affine.affine(theta=np.pi / 8)
@@ -128,8 +131,9 @@ def test_warp_affine_float64_nearest_matches_float32():
         import pytest
 
         pytest.skip('requires cv2')
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     src64 = np.linspace(0, 1, 36).reshape(6, 6).astype(np.float64)
     src32 = src64.astype(np.float32)

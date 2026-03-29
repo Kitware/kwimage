@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import numpy as np
 import ubelt as ub
 
@@ -173,8 +175,9 @@ class Box:
                     data = data[None, :]
             # return cls(kwimage.Boxes.coerce(data, **kwargs))
             # inline new coerce code until new version lands
-            from kwimage import Boxes
             from shapely.geometry import Polygon
+
+            from kwimage import Boxes
 
             if isinstance(data, Boxes):
                 self = data
@@ -560,8 +563,9 @@ def _transfer_docstrings():
     Ignore:
         from kwimage.structs.single_box import *  # NOQA
     """
-    from kwimage.structs import Boxes
     import types
+
+    from kwimage.structs import Boxes
 
     DYNAMIC_TRANSFER = True
 

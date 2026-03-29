@@ -9,13 +9,15 @@ SeeAlso:
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import numpy as np
 
 if TYPE_CHECKING:
+    from typing import Dict, Tuple
+
     from numpy import ndarray
-    from typing import Dict
-    from typing import Tuple
 
 
 def encode_run_length(

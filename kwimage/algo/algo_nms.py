@@ -3,16 +3,19 @@ Generic Non-Maximum Suppression API with efficient backend implementations
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
+
 import sys
+import warnings
+from typing import TYPE_CHECKING, Any
+
+import kwarray
 import numpy as np
 import ubelt as ub
-import warnings
-import kwarray
 
 if TYPE_CHECKING:
-    from numpy import ndarray
     from typing import Tuple
+
+    from numpy import ndarray
 
 
 def daq_spatial_nms(
@@ -234,8 +237,7 @@ class _NMS_Impls:
             torch = None
 
         # These are pure python and should always be available
-        from kwimage.algo._nms_backend import py_nms
-        from kwimage.algo._nms_backend import torch_nms
+        from kwimage.algo._nms_backend import py_nms, torch_nms
 
         _funcs['numpy'] = py_nms.py_nms
 

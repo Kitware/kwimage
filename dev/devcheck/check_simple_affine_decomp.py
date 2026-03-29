@@ -15,10 +15,11 @@ the raw matrix values and the latter is the matrix constructed from its
 underlying parameters.
 """
 
-import sympy
 import itertools as it
-import ubelt as ub
+
 import numpy as np
+import sympy
+import ubelt as ub
 
 # domain = {'real': True, 'negative': False}
 # domain = {}
