@@ -1822,6 +1822,10 @@ class Polygon(_generic.Spatial, _PolyArrayBackend, _PolyWarpMixin, _ShapelyMixin
         Returns:
             kwimage.Boxes
         """
+        ub.schedule_deprecation(
+            'kwimage', 'Polygon.to_boxes', 'function',
+            migration='Use the box method instead.', deprecate='0.9.20',
+            error='1.0.0', remove='1.1.0')
         return self.bounding_box()
 
     @property
@@ -3044,7 +3048,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         import kwimage
         if dims is None:
-            _, _, x2, y2 = self.to_boxes().to_ltrb().data[0]
+            _, _, x2, y2 = self.box().to_ltrb().data
             dims = (int(math.ceil(y2)), int(math.ceil(x2)))
             # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
@@ -3374,7 +3378,7 @@ class PolygonList(_generic.ObjectList):
             >>> assert len(self) == len(boxes)
         """
         import kwimage
-        boxes_list = [p.to_boxes() for p in self.data]
+        boxes_list = [p.box() for p in self.data]
         boxes = kwimage.Boxes.concatenate(boxes_list)
         return boxes
 
