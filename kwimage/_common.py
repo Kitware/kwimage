@@ -108,6 +108,7 @@ def _coerce_warp_dsize_inputs(
                 dsize = (new_w, new_h)
         elif dsize in {'content', 'max'}:
             dsize = max_dsize
+            assert new_origin is not None
             transform_ = kwimage.Affine.translate(-new_origin) @ transform
             new_origin = np.array([0, 0])
         else:

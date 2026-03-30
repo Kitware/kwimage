@@ -10,7 +10,9 @@ import ubelt as ub
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import Any, Sequence
+    from typing import Any, Sequence, MutableSequence, TypeVar
+    T = TypeVar("T")
+
 # from collections import abc
 # import abc
 
@@ -88,7 +90,7 @@ class Spatial(ub.NiceRepr):
 
 
 # class ListProxy(abc.MutableSequence):
-class _ExperimentalListProxy:
+class _ExperimentalListProxy[T]:
     """
     We may modify this implementation to be more generic in the future and
     directly inherit from :class:`abc.MutableSequence`. This intermediate form
@@ -99,6 +101,7 @@ class _ExperimentalListProxy:
 
     Requires that the inheriting class has a ``data`` attribute.
     """
+    data: MutableSequence[T]
 
     def __getitem__(self, index):
         """Retrieve an item by its index."""
@@ -160,7 +163,7 @@ class _ExperimentalListProxy:
         """Return a reverse iterator over the sequence."""
         return self.data.__reversed__()
 
-    def index(self, value, start=0, stop=None):
+    def index(self, value, start : int = 0, stop : int = sys.maxsize):
         """
         Return the index of the first occurrence of a value.
         Raise ValueError if the value is not present.
@@ -191,7 +194,7 @@ class ObjectList(Spatial, _ExperimentalListProxy):
 
     # __slots__ = ('data', 'meta',)
 
-    def __init__(self, data, meta: Any | None = None) -> None:
+    def __init__(self, data: MutableSequence[T], meta: Any | None = None) -> None:
         if meta is None:
             meta = {}
         self.data = data
@@ -207,7 +210,7 @@ class ObjectList(Spatial, _ExperimentalListProxy):
     @property
     def dtype(self):
         try:
-            return self.data.dtype
+            return self.data.dtype  # type: ignore
         except Exception:
             print('kwimage._generic: no dtype for ' + str(type(self.data)))
             raise
