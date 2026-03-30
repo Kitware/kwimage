@@ -108,6 +108,16 @@ class Color(ub.NiceRepr):
     This should only be used when handling small numbers of colors(e.g. 1),
     don't use this to represent an image.
 
+    TODO:
+        We should restructure this into two classes "ColorCompat" and
+        "ColorFuture", where "ColorFuture" is a new clean design that breaks
+        backwards compatability and "ColorCompat" utilizes "ColorFuture" but
+        mimics this old API exactly except it has an option which defaults the
+        backend to compat, but also allows the user to swap it to future.
+        Using the compat case will warn the users to switch to future.  If the
+        users are switching to "future" then their code should work as-is when
+        we actually make the switch, except a little faster.
+
     CommandLine:
         xdoctest -m kwimage.im_color Color
 
@@ -140,7 +150,7 @@ class Color(ub.NiceRepr):
             color (Color | Iterable[int | float] | str):
                 something coercable into a color
             alpha (float | None):
-                if psecified adds an alpha value
+                if specified adds an alpha value
             space (str):
                 The colorspace to interpret this color as. Defaults to rgb.
             coerce (bool):
@@ -187,6 +197,7 @@ class Color(ub.NiceRepr):
                 if not space.endswith('a'):
                     space += 'a'
         else:
+            assert space is not None
             color01 = color
             space = space
 
@@ -560,7 +571,7 @@ class Color(ub.NiceRepr):
             if exclude_white:
                 exclude_colors = exclude_colors + [(1.0, 1.0, 1.0)]
             # convert string to int for seed
-            seed = int(ub.hash_data(exclude_colors, base=10)) + num
+            seed = int(ub.hash_data(exclude_colors, base=10)) + num  # type: ignore
             distinct_colors = distinctipy.get_colors(
                 num, exclude_colors=exclude_colors, rng=seed
             )
