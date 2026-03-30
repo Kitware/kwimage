@@ -532,15 +532,10 @@ class Color(ub.NiceRepr):
 
         if legacy:
             import matplotlib as mpl
-            import matplotlib._cm as _cm
 
             assert existing is None
             # Old behavior
-            cm = mpl.colors.LinearSegmentedColormap.from_list(
-                'gist_rainbow',
-                _cm.datad['gist_rainbow'],
-                mpl.rcParams['image.lut'],
-            )
+            cm = mpl.colormaps['gist_rainbow'].resampled(mpl.rcParams['image.lut'])
 
             distinct_colors = [
                 np.array(cm(i / num)).tolist()[0:3] for i in range(num)
