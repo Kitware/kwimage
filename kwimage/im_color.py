@@ -160,13 +160,7 @@ class Color(ub.NiceRepr):
                 space args directly. Alpha will be ignored.
         """
         if coerce:
-            try:
-                # Hack for ipython reload
-                is_color_cls = color.__class__.__name__ == 'Color'
-            except Exception:
-                is_color_cls = isinstance(color, Color)
-
-            if is_color_cls:
+            if isinstance(color, Color):
                 assert alpha is None
                 assert space is None
                 space = color.space
@@ -198,13 +192,13 @@ class Color(ub.NiceRepr):
                     space += 'a'
         else:
             assert space is not None
-            color01 = color
+            color01 = color  # type: ignore
             space = space
 
         # FIXME: color01 is not a good name because the data wont be between 0
         # and 1 for non-rgb spaces. We should differentiate between rgb01 and
         # rgb255.
-        self.color01 = color01
+        self.color01 = color01   # type: ignore
         self.space = space
 
     @classmethod
