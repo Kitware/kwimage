@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Normalized the way `oriented_bounding_box` returns coordinates.
+* Better error message in `load_image_shape`.
 
 ### Fixed
 * Worked around the OpenCV 4.13.x `warpAffine` regression for `float64` inputs with nearest-neighbor interpolation.

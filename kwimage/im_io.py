@@ -1567,28 +1567,48 @@ def load_image_shape(
 
     if isinstance(backend, list):
         candidate_errors = []
-        success = False
+        skipped_backends = []
+
         for candidate_backend in backend:
             if candidate_backend == 'gdal':
                 if not _have_gdal():
+                    skipped_backends.append(
+                        (candidate_backend, 'GDAL is not available')
+                    )
                     continue
+
             try:
-                shape = load_image_shape(
+                return load_image_shape(
                     fpath,
                     backend=candidate_backend,
                     include_channels=include_channels,
                 )
             except Exception as ex:
                 candidate_errors.append((candidate_backend, ex))
-            else:
-                success = True
-                break
-        if not success:
-            if len(candidate_errors) == 0:
-                raise Exception('Unable to try an candidates')
-            else:
-                ex = candidate_errors[-1][1]
-                raise ex
+
+        msg_parts = [
+            f'Unable to determine image shape for fpath={fpath!r}',
+            f'Requested backend candidates: {backend!r}',
+        ]
+
+        if skipped_backends:
+            msg_parts.append('Skipped backends:')
+            for candidate_backend, reason in skipped_backends:
+                msg_parts.append(f'  - {candidate_backend}: {reason}')
+
+        if candidate_errors:
+            msg_parts.append('Backend failures:')
+            for candidate_backend, ex in candidate_errors:
+                msg_parts.append(
+                    f'  - {candidate_backend}: '
+                    f'{ex.__class__.__name__}: {ex}'
+                )
+            cause = candidate_errors[-1][1]
+        else:
+            msg_parts.append('No backend candidates were attempted.')
+            cause = None
+
+        raise RuntimeError('\n'.join(msg_parts)) from cause
     elif backend == 'pil':
         # TODO: can we prevent pil from logging to stdout here on failure?
         # This will often print "More samples per pixel than can be decoded"
