@@ -1894,7 +1894,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         else:
             num_classes = len(classes)
         scores = rng.rand(len(boxes))
-        class_idxs = rng.randint(0, num_classes, size=len(boxes))
+        nboxes = len(boxes)  # type: ignore
+        class_idxs = rng.randint(0, num_classes, size=nboxes)
         self = cls(
             boxes=boxes, scores=scores, class_idxs=class_idxs, classes=classes
         )

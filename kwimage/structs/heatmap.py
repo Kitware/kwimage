@@ -93,7 +93,7 @@ import ubelt as ub
 from . import _generic
 
 if TYPE_CHECKING:
-    from typing import Any, List, Sequence, Tuple
+    from typing import List, Sequence, Tuple
 
     from numpy import ndarray
 
@@ -130,7 +130,7 @@ class _HeatmapDrawMixin(object):
         cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(
             int, copy=True
         )
-        classes = self.meta['classes']
+        classes = self.meta['classes']  # type: ignore
         if classes is None:
             # hack to get something, even though we dont have full info as to
             # what the classes are.
@@ -262,7 +262,7 @@ class _HeatmapDrawMixin(object):
         import kwplot
 
         if channel is None:
-            if 'class_idx' in self.data:
+            if 'class_idx' in self.data:   # type: ignore
                 channel = 'class_idx'
             elif 'class_probs' in self.data:
                 channel = 'class_probs'
@@ -325,7 +325,7 @@ class _HeatmapDrawMixin(object):
                 import torch
 
                 chw = torch.Tensor(colormask.transpose(2, 0, 1))
-                colormask = self._warp_imgspace(
+                colormask = self._warp_imgspace(    # type: ignore
                     chw, interpolation=interpolation
                 ).transpose(1, 2, 0)
             return colormask
@@ -333,7 +333,7 @@ class _HeatmapDrawMixin(object):
         if isinstance(channel, str):
             # TODO: this is a bit hacky / inefficient, needs cleanup
             if imgspace:
-                mat = self.tf_data_to_img.params
+                mat = self.tf_data_to_img.params  # type: ignore
                 output_dims = self.img_dims
                 a = self.warp(
                     mat, version='old', output_dims=output_dims
@@ -341,9 +341,9 @@ class _HeatmapDrawMixin(object):
             else:
                 a = self
             if channel == 'offset':
-                mask = np.linalg.norm(a.offset, axis=0)
+                mask = np.linalg.norm(a.offset, axis=0)  # type: ignore
             elif channel == 'diameter':
-                mask = np.linalg.norm(a.diameter, axis=0)
+                mask = np.linalg.norm(a.diameter, axis=0)  # type: ignore
             elif channel == 'class_probs_max':
                 if 'class_probs' in a.data:
                     data = a.data['class_probs']
@@ -1773,7 +1773,7 @@ class Heatmap(
         Converts underlying data to numpy arrays
         """
         newdata = {}
-        for key, val in self.data.items():
+        for key, val in self.data.items():  # type: ignore
             if val is None:
                 newval = val
             else:
@@ -1787,7 +1787,7 @@ class Heatmap(
         Converts underlying data to torch tensors
         """
         newdata = {}
-        for key, val in self.data.items():
+        for key, val in self.data.items():  # type: ignore
             if val is None:
                 newval = val
             else:
@@ -2094,7 +2094,7 @@ def _remove_translation(tf):
         )
     elif isinstance(tf, skimage.transform.EuclideanTransform):
         tf_notrans = skimage.transform.EuclideanTransform(
-            scale=tf.scale, rotation=tf.rotation
+            scale=tf.scale, rotation=tf.rotation  # type: ignore
         )
     else:
         raise TypeError(tf)

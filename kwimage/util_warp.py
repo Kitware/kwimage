@@ -1349,8 +1349,8 @@ def _rectify_slice(data_dims, low_dims, high_dims, pad_slice=None):
         if d_low > d_high:
             raise ValueError('d_low > d_high: {} > {}'.format(d_low, d_high))
         # Determine where the bounds would be if the image size was inf
-        raw_low = d_low - d_pad[0]
-        raw_high = d_high + d_pad[1]
+        raw_low = d_low - d_pad[0]  # type: ignore
+        raw_high = d_high + d_pad[1]  # type: ignore
         # Clip the slice positions to the real part of the image
         sl_low = min(D_img, max(0, raw_low))
         sl_high = min(D_img, max(0, raw_high))

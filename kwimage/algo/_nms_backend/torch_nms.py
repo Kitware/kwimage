@@ -179,8 +179,9 @@ def test_class_torch() -> None:
     cpu_ltrb = cpu_boxes.to_ltrb().data
     # cpu_scores = torch.Tensor(rng.rand(len(cpu_ltrb)))
     # make all scores unique to ensure comparability
-    cpu_scores = torch.Tensor(np.linspace(0, 1, len(cpu_ltrb)))
-    cpu_cls = torch.LongTensor(rng.randint(0, 10, len(cpu_ltrb)))
+    _nboxes = len(cpu_ltrb)
+    cpu_scores = torch.Tensor(np.linspace(0, 1, _nboxes))
+    cpu_cls = torch.LongTensor(rng.randint(0, 10, _nboxes))
 
     ltrb = cpu_boxes.to_ltrb().data.to('cuda')
     scores = cpu_scores.to('cuda')
