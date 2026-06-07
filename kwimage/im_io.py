@@ -730,7 +730,7 @@ def _imread_gdal(
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test nodata values
         >>> import kwimage
-        >>> from kwaimge import _backend_info
+        >>> from kwimage import _backend_info
         >>> gdal = _backend_info.import_gdal()
         >>> osr = _backend_info.import_osr()
         >>> # Make a dummy geotiff
@@ -1269,7 +1269,7 @@ def imwrite(
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test writing a georeferenced image
         >>> import kwimage
-        >>> from kwaimge import _backend_info
+        >>> from kwimage import _backend_info
         >>> gdal = _backend_info.import_gdal()
         >>> osr = _backend_info.import_osr()
         >>> # Make a dummy geotiff
@@ -1614,7 +1614,7 @@ def load_image_shape(
     Benchmark:
         >>> # For large files, PIL is much faster
         >>> # xdoctest: +REQUIRES(module:osgeo)
-        >>> from kwaimge import _backend_info
+        >>> from kwimage import _backend_info
         >>> gdal = _backend_info.import_gdal()
         >>> from PIL import Image
         >>> import timerit
@@ -1911,7 +1911,7 @@ def _imwrite_cloud_optimized_geotiff(
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
 
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=3)
-        >>> from kwaimge import _backend_info
+        >>> from kwimage import _backend_info
         >>> gdal = _backend_info.import_gdal()
         >>> ds = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
         >>> filename = ds.GetDescription()
