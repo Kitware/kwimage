@@ -23,11 +23,9 @@ def pytest_sessionstart(session):
     # import numpy
     # import scipy
     # from PIL import Image
-
-    if 1:
-        try:
-            import osgeo  # NOQA
-            # from osgeo import osr
-            # from osgeo import gdal  # NOQA
-        except ImportError:
-            ...
+    try:
+        import osgeo  # NOQA
+        # from osgeo import osr
+        # from osgeo import gdal  # NOQA
+    except ImportError:
+        ...
