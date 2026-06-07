@@ -18,10 +18,14 @@ from kwimage import im_core
 # import warnings
 from kwimage._backend_info import (
     _default_backend,
-    _have_cv2,  # NOQA
     _have_gdal,
     _have_turbojpg,
 )
+from kwimage._backend_info import _have_cv2  # NOQA
+from kwimage._backend_info import import_gdal
+
+
+OPENCV_DEFAULT_MAX_IMAGE_PIXELS = 1 << 30
 
 if _t.TYPE_CHECKING:
     from collections.abc import Sequence
@@ -726,8 +730,9 @@ def _imread_gdal(
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test nodata values
         >>> import kwimage
-        >>> from osgeo import gdal
-        >>> from osgeo import osr
+        >>> from kwaimge import _backend_info
+        >>> gdal = _backend_info.import_gdal()
+        >>> osr = _backend_info.import_osr()
         >>> # Make a dummy geotiff
         >>> imdata = kwimage.grab_test_image('airport')
         >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
@@ -819,10 +824,8 @@ def _imread_gdal(
         >>> assert recon2_3b.shape == (109, 145)
         >>> # TODO: test an image with a color table
     """
-    try:
-        from osgeo import gdal
-    except ImportError:
-        import gdal
+    gdal = import_gdal()
+
     try:
         if nodata is not None:
             ub.schedule_deprecation(
@@ -1266,8 +1269,9 @@ def imwrite(
         >>> # xdoctest: +REQUIRES(module:osgeo)
         >>> # Test writing a georeferenced image
         >>> import kwimage
-        >>> from osgeo import gdal
-        >>> from osgeo import osr
+        >>> from kwaimge import _backend_info
+        >>> gdal = _backend_info.import_gdal()
+        >>> osr = _backend_info.import_osr()
         >>> # Make a dummy geotiff
         >>> imdata = kwimage.grab_test_image('airport')
         >>> dpath = ub.Path.appdir('kwimage/test/geotiff').ensuredir()
@@ -1381,24 +1385,22 @@ def imwrite(
             else:
                 # TODO: generalize error handling and diagnostics for all backends
                 if not flag:
-                    if not exists(dirname(fpath)):
-                        raise IOError(
-                            (
-                                'kwimage failed to write with opencv backend. '
-                                'Reason: destination fpath {!r} is in a directory that '
-                                'does not exist.'
-                            ).format(fpath)
-                        )
-                    elif image.size > 4e10:
-                        raise IOError(
-                            'kwimage failed to write with opencv backend. '
-                            f'Reason: unknown, but could image with shape {image.shape} is too big.'
-                        )
+                    msg, error_kind = _cv2_imwrite_failure_diagnostic(fpath, image)
+
+                    # Keep these as separate raise lines so tracebacks identify the class of
+                    # failure. In the future these can become more specific exception classes.
+                    if error_kind == 'exists':
+                        raise IOError(msg)
+                    elif error_kind == 'size':
+                        raise IOError(msg)
+                    elif error_kind == 'dtype':
+                        raise IOError(msg)
+                    elif error_kind == 'shape':
+                        raise IOError(msg)
+                    elif error_kind == 'contiguousness':
+                        raise IOError(msg)
                     else:
-                        raise IOError(
-                            'kwimage failed to write with opencv backend. '
-                            'Reason: unknown.'
-                        )
+                        raise IOError(msg)
 
         elif backend == 'skimage':
             import skimage.io
@@ -1436,6 +1438,120 @@ def imwrite(
         raise
 
     return fpath
+
+
+def _cv2_imwrite_failure_diagnostic(fpath, image) -> tuple[str, str]:
+    """
+    Build a diagnostic message for cases where cv2.imwrite returns False
+    without raising cv2.error.
+
+    Returns:
+        tuple[str, str]:
+            A message and an error kind. The kind is one of:
+            'exists', 'size', 'dtype', 'shape', 'contiguousness', or 'unknown'.
+    """
+    shape = getattr(image, 'shape', None)
+    dtype = getattr(image, 'dtype', None)
+    ndim = getattr(image, 'ndim', None)
+    flags = getattr(image, 'flags', None)
+    contiguous = getattr(flags, 'c_contiguous', None)
+    ext = os.path.splitext(fpath)[1].lower()
+
+    if shape is None:
+        nchan = None
+        num_pixels = None
+    elif len(shape) == 2:
+        nchan = 1
+        num_pixels = shape[0] * shape[1]
+    elif len(shape) == 3:
+        nchan = shape[2]
+        num_pixels = shape[0] * shape[1]
+    else:
+        nchan = None
+        num_pixels = None
+
+    max_pixels = opencv_max_image_pixels()
+    dpath = dirname(fpath) or '.'
+
+    detected = []
+    error_kind = 'unknown'
+
+    if not exists(dpath):
+        error_kind = 'exists'
+        detected.append(
+            'destination fpath {!r} is in a directory that does not exist'.format(
+                fpath
+            )
+        )
+
+    elif num_pixels is not None and num_pixels > max_pixels:
+        error_kind = 'size'
+        detected.append(
+            'image has {} pixels, which exceeds max_pixels={}'.format(
+                num_pixels, max_pixels
+            )
+        )
+
+    elif ndim is not None and ndim not in (2, 3):
+        error_kind = 'shape'
+        detected.append(
+            'ndim={} is not an image; expected 2 or 3'.format(ndim)
+        )
+
+    elif ndim == 3 and nchan not in (1, 3, 4):
+        error_kind = 'shape'
+        detected.append(
+            '{} channels is unsupported; cv2.imwrite expects 1, 3, or 4'.format(
+                nchan
+            )
+        )
+
+    elif contiguous is False:
+        error_kind = 'contiguousness'
+        detected.append(
+            'the array is not C-contiguous'
+        )
+
+    elif dtype is not None:
+        if np.issubdtype(dtype, np.floating):
+            error_kind = 'dtype'
+            detected.append(
+                'dtype {} is floating point, which is unsupported by many '
+                'OpenCV writers'.format(dtype)
+            )
+        elif dtype == np.uint16 and ext in ('.jpg', '.jpeg', '.bmp'):
+            error_kind = 'dtype'
+            detected.append(
+                'dtype uint16 is unsupported by the {} writer'.format(ext)
+            )
+
+    reason = 'detected: {}'.format('; '.join(detected)) if detected else 'unknown'
+
+    msg = (
+        'kwimage failed to write with opencv backend. '
+        'Reason: {}. '
+        'image shape={}, dtype={}, c_contiguous={}, ndim={}, channels={}, '
+        'num_pixels={}, max_pixels={}; fpath={!r}'
+    ).format(
+        reason,
+        shape,
+        dtype,
+        contiguous,
+        ndim,
+        nchan,
+        num_pixels,
+        max_pixels,
+        fpath,
+    )
+
+    return msg, error_kind
+
+
+def opencv_max_image_pixels() -> int:
+    return int(os.environ.get(
+        "OPENCV_IO_MAX_IMAGE_PIXELS",
+        OPENCV_DEFAULT_MAX_IMAGE_PIXELS,
+    ))
 
 
 def load_image_shape(
@@ -1498,7 +1614,8 @@ def load_image_shape(
     Benchmark:
         >>> # For large files, PIL is much faster
         >>> # xdoctest: +REQUIRES(module:osgeo)
-        >>> from osgeo import gdal
+        >>> from kwaimge import _backend_info
+        >>> gdal = _backend_info.import_gdal()
         >>> from PIL import Image
         >>> import timerit
         >>> #
@@ -1625,7 +1742,7 @@ def load_image_shape(
             else:
                 shape = (height, width)
     elif backend == 'gdal':
-        from osgeo import gdal
+        gdal = import_gdal()
 
         fpath = os.fspath(fpath)
         gdal_dset = gdal.Open(fpath, gdal.GA_ReadOnly)
@@ -1794,7 +1911,8 @@ def _imwrite_cloud_optimized_geotiff(
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, compress='LZW')
 
         >>> _imwrite_cloud_optimized_geotiff(fpath, data, overviews=3)
-        >>> from osgeo import gdal
+        >>> from kwaimge import _backend_info
+        >>> gdal = _backend_info.import_gdal()
         >>> ds = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
         >>> filename = ds.GetDescription()
         >>> main_band = ds.GetRasterBand(1)
@@ -1891,7 +2009,7 @@ def _imwrite_cloud_optimized_geotiff(
         >>>         loaded = kwimage.imread(fpath)
         >>>         assert np.all(loaded == data)
     """
-    from osgeo import gdal
+    gdal = import_gdal()
 
     if len(data.shape) == 2:
         data = data[:, :, None]
@@ -2058,7 +2176,7 @@ def _numpy_to_gdal_dtype(numpy_dtype) -> int:
     """
     maps numpy dtypes to gdal dtypes
     """
-    from osgeo import gdal
+    gdal = import_gdal()
 
     if not hasattr(numpy_dtype, 'kind'):
         # convert to the dtype instance object
@@ -2104,7 +2222,7 @@ def _gdal_to_numpy_dtype(gdal_dtype) -> type:
         >>>     assert gdal_dtype2 == gdal_dtype1
         >>>     assert _dtype_equality(numpy_dtype1, numpy_dtype2)
     """
-    from osgeo import gdal
+    gdal = import_gdal()
 
     try:
         # For numpy < 2.0
