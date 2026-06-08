@@ -429,29 +429,6 @@ test/sdist/minimal-loose/cp314-linux-x86_64:
   image: python:3.14
   needs:
   - build/sdist
-build/cp39-linux-x86_64:
-  <<: *build_wheel_template
-  image: python:3.9
-test/minimal-loose/cp39-linux-x86_64:
-  <<: *test_minimal-loose_template
-  image: python:3.9
-  needs:
-  - build/cp39-linux-x86_64
-test/full-loose/cp39-linux-x86_64:
-  <<: *test_full-loose_template
-  image: python:3.9
-  needs:
-  - build/cp39-linux-x86_64
-test/minimal-strict/cp39-linux-x86_64:
-  <<: *test_minimal-strict_template
-  image: python:3.9
-  needs:
-  - build/cp39-linux-x86_64
-test/full-strict/cp39-linux-x86_64:
-  <<: *test_full-strict_template
-  image: python:3.9
-  needs:
-  - build/cp39-linux-x86_64
 build/cp310-linux-x86_64:
   <<: *build_wheel_template
   image: python:3.10
@@ -634,8 +611,6 @@ gpgsign/wheels:
   - ots stamp dist/*.whl dist/*.asc dist/*.tar.gz
   needs:
   - job: build/sdist
-    artifacts: true
-  - job: build/cp39-linux-x86_64
     artifacts: true
   - job: build/cp310-linux-x86_64
     artifacts: true

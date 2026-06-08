@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numbers
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import kwarray
 import numpy as np
@@ -10,8 +10,9 @@ import ubelt as ub
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import Any, Sequence, MutableSequence, TypeVar
-    T = TypeVar("T")
+    from typing import Any, Sequence, MutableSequence
+
+T = TypeVar("T")
 
 # from collections import abc
 # import abc
@@ -90,7 +91,7 @@ class Spatial(ub.NiceRepr):
 
 
 # class ListProxy(abc.MutableSequence):
-class _ExperimentalListProxy[T]:
+class _ExperimentalListProxy(Generic[T]):
     """
     We may modify this implementation to be more generic in the future and
     directly inherit from :class:`abc.MutableSequence`. This intermediate form

@@ -272,7 +272,7 @@ if __name__ == '__main__':
     setupkw['long_description_content_type'] = 'text/x-rst'
     setupkw['license'] = 'Apache 2'
     setupkw['packages'] = find_packages('.')
-    setupkw['python_requires'] = '>=3.9'
+    setupkw['python_requires'] = '>=3.10'
     setupkw['classifiers'] = [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -282,7 +282,6 @@ if __name__ == '__main__':
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
