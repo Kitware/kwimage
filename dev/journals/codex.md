@@ -37,3 +37,11 @@ Tradeoffs and risks: `AGENTS.md` still says runtime support is Python >=3.8, but
 Testing notes: I verified that the edited Python module parses under Python 3.10, 3.11, and 3.12 grammar using `ast.parse(..., feature_version=...)`. I also ran `python -m compileall` on `kwimage/structs/_generic.py`. I did not run the full dependency-heavy test matrix locally.
 
 Next steps: run the cp310 and cp311 GitLab jobs again. If another failure appears after the syntax fix, it should be a real next-layer test/dependency issue instead of the current import-time cascade.
+
+### 2026-06-08: Restore legacy colormap compatibility
+
+The strict Python 3.10 CI job pins Matplotlib 3.5.0, where the
+`LinearSegmentedColormap` returned by `mpl.colormaps[...]` does not provide the
+newer `.resampled(...)` method used by `Color.distinct(..., legacy=True)`. Added
+a fallback to `mpl.cm.get_cmap(name, lut)` so the legacy color generation path
+continues to work with the strict minimum dependency set.

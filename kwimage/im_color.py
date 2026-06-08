@@ -540,7 +540,14 @@ class Color(ub.NiceRepr):
 
             assert existing is None
             # Old behavior
-            cm = mpl.colormaps['gist_rainbow'].resampled(mpl.rcParams['image.lut'])
+            # Matplotlib 3.5 exposes `mpl.colormaps`, but colormap
+            # instances may not have the newer `resampled` method. Keep this
+            # legacy branch working in the strict minimum-dependency CI job.
+            lut = mpl.rcParams['image.lut']
+            try:
+                cm = mpl.colormaps['gist_rainbow'].resampled(lut)
+            except AttributeError:
+                cm = mpl.cm.get_cmap('gist_rainbow', lut)
 
             distinct_colors = [
                 np.array(cm(i / num)).tolist()[0:3] for i in range(num)
