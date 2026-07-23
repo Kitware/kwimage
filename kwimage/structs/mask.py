@@ -1524,8 +1524,12 @@ class Mask(
             if cv2_coords is None:
                 xywh = np.array([0, 0, 0, 0])
             else:
-                x_coords = cv2_coords[:, 0, 0]
-                y_coords = cv2_coords[:, 0, 1]
+                # OpenCV 3/4 returned an (N, 1, 2) array, whereas
+                # OpenCV 5 returns (N, 2) because vectors now map to true
+                # one-dimensional arrays in the Python bindings.
+                cv2_coords = np.asarray(cv2_coords).reshape(-1, 2)
+                x_coords = cv2_coords[:, 0]
+                y_coords = cv2_coords[:, 1]
                 # # y_coords, x_coords = np.where(self.data)
                 # if len(x_coords) == 0:
                 #     xywh = np.array([0, 0, 0, 0])
@@ -1718,7 +1722,7 @@ class Mask(
         else:
             _img, _contours, _hierarchy = _ret
 
-        polygon = [c[:, 0, :] for c in _contours]
+        polygon = [np.asarray(c).reshape(-1, 2) for c in _contours]
 
         if False:
             import kwplot
@@ -2022,7 +2026,7 @@ class Mask(
         mask = self.to_c_mask().data
         cc_y, cc_x = np.where(mask)
         points = np.vstack([cc_x, cc_y]).T
-        hull = cv2.convexHull(points)[:, 0, :]
+        hull = np.asarray(cv2.convexHull(points)).reshape(-1, 2)
         return hull
 
     def iou(self, other):
@@ -2384,7 +2388,7 @@ def _opencv_find_contours(binary_mask, origin_convention='center'):
             return []
         raise AssertionError('Contour extraction from binary mask failed')
 
-    _hierarchy = _hierarchy[0]
+    _hierarchy = np.asarray(_hierarchy).reshape(-1, 4)
 
     polys = {
         i: {'exterior': None, 'interiors': []}
@@ -2395,10 +2399,10 @@ def _opencv_find_contours(binary_mask, origin_convention='center'):
         # This only works in RETR_CCOMP mode
         nxt, prev, child, parent = row[0:4]
         if parent != -1:
-            coords = _contours[i][:, 0, :]
+            coords = np.asarray(_contours[i]).reshape(-1, 2)
             polys[parent]['interiors'].append(coords)
         else:
-            coords = _contours[i][:, 0, :]
+            coords = np.asarray(_contours[i]).reshape(-1, 2)
             # if len(coords) < 3:
             #     raise Exception
             polys[i]['exterior'] = coords

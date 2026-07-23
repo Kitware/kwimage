@@ -45,3 +45,14 @@ The strict Python 3.10 CI job pins Matplotlib 3.5.0, where the
 newer `.resampled(...)` method used by `Color.distinct(..., legacy=True)`. Added
 a fallback to `mpl.cm.get_cmap(name, lut)` so the legacy color generation path
 continues to work with the strict minimum dependency set.
+
+## 2026-07-23 18:43:43 -0400
+The user reported fresh-install failures with opencv-python-headless 5.0.0 while requiring continued compatibility with older OpenCV releases. The supplied test log isolated two concrete regressions: the OpenCV 5 text renderer rejects non-uint8 destinations, and Python bindings now flatten some vector<Point> outputs from (N, 1, 2) to (N, 2).
+
+What changed: `draw_text_on_image` now routes `cv2.putText` through a narrow compatibility helper. It preserves the native OpenCV 3/4 path unchanged. When OpenCV raises the specific `img.depth() == CV_8U` assertion on a non-uint8 image, the helper rasterizes text into a binary uint8 mask and writes only glyph pixels into the original array. This avoids quantizing the entire image and preserves dtype, float precision outside the glyphs, NaNs, masked-array masks, and inplace behavior. The binary mask intentionally matches OpenCV 4's behavior, which disabled antialiasing for non-uint8 destinations. `Mask.get_xywh` now reshapes `findNonZero` results to `(-1, 2)`, and the same cheap shape normalization was applied to contour, hierarchy, and convex-hull outputs that can be exposed to the OpenCV 5 vector-array semantic change.
+
+Testing and evidence: added regression tests that monkeypatch OpenCV 4 to emulate OpenCV 5's uint8-only `putText` and flattened point-array returns. `compileall` and `git diff --check` pass. A standalone import of `im_draw.py` verified that the OpenCV 4 native path remains pixel-identical and that the fallback preserves binary value behavior and masked-array masks. The full repository suite could not be run in this container because the project dependencies (`ubelt`, `kwarray`, and `xdoctest`) are not installed; the user's supplied OpenCV 5 run remains the acceptance environment.
+
+Tradeoffs and risks: OpenCV 5 uses a new text rendering engine, so glyph geometry and size can differ from OpenCV 4 even when the legacy API is used; this is upstream behavior and cannot be made pixel-identical without replacing the renderer. The fallback is deliberately triggered only for the known CV_8U assertion so unrelated OpenCV errors are not hidden. The extra contour normalizations are low-risk reshapes that preserve point ordering on both old and new return layouts.
+
+Next step: run the full suite in the user's OpenCV 5.0.0.93 environment, then run at least one older supported OpenCV environment to confirm the native path and strict/minimum dependency matrix remain green.
