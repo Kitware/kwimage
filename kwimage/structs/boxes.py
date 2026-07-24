@@ -3547,7 +3547,9 @@ class Boxes(
             other_ltrb = other.to_ltrb(copy=False)
 
             _impl = self._impl
-            isect = _isect_areas(self_ltrb.data, other_ltrb.data, _impl=_impl)
+            isect = _isect_areas(
+                self_ltrb.data, other_ltrb.data, bias=bias, _impl=_impl
+            )
 
         if other_is_1d:
             isect = isect[..., 0]
@@ -3592,7 +3594,11 @@ class Boxes(
 
         if is_bad.any():
             if ltrb.dtype.kind != 'f':
-                ltrb = ltrb.to(float)
+                if isinstance(ltrb, np.ndarray):
+                    ltrb = ltrb.astype(float)
+                else:
+                    # Preserve the tensor backend's existing conversion path.
+                    ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
         isect = Boxes(ltrb, 'ltrb', canonical=True)

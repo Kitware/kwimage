@@ -14,7 +14,7 @@ import os
 def _boolean_environ(key, default=False):
     value = os.environ.get(key, '').lower()
     TRUTHY_ENVIRONS = {'true', 'on', 'yes', '1'}
-    FALSY_ENVIRONS = {'true', 'on', 'yes', '1'}
+    FALSY_ENVIRONS = {'false', 'off', 'no', '0'}
     if value in TRUTHY_ENVIRONS:
         return True
     elif value in FALSY_ENVIRONS:

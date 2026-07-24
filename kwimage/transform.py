@@ -140,7 +140,10 @@ class Matrix(Transform):
         if self.matrix is None:
             self.matrix = other_matrix
         else:
-            self.matrix @= other_matrix
+            # NumPy arrays do not implement in-place matrix multiplication.
+            # Mutate the wrapper by replacing its underlying matrix instead.
+            self.matrix = self.matrix @ other_matrix
+        return self
 
     def __matmul__(self, other):
         """
@@ -497,6 +500,10 @@ class Projective(Linear):
         >>> fig.set_size_inches(13, 13)
         >>> kwplot.show_if_requested()
     """
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return (3, 3)
 
     # References:
     #     .. [AffineDecompColab] https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
@@ -1262,7 +1269,7 @@ class Affine(Projective):
             params.pop('offset')
         elif tx == ty:
             params['offset'] = tx
-        if math.isclose(sy, 1) and math.isclose(sy, 1):
+        if math.isclose(sx, 1) and math.isclose(sy, 1):
             params.pop('scale')
         elif sx == sy:
             params['scale'] = sx

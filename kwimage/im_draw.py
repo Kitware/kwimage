@@ -985,6 +985,7 @@ def make_orimask(
     """
     import matplotlib as mpl
     import matplotlib.cm  # NOQA
+    import kwimage
 
     TAU = np.pi * 2
     # Map radians to 0 to 1
@@ -995,8 +996,6 @@ def make_orimask(
         cmap_ = mpl.cm.get_cmap('hsv')
     color_rgb = cmap_(ori01)[..., 0:3].astype(np.float32)
     if mag is not None:
-        import kwimage
-
         if mag.max() > 1:
             mag = mag / mag.max()
         color_hsv = kwimage.convert_colorspace(color_rgb, 'rgb', 'hsv')

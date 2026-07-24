@@ -464,10 +464,8 @@ def _rle_bytes_to_array(s, impl='auto'):
 
         cnts = np.empty(len(s), dtype=np.int64)
         p = 0
-        m = 0
-        for m in range(len(s)):
-            if p >= len(s):
-                break
+        n = 0
+        while p < len(s):
             x = 0
             k = 0
             more = 1
@@ -480,10 +478,11 @@ def _rle_bytes_to_array(s, impl='auto'):
                 k += 1
                 if more == 0 and (c & 0x10):
                     x |= -1 << 5 * k
-            if m > 2:
-                x += cnts[m - 2]
-            cnts[m] = x
-        cnts = cnts[:m]
+            if n > 2:
+                x += cnts[n - 2]
+            cnts[n] = x
+            n += 1
+        cnts = cnts[:n]
         return cnts
     elif impl == 'cython':
         return cython_mask._rle_bytes_to_array(s)

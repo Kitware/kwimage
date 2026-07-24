@@ -362,7 +362,7 @@ class Color(ub.NiceRepr):
         return color
 
     @classmethod
-    def _is_base01(channels):
+    def _is_base01(cls, channels):
         """check if a color is in base 01"""
 
         def _test_base01(channels):

@@ -1243,7 +1243,7 @@ class Mask(
         # Pad out (or shrink) the height of the columns
         extra_rows = max_height - len(data)
         if extra_rows > 0:
-            data: Any = [[0] * max_width for _ in range(extra_rows)]
+            data: Any = data + [[0] * max_width for _ in range(extra_rows)]
         else:
             data: Any = data[0:max_height]
 

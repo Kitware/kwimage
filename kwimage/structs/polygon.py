@@ -1318,7 +1318,7 @@ class Polygon(
             >>> ax.set_xlim(-1, 8 * 2.5)
             >>> ax.set_ylim(-1, 1)
         """
-        return cls.circle(xy=xy, r=r, resolution=num + 1)
+        return cls.circle(xy=xy, r=r, resolution=num)
 
     @classmethod
     def star(cls, xy=(0, 0), r: int = 1):
@@ -2310,11 +2310,22 @@ class Polygon(
                         value = (value,) * image_.shape[2]
                     cv2.fillPoly(image_, cv_contours, value, line_type, shift=0)
                 else:
-                    # handle bands > 3
-                    for bx in enumerate(range(image_.shape[2])):
+                    # OpenCV drawing functions only handle up to 4 channels.
+                    # Fill each channel independently for higher-dimensional
+                    # images.
+                    for bx in range(image_.shape[2]):
                         tmp = np.ascontiguousarray(image_[..., bx])
+                        channel_value = (
+                            value
+                            if isinstance(value, numbers.Number)
+                            else value[bx]
+                        )
                         cv2.fillPoly(
-                            tmp, cv_contours, value, line_type, shift=0
+                            tmp,
+                            cv_contours,
+                            channel_value,
+                            line_type,
+                            shift=0,
                         )
                         image_[..., bx] = tmp
 
@@ -3921,10 +3932,10 @@ def _is_clockwise(verts):
     References:
         .. [SO1165647] https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
     """
-    x1 = verts[:-1][:, 0]
-    y1 = verts[:-1][:, 1]
-    x2 = verts[1:][:, 0]
-    y2 = verts[1:][:, 1]
+    x1 = verts[:, 0]
+    y1 = verts[:, 1]
+    x2 = np.roll(x1, -1)
+    y2 = np.roll(y1, -1)
     is_clockwise = ((x2 - x1) * (y2 + y1)).sum() > 0
     # cross_product = np.cross(verts[:-1], verts[1:])
     # is_clockwise = cross_product.sum() > 0

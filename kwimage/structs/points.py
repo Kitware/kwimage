@@ -390,7 +390,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = kwimage.Points.random(3).scale(10)
             >>> self.round()
         """
-        new = self if inplace else self.__class__(self.data, self.meta)
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = self.data['xy'].round()
         return new
 

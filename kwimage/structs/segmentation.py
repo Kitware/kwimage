@@ -288,7 +288,7 @@ def _coerce_coco_segmentation(data, dims=None):
                     'dims', data.get('shape', data.get('size', None))
                 )
                 if data_shape is None:
-                    data['shape'] = data_shape
+                    data['shape'] = dims
                 else:
                     assert tuple(map(int, dims)) == tuple(
                         map(int, data_shape)

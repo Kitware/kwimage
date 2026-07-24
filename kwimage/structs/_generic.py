@@ -399,11 +399,11 @@ class ObjectList(Spatial, _ExperimentalListProxy):
             >>> assert len(new) == 3
         """
         if len(items) == 0:
-            new = cls([])
-        else:
-            newdata = []
-            for item in items:
-                newdata.extend(item.data)
+            return cls([])
+
+        newdata = []
+        for item in items:
+            newdata.extend(item.data)
 
         newmeta = items[0].meta
         new = cls(newdata, newmeta)

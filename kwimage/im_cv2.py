@@ -313,7 +313,6 @@ def _coerce_border_mode_value(
     Common code for warp_affine and warp_persepctive
     """
 
-    borderMode = _coerce_border_mode(border_mode)
     if isinstance(border_value, str):
         # it is annoying to have borer value / border mode be different
         # if it is a string assume the border mode is a strategy
@@ -321,6 +320,7 @@ def _coerce_border_mode_value(
         assert border_mode is None
         border_mode = border_value
         border_value = 0
+    borderMode = _coerce_border_mode(border_mode)
     borderValue = _coerce_border_value(border_value, image=image)
     return borderMode, borderValue
 
@@ -451,8 +451,8 @@ def imcrop(
 
     assert len(dsize) == 2
     new_w, new_h = dsize
-    assert isinstance(new_w, numbers.Integral)
-    assert isinstance(new_h, numbers.Integral)
+    assert new_w is None or isinstance(new_w, numbers.Integral)
+    assert new_h is None or isinstance(new_h, numbers.Integral)
 
     if new_w is None:
         assert new_h is not None
@@ -528,7 +528,8 @@ def imcrop(
         cen_h = new_h // 2
 
     if interpolation == 'linear':
-        new_img = cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
+        # OpenCV expects the center in (x, y) order.
+        new_img = cv2.getRectSubPix(img, dsize, (cen_w, cen_h))
     elif interpolation == 'nearest':
         # build a patch that may go outside the image bounds
         ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
@@ -971,9 +972,9 @@ def _cv2_imresize(
             # Best we can do in this case.
             new_w, new_h = dsize
             if len(img.shape) == 2:
-                return np.tile(img, (new_w, new_h))
+                return np.tile(img, (new_h, new_w))
             else:
-                return np.tile(img, (new_w, new_h, 1))
+                return np.tile(img, (new_h, new_w, 1))
         img = _cv2_imputation(img)
         sx, sy = scale
         num_chan = im_core.num_channels(img)
@@ -2321,7 +2322,8 @@ def _morph_kernel_core(w, h, element):
     if w == 0 or h == 0:
         return np.empty((0, 0), dtype=np.uint8)
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
-    element = cv2.getStructuringElement(struct_shape, (h, w))
+    # OpenCV expects kernel size in (width, height) order.
+    element = cv2.getStructuringElement(struct_shape, (w, h))
     return element
 
 
@@ -2580,11 +2582,23 @@ def connected_components(
             ltype = np.int32
         elif ltype in {'uint16', 'CV_16U'}:
             ltype = np.uint16
-    if ltype is np.int32:
-        ltype = cv2.CV_32S
-    elif ltype is np.int16:
+
+    # Preserve the historical spelling, which treated np.int16 as the
+    # OpenCV unsigned-16 label mode, while also accepting the documented
+    # np.uint16 dtype forms.
+    if ltype is np.int16:
         ltype = cv2.CV_16U
-    if not isinstance(ltype, int):
+
+    if not isinstance(ltype, numbers.Integral):
+        try:
+            dtype = np.dtype(ltype)
+        except TypeError:
+            raise TypeError('type(ltype) = {}'.format(type(ltype)))
+        if dtype == np.dtype(np.int32):
+            ltype = cv2.CV_32S
+        elif dtype == np.dtype(np.uint16):
+            ltype = cv2.CV_16U
+    if not isinstance(ltype, numbers.Integral):
         raise TypeError('type(ltype) = {}'.format(type(ltype)))
 
     # It seems very easy for a segfault to happen here.

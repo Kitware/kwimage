@@ -194,9 +194,9 @@ def make_channels_comparable(
         if len(img1.shape) == 2 and len(img2.shape) == 2:
             # Both images are 2d grayscale
             if atleast3d:
-                # add the third dim with 1 channel
-                img1 = img1[:, None]
-                img2 = img2[:, None]
+                # Add the channel dimension at the end (H, W, C).
+                img1 = img1[..., None]
+                img2 = img2[..., None]
         elif len(img1.shape) == 3 and len(img2.shape) == 2:
             # Image 2 is grayscale
             if c1 == 3:
@@ -241,6 +241,10 @@ def make_channels_comparable(
             raise AssertionError(
                 'Unknown shape case: %r, %r' % (img1.shape, img2.shape)
             )
+    elif atleast3d and img1.ndim == 2:
+        # Equal-shape grayscale inputs never enter the branch above.
+        img1 = img1[..., None]
+        img2 = img2[..., None]
     return img1, img2
 
 
@@ -850,7 +854,16 @@ def _get_pixel_dist(
     if len(pixel.shape) < 2:
         pixel = pixel[None, None, :]
     img, pixel = kwimage.make_channels_comparable(img, pixel)
-    dist = np.abs(img - pixel)
+    if img.dtype.kind in 'iu' and pixel.dtype.kind in 'iu':
+        # Integer subtraction can wrap before abs (e.g. uint8(0) - 255).
+        # Promote to a signed type large enough for normal image integers.
+        work_dtype = np.result_type(img.dtype, pixel.dtype, np.int64)
+        dist = np.abs(
+            img.astype(work_dtype, copy=False)
+            - pixel.astype(work_dtype, copy=False)
+        )
+    else:
+        dist = np.abs(img - pixel)
     if len(img.shape) > 2:
         if channel is None:
             dist = np.sum(dist, axis=2)

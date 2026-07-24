@@ -1613,7 +1613,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             if isinstance(flags, torch.Tensor):  # type: ignore
                 if flags.dtype != torch.bool:  # type: ignore
                     flags = flags.bool()
-                if flags.device != flags.device:
+                if flags.device != self.device:
                     flags = flags.to(self.device)
             else:
                 flags = torch.BoolTensor(flags).to(self.device)  # type: ignore
@@ -2122,7 +2122,7 @@ def _dets_to_fcmaps(
 
     # Overlay smaller classes on top of larger ones
     if len(cxywh):
-        area = cxywh[..., 2] * cxywh[..., 2]
+        area = cxywh[..., 2] * cxywh[..., 3]
     else:
         area = []
 

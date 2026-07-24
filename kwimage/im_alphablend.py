@@ -251,6 +251,7 @@ def _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2):
         '((rgb1 * alpha1_) + (rgb2 * alpha2_ * (1.0 - alpha1_))) / alpha3_'
     )
     rgb3[alpha3 == 0] = 0
+    return rgb3, alpha3
 
 
 def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):

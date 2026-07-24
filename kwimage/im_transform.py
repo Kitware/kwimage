@@ -852,6 +852,7 @@ def imresize(
             letterbox=letterbox,
             return_info=return_info,
             antialias=antialias,
+            border_value=border_value,
         )
     elif backend == 'skimage':
         return _skimage_resize(
