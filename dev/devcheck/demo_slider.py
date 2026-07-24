@@ -1,6 +1,6 @@
 import kwarray
-import tqdm
 import numpy as np
+import tqdm
 
 
 def demo_with_heatmap():
@@ -18,9 +18,13 @@ def demo_with_heatmap():
         new_data = new_data.sum(axis=2, keepdims=True)
         return new_data
 
-    slider = kwarray.SlidingWindow(big_image.shape[0:2], window_shape,
-                                   overlap=0.3, keepbound=True,
-                                   allow_overshoot=True)
+    slider = kwarray.SlidingWindow(
+        big_image.shape[0:2],
+        window_shape,
+        overlap=0.3,
+        keepbound=True,
+        allow_overshoot=True,
+    )
 
     out_channels = 1
     output_shape = slider.input_shape + (out_channels,)
@@ -46,12 +50,18 @@ def _stitcher_center_weighted_add(stitcher, space_slice, data):
     special adding function that downweights edges
     """
     import kwimage
+
     weights = kwimage.gaussian_patch(data.shape[0:2])[..., None]
-    if stitcher.shape[0] < space_slice[0].stop or stitcher.shape[1] < space_slice[1].stop:
+    if (
+        stitcher.shape[0] < space_slice[0].stop
+        or stitcher.shape[1] < space_slice[1].stop
+    ):
         # By embedding the space slice in the stitcher dimensions we can get a
         # slice corresponding to the valid region in the stitcher, and the extra
         # padding encode the valid region of the data we are trying to stitch into.
-        subslice, padding = kwarray.embed_slice(space_slice[0:2], stitcher.shape)
+        subslice, padding = kwarray.embed_slice(
+            space_slice[0:2], stitcher.shape
+        )
         output_slice = (
             slice(padding[0][0], data.shape[0] - padding[0][1]),
             slice(padding[1][0], data.shape[1] - padding[1][1]),
@@ -71,15 +81,16 @@ def _stitcher_center_weighted_add(stitcher, space_slice, data):
     # Handle stitching nan values
     invalid_output_mask = np.isnan(stitch_data)
     if np.any(invalid_output_mask):
-        spatial_valid_mask = (1 - invalid_output_mask.any(axis=2, keepdims=True))
+        spatial_valid_mask = 1 - invalid_output_mask.any(axis=2, keepdims=True)
         stitch_weights = stitch_weights * spatial_valid_mask
         stitch_data[invalid_output_mask] = 0
     stitcher.add(stitch_slice, stitch_data, weight=stitch_weights)
 
 
 def demo_with_boxes():
-    import kwimage
     import kwarray
+
+    import kwimage
 
     rng = kwarray.ensure_rng(0)
 
@@ -101,13 +112,16 @@ def demo_with_boxes():
     # The slider generates slices that index into the window according to a
     # requested scheme.
     window_shape = (512, 512)
-    slider = kwarray.SlidingWindow(big_image.shape[0:2], window_shape,
-                                   overlap=0.3, keepbound=True,
-                                   allow_overshoot=True)
+    slider = kwarray.SlidingWindow(
+        big_image.shape[0:2],
+        window_shape,
+        overlap=0.3,
+        keepbound=True,
+        allow_overshoot=True,
+    )
 
     det_accum = []
     for slices in slider:
-
         data = big_image[slices]
 
         # Get detections relative to the window

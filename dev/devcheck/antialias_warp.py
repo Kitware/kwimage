@@ -1,5 +1,3 @@
-
-
 def warp_image_test(image, transform, dsize=None):
     """
 
@@ -10,10 +8,11 @@ def warp_image_test(image, transform, dsize=None):
     transform = Affine.random() @ Affine.scale(0.01)
 
     """
-    from kwimage.transform import Affine
-    import kwimage
     import numpy as np
     import ubelt as ub
+
+    import kwimage
+    from kwimage.transform import Affine
 
     # Choose a random affine transform that probably has a small scale
     # transform = Affine.random() @ Affine.scale((0.3, 2))
@@ -27,9 +26,11 @@ def warp_image_test(image, transform, dsize=None):
 
     image = kwimage.ensure_float01(image)
 
-    from kwimage import im_cv2
-    import kwarray
     import cv2
+    import kwarray
+
+    from kwimage import im_cv2
+
     transform = Affine.coerce(transform)
 
     if 1 or dsize is None:
@@ -42,6 +43,7 @@ def warp_image_test(image, transform, dsize=None):
         dsize = tuple(map(int, warped_box.data[0, 2:4]))
 
     import timerit
+
     ti = timerit.Timerit(10, bestof=3, verbose=2)
 
     def _full_gauss_kernel(k0, sigma0, scale):
@@ -72,7 +74,9 @@ def warp_image_test(image, transform, dsize=None):
         with timer:
             interpolation = 'nearest'
             flags = im_cv2._coerce_interpolation(interpolation)
-            final_v5 = cv2.warpAffine(image, transform.matrix[0:2], dsize=dsize, flags=flags)
+            final_v5 = cv2.warpAffine(
+                image, transform.matrix[0:2], dsize=dsize, flags=flags
+            )
 
     # --------------------
     # METHOD 1
@@ -88,12 +92,19 @@ def warp_image_test(image, transform, dsize=None):
             h, w = image.shape[0:2]
             resize_dsize = (int(np.ceil(sx * w)), int(np.ceil(sy * h)))
 
-            downsampled = cv2.resize(image, dsize=resize_dsize, fx=sx, fy=sy,
-                                     interpolation=cv2.INTER_AREA)
+            downsampled = cv2.resize(
+                image,
+                dsize=resize_dsize,
+                fx=sx,
+                fy=sy,
+                interpolation=cv2.INTER_AREA,
+            )
 
             interpolation = 'linear'
             flags = im_cv2._coerce_interpolation(interpolation)
-            final_v1 = cv2.warpAffine(downsampled, noscale_warp.matrix[0:2], dsize=dsize, flags=flags)
+            final_v1 = cv2.warpAffine(
+                downsampled, noscale_warp.matrix[0:2], dsize=dsize, flags=flags
+            )
 
     # --------------------
     # METHOD 2
@@ -108,7 +119,9 @@ def warp_image_test(image, transform, dsize=None):
 
             interpolation = 'linear'
             flags = im_cv2._coerce_interpolation(interpolation)
-            final_v2 = cv2.warpAffine(image_, transform.matrix[0:2], dsize=dsize, flags=flags)
+            final_v2 = cv2.warpAffine(
+                image_, transform.matrix[0:2], dsize=dsize, flags=flags
+            )
 
     # --------------------
     # METHOD 3
@@ -123,7 +136,7 @@ def warp_image_test(image, transform, dsize=None):
             # The -2 allows the gaussian to be a little bigger. This
             # seems to help with border effects at only a small runtime cost
             num_downscales = max(int(np.log2(1 / biggest_scale)) - 2, 0)
-            pyr_scale = 1 / (2 ** num_downscales)
+            pyr_scale = 1 / (2**num_downscales)
 
             # Does the gaussian downsampling
             temp = pyrDownK(image, num_downscales)
@@ -141,8 +154,9 @@ def warp_image_test(image, transform, dsize=None):
 
             interpolation = 'cubic'
             flags = im_cv2._coerce_interpolation(interpolation)
-            final_v3 = cv2.warpAffine(temp, rest_warp.matrix[0:2], dsize=dsize,
-                                      flags=flags)
+            final_v3 = cv2.warpAffine(
+                temp, rest_warp.matrix[0:2], dsize=dsize, flags=flags
+            )
 
     # --------------------
     # METHOD 4 - dont do the final blur
@@ -155,7 +169,7 @@ def warp_image_test(image, transform, dsize=None):
 
             biggest_scale = max(sx, sy)
             num_downscales = max(int(np.log2(1 / biggest_scale)), 0)
-            pyr_scale = 1 / (2 ** num_downscales)
+            pyr_scale = 1 / (2**num_downscales)
 
             # Does the gaussian downsampling
             temp = pyrDownK(image, num_downscales)
@@ -168,12 +182,15 @@ def warp_image_test(image, transform, dsize=None):
 
             interpolation = 'linear'
             flags = im_cv2._coerce_interpolation(interpolation)
-            final_v4 = cv2.warpAffine(temp, rest_warp.matrix[0:2], dsize=dsize, flags=flags)
+            final_v4 = cv2.warpAffine(
+                temp, rest_warp.matrix[0:2], dsize=dsize, flags=flags
+            )
 
     if 1:
 
         def get_title(key):
             from ubelt.timerit import _choose_unit
+
             value = ti.measures['mean'][key]
             suffix, mag = _choose_unit(value)
             unit_val = value / mag
@@ -186,17 +203,23 @@ def warp_image_test(image, transform, dsize=None):
         final_v4 = final_v4.clip(0, 1)
         final_v5 = final_v5.clip(0, 1)
         import kwplot
+
         kwplot.autompl()
         kwplot.imshow(final_v5, pnum=(1, 5, 1), title=get_title('naive'))
-        kwplot.imshow(final_v2, pnum=(1, 5, 2), title=get_title('fullblur+warp'))
+        kwplot.imshow(
+            final_v2, pnum=(1, 5, 2), title=get_title('fullblur+warp')
+        )
         kwplot.imshow(final_v1, pnum=(1, 5, 3), title=get_title('resize+warp'))
-        kwplot.imshow(final_v3, pnum=(1, 5, 4), title=get_title('pyrDown+blur+warp'))
+        kwplot.imshow(
+            final_v3, pnum=(1, 5, 4), title=get_title('pyrDown+blur+warp')
+        )
         kwplot.imshow(final_v4, pnum=(1, 5, 5), title=get_title('pyrDown+warp'))
         # kwplot.imshow(np.abs(final_v2 - final_v1), pnum=(1, 4, 4))
 
 
-def warp_affine(image, transform, dsize=None, antialias=True,
-                interpolation='linear'):
+def warp_affine(
+    image, transform, dsize=None, antialias=True, interpolation='linear'
+):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -248,12 +271,14 @@ def warp_affine(image, transform, dsize=None, antialias=True,
         >>> kwplot.imshow(warped2, pnum=pnum_(), title='antialias=False')
         >>> kwplot.show_if_requested()
     """
+    import cv2
+    import numpy as np
+    import ubelt as ub
+
+    import kwimage
     from kwimage import im_cv2
     from kwimage.transform import Affine
-    import kwimage
-    import numpy as np
-    import cv2
-    import ubelt as ub
+
     transform = Affine.coerce(transform)
     flags = im_cv2._coerce_interpolation(interpolation)
 
@@ -313,10 +338,14 @@ def warp_affine(image, transform, dsize=None, antialias=True,
 
     if not antialias:
         M = np.asarray(transform)
-        result = cv2.warpAffine(image, M[0:2],
-                                dsize=dsize, flags=flags,
-                                borderMode=borderMode,
-                                borderValue=borderValue)
+        result = cv2.warpAffine(
+            image,
+            M[0:2],
+            dsize=dsize,
+            flags=flags,
+            borderMode=borderMode,
+            borderValue=borderValue,
+        )
     else:
         # Decompose the affine matrix into its 6 core parameters
         params = transform.decompose()
@@ -325,9 +354,14 @@ def warp_affine(image, transform, dsize=None, antialias=True,
         if sx >= 1 and sy > 1:
             # No downsampling detected, no need to antialias
             M = np.asarray(transform)
-            result = cv2.warpAffine(image, M[0:2], dsize=dsize, flags=flags,
-                                    borderMode=borderMode,
-                                    borderValue=borderValue)
+            result = cv2.warpAffine(
+                image,
+                M[0:2],
+                dsize=dsize,
+                flags=flags,
+                borderMode=borderMode,
+                borderValue=borderValue,
+            )
         else:
             # At least one dimension is downsampled
 
@@ -357,7 +391,7 @@ def warp_affine(image, transform, dsize=None, antialias=True,
             fractional = 0
 
             num_downs = max(int(np.log2(1 / max_scale)) - fudge, 0)
-            pyr_scale = 1 / (2 ** num_downs)
+            pyr_scale = 1 / (2**num_downs)
 
             # Downsample iteratively with antialiasing
             downscaled = _pyrDownK(image, num_downs)
@@ -375,26 +409,39 @@ def warp_affine(image, transform, dsize=None, antialias=True,
                 # used in cv2.pyrDown
                 aa_sigma0 = 1.0565137190917149
                 aa_k0 = 5
-                k_x, sigma_x = _gauss_params(scale=rest_sx, k0=aa_k0,
-                                             sigma0=aa_sigma0,
-                                             fractional=fractional)
-                k_y, sigma_y = _gauss_params(scale=rest_sy, k0=aa_k0,
-                                             sigma0=aa_sigma0,
-                                             fractional=fractional)
+                k_x, sigma_x = _gauss_params(
+                    scale=rest_sx,
+                    k0=aa_k0,
+                    sigma0=aa_sigma0,
+                    fractional=fractional,
+                )
+                k_y, sigma_y = _gauss_params(
+                    scale=rest_sy,
+                    k0=aa_k0,
+                    sigma0=aa_sigma0,
+                    fractional=fractional,
+                )
 
                 # Note: when k=1, no blur occurs
                 # blurBorderType = cv2.BORDER_REPLICATE
                 # blurBorderType = cv2.BORDER_CONSTANT
                 blurBorderType = cv2.BORDER_DEFAULT
                 downscaled = cv2.GaussianBlur(
-                    downscaled, (k_x, k_y), sigma_x, sigma_y,
-                    borderType=blurBorderType
+                    downscaled,
+                    (k_x, k_y),
+                    sigma_x,
+                    sigma_y,
+                    borderType=blurBorderType,
                 )
 
-            result = cv2.warpAffine(downscaled, rest_warp.matrix[0:2],
-                                    dsize=dsize, flags=flags,
-                                    borderMode=borderMode,
-                                    borderValue=borderValue)
+            result = cv2.warpAffine(
+                downscaled,
+                rest_warp.matrix[0:2],
+                dsize=dsize,
+                flags=flags,
+                borderMode=borderMode,
+                borderValue=borderValue,
+            )
 
     return result
 
@@ -405,30 +452,41 @@ def _check():
     import numpy as np
     import scipy
     import ubelt as ub
+
     def sigma_error(sigma):
         sigma = np.asarray(sigma).ravel()[0]
         got = (cv2.getGaussianKernel(5, sigma) * 16).ravel()
         want = np.array([1, 4, 6, 4, 1])
         loss = ((got - want) ** 2).sum()
         return loss
+
     result = scipy.optimize.minimize(sigma_error, x0=1.0, method='Nelder-Mead')
     print('result = {}'.format(ub.urepr(result, nl=1)))
 
     best_loss = float('inf')
     best = None
-    methods = ['Nelder-Mead', 'Powell', 'CG', 'BFGS',
-               # 'Newton-CG',
-               'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP',
-               # 'trust-constr',
-               # 'dogleg',
-               # 'trust-ncg', 'trust-exact',
-               # 'trust-krylov'
-              ]
+    methods = [
+        'Nelder-Mead',
+        'Powell',
+        'CG',
+        'BFGS',
+        # 'Newton-CG',
+        'L-BFGS-B',
+        'TNC',
+        'COBYLA',
+        'SLSQP',
+        # 'trust-constr',
+        # 'dogleg',
+        # 'trust-ncg', 'trust-exact',
+        # 'trust-krylov'
+    ]
     # results = {}
     x0 = 1.06
     for i in range(100):
         for method in methods:
-            best_method_loss, best_method_sigma, best_method_x0 = results.get(method, (float('inf'), 1.06, x0))
+            best_method_loss, best_method_sigma, best_method_x0 = results.get(
+                method, (float('inf'), 1.06, x0)
+            )
             result = scipy.optimize.minimize(sigma_error, x0=x0, method=method)
             sigma = np.asarray(result.x).ravel()[0]
             loss = sigma_error(sigma)
@@ -456,20 +514,23 @@ def _check():
 
     import kwarray
     import numpy as np
+
     a = (kwarray.ensure_rng(0).rand(32, 32) * 256).astype(np.uint8)
     a = kwimage.ensure_float01(a)
     b = cv2.GaussianBlur(a.copy(), (1, 1), 3, 3)
     assert np.all(a == b)
 
     import timerit
+
     ti = timerit.Timerit(100, bestof=10, verbose=2)
     for timer in ti.reset('time'):
         with timer:
             b = cv2.GaussianBlur(a.copy(), (9, 9), 3, 3)
 
     import timerit
+
     ti = timerit.Timerit(100, bestof=10, verbose=2)
     for timer in ti.reset('time'):
         with timer:
             c = cv2.GaussianBlur(a.copy(), (1, 9), 3, 3)
-            zR= cv2.GaussianBlur(c.copy(), (9, 1), 3, 3)
+            zR = cv2.GaussianBlur(c.copy(), (9, 1), 3, 3)

@@ -1,6 +1,7 @@
-import ubelt as ub
 import sympy
 import sympy as sym  # NOQA
+import ubelt as ub
+
 # Shows the symbolic construction of the code
 # https://groups.google.com/forum/#!topic/sympy/k1HnZK_bNNA
 # G
@@ -52,30 +53,43 @@ m = sympy.symbols('m', **domain)
 
 USE_SHEAR = False
 
-S = sympy.Matrix([  # scale
-    [sx,  0, 0],
-    [ 0, sy, 0],
-    [ 0,  0, 1]])
+S = sympy.Matrix(
+    [  # scale
+        [sx, 0, 0],
+        [0, sy, 0],
+        [0, 0, 1],
+    ]
+)
 
 if USE_SHEAR:
-    H = sympy.Matrix([  # shear
-        [1, -sympy.sin(shear), 0],
-        [0,  sympy.cos(shear), 0],
-        [0,                 0, 1]])
+    H = sympy.Matrix(
+        [  # shear
+            [1, -sympy.sin(shear), 0],
+            [0, sympy.cos(shear), 0],
+            [0, 0, 1],
+        ]
+    )
 else:
-    H = sympy.Matrix([  # shear
-        [1, m, 0],
-        [0, 1, 0],
-        [0, 0, 1]])
-R = sympy.Matrix([  # rotation
-    [sympy.cos(theta), -sympy.sin(theta), 0],
-    [sympy.sin(theta),  sympy.cos(theta), 0],
-    [               0,                 0, 1]])
+    H = sympy.Matrix(
+        [  # shear
+            [1, m, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+R = sympy.Matrix(
+    [  # rotation
+        [sympy.cos(theta), -sympy.sin(theta), 0],
+        [sympy.sin(theta), sympy.cos(theta), 0],
+        [0, 0, 1],
+    ]
+)
 
 
 A_params = sympy.simplify((R @ H @ S))
 a11, a12, a13, a21, a22, a23, a31, a32, a33 = sympy.symbols(
-    'a11, a12, a13, a21, a22, a23, a31, a32, a33', real=True)
+    'a11, a12, a13, a21, a22, a23, a31, a32, a33', real=True
+)
 A_matrix = sympy.Matrix([[a11, a12, a13], [a21, a22, a23], [a31, a32, a33]])
 
 
@@ -111,29 +125,41 @@ equation = sympy.Eq(A_params, A_matrix)
 sympy.solve(equation, sx)
 
 
-recon_S = sympy.Matrix([  # scale
-    [recon_sx,  0, 0],
-    [ 0, recon_sy, 0],
-    [ 0,  0, 1]])
+recon_S = sympy.Matrix(
+    [  # scale
+        [recon_sx, 0, 0],
+        [0, recon_sy, 0],
+        [0, 0, 1],
+    ]
+)
 
 if USE_SHEAR:
     recon_shear = None
-    recon_H = sympy.Matrix([  # shear
-        [1, -sympy.sin(recon_shear), 0],
-        [0,  sympy.cos(recon_shear), 0],
-        [0,                 0, 1]])
+    recon_H = sympy.Matrix(
+        [  # shear
+            [1, -sympy.sin(recon_shear), 0],
+            [0, sympy.cos(recon_shear), 0],
+            [0, 0, 1],
+        ]
+    )
 else:
-    recon_H = sympy.Matrix([  # shear
-        [1, recon_m, 0],
-        [0, 1, 0],
-        [0, 0, 1]])
+    recon_H = sympy.Matrix(
+        [  # shear
+            [1, recon_m, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
 
-recon_R = sympy.Matrix([  # rotation
-    [sympy.cos(recon_theta), -sympy.sin(recon_theta), 0],
-    [sympy.sin(recon_theta),  sympy.cos(recon_theta), 0],
-    [               0,                 0, 1]])
+recon_R = sympy.Matrix(
+    [  # rotation
+        [sympy.cos(recon_theta), -sympy.sin(recon_theta), 0],
+        [sympy.sin(recon_theta), sympy.cos(recon_theta), 0],
+        [0, 0, 1],
+    ]
+)
 
-A_recon1 = (recon_R @ recon_H @ recon_S)
+A_recon1 = recon_R @ recon_H @ recon_S
 A_recon2 = sympy.simplify(A_recon1)
 
 sympy.pretty_print(A_matrix)
@@ -223,6 +249,7 @@ if 0:
 
     def normalize_angle(radian):
         return np.arctan2(np.sin(radian), np.cos(radian))
+
     shear0 = normalize_angle(shear0)
     shear1 = normalize_angle(shear1)
     # sklearn def

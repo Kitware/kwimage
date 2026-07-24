@@ -4,17 +4,20 @@ Wrappers around cv2 functions
 Note: all functions in kwimage work with RGB input by default instead of BGR,
 which is what the underlying cv2 functions use.
 """
+
 from __future__ import annotations
+
+import numbers
+import re
+import typing as _t
+from functools import lru_cache
 
 import cv2
 import numpy as np
 import ubelt as ub
-import numbers
-import re
-from functools import lru_cache
+
 from kwimage import im_core
 
-import typing as _t
 if _t.TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Any, TypeAlias
@@ -36,20 +39,20 @@ __all__ = [
 
 _CV2_INTERPOLATION_TYPES: dict[str, int] = {
     'nearest': cv2.INTER_NEAREST,
-    'linear':  cv2.INTER_LINEAR,
-    'area':    cv2.INTER_AREA,
-    'cubic':   cv2.INTER_CUBIC,
-    'lanczos': cv2.INTER_LANCZOS4
+    'linear': cv2.INTER_LINEAR,
+    'area': cv2.INTER_AREA,
+    'cubic': cv2.INTER_CUBIC,
+    'lanczos': cv2.INTER_LANCZOS4,
 }
 
 
 # https://docs.opencv.org/3.4/d2/de8/group__core__array.html#ga209f2f4869e304c82d07739337eae7c5
 _CV2_BORDER_MODES: dict[str, int] = {
-    'constant':    cv2.BORDER_CONSTANT,
-    'replicate':   cv2.BORDER_REPLICATE,
-    'reflect':     cv2.BORDER_REFLECT,
-    'wrap':        cv2.BORDER_WRAP,
-    'reflect101':  cv2.BORDER_REFLECT101,
+    'constant': cv2.BORDER_CONSTANT,
+    'replicate': cv2.BORDER_REPLICATE,
+    'reflect': cv2.BORDER_REFLECT,
+    'wrap': cv2.BORDER_WRAP,
+    'reflect101': cv2.BORDER_REFLECT101,
     'transparent': cv2.BORDER_TRANSPARENT,
     # 'isolated':    cv2.BORDER_ISOLATED,
 }
@@ -78,9 +81,15 @@ def _cv2_has_warp_affine_float64_nearest_bug() -> bool:
     return _cv2_version_tuple()[0:2] == (4, 13)
 
 
-def _cv2_warp_affine_impl(image: NDArray, matrix: NDArray, dsize, flags,
-                          borderMode, borderValue,
-                          workaround_opencv_413_nearest_float64: bool = False):
+def _cv2_warp_affine_impl(
+    image: NDArray,
+    matrix: NDArray,
+    dsize,
+    flags,
+    borderMode,
+    borderValue,
+    workaround_opencv_413_nearest_float64: bool = False,
+):
     matrix = np.asarray(matrix)
     if workaround_opencv_413_nearest_float64:
         if matrix.shape == (2, 3):
@@ -91,8 +100,14 @@ def _cv2_warp_affine_impl(image: NDArray, matrix: NDArray, dsize, flags,
             matrix = np.linalg.inv(matrix)[0:2]
     else:
         matrix = matrix[0:2]
-    return cv2.warpAffine(image, matrix, dsize=dsize, flags=flags,
-                          borderMode=borderMode, borderValue=borderValue)
+    return cv2.warpAffine(
+        image,
+        matrix,
+        dsize=dsize,
+        flags=flags,
+        borderMode=borderMode,
+        borderValue=borderValue,
+    )
 
 
 def _coerce_interpolation(
@@ -164,14 +179,18 @@ def _coerce_interpolation(
             raise KeyError(
                 'Invalid interpolation value={!r}. '
                 'Valid strings for interpolation are {}'.format(
-                    interpolation, list(_CV2_INTERPOLATION_TYPES.keys())))
+                    interpolation, list(_CV2_INTERPOLATION_TYPES.keys())
+                )
+            )
     elif isinstance(interpolation, numbers.Integral):
         return int(interpolation)
     else:
         raise TypeError(
             'Invalid interpolation value={!r}. '
             'Type must be int or string but got {!r}'.format(
-                interpolation, type(interpolation)))
+                interpolation, type(interpolation)
+            )
+        )
 
 
 def _coerce_border_mode(
@@ -219,19 +238,23 @@ def _coerce_border_mode(
             raise KeyError(
                 'Invalid border_mode value={!r}. '
                 'Valid strings for border_mode are {}'.format(
-                    border_mode, list(_CV2_BORDER_MODES.keys())))
+                    border_mode, list(_CV2_BORDER_MODES.keys())
+                )
+            )
     elif isinstance(border_mode, numbers.Integral):
         return int(border_mode)
     else:
         raise TypeError(
             'Invalid border_mode value={!r}. '
             'Type must be int or string but got {!r}'.format(
-                border_mode, type(border_mode)))
+                border_mode, type(border_mode)
+            )
+        )
 
 
 def _coerce_border_value(
-    border_value: int | float | str | "Iterable[int | float]" | None,
-    default: int | float | str | "Iterable[int | float]" = 0,
+    border_value: int | float | str | 'Iterable[int | float]' | None,
+    default: int | float | str | 'Iterable[int | float]' = 0,
     image: NDArray | None = None,
 ) -> object:
     """
@@ -262,6 +285,7 @@ def _coerce_border_value(
 
     if isinstance(borderValue, str):
         from kwimage import im_color
+
         borderValue = im_color.Color(borderValue).forimage(image)
     elif not ub.iterable(borderValue):
         # convert scalar border value to a tuple to ensure the user always
@@ -273,21 +297,22 @@ def _coerce_border_value(
     if len(borderValue) > 4:
         # FIXME; opencv bug
         # https://github.com/opencv/opencv/issues/22283
-        raise ValueError('borderValue cannot have more than 4 components. '
-                         'OpenCV #22283 describes why')
+        raise ValueError(
+            'borderValue cannot have more than 4 components. '
+            'OpenCV #22283 describes why'
+        )
     return borderValue
 
 
 def _coerce_border_mode_value(
     border_mode: int | str | None,
-    border_value: int | float | str | "Iterable[int | float]" | None,
+    border_value: int | float | str | 'Iterable[int | float]' | None,
     image: NDArray,
 ) -> tuple[int, object]:
     """
     Common code for warp_affine and warp_persepctive
     """
 
-    borderMode = _coerce_border_mode(border_mode)
     if isinstance(border_value, str):
         # it is annoying to have borer value / border mode be different
         # if it is a string assume the border mode is a strategy
@@ -295,6 +320,7 @@ def _coerce_border_mode_value(
         assert border_mode is None
         border_mode = border_value
         border_value = 0
+    borderMode = _coerce_border_mode(border_mode)
     borderValue = _coerce_border_value(border_value, image=image)
     return borderMode, borderValue
 
@@ -324,7 +350,7 @@ def imcrop(
     dsize: tuple[int | None, int | None],
     about: tuple[object, object] | None = None,
     origin: tuple[int, int] | None = None,
-    border_value: int | float | str | "Iterable[int | float]" | None = None,
+    border_value: int | float | str | 'Iterable[int | float]' | None = None,
     interpolation: str = 'nearest',
 ) -> NDArray:
     """
@@ -425,8 +451,8 @@ def imcrop(
 
     assert len(dsize) == 2
     new_w, new_h = dsize
-    assert isinstance(new_w, numbers.Integral)
-    assert isinstance(new_h, numbers.Integral)
+    assert new_w is None or isinstance(new_w, numbers.Integral)
+    assert new_h is None or isinstance(new_h, numbers.Integral)
 
     if new_w is None:
         assert new_h is not None
@@ -438,7 +464,6 @@ def imcrop(
     old_h, old_w = img.shape[0:2]
 
     if origin is not None:
-
         if about is not None:
             raise AssertionError('provide at most one of "about" or "origin"')
 
@@ -450,7 +475,6 @@ def imcrop(
         cen_h = new_y + new_h // 2
 
     elif about is not None:
-
         if origin is not None:
             raise AssertionError('provide at most one of "about" or "origin"')
 
@@ -466,10 +490,16 @@ def imcrop(
             cen_w = about[0]
         elif isinstance(about[0], numbers.Real):
             if interpolation != 'linear':
-                raise ValueError('interpolation must be linear when about is real valued')
+                raise ValueError(
+                    'interpolation must be linear when about is real valued'
+                )
             cen_w = about[0]
         else:
-            raise ValueError('Invalid about code {}. Must be [l | c | r | int][t | c | b | int]'.format(about))
+            raise ValueError(
+                'Invalid about code {}. Must be [l | c | r | int][t | c | b | int]'.format(
+                    about
+                )
+            )
 
         if about[1] == 't':
             cen_h = new_h // 2
@@ -481,10 +511,16 @@ def imcrop(
             cen_h = about[1]
         elif isinstance(about[1], numbers.Real):
             if interpolation != 'linear':
-                raise ValueError('interpolation must be linear when about is real valued')
+                raise ValueError(
+                    'interpolation must be linear when about is real valued'
+                )
             cen_h = about[1]
         else:
-            raise ValueError('Invalid about code {}. Must be [l | c | r | int][t | c | b | int]'.format(about))
+            raise ValueError(
+                'Invalid about code {}. Must be [l | c | r | int][t | c | b | int]'.format(
+                    about
+                )
+            )
 
     else:
         # take top left as the origin
@@ -492,22 +528,29 @@ def imcrop(
         cen_h = new_h // 2
 
     if interpolation == 'linear':
-        new_img = cv2.getRectSubPix(img, dsize, (cen_h, cen_w))
+        # OpenCV expects the center in (x, y) order.
+        new_img = cv2.getRectSubPix(img, dsize, (cen_w, cen_h))
     elif interpolation == 'nearest':
         # build a patch that may go outside the image bounds
         ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
         xmin, xmax = cen_h - new_h // 2, cen_h + (new_h - new_h // 2)
 
         # subtract out portions that leave the image bounds
-        lft, ymin = - min(0, ymin), max(0, ymin)
+        lft, ymin = -min(0, ymin), max(0, ymin)
         rgt, ymax = max(0, ymax - old_w), min(old_w, ymax)
-        top, xmin = - min(0, xmin), max(0, xmin)
+        top, xmin = -min(0, xmin), max(0, xmin)
         bot, xmax = max(0, xmax - old_h), min(old_h, xmax)
 
         # slice the image using the corrected bounds and append the rest as a border
-        new_img = cv2.copyMakeBorder(img[xmin:xmax, ymin:ymax], top, bot, lft, rgt,
-                                     borderType=cv2.BORDER_CONSTANT,
-                                     value=border_value)
+        new_img = cv2.copyMakeBorder(
+            img[xmin:xmax, ymin:ymax],
+            top,
+            bot,
+            lft,
+            rgt,
+            borderType=cv2.BORDER_CONSTANT,
+            value=border_value,
+        )
     else:
         raise KeyError(interpolation)
 
@@ -557,17 +600,14 @@ def _cv2_input_fixer(img: NDArray) -> tuple[NDArray, np.dtype | None]:
 
 DTYPE_KEY_TO_DTYPE: dict[tuple[str, int], object] = {
     ('b', 1): bool,
-
     ('u', 1): np.uint8,
     ('u', 2): np.uint16,
     ('u', 4): np.uint32,
     ('u', 8): np.uint64,
-
     ('i', 1): np.int8,
     ('i', 2): np.int16,
     ('i', 4): np.int32,
     ('i', 8): np.int64,
-
     ('f', 2): np.float16,
     ('f', 4): np.float32,
     ('f', 8): np.float64,
@@ -577,64 +617,87 @@ _HAS_FLOAT128 = hasattr(np, 'float128')
 if _HAS_FLOAT128:
     DTYPE_KEY_TO_DTYPE[('f', 16)] = np.float128
 
-DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
+DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = ub.invert_dict(
+    DTYPE_KEY_TO_DTYPE
+)
 
 
-def __build_cv2_allowed_dtypes() -> dict[str, "ub.udict[tuple[str, int], np.dtype]"]:
-    default = ub.udict({
-        DTYPE_TO_DTYPE_KEY[bool]: np.uint8,
-        DTYPE_TO_DTYPE_KEY[np.uint8]: np.uint8,
-
-        DTYPE_TO_DTYPE_KEY[np.uint16]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.uint32]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.uint64]: np.float32,
-
-        DTYPE_TO_DTYPE_KEY[np.int8]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.int16]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.int32]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.int64]: np.float32,
-
-        DTYPE_TO_DTYPE_KEY[np.int8]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float16]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float32]: np.float32,
-        DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
-    })
+def __build_cv2_allowed_dtypes() -> dict[
+    str, 'ub.udict[tuple[str, int], np.dtype]'
+]:
+    default = ub.udict(
+        {
+            DTYPE_TO_DTYPE_KEY[bool]: np.uint8,
+            DTYPE_TO_DTYPE_KEY[np.uint8]: np.uint8,
+            DTYPE_TO_DTYPE_KEY[np.uint16]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.uint32]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.uint64]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.int8]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.int16]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.int32]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.int64]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.int8]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.float16]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.float32]: np.float32,
+            DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
+        }
+    )
     if _HAS_FLOAT128:
         default[DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
 
     CV2_ALLOWED_DTYPE_MAPPINGS = {}
     CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32'] = default
-    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32'] | {
-        DTYPE_TO_DTYPE_KEY[np.int8]: np.int16,
-        DTYPE_TO_DTYPE_KEY[np.int16]: np.int16,
-    }
-    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,float32']  | {
-        DTYPE_TO_DTYPE_KEY[np.uint16]: np.int32,
-        DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
-    }
-    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
-        DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
-        DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
-    }
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,float32'] = (
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,float32']
+        | {
+            DTYPE_TO_DTYPE_KEY[np.int8]: np.int16,
+            DTYPE_TO_DTYPE_KEY[np.int16]: np.int16,
+        }
+    )
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] = (
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,float32']
+        | {
+            DTYPE_TO_DTYPE_KEY[np.uint16]: np.int32,
+            DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
+        }
+    )
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'] = (
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32']
+        | {
+            DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
+            DTYPE_TO_DTYPE_KEY[np.float64]: np.float64,
+        }
+    )
     if _HAS_FLOAT128:
-        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float64
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32,float64'][
+            DTYPE_TO_DTYPE_KEY[np.float128]
+        ] = np.float64
 
-    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'] = CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32'] | {
-        DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
-        DTYPE_TO_DTYPE_KEY[np.int8]: np.int8,
-        DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
-        DTYPE_TO_DTYPE_KEY[np.uint16]: np.uint16,
-        DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
-    }
+    CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'] = (
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,int16,int32,float32']
+        | {
+            DTYPE_TO_DTYPE_KEY[np.int64]: np.float64,
+            DTYPE_TO_DTYPE_KEY[np.int8]: np.int8,
+            DTYPE_TO_DTYPE_KEY[np.int32]: np.int32,
+            DTYPE_TO_DTYPE_KEY[np.uint16]: np.uint16,
+            DTYPE_TO_DTYPE_KEY[np.float64]: np.float32,
+        }
+    )
     if _HAS_FLOAT128:
-        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'][DTYPE_TO_DTYPE_KEY[np.float128]] = np.float32
+        CV2_ALLOWED_DTYPE_MAPPINGS['uint8,uint16,int8,int16,int32,float32'][
+            DTYPE_TO_DTYPE_KEY[np.float128]
+        ] = np.float32
 
     for k in CV2_ALLOWED_DTYPE_MAPPINGS.keys():
-        CV2_ALLOWED_DTYPE_MAPPINGS[k] = CV2_ALLOWED_DTYPE_MAPPINGS[k].map_values(np.dtype)
+        CV2_ALLOWED_DTYPE_MAPPINGS[k] = CV2_ALLOWED_DTYPE_MAPPINGS[
+            k
+        ].map_values(np.dtype)
     return CV2_ALLOWED_DTYPE_MAPPINGS
 
 
-CV2_ALLOWED_DTYPE_MAPPINGS: dict[str, "ub.udict[tuple[str, int], np.dtype]"] = __build_cv2_allowed_dtypes()
+CV2_ALLOWED_DTYPE_MAPPINGS: dict[str, 'ub.udict[tuple[str, int], np.dtype]'] = (
+    __build_cv2_allowed_dtypes()
+)
 
 
 def _cv2_input_fixer_v2(
@@ -689,7 +752,7 @@ def _cv2_imresize(
     letterbox: bool = False,
     return_info: bool = False,
     antialias: bool = False,
-    border_value: int | float | str | "Iterable[int | float]" = 0,
+    border_value: int | float | str | 'Iterable[int | float]' = 0,
 ) -> NDArray | tuple[NDArray, dict[str, object]]:
     """
     Resize an image via a scale factor, final size, or size and aspect ratio.
@@ -883,11 +946,14 @@ def _cv2_imresize(
     _mutex_args = [scale, dsize, max_dim, min_dim]
     _num_mutex_args = sum(a is not None for a in _mutex_args)
     if _num_mutex_args > 1:
-        raise ValueError(ub.paragraph(
-            '''
+        raise ValueError(
+            ub.paragraph(
+                """
             May only specify EXACTLY one of scale, dsize, max_dim, xor min_dim'
             Got scale={}, dsize={}, max_dim={}, min_dim={}
-            ''').format(*_mutex_args))
+            """
+            ).format(*_mutex_args)
+        )
     elif _num_mutex_args == 0:
         # None of the scale params were specified, return the image as-is
         return img
@@ -906,16 +972,18 @@ def _cv2_imresize(
             # Best we can do in this case.
             new_w, new_h = dsize
             if len(img.shape) == 2:
-                return np.tile(img, (new_w, new_h))
+                return np.tile(img, (new_h, new_w))
             else:
-                return np.tile(img, (new_w, new_h, 1))
+                return np.tile(img, (new_h, new_w, 1))
         img = _cv2_imputation(img)
         sx, sy = scale
         num_chan = im_core.num_channels(img)
         if num_chan > 512 or (num_chan > 4 and interpolation == cv2.INTER_AREA):
             parts = np.split(img, img.shape[-1], -1)
             newparts = [
-                _chosen_resize(chan, scale, dsize=dsize, interpolation=interpolation)[..., None]
+                _chosen_resize(
+                    chan, scale, dsize=dsize, interpolation=interpolation
+                )[..., None]
                 for chan in parts
             ]
             newimg = np.concatenate(newparts, axis=2)
@@ -982,7 +1050,7 @@ def _cv2_imresize(
         dsize = (w, h)
         target_size = np.array(dsize)
         # Determine to use the x or y scale factor
-        unequal_sxy = (target_size / orig_size)
+        unequal_sxy = target_size / orig_size
         equal_sxy = unequal_sxy.min()
         # Whats the closest integer size we can resize to?
         embed_size = np.round(orig_size * equal_sxy).astype(int)
@@ -996,16 +1064,24 @@ def _cv2_imresize(
         right, bot = target_size - (embed_size + offset)
 
         interpolation = _coerce_interpolation(
-            interpolation, scale=equal_sxy, grow_default=grow_interpolation)
+            interpolation, scale=equal_sxy, grow_default=grow_interpolation
+        )
 
         embed_dsize = tuple(embed_size)
-        embed_img = _patched_resize(img, scale, embed_dsize,
-                                    interpolation=interpolation)
+        embed_img = _patched_resize(
+            img, scale, embed_dsize, interpolation=interpolation
+        )
 
         borderValue = _coerce_border_value(border_value, image=embed_img)
         new_img = cv2.copyMakeBorder(
-            embed_img, top, bot, left, right, borderType=cv2.BORDER_CONSTANT,
-            value=borderValue)
+            embed_img,
+            top,
+            bot,
+            left,
+            right,
+            borderType=cv2.BORDER_CONSTANT,
+            value=borderValue,
+        )
         if return_info:
             info = {
                 'offset': offset,
@@ -1021,9 +1097,13 @@ def _cv2_imresize(
         new_dsize = (new_w_, new_h_)
         new_scale = np.array(new_dsize) / np.array(old_dsize)
         interpolation = _coerce_interpolation(
-            interpolation, scale=new_scale.min(),
-            grow_default=grow_interpolation)
-        new_img = _patched_resize(img, new_scale, new_dsize, interpolation=interpolation)
+            interpolation,
+            scale=new_scale.min(),
+            grow_default=grow_interpolation,
+        )
+        new_img = _patched_resize(
+            img, new_scale, new_dsize, interpolation=interpolation
+        )
         if return_info:
             # import kwimage
             # transform = kwimage.Affine.affine(scale=scale)
@@ -1213,6 +1293,7 @@ def adjust(
         >>> kwplot.imshow(canvas, fnum=2)
     """
     import kwimage
+
     img = kwimage.ensure_float01(img)
 
     if legacy:
@@ -1234,12 +1315,12 @@ def adjust(
         if lighten > 0:
             l_ += (1 - l_) * lighten
         elif lighten < 0:
-            l_ *= (1 + lighten)
+            l_ *= 1 + lighten
 
         if saturate > 0:
             s_ += (1 - s_) * saturate
         elif saturate < 0:
-            s_ *= (1 + saturate)
+            s_ *= 1 + saturate
 
         l_.clip(0, 1, out=l_)
         s_.clip(0, 1, out=s_)
@@ -1247,7 +1328,9 @@ def adjust(
     return out
 
 
-def _lookup_cv2_colorspace_conversion_code(src_space: str, dst_space: str) -> int:
+def _lookup_cv2_colorspace_conversion_code(
+    src_space: str, dst_space: str
+) -> int:
     src = src_space.upper()
     dst = dst_space.upper()
     convert_attr = 'COLOR_{}2{}'.format(src, dst)
@@ -1255,10 +1338,14 @@ def _lookup_cv2_colorspace_conversion_code(src_space: str, dst_space: str) -> in
         prefix = 'COLOR_{}2'.format(src)
         valid_dst_spaces = [
             key.replace(prefix, '')
-            for key in cv2.__dict__.keys() if key.startswith(prefix)]
+            for key in cv2.__dict__.keys()
+            if key.startswith(prefix)
+        ]
         raise KeyError(
             '{} does not exist, valid conversions from {} are to {}'.format(
-                convert_attr, src_space, valid_dst_spaces))
+                convert_attr, src_space, valid_dst_spaces
+            )
+        )
     else:
         code = getattr(cv2, convert_attr)
     return code
@@ -1384,6 +1471,7 @@ def _auto_kernel_sigma(
         >>> sns.lineplot(data=df, x='s', y='k', hue='type')
     """
     import numbers
+
     if kernel is None and sigma is None:
         kernel = 3
 
@@ -1512,16 +1600,28 @@ def gaussian_blur(
     borderType = _coerce_border_mode(border_mode)
     image = _cv2_imputation(image)
     blurred = cv2.GaussianBlur(
-        image, (k_x, k_y), sigmaX=sigma_x, sigmaY=sigma_y,
-        borderType=borderType, dst=dst
+        image,
+        (k_x, k_y),
+        sigmaX=sigma_x,
+        sigmaY=sigma_y,
+        borderType=borderType,
+        dst=dst,
     )
     return blurred
 
 
-def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
-                     interpolation='linear', border_mode=None, border_value=0,
-                     large_warp_dim=None, return_info=False,
-                     origin_convention='center'):
+def _cv2_warp_affine(
+    image,
+    transform,
+    dsize=None,
+    antialias=False,
+    interpolation='linear',
+    border_mode=None,
+    border_value=0,
+    large_warp_dim=None,
+    return_info=False,
+    origin_convention='center',
+):
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -1642,9 +1742,9 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         >>> kwplot.imshow(warped)
         >>> kwplot.show_if_requested()
     """
-    from kwimage.transform import Affine
     import kwimage
     from kwimage._common import _coerce_warp_dsize_inputs
+    from kwimage.transform import Affine
 
     if isinstance(image, np.ma.MaskedArray):
         mask = image.mask
@@ -1658,7 +1758,8 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
     transform = Affine.coerce(transform)
     flags = _coerce_interpolation(interpolation)
     borderMode, borderValue = _coerce_border_mode_value(
-        border_mode, border_value, image)
+        border_mode, border_value, image
+    )
 
     h, w = image.shape[0:2]
     input_dsize = (w, h)
@@ -1667,7 +1768,7 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         dsize=dsize,
         input_dsize=input_dsize,
         transform=transform,
-        require_warped_info=require_warped_info
+        require_warped_info=require_warped_info,
     )
     affine_params = None
     max_dsize = dsize_inputs['max_dsize']
@@ -1686,9 +1787,16 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         and np.dtype(image.dtype) == np.dtype(np.float64)
     )
 
-    _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
-                           borderMode, borderValue,
-                           workaround_opencv_413_nearest_float64)
+    _try_warp_tail_args = (
+        large_warp_dim,
+        dsize,
+        max_dsize,
+        new_origin,
+        flags,
+        borderMode,
+        borderValue,
+        workaround_opencv_413_nearest_float64,
+    )
 
     if origin_convention == 'corner':
         # cv2.warpAffine uses the integer-center convention, but by modifying
@@ -1724,14 +1832,20 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
                 fill_value = borderValue
 
             result = np.full(
-                shape=output_shape, fill_value=fill_value, dtype=image.dtype)
+                shape=output_shape, fill_value=fill_value, dtype=image.dtype
+            )
             if is_masked:
                 result_mask = np.full(
-                    shape=output_shape, fill_value=False, dtype=mask.dtype)
+                    shape=output_shape, fill_value=False, dtype=mask.dtype
+                )
         elif not antialias:
-            result = _cv2_try_warp_affine(image, transform_, *_try_warp_tail_args)
+            result = _cv2_try_warp_affine(
+                image, transform_, *_try_warp_tail_args
+            )
             if is_masked:
-                result_mask = _cv2_try_warp_affine(mask, transform_, *_try_warp_tail_args)
+                result_mask = _cv2_try_warp_affine(
+                    mask, transform_, *_try_warp_tail_args
+                )
         else:
             # Decompose the affine matrix into its 6 core parameters
             if affine_params is None:
@@ -1740,9 +1854,13 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
 
             if sx > 1 and sy > 1:
                 # No downsampling detected, no need to antialias
-                result = _cv2_try_warp_affine(image, transform_, *_try_warp_tail_args)
+                result = _cv2_try_warp_affine(
+                    image, transform_, *_try_warp_tail_args
+                )
                 if is_masked:
-                    result_mask = _cv2_try_warp_affine(mask, transform_, *_try_warp_tail_args)
+                    result_mask = _cv2_try_warp_affine(
+                        mask, transform_, *_try_warp_tail_args
+                    )
             else:
                 # At least one dimension is downsampled
                 """
@@ -1755,25 +1873,34 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
                 """
 
                 # Compute the transform with all scaling removed
-                noscale_warp = Affine.affine(**ub.dict_diff(affine_params, {'scale'}))
+                noscale_warp = Affine.affine(
+                    **ub.dict_diff(affine_params, {'scale'})
+                )
 
                 # Execute part of the downscale with iterative pyramid downs
                 downscaled, residual_sx, residual_sy = _cv2_prepare_downscale(
-                    image, sx, sy)
+                    image, sx, sy
+                )
 
                 # Compute the transform from the downsampled image to the destination
-                rest_warp = noscale_warp @ Affine.scale((residual_sx, residual_sy))
+                rest_warp = noscale_warp @ Affine.scale(
+                    (residual_sx, residual_sy)
+                )
 
                 info['antialias_info'] = {
                     'noscale_warp': noscale_warp,
                     'rest_warp': rest_warp,
                 }
 
-                result = _cv2_try_warp_affine(downscaled, rest_warp, *_try_warp_tail_args)
+                result = _cv2_try_warp_affine(
+                    downscaled, rest_warp, *_try_warp_tail_args
+                )
 
                 if is_masked:
                     downscaled_mask, _, _ = _cv2_prepare_downscale(mask, sx, sy)
-                    result_mask = _cv2_try_warp_affine(downscaled_mask, rest_warp, *_try_warp_tail_args)
+                    result_mask = _cv2_try_warp_affine(
+                        downscaled_mask, rest_warp, *_try_warp_tail_args
+                    )
     except Exception as ex:
         print('Error in warp_affine: ex = {}'.format(ub.urepr(ex, nl=1)))
         print(f'type(image) = {type(image)}')
@@ -1799,9 +1926,18 @@ def _cv2_warp_affine(image, transform, dsize=None, antialias=False,
         return result
 
 
-def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
-                         new_origin, flags, borderMode, borderValue,
-                         workaround_opencv_413_nearest_float64=False):
+def _cv2_try_warp_affine(
+    image,
+    transform_,
+    large_warp_dim,
+    dsize,
+    max_dsize,
+    new_origin,
+    flags,
+    borderMode,
+    borderValue,
+    workaround_opencv_413_nearest_float64=False,
+):
     """
     Helper for warp_affine
     """
@@ -1820,14 +1956,23 @@ def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
         try:
             M = np.asarray(transform_)
             return _cv2_warp_affine_impl(
-                image, M, dsize=dsize, flags=flags,
-                borderMode=borderMode, borderValue=borderValue,
-                workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64)
+                image,
+                M,
+                dsize=dsize,
+                flags=flags,
+                borderMode=borderMode,
+                borderValue=borderValue,
+                workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64,
+            )
         except cv2.error as e:
-            if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
+            if (
+                e.err
+                == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX'
+            ):
                 print(
                     'Image too large for warp_affine. Bypass this error by setting '
-                    'kwimage.warp_affine(large_warp_dim="auto")')
+                    'kwimage.warp_affine(large_warp_dim="auto")'
+                )
                 raise e
             else:
                 raise
@@ -1835,10 +1980,18 @@ def _cv2_try_warp_affine(image, transform_, large_warp_dim, dsize, max_dsize,
     else:
         # make these pieces as large as possible for efficiency
         pieces_per_dim = 1 + max_dim // (large_warp_dim - 1)
-        return _cv2_large_warp_affine(image, transform_, dsize, max_dsize,
-                                      new_origin, flags, borderMode,
-                                      borderValue, pieces_per_dim,
-                                      workaround_opencv_413_nearest_float64)
+        return _cv2_large_warp_affine(
+            image,
+            transform_,
+            dsize,
+            max_dsize,
+            new_origin,
+            flags,
+            borderMode,
+            borderValue,
+            pieces_per_dim,
+            workaround_opencv_413_nearest_float64,
+        )
 
 
 def _cv2_imputation(image: NDArray) -> NDArray:
@@ -1847,9 +2000,18 @@ def _cv2_imputation(image: NDArray) -> NDArray:
     return image
 
 
-def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
-                           flags, borderMode, borderValue, pieces_per_dim,
-                           workaround_opencv_413_nearest_float64=False):
+def _cv2_large_warp_affine(
+    image,
+    transform_,
+    dsize,
+    max_dsize,
+    new_origin,
+    flags,
+    borderMode,
+    borderValue,
+    pieces_per_dim,
+    workaround_opencv_413_nearest_float64=False,
+):
     """
     Split an image into pieces smaller than cv2's limit, perform cv2.warpAffine on each piece,
     and stitch them back together with minimal artifacts.
@@ -1901,19 +2063,20 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
         >>> kwplot.imshow(res, pnum=(1, 2, 1))
         >>> kwplot.imshow(res2, pnum=(1, 2, 2))
     """
-    from kwimage import Affine, Boxes
-    import cv2
     import itertools as it
+
+    from kwimage import Affine, Boxes
 
     def _split_2d(arr):
         # provide indexes to view arr in 2d blocks like 2 uses of
         # np.array_split() but provides the indexes, not the data
         h, w = arr.shape[0:2]
         xs, ys = zip(
-            *np.linspace([0, 0], [w, h], num=pieces_per_dim + 1, dtype=int))
+            *np.linspace([0, 0], [w, h], num=pieces_per_dim + 1, dtype=int)
+        )
         ixs = [
-            xx + yy for xx, yy in it.product(zip(xs[:-1], xs[1:]),
-                                             zip(ys[:-1], ys[1:]))
+            xx + yy
+            for xx, yy in it.product(zip(xs[:-1], xs[1:]), zip(ys[:-1], ys[1:]))
         ]
         return Boxes(ixs, 'xxyy')  # could use to_slices() for portability
 
@@ -1931,7 +2094,6 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
     # Note that this will unavoidably produce artifacts along the "seams"
     # because interpolation is not performed across them.
     for img_piece in _split_2d(image):
-
         # restore extra dim from looping before converting to slice
         img_piece = Boxes([img_piece.data], img_piece.format)
         img_piece_ix = img_piece.to_slices()[0]
@@ -1939,14 +2101,15 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
         piece_wh = img_piece.to_xywh().data[0, 2:4]
         warped_origin = img_piece.warp(max_transform).to_xywh().data[0, 0:2]
 
-        centered_bb = Boxes(
-            np.array([[0, 0, *piece_wh]]), 'xywh').warp(max_transform)
+        centered_bb = Boxes(np.array([[0, 0, *piece_wh]]), 'xywh').warp(
+            max_transform
+        )
         centered_origin = centered_bb.data[0, 0:2]
 
         piece_centered_matrix = (
-            Affine.translate(-centered_origin) @ max_transform).matrix
-        warped_bbox = img_piece.warp(
-            piece_centered_matrix).to_ltrb().quantize()
+            Affine.translate(-centered_origin) @ max_transform
+        ).matrix
+        warped_bbox = img_piece.warp(piece_centered_matrix).to_ltrb().quantize()
 
         warped_dsize = tuple(map(int, warped_bbox.to_xywh().data[0, 2:4]))
         # do the quantizing manually here to avoid changing dsize
@@ -1954,20 +2117,29 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
         # round this produces shifts of up to 1 px
         result_bbox = Boxes(
             np.array([[*np.floor(warped_origin), *warped_dsize]]).astype(int),
-            'xywh')
+            'xywh',
+        )
         result_ix = result_bbox.to_slices()[0]
 
         warped_piece = _cv2_warp_affine_impl(
-            image[img_piece_ix], piece_centered_matrix,
-            dsize=warped_dsize, flags=flags,
-            borderMode=borderMode, borderValue=borderValue,
-            workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64)
+            image[img_piece_ix],
+            piece_centered_matrix,
+            dsize=warped_dsize,
+            flags=flags,
+            borderMode=borderMode,
+            borderValue=borderValue,
+            workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64,
+        )
 
         weight_piece = _cv2_warp_affine_impl(
-            np.ones_like(image[img_piece_ix]), piece_centered_matrix,
-            dsize=warped_dsize, flags=flags,
-            borderMode=borderMode, borderValue=borderValue,
-            workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64)
+            np.ones_like(image[img_piece_ix]),
+            piece_centered_matrix,
+            dsize=warped_dsize,
+            flags=flags,
+            borderMode=borderMode,
+            borderValue=borderValue,
+            workaround_opencv_413_nearest_float64=workaround_opencv_413_nearest_float64,
+        )
 
         result[result_ix] += warped_piece
         weight[result_ix] += weight_piece
@@ -1975,10 +2147,12 @@ def _cv2_large_warp_affine(image, transform_, dsize, max_dsize, new_origin,
     result = (result / np.where(weight != 0, weight, 1)).astype(image.dtype)
 
     # crop and pad the canvas to the desired size
-    result = imcrop(result,
-                    dsize,
-                    origin=np.round(-new_origin).astype(int),
-                    border_value=borderValue)
+    result = imcrop(
+        result,
+        dsize,
+        origin=np.round(-new_origin).astype(int),
+        border_value=borderValue,
+    )
 
     return result
 
@@ -1991,7 +2165,7 @@ def _prepare_scale_residual(sx, sy, fudge=0):
     max_scale = max(sx, sy)
     ideal_num_downs = int(np.log2(1 / max_scale))
     num_downs = max(ideal_num_downs - fudge, 0)
-    pyr_scale = 1 / (2 ** num_downs)
+    pyr_scale = 1 / (2**num_downs)
     residual_sx = sx / pyr_scale
     residual_sy = sy / pyr_scale
     return num_downs, residual_sx, residual_sy
@@ -2062,18 +2236,19 @@ def _cv2_prepare_downscale(image, sx, sy):
         """
         aa_sigma0 = 1.0699027846904146
         aa_k0 = 5
-        k_x, sigma_x = _gauss_params(scale=residual_sx, k0=aa_k0,
-                                     sigma0=aa_sigma0, fractional=fractional)
-        k_y, sigma_y = _gauss_params(scale=residual_sy, k0=aa_k0,
-                                     sigma0=aa_sigma0, fractional=fractional)
+        k_x, sigma_x = _gauss_params(
+            scale=residual_sx, k0=aa_k0, sigma0=aa_sigma0, fractional=fractional
+        )
+        k_y, sigma_y = _gauss_params(
+            scale=residual_sy, k0=aa_k0, sigma0=aa_sigma0, fractional=fractional
+        )
 
         # Note: when k=1, no blur occurs
         # blurBorderType = cv2.BORDER_REPLICATE
         # blurBorderType = cv2.BORDER_CONSTANT
         blurBorderType = cv2.BORDER_DEFAULT
         downscaled = cv2.GaussianBlur(
-            downscaled, (k_x, k_y), sigma_x, sigma_y,
-            borderType=blurBorderType
+            downscaled, (k_x, k_y), sigma_x, sigma_y, borderType=blurBorderType
         )
 
     return downscaled, residual_sx, residual_sy
@@ -2124,21 +2299,21 @@ items = ub.sorted_vals(items, key=lambda x: eval(x, {'cv2': cv2}))
 print('_CV2_MORPH_MODES = {}'.format(ub.urepr(items, nl=1, sv=1, align=':')))
 """
 _CV2_STRUCT_ELEMENTS: dict[str, int] = {
-    'rect'    : cv2.MORPH_RECT,
-    'cross'   : cv2.MORPH_CROSS,
-    'ellipse' : cv2.MORPH_ELLIPSE,
+    'rect': cv2.MORPH_RECT,
+    'cross': cv2.MORPH_CROSS,
+    'ellipse': cv2.MORPH_ELLIPSE,
 }
 
 
 _CV2_MORPH_MODES: dict[str, int] = {
-    'erode'   : cv2.MORPH_ERODE,
-    'dilate'  : cv2.MORPH_DILATE,
-    'open'    : cv2.MORPH_OPEN,
-    'close'   : cv2.MORPH_CLOSE,
+    'erode': cv2.MORPH_ERODE,
+    'dilate': cv2.MORPH_DILATE,
+    'open': cv2.MORPH_OPEN,
+    'close': cv2.MORPH_CLOSE,
     'gradient': cv2.MORPH_GRADIENT,
-    'tophat'  : cv2.MORPH_TOPHAT,
+    'tophat': cv2.MORPH_TOPHAT,
     'blackhat': cv2.MORPH_BLACKHAT,
-    'hitmiss' : cv2.MORPH_HITMISS,
+    'hitmiss': cv2.MORPH_HITMISS,
 }
 
 
@@ -2147,7 +2322,8 @@ def _morph_kernel_core(w, h, element):
     if w == 0 or h == 0:
         return np.empty((0, 0), dtype=np.uint8)
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
-    element = cv2.getStructuringElement(struct_shape, (h, w))
+    # OpenCV expects kernel size in (width, height) order.
+    element = cv2.getStructuringElement(struct_shape, (w, h))
     return element
 
 
@@ -2189,7 +2365,7 @@ def morphology(
     element: str = 'rect',
     iterations: int = 1,
     border_mode: str | int = 'constant',
-    border_value: int | float | str | "Iterable[int | float]" = 0,
+    border_value: int | float | str | 'Iterable[int | float]' = 0,
 ) -> NDArray:
     """
     Executes a morphological operation.
@@ -2292,6 +2468,7 @@ def morphology(
 
     """
     import cv2
+
     kernel = _morph_kernel(kernel, element)
     if kernel.size == 0:
         return data.copy()
@@ -2309,8 +2486,12 @@ def morphology(
 
     data = _cv2_imputation(data)
     new = cv2.morphologyEx(
-        data, op=morph_mode, kernel=kernel, iterations=iterations,
-        borderValue=borderValue, borderType=borderMode
+        data,
+        op=morph_mode,
+        kernel=kernel,
+        iterations=iterations,
+        borderValue=borderValue,
+        borderType=borderMode,
     )
     if final_dtype is not None:
         new = new.astype(final_dtype)
@@ -2401,11 +2582,23 @@ def connected_components(
             ltype = np.int32
         elif ltype in {'uint16', 'CV_16U'}:
             ltype = np.uint16
-    if ltype is np.int32:
-        ltype = cv2.CV_32S
-    elif ltype is np.int16:
+
+    # Preserve the historical spelling, which treated np.int16 as the
+    # OpenCV unsigned-16 label mode, while also accepting the documented
+    # np.uint16 dtype forms.
+    if ltype is np.int16:
         ltype = cv2.CV_16U
-    if not isinstance(ltype, int):
+
+    if not isinstance(ltype, numbers.Integral):
+        try:
+            dtype = np.dtype(ltype)
+        except TypeError:
+            raise TypeError('type(ltype) = {}'.format(type(ltype)))
+        if dtype == np.dtype(np.int32):
+            ltype = cv2.CV_32S
+        elif dtype == np.dtype(np.uint16):
+            ltype = cv2.CV_16U
+    if not isinstance(ltype, numbers.Integral):
         raise TypeError('type(ltype) = {}'.format(type(ltype)))
 
     # It seems very easy for a segfault to happen here.
@@ -2424,18 +2617,29 @@ def connected_components(
             raise KeyError(algo)
 
         if with_stats:
-            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStatsWithAlgorithm(
-                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype)
+            num_labels, labels, stats, centroids = (
+                cv2.connectedComponentsWithStatsWithAlgorithm(
+                    image,
+                    connectivity=connectivity,
+                    ccltype=ccltype,
+                    ltype=ltype,
+                )
+            )
         else:
             num_labels, labels = cv2.connectedComponentsWithAlgorithm(
-                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype)
+                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype
+            )
     else:
         if with_stats:
-            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-                image, connectivity=connectivity, ltype=ltype)
+            num_labels, labels, stats, centroids = (
+                cv2.connectedComponentsWithStats(
+                    image, connectivity=connectivity, ltype=ltype
+                )
+            )
         else:
             num_labels, labels = cv2.connectedComponents(
-                image, connectivity=connectivity, ltype=ltype)
+                image, connectivity=connectivity, ltype=ltype
+            )
 
     info = {
         'num_labels': num_labels,
@@ -2444,19 +2648,37 @@ def connected_components(
     if with_stats:
         # Transform stats into a kwimage boxes object for each label
         import kwimage
-        info['label_boxes'] = kwimage.Boxes(stats[:, [
-            cv2.CC_STAT_LEFT, cv2.CC_STAT_TOP,
-            cv2.CC_STAT_WIDTH, cv2.CC_STAT_HEIGHT]], 'ltwh')
+
+        info['label_boxes'] = kwimage.Boxes(
+            stats[
+                :,
+                [
+                    cv2.CC_STAT_LEFT,
+                    cv2.CC_STAT_TOP,
+                    cv2.CC_STAT_WIDTH,
+                    cv2.CC_STAT_HEIGHT,
+                ],
+            ],
+            'ltwh',
+        )
         info['label_areas'] = stats[:, cv2.CC_STAT_AREA]
         info['label_centroids'] = kwimage.Points(xy=centroids)
 
     return labels, info
 
 
-def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
-                         interpolation='linear', border_mode=None,
-                         border_value=0, large_warp_dim=None,
-                         origin_convention='center', return_info=False):
+def _cv2_warp_projective(
+    image,
+    transform,
+    dsize=None,
+    antialias=False,
+    interpolation='linear',
+    border_mode=None,
+    border_value=0,
+    large_warp_dim=None,
+    origin_convention='center',
+    return_info=False,
+):
     """
     Applies an projective transformation to an image with optional antialiasing.
 
@@ -2548,7 +2770,8 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
     transform = kwimage.Projective.coerce(transform)
     flags = _coerce_interpolation(interpolation)
     borderMode, borderValue = _coerce_border_mode_value(
-        border_mode, border_value, image)
+        border_mode, border_value, image
+    )
 
     h, w = image.shape[0:2]
     input_dsize = (w, h)
@@ -2557,7 +2780,7 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
         dsize=dsize,
         input_dsize=input_dsize,
         transform=transform,
-        require_warped_info=require_warped_info
+        require_warped_info=require_warped_info,
     )
     max_dsize = dsize_inputs['max_dsize']
     new_origin = dsize_inputs['new_origin']
@@ -2580,22 +2803,35 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
     else:
         raise KeyError(origin_convention)
 
-    _try_warp_tail_args = (large_warp_dim, dsize, max_dsize, new_origin, flags,
-                           borderMode, borderValue)
+    _try_warp_tail_args = (
+        large_warp_dim,
+        dsize,
+        max_dsize,
+        new_origin,
+        flags,
+        borderMode,
+        borderValue,
+    )
 
     if any(d == 0 for d in dsize) or any(d == 0 for d in image.shape[0:2]):
         # Handle case where the input image has no size or the destination
         # canvas has no size. In either case we just return empty data
         output_shape = (dsize[1], dsize[0]) + image.shape[2:]
         result = np.full(
-            shape=output_shape, fill_value=borderValue, dtype=image.dtype)
+            shape=output_shape, fill_value=borderValue, dtype=image.dtype
+        )
         if is_masked:
             result_mask = np.full(
-                shape=output_shape, fill_value=False, dtype=mask.dtype)
+                shape=output_shape, fill_value=False, dtype=mask.dtype
+            )
     elif not antialias:
-        result = _cv2_try_warp_projective(image, transform_, *_try_warp_tail_args)
+        result = _cv2_try_warp_projective(
+            image, transform_, *_try_warp_tail_args
+        )
         if is_masked:
-            result_mask = _cv2_try_warp_projective(mask, transform_, *_try_warp_tail_args)
+            result_mask = _cv2_try_warp_projective(
+                mask, transform_, *_try_warp_tail_args
+            )
     else:
         # TODO: Fix cases
 
@@ -2605,9 +2841,13 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
 
         if sx > 1 and sy > 1:
             # No downsampling detected, no need to antialias
-            result = _cv2_try_warp_projective(image, transform_, *_try_warp_tail_args)
+            result = _cv2_try_warp_projective(
+                image, transform_, *_try_warp_tail_args
+            )
             if is_masked:
-                result_mask = _cv2_try_warp_projective(mask, transform_, *_try_warp_tail_args)
+                result_mask = _cv2_try_warp_projective(
+                    mask, transform_, *_try_warp_tail_args
+                )
         else:
             # We can't actually do this in the projective case
             raise NotImplementedError('cannot antialias in projective case yet')
@@ -2622,9 +2862,17 @@ def _cv2_warp_projective(image, transform, dsize=None, antialias=False,
         return result
 
 
-def _cv2_try_warp_projective(image, transform_, large_warp_dim, dsize,
-                             max_dsize, new_origin, flags, borderMode,
-                             borderValue):
+def _cv2_try_warp_projective(
+    image,
+    transform_,
+    large_warp_dim,
+    dsize,
+    max_dsize,
+    new_origin,
+    flags,
+    borderMode,
+    borderValue,
+):
     """
     Helper for warp_projective
     """
@@ -2642,14 +2890,23 @@ def _cv2_try_warp_projective(image, transform_, large_warp_dim, dsize,
     if large_warp_dim is None or max_dim < large_warp_dim:
         try:
             M = np.asarray(transform_)
-            return cv2.warpPerspective(image, M, dsize=dsize, flags=flags,
-                                       borderMode=borderMode,
-                                       borderValue=borderValue)
+            return cv2.warpPerspective(
+                image,
+                M,
+                dsize=dsize,
+                flags=flags,
+                borderMode=borderMode,
+                borderValue=borderValue,
+            )
         except cv2.error as e:
-            if e.err == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX':
+            if (
+                e.err
+                == 'dst.cols < SHRT_MAX && dst.rows < SHRT_MAX && src.cols < SHRT_MAX && src.rows < SHRT_MAX'
+            ):
                 print(
                     'Image too large for warp_projective. Bypass this error by setting '
-                    'kwimage.warp_projective(large_warp_dim="auto")')
+                    'kwimage.warp_projective(large_warp_dim="auto")'
+                )
                 raise e
             else:
                 raise

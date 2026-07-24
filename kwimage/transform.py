@@ -2,18 +2,24 @@
 Objects for representing and manipulating image transforms, namely image
 transformation matrices.
 """
+
 from __future__ import annotations
-import typing as _t
-import ubelt as ub
-import numpy as np
-import kwarray
-import skimage.transform
+
 import math
+import typing as _t
+
+import kwarray
+import numpy as np
+import skimage.transform
+import ubelt as ub
+
 from kwimage import _internal
+
 if _t.TYPE_CHECKING:
-    from typing import Any
-    import numpy.typing as npt
     from numbers import Number
+    from typing import Any
+
+    import numpy.typing as npt
 
     # Type aliases (type-checker only; zero runtime typing overhead)
     NDArray = npt.NDArray[Any]
@@ -21,6 +27,7 @@ if _t.TYPE_CHECKING:
 
     try:  # pragma: no cover
         import sympy as _sympy  # type: ignore
+
         RationalMatrix = _sympy.Matrix  # type: ignore[attr-defined]
     except Exception:  # pragma: no cover
         RationalMatrix = object  # type: ignore[assignment]
@@ -29,9 +36,7 @@ if _t.TYPE_CHECKING:
     DSize = tuple[int, int]
     XY = tuple[float, float] | tuple[int, int]
 
-__all__ = [
-    'Transform', 'Matrix', 'Linear', 'Affine', 'Projective'
-]
+__all__ = ['Transform', 'Matrix', 'Linear', 'Affine', 'Projective']
 
 
 class Transform(ub.NiceRepr):
@@ -58,6 +63,7 @@ class Matrix(Transform):
         >>>     print(f'{k}.T = {m.T}')
         >>>     print(f'{k}.det() = {m.det()}')
     """
+
     def __init__(self, matrix: MatrixData):
         self.matrix = matrix
 
@@ -134,7 +140,10 @@ class Matrix(Transform):
         if self.matrix is None:
             self.matrix = other_matrix
         else:
-            self.matrix @= other_matrix
+            # NumPy arrays do not implement in-place matrix multiplication.
+            # Mutate the wrapper by replacing its underlying matrix instead.
+            self.matrix = self.matrix @ other_matrix
+        return self
 
     def __matmul__(self, other):
         """
@@ -191,7 +200,10 @@ class Matrix(Transform):
         """
         if sympy is None:
             return False
-        return isinstance(self.matrix, sympy.Matrix) and isinstance(self.matrix[0, 0], (sympy.Rational, sympy.core.symbol.Symbol, sympy.core.basic.Basic))
+        return isinstance(self.matrix, sympy.Matrix) and isinstance(
+            self.matrix[0, 0],
+            (sympy.Rational, sympy.core.symbol.Symbol, sympy.core.basic.Basic),
+        )
 
     def inv(self) -> Matrix:
         """
@@ -242,7 +254,7 @@ class Matrix(Transform):
             float
         """
         if self.matrix is None:
-            return 1.
+            return 1.0
         else:
             try:
                 det = np.linalg.det(self.matrix)
@@ -252,7 +264,9 @@ class Matrix(Transform):
             return det
 
     @classmethod
-    def eye(cls, shape: int | tuple[int, int] | None = None, rng: object = None) -> Matrix:
+    def eye(
+        cls, shape: int | tuple[int, int] | None = None, rng: object = None
+    ) -> Matrix:
         """
         Construct an identity
         """
@@ -265,8 +279,11 @@ class Matrix(Transform):
         return self
 
     @classmethod
-    def random(cls, shape: int | tuple[int, int] | None = None, rng: object = None) -> Matrix:
+    def random(
+        cls, shape: int | tuple[int, int] | None = None, rng: object = None
+    ) -> Matrix:
         import kwarray
+
         rng = kwarray.ensure_rng(rng)
         self = cls(None)
         if isinstance(shape, int):
@@ -347,7 +364,9 @@ class Matrix(Transform):
         new = self.__class__(new_mat)
         return new
 
-    def isclose_identity(self, rtol: float = 1e-05, atol: float = 1e-08) -> bool:
+    def isclose_identity(
+        self, rtol: float = 1e-05, atol: float = 1e-08
+    ) -> bool:
         """
         Returns true if the matrix is nearly the identity.
         """
@@ -481,6 +500,11 @@ class Projective(Linear):
         >>> fig.set_size_inches(13, 13)
         >>> kwplot.show_if_requested()
     """
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return (3, 3)
+
     # References:
     #     .. [AffineDecompColab] https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
 
@@ -539,6 +563,7 @@ class Projective(Linear):
         """
         if 0:
             import cv2
+
             inlier_method = 'all'
             inlier_method_lut = {
                 'all': 0,
@@ -552,20 +577,20 @@ class Projective(Linear):
             H, mask = cv2.findHomography(pts1, pts2, method=cv2_method)
             return Projective(H)
         else:
+
             def whiten_xy_points(xy_m):
                 """
                 whitens points to mean=0, stddev=1 and returns transformation
                 """
-                mu_xy  = xy_m.mean(axis=1)  # center of mass
+                mu_xy = xy_m.mean(axis=1)  # center of mass
                 std_xy = xy_m.std(axis=1)
                 std_xy[std_xy == 0] = 1  # prevent divide by zero
                 tx, ty = -mu_xy / std_xy
                 sx, sy = 1 / std_xy
-                T = np.array([(sx, 0, tx),
-                              (0, sy, ty),
-                              (0,  0,  1)])
+                T = np.array([(sx, 0, tx), (0, sy, ty), (0, 0, 1)])
                 xy_norm = ((xy_m.T - mu_xy) / std_xy).T
                 return xy_norm, T
+
             # Hartley Precondition (to reduce sensitivity to noise)
             xy1_mn, T1 = whiten_xy_points(pts1.T)
             xy2_mn, T2 = whiten_xy_points(pts2.T)
@@ -579,17 +604,17 @@ class Projective(Linear):
             # Concatenate all 2x9 matrices into an Mx9 matrix
             Mx9 = np.empty((2 * num_pts, 9), dtype=float)
             for ix in range(num_pts):
-                u2        = x2_mn[ix]
-                v2        = y2_mn[ix]
-                x1        = x1_mn[ix]
-                y1        = y1_mn[ix]
-                (d, e, f) = (     -x1,      -y1,  -1)
-                (g, h, i) = ( v2 * x1,  v2 * y1,  v2)
-                (j, k, l) = (      x1,       y1,   1)
+                u2 = x2_mn[ix]
+                v2 = y2_mn[ix]
+                x1 = x1_mn[ix]
+                y1 = y1_mn[ix]
+                (d, e, f) = (-x1, -y1, -1)
+                (g, h, i) = (v2 * x1, v2 * y1, v2)
+                (j, k, l) = (x1, y1, 1)
                 (p, q, r) = (-u2 * x1, -u2 * y1, -u2)
-                Mx9[ix * 2]     = (0, 0, 0, d, e, f, g, h, i)
+                Mx9[ix * 2] = (0, 0, 0, d, e, f, g, h, i)
                 Mx9[ix * 2 + 1] = (j, k, l, 0, 0, 0, p, q, r)
-            M = (Mx9.T @ Mx9)
+            M = Mx9.T @ Mx9
             # M = Mx9
             try:
                 # https://math.stackexchange.com/questions/772039/how-does-the-svd-solve-the-least-squares-problem/2173715#2173715
@@ -598,6 +623,7 @@ class Projective(Linear):
             except MemoryError:
                 import scipy.sparse as sps
                 import scipy.sparse.linalg as spsl
+
                 M_sparse = sps.lil_matrix(M)
                 USVt = spsl.svds(M_sparse)
             except np.linalg.LinAlgError:
@@ -619,13 +645,15 @@ class Projective(Linear):
             return Projective(M)
 
     @classmethod
-    def projective(cls,
-                   scale: Number | tuple[Number, Number] | None = None,
-                   offset: Number | tuple[Number, Number] | None = None,
-                   shearx: float | None = None,
-                   theta: float | None = None,
-                   uv: tuple[float, float] | None = None,
-                   about: object = None) -> Projective:
+    def projective(
+        cls,
+        scale: Number | tuple[Number, Number] | None = None,
+        offset: Number | tuple[Number, Number] | None = None,
+        shearx: float | None = None,
+        theta: float | None = None,
+        uv: tuple[float, float] | None = None,
+        about: object = None,
+    ) -> Projective:
         """
         Reconstruct from parameters
 
@@ -701,27 +729,27 @@ class Projective(Linear):
             # M.matrix.dot(np.array([[0, 0, 1]]).T)
         """
         import kwimage
+
         about_ = 0 if about is None else about
         if uv is None:
             uv = 0, 0
         x0, y0 = _ensure_iterable2(about_)
         # About needs to be wrt to this because the projective and affine parts
         # will be inside it.
-        tr1_ = np.array([[1, 0,  -x0],
-                         [0, 1,  -y0],
-                         [0, 0,    1]])
-        tr2_ = np.array([[1, 0,  x0],
-                         [0, 1,  y0],
-                         [0, 0,   1]])
+        tr1_ = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]])
+        tr2_ = np.array([[1, 0, x0], [0, 1, y0], [0, 0, 1]])
         # TODO: add sympy optimization
         aff_part = kwimage.Affine.affine(
-            scale=scale, offset=offset, shearx=shearx, theta=theta)
+            scale=scale, offset=offset, shearx=shearx, theta=theta
+        )
         u, v = uv
-        proj_part = np.array([
-            [ 1,  0,  0],
-            [ 0,  1,  0],
-            [ u,  v,  1],
-        ])
+        proj_part = np.array(
+            [
+                [1, 0, 0],
+                [0, 1, 0],
+                [u, v, 1],
+            ]
+        )
         self = kwimage.Projective(tr2_ @ aff_part.matrix @ proj_part @ tr1_)
         return self
 
@@ -759,7 +787,13 @@ class Projective(Linear):
             self = cls(matrix=data)
         elif isinstance(data, cls):
             self = data
-        elif isinstance(data, (skimage.transform.AffineTransform, skimage.transform.ProjectiveTransform)):
+        elif isinstance(
+            data,
+            (
+                skimage.transform.AffineTransform,
+                skimage.transform.ProjectiveTransform,
+            ),
+        ):
             self = cls(matrix=data.params)
         elif data.__class__.__name__ == cls.__name__:
             self = data
@@ -768,10 +802,19 @@ class Projective(Linear):
             if 'matrix' in keys:
                 matrix = np.array(data['matrix'])
                 if matrix.shape[0] == 2:
-                    matrix = np.vstack([matrix, [[0, 0, 1.]]])
+                    matrix = np.vstack([matrix, [[0, 0, 1.0]]])
                 self = cls(matrix=matrix)
             else:
-                known_params = {'uv', 'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
+                known_params = {
+                    'uv',
+                    'scale',
+                    'offset',
+                    'theta',
+                    'type',
+                    'shearx',
+                    'shear',
+                    'about',
+                }
                 params = {key: data[key] for key in known_params if key in data}
                 if len(keys - known_params) == 0:
                     type_ = params.pop('type', None)  # NOQA
@@ -829,7 +872,9 @@ class Projective(Linear):
         return skimage.transform.ProjectiveTransform(matrix=np.asarray(self))
 
     @classmethod
-    def random(cls, shape: object = None, rng: object = None, **kw: object) -> Projective:
+    def random(
+        cls, shape: object = None, rng: object = None, **kw: object
+    ) -> Projective:
         """
         Example/
             >>> import kwimage
@@ -859,16 +904,19 @@ class Projective(Linear):
             >>> kwplot.imshow(canvas)
         """
         import kwimage
+
         rng = kwarray.ensure_rng(rng)
         aff_part = kwimage.Affine.random(shape, rng=rng, **kw)
         # Random projective part
         u = 1 / rng.randint(1, 10000)
         v = 1 / rng.randint(1, 10000)
-        proj_part = np.array([
-            [ 1,  0,  0],
-            [ 0,  1,  0],
-            [ u,  v,  1],
-        ])
+        proj_part = np.array(
+            [
+                [1, 0, 0],
+                [0, 1, 0],
+                [u, v, 1],
+            ]
+        )
         self = Projective(aff_part.matrix @ proj_part)
         return self
 
@@ -994,6 +1042,7 @@ class Projective(Linear):
             gifify.ffmpeg_animate_images(ims, output_fpath, in_framerate=2)
         """
         import numpy as np
+
         h1, h2, h3, h4, h5, h6, h7, h8, h9 = self.matrix.ravel()
         # assert h9 == 1
 
@@ -1006,11 +1055,15 @@ class Projective(Linear):
 
         mcls = _RationalNDArray if self.is_rational() else np.array
 
-        affine_part = Affine(mcls([
-            [a1, a2, a3],
-            [a4, a5, a6],
-            [0,   0,  1],
-        ]))
+        affine_part = Affine(
+            mcls(
+                [
+                    [a1, a2, a3],
+                    [a4, a5, a6],
+                    [0, 0, 1],
+                ]
+            )
+        )
         decomp = affine_part.decompose()
         # The line u * x + v * y = 0 is fixed to iteself.
         # I.e. y = -u/v * x + 0
@@ -1154,6 +1207,7 @@ class Affine(Projective):
         >>> assert isinstance(x, Matrix)
         >>> print('m = {}'.format(ub.urepr(m)))
     """
+
     @property
     def shape(self) -> tuple[int, int]:
         return (3, 3)
@@ -1215,7 +1269,7 @@ class Affine(Projective):
             params.pop('offset')
         elif tx == ty:
             params['offset'] = tx
-        if math.isclose(sy, 1) and math.isclose(sy, 1):
+        if math.isclose(sx, 1) and math.isclose(sy, 1):
             params.pop('scale')
         elif sx == sy:
             params['scale'] = sx
@@ -1226,7 +1280,9 @@ class Affine(Projective):
         return params
 
     @classmethod
-    def from_shapely(cls, sh_aff: tuple[float, float, float, float, float, float]) -> Affine:
+    def from_shapely(
+        cls, sh_aff: tuple[float, float, float, float, float, float]
+    ) -> Affine:
         """
         Shapely affine tuples are in the format (a, b, d, e, x, y)
         """
@@ -1243,7 +1299,9 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def from_gdal(cls, gdal_aff: tuple[float, float, float, float, float, float]) -> Affine:
+    def from_gdal(
+        cls, gdal_aff: tuple[float, float, float, float, float, float]
+    ) -> Affine:
         """
         gdal affine tuples are in the format (c, a, b, f, d, e)
         """
@@ -1307,7 +1365,15 @@ class Affine(Projective):
             if 'matrix' in keys:
                 self = cls(matrix=np.array(data['matrix']))
             else:
-                known_params = {'scale', 'offset', 'theta', 'type', 'shearx', 'shear', 'about'}
+                known_params = {
+                    'scale',
+                    'offset',
+                    'theta',
+                    'type',
+                    'shearx',
+                    'shear',
+                    'about',
+                }
                 params = {key: data[key] for key in known_params if key in data}
                 unknown_params = keys - known_params
                 if len(unknown_params) == 0:
@@ -1332,8 +1398,11 @@ class Affine(Projective):
                 else:
                     got_known_parms = set(params) - unknown_params
                     raise KeyError(
-                        'Got known params: ' + ', '.join(list(got_known_parms)) + ' '
-                        'Got unknown params: ' + ', '.join(list(unknown_params)))
+                        'Got known params: '
+                        + ', '.join(list(got_known_parms))
+                        + ' '
+                        'Got unknown params: ' + ', '.join(list(unknown_params))
+                    )
         else:
             raise TypeError(type(data))
         return self
@@ -1378,6 +1447,7 @@ class Affine(Projective):
             affine.Affine
         """
         import affine
+
         a, b, c, d, e, f = self.matrix.ravel()[0:6]
         aff = affine.Affine(a, b, c, d, e, f)
         return aff
@@ -1448,9 +1518,7 @@ class Affine(Projective):
         scale_ = 1 if scale is None else scale
         sx, sy = _ensure_iterable2(scale_)
         # Sympy simplified expression
-        mat = np.array([sx , 0.0, 0.0,
-                        0.0,  sy, 0.0,
-                        0.0, 0.0, 1.0])
+        mat = np.array([sx, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 1.0])
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
@@ -1486,24 +1554,24 @@ class Affine(Projective):
         offset_ = 0 if offset is None else offset
         tx, ty = _ensure_iterable2(offset_)
         # Sympy simplified expression
-        mat = np.array([1.0, 0.0, tx,
-                        0.0, 1.0, ty,
-                        0.0, 0.0, 1.0])
+        mat = np.array([1.0, 0.0, tx, 0.0, 1.0, ty, 0.0, 0.0, 1.0])
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
 
     @classmethod
-    def _scale_translate(cls, scale: float | tuple[float, float] | None, offset: float | tuple[float, float] | None):
-        """ helper method for speed """
+    def _scale_translate(
+        cls,
+        scale: float | tuple[float, float] | None,
+        offset: float | tuple[float, float] | None,
+    ):
+        """helper method for speed"""
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
         sx, sy = _ensure_iterable2(scale_)
         tx, ty = _ensure_iterable2(offset_)
         # Sympy simplified expression
-        mat = np.array([sx , 0.0, tx,
-                        0.0,  sy, ty,
-                        0.0, 0.0, 1.0])
+        mat = np.array([sx, 0.0, tx, 0.0, sy, ty, 0.0, 0.0, 1.0])
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
@@ -1522,7 +1590,9 @@ class Affine(Projective):
         return cls.affine(theta=theta)
 
     @classmethod
-    def random(cls, shape: object = None, rng: object = None, **kw: object) -> Projective:
+    def random(
+        cls, shape: object = None, rng: object = None, **kw: object
+    ) -> Projective:
         """
         Create a random Affine object
 
@@ -1542,7 +1612,9 @@ class Affine(Projective):
         return self
 
     @classmethod
-    def random_params(cls, rng: object = None, **kw: object) -> dict[str, object]:
+    def random_params(
+        cls, rng: object = None, **kw: object
+    ) -> dict[str, object]:
         """
         Args:
             rng : random number generator
@@ -1555,8 +1627,10 @@ class Affine(Projective):
         TODO:
             - [ ] improve kwargs parameterization
         """
-        from kwarray import distributions
         import numbers
+
+        from kwarray import distributions
+
         TN = distributions.TruncNormal
         rng = kwarray.ensure_rng(rng)
 
@@ -1571,7 +1645,9 @@ class Affine(Projective):
             return dist
 
         if 'scale' in kw:
-            if ub.iterable(kw['scale']) and (not isinstance(kw['scale'], tuple) and len(kw['scale']) == 2):
+            if ub.iterable(kw['scale']) and (
+                not isinstance(kw['scale'], tuple) and len(kw['scale']) == 2
+            ):
                 raise NotImplementedError
             else:
                 xscale_dist = _coerce_distri(kw['scale'])
@@ -1740,8 +1816,12 @@ class Affine(Projective):
                     math.atan2(a21, a11)
         """
         if self.matrix is None:
-            return {'offset': (0., 0.), 'scale': (1., 1.), 'shearx': 0.,
-                    'theta': 0., }
+            return {
+                'offset': (0.0, 0.0),
+                'scale': (1.0, 1.0),
+                'shearx': 0.0,
+                'theta': 0.0,
+            }
         a11, a12, a13, a21, a22, a23 = self.matrix.ravel()[0:6]
 
         if self.is_rational():
@@ -1765,7 +1845,7 @@ class Affine(Projective):
             # symbolic issue
             sy = sympy.Piecewise(
                 ((msy * cos_t - a12) / sin_t, abs(cos_t) < abs(sin_t)),
-                ((a22 - msy * sin_t) / cos_t, True)
+                ((a22 - msy * sin_t) / cos_t, True),
             )
 
         shearx = msy / sy
@@ -1785,7 +1865,7 @@ class Affine(Projective):
         decompose when only scale is needed.
         """
         if self.matrix is None:
-            return (1., 1.)
+            return (1.0, 1.0)
         a11, a12, _, a21, a22 = self.matrix.ravel()[0:5]
         sx = math.sqrt(a11 * a11 + a21 * a21)
         theta = math.atan2(a21, a11)
@@ -1800,9 +1880,18 @@ class Affine(Projective):
         return scale
 
     @classmethod
-    def affine(cls, scale: object = None, offset: object = None, theta: float | None = None, shear: object = None,
-               about: object = None, shearx: float | None = None, array_cls: object = None, math_mod: object = None,
-               **kwargs: object) -> Affine:
+    def affine(
+        cls,
+        scale: object = None,
+        offset: object = None,
+        theta: float | None = None,
+        shear: object = None,
+        about: object = None,
+        shearx: float | None = None,
+        array_cls: object = None,
+        math_mod: object = None,
+        **kwargs: object,
+    ) -> Affine:
         """
         Create an affine matrix from high-level parameters
 
@@ -1913,17 +2002,24 @@ class Affine(Projective):
             # data wasnt reserialized)
             if not _internal.KWIMAGE_DISABLE_TRANSFORM_WARNINGS:
                 ub.schedule_deprecation(
-                    modname='kwimage', name='shear', type='parameter',
+                    modname='kwimage',
+                    name='shear',
+                    type='parameter',
                     migration=ub.paragraph(
-                        '''
+                        """
                         The `shear` parameter is deprecated and will be removed because
                         of a serious bug. Use `shearx` instead. See Issue #8 on
                         https://gitlab.kitware.com/computer-vision/kwimage/-/issues/8
                         for more details. To ease the impact of this bug we will
                         interpret `shear` as `shearx`, which should result in a correct
                         reconstruction, as long as the data was never reserialized.
-                        '''
-                    ), deprecate='0.9.0', error='0.10.0', remove='0.11.0', warncls=UserWarning)
+                        """
+                    ),
+                    deprecate='0.9.0',
+                    error='0.10.0',
+                    remove='0.11.0',
+                    warncls=UserWarning,
+                )
             shearx = shear
             shear = None
 
@@ -1960,9 +2056,9 @@ class Affine(Projective):
         tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
         ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
 
-        mat = array_cls([sx_cos_theta, a12, tx_,
-                         sx_sin_theta, a22, ty_,
-                                    0,   0,  1])
+        mat = array_cls(
+            [sx_cos_theta, a12, tx_, sx_sin_theta, a22, ty_, 0, 0, 1]
+        )
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
         self = cls(mat)
         return self
@@ -2016,6 +2112,7 @@ class Affine(Projective):
         if 0:
             # Not sure if cv2 has this variant of the affine matrix calc
             import cv2
+
             inlier_method = 'ransac'
             inlier_method_lut = {
                 'lmeds': cv2.LMEDS,
@@ -2034,11 +2131,7 @@ class Affine(Projective):
             t1 = np.mean(pts1, axis=0)
             t2 = np.mean(pts2, axis=0)
             tx, ty = t2 - t1
-            mat = np.array([
-                [1, 0, tx],
-                [0, 1, ty],
-                [0, 0, 1]
-            ])
+            mat = np.array([[1, 0, tx], [0, 1, ty], [0, 0, 1]])
         elif num_pts == 2:
             # Regularize degenerate 2 correspondence case
             # For 2 points, compute rotation and scaling
@@ -2080,8 +2173,8 @@ class Affine(Projective):
                 x2 = x2_mn[ix]
                 y1 = y1_mn[ix]
                 y2 = y2_mn[ix]
-                Mx6[ix * 2]     = (x1, y1, 0, 0, 1, 0)
-                Mx6[ix * 2 + 1] = ( 0, 0, x1, y1, 0, 1)
+                Mx6[ix * 2] = (x1, y1, 0, 0, 1, 0)
+                Mx6[ix * 2 + 1] = (0, 0, x1, y1, 0, 1)
                 b[ix * 2] = x2
                 b[ix * 2 + 1] = y2
 
@@ -2091,6 +2184,7 @@ class Affine(Projective):
             except MemoryError:
                 import scipy.sparse as sps
                 import scipy.sparse.linalg as spsl
+
                 M_sparse = sps.lil_matrix(M)
                 USVt = spsl.svds(M_sparse)
             except np.linalg.LinAlgError:
@@ -2113,15 +2207,23 @@ class Affine(Projective):
                 Sinv = np.zeros((len(Vt), len(U)))
                 Sinv[np.diag_indices(len(s))] = 1 / s
                 a = Vt.T.dot(Sinv).dot(U.T).dot(b).T[0]
-            mat = np.array([
-                [a[0], a[1], a[4]],
-                [a[2], a[3], a[5]],
-                [   0, 0, 1],
-            ])
+            mat = np.array(
+                [
+                    [a[0], a[1], a[4]],
+                    [a[2], a[3], a[5]],
+                    [0, 0, 1],
+                ]
+            )
         return Affine(mat)
 
     @classmethod
-    def fliprot(cls, flip_axis: tuple[int, ...] | None = None, rot_k: int = 0, axes: tuple[int, int] = (0, 1), canvas_dsize: tuple[int, int] | None = None) -> Affine:
+    def fliprot(
+        cls,
+        flip_axis: tuple[int, ...] | None = None,
+        rot_k: int = 0,
+        axes: tuple[int, int] = (0, 1),
+        canvas_dsize: tuple[int, int] | None = None,
+    ) -> Affine:
         """
         Creates a flip/rotation transform with respect to an image of a given
         size in the positive quadrent. (i.e. warped data within the specified
@@ -2317,12 +2419,13 @@ class Affine(Projective):
             >>> kwplot.show_if_requested()
         """
         import kwimage
+
         rot_k = rot_k % 4  # only 4 cases
         tf = None
 
         HALF_OFFSET = 1
         if HALF_OFFSET:
-            half1 = kwimage.Affine.translate((.5, .5))
+            half1 = kwimage.Affine.translate((0.5, 0.5))
             tf = half1
         else:
             tf = kwimage.Affine.eye()
@@ -2394,7 +2497,7 @@ class Affine(Projective):
             tf = Affine.eye()
         else:
             if HALF_OFFSET:
-                half2 = kwimage.Affine.translate((-.5, -.5))
+                half2 = kwimage.Affine.translate((-0.5, -0.5))
                 tf = half2 @ tf
 
         return tf
@@ -2402,6 +2505,7 @@ class Affine(Projective):
 
 try:
     import sympy
+
     _RationalMatrixBase = sympy.Matrix
 except Exception:
     sympy = None
@@ -2444,6 +2548,7 @@ class _RationalNDArray(_RationalMatrixBase):
 
     def ravel(self):
         return self.flat()
+
 
 # Does not seem to be working out
 # if 0:
@@ -2502,10 +2607,12 @@ def _ensure_iterable2(scalar: object) -> tuple[object, object]:
         a = b = scalar
     return a, b
 
+
 if __name__ == '__main__':
     """
     CommandLine:
         python -m kwimage.transform all
     """
     import xdoctest
+
     xdoctest.doctest_module(__file__)

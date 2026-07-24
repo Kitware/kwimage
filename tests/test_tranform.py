@@ -1,10 +1,12 @@
 def test_rational_affine():
-    from kwimage import Affine
     import numbers
-    import ubelt as ub
-    import numpy as np
+
     import kwarray
+    import numpy as np
     import pytest
+    import ubelt as ub
+
+    from kwimage import Affine
 
     try:
         import sympy
@@ -50,8 +52,14 @@ def test_rational_affine():
 
     # Create combined matrix from all params
     A = Affine.affine(
-        scale=scale, offset=offset, theta=theta, shearx=shearx,
-        about=about, array_cls=array_cls, math_mod=math_mod)
+        scale=scale,
+        offset=offset,
+        theta=theta,
+        shearx=shearx,
+        about=about,
+        array_cls=array_cls,
+        math_mod=math_mod,
+    )
     # Test that combining components matches
     S = Affine.affine(scale=scale, array_cls=array_cls, math_mod=math_mod)
     T = Affine.affine(offset=offset, array_cls=array_cls, math_mod=math_mod)
@@ -59,7 +67,7 @@ def test_rational_affine():
     H = Affine.affine(shearx=shearx, array_cls=array_cls, math_mod=math_mod)
     F = Affine.affine(offset=about, array_cls=array_cls, math_mod=math_mod)
     # combine (note shear must be on the RHS of rotation)
-    alt  = F @ T @ R @ H @ S @ F.inv()
+    alt = F @ T @ R @ H @ S @ F.inv()
 
     V2 = np.asarray(alt.matrix).astype(float)
     V1 = np.asarray(A.matrix).astype(float)
@@ -76,77 +84,100 @@ def test_rational_affine():
 
 
 def test_duplicate_points_non_rank_defficient():
-    import kwimage
     import numpy as np
-    pts1 = np.array([
-        [1, 1],
-        [1, 10],
-        [10, 1],
-        [10, 1],
-        [10, 1],
-        [10, 10],
-    ])
-    pts2 = np.array([
-        [1, 1],
-        [1, 10],
-        [10, 1],
-        [10, 1],
-        [10, 1],
-        [10, 10],
-    ])
+
+    import kwimage
+
+    pts1 = np.array(
+        [
+            [1, 1],
+            [1, 10],
+            [10, 1],
+            [10, 1],
+            [10, 1],
+            [10, 10],
+        ]
+    )
+    pts2 = np.array(
+        [
+            [1, 1],
+            [1, 10],
+            [10, 1],
+            [10, 1],
+            [10, 1],
+            [10, 10],
+        ]
+    )
     aff = kwimage.Affine.fit(pts1, pts2)
     pts2_recon = kwimage.Points(xy=pts1).warp(aff)
     assert np.allclose(pts2_recon.xy, pts2)
 
 
 def test_rank_defficient_without_duplicates():
-    import kwimage
     import numpy as np
-    pts1 = np.array([
-        [1, 1],
-        [10, 10],
-    ])
-    pts2 = np.array([
-        [1, 1],
-        [10, 10],
-    ])
+
+    import kwimage
+
+    pts1 = np.array(
+        [
+            [1, 1],
+            [10, 10],
+        ]
+    )
+    pts2 = np.array(
+        [
+            [1, 1],
+            [10, 10],
+        ]
+    )
     aff = kwimage.Affine.fit(pts1, pts2)
     pts2_recon = kwimage.Points(xy=pts1).warp(aff)
     assert np.allclose(pts2_recon.xy, pts2)
 
 
 def test_rank_defficient_with_duplicates():
-    import kwimage
     import numpy as np
-    pts1 = np.array([
-        [8, 4],
-        [8, 4],
-        [9, 8],
-        [9, 8],
-    ])
-    pts2 = np.array([
-        [8, 4],
-        [8, 4],
-        [9, 8],
-        [9, 8],
-    ])
+
+    import kwimage
+
+    pts1 = np.array(
+        [
+            [8, 4],
+            [8, 4],
+            [9, 8],
+            [9, 8],
+        ]
+    )
+    pts2 = np.array(
+        [
+            [8, 4],
+            [8, 4],
+            [9, 8],
+            [9, 8],
+        ]
+    )
     aff = kwimage.Affine.fit(pts1, pts2)
     pts2_recon = kwimage.Points(xy=pts1).warp(aff)
     assert np.allclose(pts2_recon.xy, pts2)
 
 
 def test_rank_defficient_with_duplicates_non_exact():
-    import kwimage
     import numpy as np
-    pts1 = np.array([[200.244, 250.543],
-                     [200.247, 250.545],
-                     [100.754, 0.265],
-                     [100.754, 0.265]])
 
-    pts2 = np.array([[200.25, 250.54],
-                     [200.25, 250.54],
-                     [100.77, 0.26],
-                     [100.77, 0.26]])
+    import kwimage
+
+    pts1 = np.array(
+        [
+            [200.244, 250.543],
+            [200.247, 250.545],
+            [100.754, 0.265],
+            [100.754, 0.265],
+        ]
+    )
+
+    pts2 = np.array(
+        [[200.25, 250.54], [200.25, 250.54], [100.77, 0.26], [100.77, 0.26]]
+    )
 
     aff = kwimage.Affine.fit(pts1, pts2)
     pts2_recon = kwimage.Points(xy=pts1).warp(aff)
@@ -154,14 +185,20 @@ def test_rank_defficient_with_duplicates_non_exact():
 
 
 def test_single_correspondence():
-    import kwimage
     import numpy as np
-    pts1 = np.array([
-        [1, 1],
-    ])
-    pts2 = np.array([
-        [10, 10],
-    ])
+
+    import kwimage
+
+    pts1 = np.array(
+        [
+            [1, 1],
+        ]
+    )
+    pts2 = np.array(
+        [
+            [10, 10],
+        ]
+    )
     aff = kwimage.Affine.fit(pts1, pts2)
     pts2_recon = kwimage.Points(xy=pts1).warp(aff)
     assert np.allclose(pts2_recon.xy, pts2)

@@ -5,6 +5,7 @@ def test_detections_to_from_coco_missing_parts():
     lengths, and thus causing an issue with zip
     """
     import kwimage
+
     anns = [
         {
             'id': 0,
@@ -58,6 +59,7 @@ def test_detections_to_from_coco_missing_parts():
 
 def test_detections_draw_on_corner_cases():
     import kwimage
+
     dets = kwimage.Detections.random().scale((64, 64))
 
     # Baseline, should work correctly.
@@ -66,6 +68,7 @@ def test_detections_draw_on_corner_cases():
     if 0:
         # for developers
         import kwplot
+
         kwplot.autompl()
         kwplot.imshow(canvas)
 

@@ -1,5 +1,6 @@
-import kwimage
 import pytest
+
+import kwimage
 
 
 def _is_torch_available():
@@ -38,6 +39,7 @@ def test_boxes_clip_numpy():
 def test_boxes_clip_torch():
     if not _is_torch_available():
         import pytest
+
         pytest.skip('no torch')
 
     boxes = kwimage.Boxes.random(10, rng=0).toformat('ltrb').scale(20)
@@ -52,8 +54,9 @@ def test_boxes_empty_draw():
         pytest.skip('requires kwplot')
 
     import kwimage
+
     self = kwimage.Boxes.random(num=0, format='ltrb')
     kwplot.figure(fnum=1, doclf=True)
-    #kwplot.imshow(image)
+    # kwplot.imshow(image)
     # xdoctest: +REQUIRES(--show)
     self.draw(color='blue', setlim=1.2)

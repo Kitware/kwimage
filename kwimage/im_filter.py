@@ -1,13 +1,22 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-import numpy as np
+
 import cv2
+import numpy as np
+
 if TYPE_CHECKING:
     from typing import Any
+
     from numpy import ndarray
 
 
-def radial_fourier_mask(img_hwc: ndarray, radius: int=11, axis: Any | None=None, clip: Any | None=None):
+def radial_fourier_mask(
+    img_hwc: ndarray,
+    radius: int = 11,
+    axis: Any | None = None,
+    clip: Any | None = None,
+):
     """
     In [1] they use a radius of 11.0 on CIFAR-10.
 
@@ -78,6 +87,7 @@ def radial_fourier_mask(img_hwc: ndarray, radius: int=11, axis: Any | None=None,
         >>> kwplot.show_if_requested()
     """
     import cv2
+
     rows, cols = img_hwc.shape[0:2]
 
     diam = radius * 2
@@ -90,8 +100,9 @@ def radial_fourier_mask(img_hwc: ndarray, radius: int=11, axis: Any | None=None,
     # mask = np.pad(element, ((top, bot), (left, right)), 'constant')
     if diam > 0:
         element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diam, diam))
-        mask = cv2.copyMakeBorder(element, top, bot, left, right,
-                                  cv2.BORDER_CONSTANT, value=0)
+        mask = cv2.copyMakeBorder(
+            element, top, bot, left, right, cv2.BORDER_CONSTANT, value=0
+        )
     else:
         mask = 0
 
@@ -100,7 +111,13 @@ def radial_fourier_mask(img_hwc: ndarray, radius: int=11, axis: Any | None=None,
     return out_hwc
 
 
-def fourier_mask(img_hwc: ndarray, mask: ndarray, axis: Any | None=None, clip: Any | None=None, backend: str='cv2'):
+def fourier_mask(
+    img_hwc: ndarray,
+    mask: ndarray,
+    axis: Any | None = None,
+    clip: Any | None = None,
+    backend: str = 'cv2',
+):
     """
     Applies a mask to the fourier spectrum of an image
 
@@ -183,6 +200,7 @@ def fourier_mask(img_hwc: ndarray, mask: ndarray, axis: Any | None=None, clip: A
         >>> kwplot.show_if_requested()
     """
     import kwarray
+
     img_hwc = kwarray.atleast_nd(img_hwc, 3, front=False)
     img_chw = img_hwc.transpose(2, 0, 1)
 
@@ -230,7 +248,9 @@ def _np_inv_fourier(f):
 
 
 def _cv2_fourier(s):
-    return np.fft.fftshift(cv2.dft(s.astype(np.float32), flags=cv2.DFT_COMPLEX_OUTPUT))
+    return np.fft.fftshift(
+        cv2.dft(s.astype(np.float32), flags=cv2.DFT_COMPLEX_OUTPUT)
+    )
 
 
 def _cv2_inv_fourier(f):
@@ -244,6 +264,7 @@ def _benchmark():
         https://docs.opencv.org/4.x/de/dbc/tutorial_py_fourier_transform.html
     """
     import kwimage
+
     img_hwc = kwimage.grab_test_image(space='gray')
 
     s = img_hwc[..., 0].astype(np.float32)
@@ -267,6 +288,7 @@ def _benchmark():
     d2_twodim = cv2.idft(c2_twodim, flags=cv2.DFT_SCALE)
 
     import ubelt as ub
+
     print('\nA1/A2')
     print(ub.hzcat(['a1/a2 : ', ub.urepr(a1_twodim), ub.urepr(a2_twodim)]))
 
@@ -282,6 +304,7 @@ def _benchmark():
     print(ub.hzcat(['d1/d2 : ', ub.urepr(d1_twodim), ub.urepr(d2_twodim)]))
 
     import kwarray
+
     a_delta = kwarray.stats_dict(a1_twodim - a2_twodim)
     b_delta = kwarray.stats_dict(b1_twodim - b2_twodim)
     c_delta = kwarray.stats_dict(c1_twodim - c2_twodim)
@@ -292,6 +315,7 @@ def _benchmark():
     print('d_delta = {}'.format(ub.urepr(d_delta, nl=1)))
 
     import timerit
+
     ti = timerit.Timerit(100, bestof=10, verbose=2)
     for timer in ti.reset('np fft'):
         with timer:
@@ -311,8 +335,10 @@ def _benchmark():
 
 
 def _benchmark2():
-    import kwimage
     import timerit
+
+    import kwimage
+
     ti = timerit.Timerit(100, bestof=10, verbose=3)
     img_hwc = kwimage.grab_test_image(space='gray')
     mask = np.random.rand(*img_hwc.shape[0:2])

@@ -1,19 +1,40 @@
-import kwimage
-import torch
-import ubelt as ub
-import numpy as np
 import itertools as it
 from functools import partial
+
+import numpy as np
+import torch
+import ubelt as ub
+
+import kwimage
 
 
 def bench_bbox_iou_method():
     """
     On my system the torch impl was fastest (when the data was on the GPU).
     """
-    from kwimage.structs.boxes import _box_ious_torch, _box_ious_py, _bbox_ious_c
+    from kwimage.structs.boxes import (
+        _bbox_ious_c,
+        _box_ious_py,
+        _box_ious_torch,
+    )
 
     ydata = ub.ddict(list)
-    xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 2000, 4000]
+    xdata = [
+        10,
+        20,
+        40,
+        80,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        1000,
+        2000,
+        4000,
+    ]
     bias = 0
 
     if _bbox_ious_c is None:
@@ -77,18 +98,28 @@ def bench_bbox_iou_method():
                     print('pass: {} == {}'.format(k1, k2))
                 else:
                     diff = np.abs(v1 - v2)
-                    print('FAIL: {} != {}: diff(max={}, mean={}, sum={})'.format(
-                        k1, k2, diff.max(), diff.mean(), diff.sum()
-                    ))
+                    print(
+                        'FAIL: {} != {}: diff(max={}, mean={}, sum={})'.format(
+                            k1, k2, diff.max(), diff.mean(), diff.sum()
+                        )
+                    )
 
             raise AssertionError('different methods report different results')
 
         print('num = {!r}'.format(num))
-        print('ti.measures = {}'.format(ub.urepr(
-            ub.map_vals(ub.sorted_vals, ti.measures), align=':',
-            nl=2, precision=6)))
+        print(
+            'ti.measures = {}'.format(
+                ub.urepr(
+                    ub.map_vals(ub.sorted_vals, ti.measures),
+                    align=':',
+                    nl=2,
+                    precision=6,
+                )
+            )
+        )
 
     import kwplot
+
     kwplot.autoplt()
     kwplot.multi_plot(xdata, ydata, xlabel='num boxes', ylabel='seconds')
     kwplot.show_if_requested()

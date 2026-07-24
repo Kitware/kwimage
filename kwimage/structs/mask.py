@@ -32,57 +32,70 @@ Note:
     the coco semantics. Everywhere else in this repo, size uses opencv
     semantics which are w/h.
 """
+
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
-import sys
+
 import copy
+import itertools as it
+import numbers
+import warnings
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import ubelt as ub
-import itertools as it
-import warnings
-import numbers
+
 from . import _generic
+
 if TYPE_CHECKING:
-    from typing import List
-    from numpy import ndarray
-    from typing import Tuple
     from numbers import Number
+    from typing import Any, List, Tuple
+
+    from numpy import ndarray
     from numpy.random import RandomState
+
     import kwimage
-    from typing import Any
 
 
-class _Mask_Backends():
+class _Mask_Backends:
     # TODO: could make this prettier
     def __init__(self) -> None:
         self._funcs = None
 
     def _lazy_init(self):
         from kwimage import _internal
+
         _funcs = {}
         try:
             from pycocotools import _mask
+
             _funcs['pycoco'] = _mask
         except Exception as ex:
             if not _internal.KWIMAGE_DISABLE_IMPORT_WARNINGS:
                 warnings.warn(
                     'optional module pycocotools is not available: {}'.format(
-                        str(ex)))
+                        str(ex)
+                    )
+                )
 
         if not _internal.KWIMAGE_DISABLE_C_EXTENSIONS:
             try:
                 from kwimage_ext.structs._mask_backend import cython_mask
+
                 _funcs['kwimage'] = cython_mask
             except Exception as ex:
                 if not _internal.KWIMAGE_DISABLE_IMPORT_WARNINGS:
                     warnings.warn(
-                        'optional mask_backend is not available: {}'.format(str(ex)))
+                        'optional mask_backend is not available: {}'.format(
+                            str(ex)
+                        )
+                    )
 
         self._funcs = _funcs
         self._valid = frozenset(self._funcs.keys())
 
     def get_backend(self, prefs):
         from kwimage import _internal
+
         if self._funcs is None:
             self._lazy_init()
 
@@ -116,19 +129,19 @@ class MaskFormat:
         aliases (Mapping[str, str]):
             maps format aliases to their cannonical name.
     """
+
     cannonical: list[str] = []
 
-    def _register(k: str, cannonical: list[str]=cannonical) -> str:
+    def _register(k: str, cannonical: list[str] = cannonical) -> str:
         cannonical.append(k)
         return k
 
     BYTES_RLE: str = _register('bytes_rle')  # cython compressed RLE
     ARRAY_RLE: str = _register('array_rle')  # numpy uncompreesed RLE
-    C_MASK: str = _register('c_mask')     # row-major raw binary mask
-    F_MASK: str = _register('f_mask')     # column-major raw binary mask
+    C_MASK: str = _register('c_mask')  # row-major raw binary mask
+    F_MASK: str = _register('f_mask')  # column-major raw binary mask
 
-    aliases: dict[str, str] = {
-    }
+    aliases: dict[str, str] = {}
     for key in cannonical:
         aliases[key] = key
 
@@ -140,15 +153,19 @@ class _MaskConversionMixin(object):
     For conversion speeds look into:
         ~/code/kwimage/dev/bench_rle.py
     """
+
     convert_funcs: dict[str, Callable] = {}
 
-    def _register_convertor(key: str, convert_funcs: dict[str, Any]=convert_funcs):
+    def _register_convertor(
+        key: str, convert_funcs: dict[str, Any] = convert_funcs
+    ):
         def _reg(func):
             convert_funcs[key] = func
             return func
+
         return _reg
 
-    def toformat(self, format: str, copy: bool=False) -> Mask:
+    def toformat(self, format: str, copy: bool = False) -> Mask:
         """
         Changes the internal representation using one of the registered
         convertor functions.
@@ -188,10 +205,12 @@ class _MaskConversionMixin(object):
             func = self.convert_funcs[key]
             return func(self, copy)
         except KeyError:
-            raise KeyError('Cannot convert {} to {}'.format(self.format, format))
+            raise KeyError(
+                'Cannot convert {} to {}'.format(self.format, format)
+            )
 
     @_register_convertor(MaskFormat.BYTES_RLE)
-    def to_bytes_rle(self, copy: bool=False) -> Mask:
+    def to_bytes_rle(self, copy: bool = False) -> Mask:
         """
         Converts the mask format to a bytes-based run-length encoding.
 
@@ -224,14 +243,18 @@ class _MaskConversionMixin(object):
             if self.data.get('order', 'F') != 'F':
                 raise ValueError('Expected column-major array RLE')
             if cython_mask is None:
-                raise NotImplementedError('pure python version of array_rle to_bytes_rle')
+                raise NotImplementedError(
+                    'pure python version of array_rle to_bytes_rle'
+                )
             newdata = cython_mask.frUncompressedRLE([self.data], h, w)[0]
             self = Mask(newdata, MaskFormat.BYTES_RLE)
 
         elif self.format == MaskFormat.F_MASK:
             f_masks = self.data[:, :, None]
             if cython_mask is None:
-                raise NotImplementedError('pure python version of f to to_bytes_rle')
+                raise NotImplementedError(
+                    'pure python version of f to to_bytes_rle'
+                )
             encoded = cython_mask.encode(f_masks)[0]
             if 'size' in encoded:
                 encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -240,7 +263,9 @@ class _MaskConversionMixin(object):
             c_mask = self.data
             f_masks = np.asfortranarray(c_mask)[:, :, None]
             if cython_mask is None:
-                raise NotImplementedError('pure python version of c to to_bytes_rle')
+                raise NotImplementedError(
+                    'pure python version of c to to_bytes_rle'
+                )
             encoded = cython_mask.encode(f_masks)[0]
             if 'size' in encoded:
                 encoded['size'] = list(map(int, encoded['size']))  # python2 fix
@@ -250,7 +275,7 @@ class _MaskConversionMixin(object):
         return self
 
     @_register_convertor(MaskFormat.ARRAY_RLE)
-    def to_array_rle(self, copy: bool=False) -> Mask:
+    def to_array_rle(self, copy: bool = False) -> Mask:
         """
         Converts the mask format to an array-based run-length encoding.
 
@@ -266,6 +291,7 @@ class _MaskConversionMixin(object):
             return self.copy() if copy else self
         elif self.format == MaskFormat.BYTES_RLE:
             from kwimage.im_runlen import _rle_bytes_to_array
+
             arr_counts = _rle_bytes_to_array(self.data['counts'])
             encoded = {
                 'size': self.data['size'],
@@ -277,6 +303,7 @@ class _MaskConversionMixin(object):
             self = Mask(encoded, format=MaskFormat.ARRAY_RLE)
         else:
             import kwimage
+
             f_mask = self.to_fortran_mask().data
             encoded = kwimage.encode_run_length(f_mask, binary=True, order='F')
             # NOTE: Generally `size` means (width, height) and `shape` means
@@ -287,7 +314,7 @@ class _MaskConversionMixin(object):
         return self
 
     @_register_convertor(MaskFormat.F_MASK)
-    def to_fortran_mask(self, copy: bool=False) -> Mask:
+    def to_fortran_mask(self, copy: bool = False) -> Mask:
         """
         Convert the mask format to a dense mask array in columnwise (F) order
 
@@ -325,6 +352,7 @@ class _MaskConversionMixin(object):
             f_mask = np.asfortranarray(c_mask)
         elif self.format == MaskFormat.ARRAY_RLE:
             import kwimage
+
             encoded = dict(self.data)
             # NOTE: Generally `size` means (width, height) and `shape` means
             # (height, width) but shape in this case is in F-order, which means
@@ -356,7 +384,7 @@ class _MaskConversionMixin(object):
         return self
 
     @_register_convertor(MaskFormat.C_MASK)
-    def to_c_mask(self, copy: bool=False) -> Mask:
+    def to_c_mask(self, copy: bool = False) -> Mask:
         """
         Convert the mask format to a dense mask array in rowwise (C) order
 
@@ -424,7 +452,9 @@ class _MaskConstructorMixin(object):
     """
 
     @classmethod
-    def from_polygons(Mask: Any, polygons: ndarray | List[ndarray], dims: Tuple) -> Mask:
+    def from_polygons(
+        Mask: Any, polygons: ndarray | List[ndarray], dims: Tuple
+    ) -> Mask:
         """
         DEPRICATE: use kwimage.Polygon.to_mask? or kwimage.Mask.coerce?
 
@@ -467,7 +497,13 @@ class _MaskConstructorMixin(object):
         return self
 
     @classmethod
-    def from_mask(Mask: Any, mask: ndarray, offset: Tuple[int, int] | None=None, shape: Tuple[int, int] | None=None, method: str='faster'):
+    def from_mask(
+        Mask: Any,
+        mask: ndarray,
+        offset: Tuple[int, int] | None = None,
+        shape: Tuple[int, int] | None = None,
+        method: str = 'faster',
+    ):
         """
         Creates an RLE encoded mask from a raw binary mask.
 
@@ -500,9 +536,11 @@ class _MaskConstructorMixin(object):
         if method == 'naive':
             # inefficent but used to test correctness of algorithms
             import kwimage
+
             rc_offset = offset[::-1]
-            larger = kwimage.subpixel_translate(mask, rc_offset,
-                                                output_shape=shape)
+            larger = kwimage.subpixel_translate(
+                mask, rc_offset, output_shape=shape
+            )
             # larger = np.zeros(shape, dtype=mask.dtype)
             # larger_rc = offset[::-1]
             # mask_dims = mask.shape[0:2]
@@ -511,6 +549,7 @@ class _MaskConstructorMixin(object):
             self = Mask(larger, MaskFormat.C_MASK).to_array_rle()
         elif method == 'faster':
             import kwimage
+
             encoded = kwimage.encode_run_length(mask, binary=True, order='F')
             encoded['size'] = encoded['shape']
             self = Mask(encoded, MaskFormat.ARRAY_RLE)
@@ -529,7 +568,12 @@ class _MaskTransformMixin(object):
     Mixin methods relating to geometric transformations of mask objects
     """
 
-    def scale(self, factor: float | Tuple[float, float], output_dims: Tuple[int, int] | None=None, inplace: bool=False) -> Mask:
+    def scale(
+        self,
+        factor: float | Tuple[float, float],
+        output_dims: Tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Mask:
         """
         Perform a scale operation on the mask.
 
@@ -561,13 +605,21 @@ class _MaskTransformMixin(object):
         else:
             sx, sy = factor
         if output_dims is None:
-            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(int)
+            output_dims = (np.array(self.shape) * np.array((sy, sx))).astype(
+                int
+            )
         # FIXME: the warp breaks when the third row is left out
         transform = np.array([[sx, 0.0, 0.0], [0.0, sy, 0.0], [0, 0, 1]])
         new = self.warp(transform, output_dims=output_dims, inplace=inplace)
         return new
 
-    def warp(self, transform: ndarray, input_dims: Tuple[int, int] | None=None, output_dims: Tuple[int, int] | None=None, inplace: bool=False) -> Mask:
+    def warp(
+        self,
+        transform: ndarray,
+        input_dims: Tuple[int, int] | None = None,
+        output_dims: Tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Mask:
         """
         Perform a matrix warp (e.g. affine or projective) on the underlying
         mask data.
@@ -636,6 +688,7 @@ class _MaskTransformMixin(object):
         # HACK: use brute force just to get this implemented.
         # very inefficient
         import kwimage
+
         try:
             import torch
         except ImportError:
@@ -664,14 +717,20 @@ class _MaskTransformMixin(object):
                     raise KeyError(output_dims)
         # TODO: could use kwimage.warp_image here instead if torch is not
         # available.
-        w_mask = kwimage.warp_tensor(t_mask, matrix, output_dims=output_dims,
-                                     mode='nearest')
+        w_mask = kwimage.warp_tensor(
+            t_mask, matrix, output_dims=output_dims, mode='nearest'
+        )
         new = self if inplace else Mask(self.data, self.format)
         new.data = w_mask.numpy().astype(np.uint8)
         new.format = MaskFormat.C_MASK
         return new
 
-    def translate(self, offset: Tuple | Number, output_dims: Tuple[int, int] | None=None, inplace: bool=False) -> Mask:
+    def translate(
+        self,
+        offset: Tuple | Number,
+        output_dims: Tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Mask:
         """
         Translate the pixel values in the mask.
 
@@ -723,6 +782,7 @@ class _MaskTransformMixin(object):
             >>> assert data2.size == 0
         """
         import kwimage
+
         if output_dims is None:
             output_dims = self.shape
         if not ub.iterable(offset):
@@ -746,7 +806,8 @@ class _MaskTransformMixin(object):
                 transform = kwimage.Affine.affine(offset=offset)
                 dsize = output_dims[::-1]
                 new_c_data = kwimage.warp_affine(
-                    c_data, transform, dsize=dsize, interpolation='nearest')
+                    c_data, transform, dsize=dsize, interpolation='nearest'
+                )
                 new_c_self = Mask(new_c_data, MaskFormat.C_MASK)
                 new_self = new_c_self.toformat(self.format, copy=False)
         else:
@@ -763,9 +824,16 @@ class _MaskDrawMixin(object):
     matplotlib (the ``draw`` method) or opencv (the ``draw_on`` method).
     """
 
-    def draw_on(self, image: ndarray | None=None, color: str | tuple='blue', alpha: float=0.5,
-                show_border: bool=False, border_thick: int=1,
-                border_color: str='white', copy: bool=False) -> ndarray:
+    def draw_on(
+        self,
+        image: ndarray | None = None,
+        color: str | tuple = 'blue',
+        alpha: float = 0.5,
+        show_border: bool = False,
+        border_thick: int = 1,
+        border_color: str = 'white',
+        copy: bool = False,
+    ) -> ndarray:
         """
         Draws the mask on an image
 
@@ -834,8 +902,9 @@ class _MaskDrawMixin(object):
             >>>     kwplot.imshow(outputs[k], fnum=2, pnum=pnum_(), title=k)
             >>> kwplot.show_if_requested()
         """
-        import kwimage
         import cv2
+
+        import kwimage
 
         if image is None:
             image = np.zeros(self.shape[0:2] + (3,), dtype=np.float32)
@@ -873,19 +942,32 @@ class _MaskDrawMixin(object):
             # return shape of contours to openCV contours
             polys = self.to_multi_polygon()
             for poly in polys:
-                contours = [np.expand_dims(c, axis=1) for c in poly.data['exterior']]
-                canvas = cv2.drawContours((canvas * 255.).astype(np.uint8),
-                                          contours, -1,
-                                          kwimage.Color(border_color).as255(),
-                                          border_thick, cv2.LINE_AA)
+                contours = [
+                    np.expand_dims(c, axis=1) for c in poly.data['exterior']
+                ]
+                canvas = cv2.drawContours(
+                    (canvas * 255.0).astype(np.uint8),
+                    contours,
+                    -1,
+                    kwimage.Color(border_color).as255(),
+                    border_thick,
+                    cv2.LINE_AA,
+                )
 
-            canvas = canvas.astype(float) / 255.
+            canvas = canvas.astype(float) / 255.0
 
         canvas = dtype_fixer(canvas, copy=False)
         return canvas
 
-    def draw(self, color: str | tuple='blue', alpha: float=0.5, ax: Any | None=None, show_border: bool=False,
-             border_thick: int=1, border_color: str='black') -> None:
+    def draw(
+        self,
+        color: str | tuple = 'blue',
+        alpha: float = 0.5,
+        ax: Any | None = None,
+        show_border: bool = False,
+        border_thick: int = 1,
+        border_color: str = 'black',
+    ) -> None:
         """
         Draw on the current matplotlib axis
 
@@ -893,10 +975,13 @@ class _MaskDrawMixin(object):
             color (str | tuple): color code/rgb of the mask
             alpha (float): mask alpha value
         """
-        import kwimage
         import cv2
+
+        import kwimage
+
         if ax is None:
             from matplotlib import pyplot as plt
+
             ax = plt.gca()
 
         mask = self.to_c_mask().numpy().data
@@ -908,24 +993,40 @@ class _MaskDrawMixin(object):
         if show_border:
             # Add alpha channel to color
             border_color_tup = kwimage.Color(border_color).as255()
-            border_color_tup = (border_color_tup[0], border_color_tup[1],
-                                border_color_tup[2], 255 * alpha)
+            border_color_tup = (
+                border_color_tup[0],
+                border_color_tup[1],
+                border_color_tup[2],
+                255 * alpha,
+            )
 
             # return shape of contours to openCV contours
             polys = self.to_multi_polygon()
             for poly in polys:
-                contours = [np.expand_dims(c, axis=1) for c in poly.data['exterior']]
+                contours = [
+                    np.expand_dims(c, axis=1) for c in poly.data['exterior']
+                ]
                 alpha_mask = cv2.drawContours(
-                    (alpha_mask * 255.).astype(np.uint8),
-                    contours, -1, border_color_tup, border_thick, cv2.LINE_AA)
+                    (alpha_mask * 255.0).astype(np.uint8),
+                    contours,
+                    -1,
+                    border_color_tup,
+                    border_thick,
+                    cv2.LINE_AA,
+                )
 
-            alpha_mask = alpha_mask.astype(float) / 255.
+            alpha_mask = alpha_mask.astype(float) / 255.0
 
         ax.imshow(alpha_mask)
 
 
-class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
-           _MaskTransformMixin, _MaskDrawMixin):
+class Mask(
+    ub.NiceRepr,
+    _MaskConversionMixin,
+    _MaskConstructorMixin,
+    _MaskTransformMixin,
+    _MaskDrawMixin,
+):
     """
     Manages a single segmentation mask and can convert to and from
     multiple formats including:
@@ -951,7 +1052,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
     """
 
-    def __init__(self, data: Any | None=None, format: Any | None=None) -> None:
+    def __init__(
+        self, data: Any | None = None, format: Any | None = None
+    ) -> None:
         self.data = data
         self.format = format
 
@@ -967,7 +1070,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return '{}, format={}'.format(ub.urepr(self.data, nl=0), self.format)
 
     @classmethod
-    def random(Mask, rng: int | RandomState | None=None, shape: Tuple[int, int]=(32, 32)) -> Mask:
+    def random(
+        Mask,
+        rng: int | RandomState | None = None,
+        shape: Tuple[int, int] = (32, 32),
+    ) -> Mask:
         """
         Create a random binary mask object
 
@@ -998,7 +1105,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> kwimage.Mask.random(shape=(4, 0))
         """
         import kwarray
+
         import kwimage
+
         rng = kwarray.ensure_rng(rng)
         # Use random heatmap to make some blobs for the mask
         heatmap = kwimage.Heatmap.random(dims=shape, rng=rng, classes=2)
@@ -1019,7 +1128,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             Mask: the demo mask
         """
         text = ub.codeblock(
-            '''
+            """
             ................................
             ..ooooooo....ooooooooooooo......
             ..ooooooo....o...........o......
@@ -1043,12 +1152,19 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             ................................
             ................................
             ................................
-            ''')
+            """
+        )
         self = cls.from_text(text, zero_chr='.')
         return self
 
     @classmethod
-    def from_text(cls, text: str, zero_chr: str='.', shape: None | Tuple[int, int]=None, has_border: bool=False):
+    def from_text(
+        cls,
+        text: str,
+        zero_chr: str = '.',
+        shape: None | Tuple[int, int] = None,
+        has_border: bool = False,
+    ):
         """
         Construct a mask from a text art representation
 
@@ -1108,7 +1224,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
              [0 0 0 0 0 0 0 0 0 0 0 0]]
         """
         lines = text.split('\n')
-        data: Any = [[0 if c == zero_chr else 1 for c in line] for line in lines]
+        data: Any = [
+            [0 if c == zero_chr else 1 for c in line] for line in lines
+        ]
         max_width = max(len(row) for row in data)
         max_height = len(data)
         if shape is not None:
@@ -1116,15 +1234,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
 
         # Pad out (or shrink) the width of each row
         data: Any = [
-            row[0:max_width] if len(row) >= max_width else
-            row + [0] * (max_width - len(row))
+            row[0:max_width]
+            if len(row) >= max_width
+            else row + [0] * (max_width - len(row))
             for row in data
         ]
 
         # Pad out (or shrink) the height of the columns
         extra_rows = max_height - len(data)
         if extra_rows > 0:
-            data: Any = [[0] * max_width for _ in range(extra_rows)]
+            data: Any = data + [[0] * max_width for _ in range(extra_rows)]
         else:
             data: Any = data[0:max_height]
 
@@ -1209,10 +1328,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 datas = [item.to_bytes_rle().data for item in items]
                 cython_mask = _lazy_mask_backend()
                 if cython_mask is None:
-                    raise NotImplementedError('pure python version of bytes rle union')
+                    raise NotImplementedError(
+                        'pure python version of bytes rle union'
+                    )
                 new_data = cython_mask.merge(datas, intersect=0)
                 if 'size' in new_data:
-                    new_data['size'] = list(map(int, new_data['size']))  # python2 fix
+                    new_data['size'] = list(
+                        map(int, new_data['size'])
+                    )  # python2 fix
                 new = cls(new_data, MaskFormat.BYTES_RLE)
             else:
                 datas = [item.to_bytes_rle().data for item in items]
@@ -1220,7 +1343,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                     raise NotImplementedError('pure python version of union')
                 new_rle = cython_mask.merge(datas, intersect=0)
                 if 'size' in new_rle:
-                    new_rle['size'] = list(map(int, new_rle['size']))  # python2 fix
+                    new_rle['size'] = list(
+                        map(int, new_rle['size'])
+                    )  # python2 fix
                 new = cls(new_rle, MaskFormat.BYTES_RLE)
         return new
 
@@ -1266,10 +1391,14 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 rle_datas = [item.data for item in items]
                 cython_mask = _lazy_mask_backend()
                 if cython_mask is None:
-                    raise NotImplementedError('pure python version of mask intersection')
+                    raise NotImplementedError(
+                        'pure python version of mask intersection'
+                    )
                 encoded = cython_mask.merge(rle_datas, intersect=1)
                 if 'size' in encoded:
-                    encoded['size'] = list(map(int, encoded['size']))  # python2 fix
+                    encoded['size'] = list(
+                        map(int, encoded['size'])
+                    )  # python2 fix
                 new = cls(encoded, MaskFormat.BYTES_RLE)
         return new
 
@@ -1387,6 +1516,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> poly = self.to_multi_polygon()
         """
         import cv2
+
         if self.format == MaskFormat.C_MASK:
             # findNonZero seems much faster than np.where
             data: Any = np.ascontiguousarray(self.data).astype(np.uint8)
@@ -1394,8 +1524,12 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             if cv2_coords is None:
                 xywh = np.array([0, 0, 0, 0])
             else:
-                x_coords = cv2_coords[:, 0, 0]
-                y_coords = cv2_coords[:, 0, 1]
+                # OpenCV 3/4 returned an (N, 1, 2) array, whereas
+                # OpenCV 5 returns (N, 2) because vectors now map to true
+                # one-dimensional arrays in the Python bindings.
+                cv2_coords = np.asarray(cv2_coords).reshape(-1, 2)
+                x_coords = cv2_coords[:, 0]
+                y_coords = cv2_coords[:, 1]
                 # # y_coords, x_coords = np.where(self.data)
                 # if len(x_coords) == 0:
                 #     xywh = np.array([0, 0, 0, 0])
@@ -1442,11 +1576,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwimage.Boxes
         """
         ub.schedule_deprecation(
-            'kwimage', 'Mask.bounding_box', 'method',
+            'kwimage',
+            'Mask.bounding_box',
+            'method',
             migration='use Mask.box instead',
-            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+            deprecate='0.11.2',
+            error='1.0.0',
+            remove='1.1.0',
         )
         import kwimage
+
         xywh = self.get_xywh()
         boxes = kwimage.Boxes([xywh], 'xywh')
         return boxes
@@ -1462,11 +1601,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwimage.Boxes
         """
         ub.schedule_deprecation(
-            'kwimage', 'Mask.to_boxes', 'method',
+            'kwimage',
+            'Mask.to_boxes',
+            'method',
             migration='use Mask.box instead',
-            deprecate='0.11.2', error='1.0.0', remove='1.1.0',
+            deprecate='0.11.2',
+            error='1.0.0',
+            remove='1.1.0',
         )
         import kwimage
+
         boxes = kwimage.Boxes([self.get_xywh()], 'xywh')
         return boxes
 
@@ -1478,6 +1622,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             kwimage.Box
         """
         import kwimage
+
         xywh = self.get_xywh()
         boxes = kwimage.Box.coerce(xywh, format='xywh')
         return boxes
@@ -1521,10 +1666,15 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             ]
         """
         import cv2
+
         ub.schedule_deprecation(
-            'kwimage', 'Mask.get_polygon', 'method',
+            'kwimage',
+            'Mask.get_polygon',
+            'method',
             migration='use Mask.to_multi_polygon instead',
-            deprecate='0.9.5', error='1.0.0', remove='1.1.0',
+            deprecate='0.9.5',
+            error='1.0.0',
+            remove='1.1.0',
         )
         p = 2
 
@@ -1540,15 +1690,19 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             mask = temp.to_c_mask().data
             offset = (x - p, y - p)
 
-        padded_mask = cv2.copyMakeBorder(mask, p, p, p, p,
-                                         cv2.BORDER_CONSTANT, value=0)
+        padded_mask = cv2.copyMakeBorder(
+            mask, p, p, p, p, cv2.BORDER_CONSTANT, value=0
+        )
 
         # print('src =\n{!r}'.format(padded_mask))
-        kernel = np.array([
-            [1, 1, 0],
-            [1, 1, 0],
-            [0, 0, 0],
-        ], dtype=np.uint8)
+        kernel = np.array(
+            [
+                [1, 1, 0],
+                [1, 1, 0],
+                [0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
         padded_mask = cv2.dilate(padded_mask, kernel, dst=padded_mask)
         # print('dst =\n{!r}'.format(padded_mask))
 
@@ -1568,23 +1722,27 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         else:
             _img, _contours, _hierarchy = _ret
 
-        polygon = [c[:, 0, :] for c in _contours]
+        polygon = [np.asarray(c).reshape(-1, 2) for c in _contours]
 
         if False:
             import kwplot
+
             import kwimage
+
             kwplot.autompl()
             # Note that cv2 draw contours doesnt have the 1-pixel thick problem
             # it seems to just be the way the coco implementation is
             # interpreting polygons.
             image = kwimage.atleast_3channels(mask)
-            canvas = np.zeros(image.shape, dtype="uint8")
+            canvas = np.zeros(image.shape, dtype='uint8')
             cv2.drawContours(canvas, _contours, -1, (255, 0, 0), 1)
             kwplot.imshow(canvas)
 
         return polygon
 
-    def to_mask(self, dims: Any | None=None, pixels_are: str='points') -> kwimage.Mask:
+    def to_mask(
+        self, dims: Any | None = None, pixels_are: str = 'points'
+    ) -> kwimage.Mask:
         """
         Converts to a mask object (which does nothing because this already is
         mask object!)
@@ -1594,7 +1752,9 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         return self
 
-    def to_multi_polygon(self, pixels_are: str='points', origin_convention='center') -> kwimage.MultiPolygon:
+    def to_multi_polygon(
+        self, pixels_are: str = 'points', origin_convention='center'
+    ) -> kwimage.MultiPolygon:
         r"""
         Returns a MultiPolygon object fit around this raster including disjoint
         pieces and holes.
@@ -1828,15 +1988,19 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>>     '''))
             >>> fig.set_size_inches([12.8, 13.37])
         """
-        from kwimage.structs.polygon import Polygon, MultiPolygon
+        from kwimage.structs.polygon import MultiPolygon, Polygon
+
         # Note: it is not necessarilly faster to to only exact the patch of
         # non-zero values
         temp_mask = self.to_c_mask(copy=False).data
         if temp_mask.dtype.kind == 'b':
             temp_mask = temp_mask.astype(np.uint8)
         # TODO: polygons and masks should keep track what "pixels_are"
-        polys = _find_contours(temp_mask, pixels_are=pixels_are,
-                               origin_convention=origin_convention)
+        polys = _find_contours(
+            temp_mask,
+            pixels_are=pixels_are,
+            origin_convention=origin_convention,
+        )
         poly_list = [Polygon(**data) for data in polys]
         multi_poly = MultiPolygon(poly_list)
         return multi_poly
@@ -1858,10 +2022,11 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
             >>> other = Mask.from_polygons(polygons, self.shape)
         """
         import cv2
+
         mask = self.to_c_mask().data
         cc_y, cc_x = np.where(mask)
         points = np.vstack([cc_x, cc_y]).T
-        hull = cv2.convexHull(points)[:, 0, :]
+        hull = np.asarray(cv2.convexHull(points)).reshape(-1, 2)
         return hull
 
     def iou(self, other):
@@ -1896,7 +2061,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         return iou
 
     @classmethod
-    def coerce(Mask, data: Any, dims: Tuple | None=None) -> Mask:
+    def coerce(Mask, data: Any, dims: Tuple | None = None) -> Mask:
         """
         Attempts to auto-inspect the format of the data and conver to Mask
 
@@ -1924,15 +2089,16 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
         """
         # TODO: this could be more explicitly written
         from kwimage.structs.segmentation import _coerce_coco_segmentation
+
         self = _coerce_coco_segmentation(data, dims)
         self = self.to_mask(dims)
         return self
 
     def _to_coco(self):
-        """ use to_coco instead """
+        """use to_coco instead"""
         return self.to_coco()
 
-    def to_coco(self, style: str='orig') -> dict:
+    def to_coco(self, style: str = 'orig') -> dict:
         """
         Convert the Mask to a COCO json representation based on the current
         format.
@@ -2005,7 +2171,7 @@ class Mask(ub.NiceRepr, _MaskConversionMixin, _MaskConstructorMixin,
                 'size': [23, 32],
             }
         """
-        use_bytes = (self.format == MaskFormat.BYTES_RLE)
+        use_bytes = self.format == MaskFormat.BYTES_RLE
         if use_bytes:
             try:
                 bytes_rle = self.to_bytes_rle()
@@ -2040,10 +2206,10 @@ class MaskList(_generic.ObjectList):
             kwimage.PolygonList
         """
         import kwimage
-        new = kwimage.PolygonList([
-            None if mask is None else mask.to_multi_polygon()
-            for mask in self
-        ])
+
+        new = kwimage.PolygonList(
+            [None if mask is None else mask.to_multi_polygon() for mask in self]
+        )
         return new
 
     def to_segmentation_list(self) -> kwimage.SegmentationList:
@@ -2054,13 +2220,18 @@ class MaskList(_generic.ObjectList):
             kwimage.SegmentationList
         """
         import kwimage
-        new = kwimage.SegmentationList([
-            None if item is None else kwimage.Segmentation.coerce(item)
-            for item in self
-        ])
+
+        new = kwimage.SegmentationList(
+            [
+                None if item is None else kwimage.Segmentation.coerce(item)
+                for item in self
+            ]
+        )
         return new
 
-    def to_mask_list(self, dims: Any | None=None, pixels_are: str='points') -> kwimage.MaskList:
+    def to_mask_list(
+        self, dims: Any | None = None, pixels_are: str = 'points'
+    ) -> kwimage.MaskList:
         """
         returns this object
 
@@ -2070,7 +2241,9 @@ class MaskList(_generic.ObjectList):
         return self
 
 
-def _find_contours(binary_mask, pixels_are='points', origin_convention='center'):
+def _find_contours(
+    binary_mask, pixels_are='points', origin_convention='center'
+):
     """
     Finds the contours in a binary mask
 
@@ -2126,7 +2299,8 @@ def _write_img_in_terminal(binary_mask):
         https://github.com/stefanhaustein/TerminalImageViewer
     """
     import kwarray
-    block = "\u2584"
+
+    block = '\u2584'
     lines = []
     for row in binary_mask:
         line_parts = []
@@ -2155,41 +2329,48 @@ def _rasterio_find_contours(label_img, origin_convention='center'):
     """
     import numpy as np
     from rasterio import features
+
     polys = []
     if label_img.size > 0:
         shapes = list(features.shapes(label_img, connectivity=8))
-        if (origin_convention == 'center'):
+        if origin_convention == 'center':
             translate = np.array([-0.5, -0.5]).ravel()[None, :]
             for shape, value in shapes:
                 if value > 0:
                     coords = shape['coordinates']
                     exterior = np.array(coords[0]) + translate
                     interiors = [np.array(p) + translate for p in coords[1:]]
-                    polys.append({
-                        'exterior': exterior,
-                        'interiors': interiors,
-                        # 'value': value,
-                    })
+                    polys.append(
+                        {
+                            'exterior': exterior,
+                            'interiors': interiors,
+                            # 'value': value,
+                        }
+                    )
         else:
             for shape, value in shapes:
                 if value > 0:
                     coords = shape['coordinates']
                     exterior = np.array(coords[0])
                     interiors = [np.array(p) for p in coords[1:]]
-                    polys.append({
-                        'exterior': exterior,
-                        'interiors': interiors,
-                        # 'value': value,
-                    })
+                    polys.append(
+                        {
+                            'exterior': exterior,
+                            'interiors': interiors,
+                            # 'value': value,
+                        }
+                    )
     return polys
 
 
 def _opencv_find_contours(binary_mask, origin_convention='center'):
     import cv2
+
     p = 2
     offset = (0 - p, 0 - p)
-    padded_mask = cv2.copyMakeBorder(binary_mask, p, p, p, p,
-                                     cv2.BORDER_CONSTANT, value=0)
+    padded_mask = cv2.copyMakeBorder(
+        binary_mask, p, p, p, p, cv2.BORDER_CONSTANT, value=0
+    )
 
     # https://docs.opencv.org/3.1.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
     mode = cv2.RETR_CCOMP
@@ -2207,31 +2388,35 @@ def _opencv_find_contours(binary_mask, origin_convention='center'):
             return []
         raise AssertionError('Contour extraction from binary mask failed')
 
-    _hierarchy = _hierarchy[0]
+    _hierarchy = np.asarray(_hierarchy).reshape(-1, 4)
 
-    polys = {i: {'exterior': None, 'interiors': []}
-             for i, row in enumerate(_hierarchy) if row[3] == -1}
+    polys = {
+        i: {'exterior': None, 'interiors': []}
+        for i, row in enumerate(_hierarchy)
+        if row[3] == -1
+    }
     for i, row in enumerate(_hierarchy):
         # This only works in RETR_CCOMP mode
         nxt, prev, child, parent = row[0:4]
         if parent != -1:
-            coords = _contours[i][:, 0, :]
+            coords = np.asarray(_contours[i]).reshape(-1, 2)
             polys[parent]['interiors'].append(coords)
         else:
-            coords = _contours[i][:, 0, :]
+            coords = np.asarray(_contours[i]).reshape(-1, 2)
             # if len(coords) < 3:
             #     raise Exception
             polys[i]['exterior'] = coords
     polys = list(polys.values())
 
-    if (origin_convention == 'center'):
+    if origin_convention == 'center':
         ...  # default opencv behavior
-    elif (origin_convention == 'corner'):
+    elif origin_convention == 'corner':
         # Translate integer-center to integer-corner coordinates
         for poly in polys:
             poly['exterior'] = poly['exterior'].astype(np.float32) + 0.5
-            poly['interiors'] = [p.astype(np.float32) + 0.5
-                                 for p in poly['interiors']]
+            poly['interiors'] = [
+                p.astype(np.float32) + 0.5 for p in poly['interiors']
+            ]
     return polys
 
 
@@ -2241,4 +2426,5 @@ if __name__ == '__main__':
         xdoctest -m ~/code/kwimage/kwimage/structs/mask.py
     """
     import xdoctest
+
     xdoctest.doctest_module(__file__)

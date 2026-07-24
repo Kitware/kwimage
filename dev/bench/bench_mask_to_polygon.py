@@ -1,9 +1,7 @@
-
-
 def bench_mask_to_polygon():
-    import ubelt as ub
     import pandas as pd
     import timerit
+    import ubelt as ub
 
     import kwimage
     from kwimage.structs.mask import MaskFormat  # NOQA
@@ -25,7 +23,7 @@ def bench_mask_to_polygon():
     basis = {
         'format': test_formats,
         'pixels_are': ['points', 'areas'],
-        'dim': [0, 128, 256, 512, 640]
+        'dim': [0, 128, 256, 512, 640],
     }
     xlabel = 'dim'
     kw_labels = ['pixels_are']
@@ -33,7 +31,9 @@ def bench_mask_to_polygon():
         'size': ['pixels_are'],
     }
     group_labels['hue'] = list(
-        (ub.oset(basis) - {xlabel}) - set.union(*map(set, group_labels.values())))
+        (ub.oset(basis) - {xlabel})
+        - set.union(*map(set, group_labels.values()))
+    )
     grid_iter = list(ub.named_product(basis))
 
     # For each variation of your experiment, create a row.
@@ -42,9 +42,10 @@ def bench_mask_to_polygon():
         group_keys = {}
         for gname, labels in group_labels.items():
             group_keys[gname + '_key'] = ub.urepr(
-                ub.dict_isect(params, labels), compact=1, si=1)
+                ub.dict_isect(params, labels), compact=1, si=1
+            )
         key = ub.urepr(params, compact=1, si=1)
-        kwargs = ub.dict_isect(params.copy(),  kw_labels)
+        kwargs = ub.dict_isect(params.copy(), kw_labels)
 
         dim = int(params['dim'])
         ox = int(params['dim'] * 0.75)
@@ -67,6 +68,7 @@ def bench_mask_to_polygon():
 
     if 0:
         import xdev
+
         xdev.profile_now(mask.to_multi_polygon)()
 
     # The rows define a long-form pandas data array.
@@ -81,6 +83,7 @@ def bench_mask_to_polygon():
         # kwplot autosns works well for IPython and script execution.
         # not sure about notebooks.
         import kwplot
+
         sns = kwplot.autosns()
 
         # Your variables may change
@@ -90,9 +93,7 @@ def bench_mask_to_polygon():
             if labels:
                 plotkw[gname] = gname + '_key'
 
-        sns.lineplot(
-            data=data, x=xlabel, y='min', marker='o', ax=ax, **plotkw
-        )
+        sns.lineplot(data=data, x=xlabel, y='min', marker='o', ax=ax, **plotkw)
         ax.set_title('Benchmark')
         ax.set_xlabel('A better x-variable description')
         ax.set_ylabel('A better y-variable description')

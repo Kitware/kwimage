@@ -7,16 +7,22 @@ SeeAlso:
         backend representation. Also contains cython logic for handling
         the coco-rle format.
 """
+
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import numpy as np
+
 if TYPE_CHECKING:
+    from typing import Dict, Tuple
+
     from numpy import ndarray
-    from typing import Dict
-    from typing import Tuple
 
 
-def encode_run_length(img: ndarray, binary: bool=False, order: str='C') -> Dict[str, object]:
+def encode_run_length(
+    img: ndarray, binary: bool = False, order: str = 'C'
+) -> Dict[str, object]:
     """
     Construct the run length encoding (RLE) of an image.
 
@@ -130,7 +136,13 @@ def encode_run_length(img: ndarray, binary: bool=False, order: str='C') -> Dict[
     return encoding
 
 
-def decode_run_length(counts: ndarray, shape: Tuple[int, int], binary: bool=False, dtype: type=np.uint8, order: str='C') -> ndarray:
+def decode_run_length(
+    counts: ndarray,
+    shape: Tuple[int, int],
+    binary: bool = False,
+    dtype: type = np.uint8,
+    order: str = 'C',
+) -> ndarray:
     """
     Decode run length encoding back into an image.
 
@@ -195,7 +207,11 @@ def decode_run_length(counts: ndarray, shape: Tuple[int, int], binary: bool=Fals
     return recon
 
 
-def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, int] | None=None):
+def rle_translate(
+    rle: dict,
+    offset: Tuple[int, int],
+    output_shape: Tuple[int, int] | None = None,
+):
     """
     Translates a run-length encoded image in RLE-space.
 
@@ -267,8 +283,7 @@ def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, i
         rle['binary'] = True
 
     if not rle['binary']:
-        raise NotImplementedError(
-            'only binary rle translation is implemented')
+        raise NotImplementedError('only binary rle translation is implemented')
 
     # Careful of residuals
     orig_offset = np.array(offset)
@@ -277,6 +292,7 @@ def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, i
 
     if not np.all(np.abs(residual) < 1e-6):
         import warnings
+
         warnings.warn('translating by rle, but offset is non-integer')
 
     # These are the flat indices where the value changes:
@@ -319,7 +335,9 @@ def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, i
     for idx in flat_cross_idxs[::-1]:
         prev_pt = [x[idx] for x in scanline_pts]
         next_pt = [x[idx + 1] for x in scanline_pts]
-        for break_d in reversed(range(prev_pt[major_axis], next_pt[major_axis])):
+        for break_d in reversed(
+            range(prev_pt[major_axis], next_pt[major_axis])
+        ):
             # Insert a breakpoint over every major axis crossing
             if major_axis == 1:
                 new_stop = [old_shape[0] - 1, break_d]
@@ -348,8 +366,7 @@ def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, i
 
     # Only keep points where the major axis is in bounds
     _new_major_pts = new_pts[major_axis]
-    is_major_ib = ((_new_major_pts >= 0) &
-                   (_new_major_pts < new_major_dim))
+    is_major_ib = (_new_major_pts >= 0) & (_new_major_pts < new_major_dim)
     # assert np.all(is_major_ib[0::2] == is_major_ib[1::2]), (
     #     'all pairs should be both in-bounds or both out-of-bounds')
     new_pts = new_pts.T[is_major_ib].T
@@ -360,11 +377,11 @@ def rle_translate(rle: dict, offset: Tuple[int, int], output_shape: Tuple[int, i
     # but dont remove pairs where only one is left-oob or right-oob, because
     # these still create structure in our new image.)
     _new_minor_pts = new_pts[minor_axis]
-    is_left_oob = (_new_minor_pts < 0)
-    is_right_oob = (_new_minor_pts >= new_minor_dim)
-    is_pair_left_oob = (is_left_oob[0::2] & is_left_oob[1::2])
-    is_pair_right_oob = (is_right_oob[0::2] & is_right_oob[1::2])
-    is_pair_removable = (is_pair_left_oob | is_pair_right_oob)
+    is_left_oob = _new_minor_pts < 0
+    is_right_oob = _new_minor_pts >= new_minor_dim
+    is_pair_left_oob = is_left_oob[0::2] & is_left_oob[1::2]
+    is_pair_right_oob = is_right_oob[0::2] & is_right_oob[1::2]
+    is_pair_removable = is_pair_left_oob | is_pair_right_oob
     new_pts_pairs = new_pts.T.reshape(-1, 2, 2)
     new_pts = new_pts_pairs[~is_pair_removable].reshape(-1, 2).T
     new_pts = np.ascontiguousarray(new_pts)
@@ -434,6 +451,7 @@ def _rle_bytes_to_array(s, impl='auto'):
     # It would be nice if this (un/)compression algo could get a better
     # description.
     from kwimage.structs.mask import _backends
+
     key, cython_mask = _backends.get_backend(['kwimage'])
 
     if impl == 'auto':
@@ -443,28 +461,28 @@ def _rle_bytes_to_array(s, impl='auto'):
             impl = 'cython'
     if impl == 'python':
         import numpy as np
+
         cnts = np.empty(len(s), dtype=np.int64)
         p = 0
-        m = 0
-        for m in range(len(s)):
-            if p >= len(s):
-                break
+        n = 0
+        while p < len(s):
             x = 0
             k = 0
             more = 1
             while more:
                 # c = s[p] - 48
                 c = s[p] - 48
-                x |= (c & 0x1f) << 5 * k
+                x |= (c & 0x1F) << 5 * k
                 more = c & 0x20
                 p += 1
                 k += 1
                 if more == 0 and (c & 0x10):
-                    x |= (-1 << 5 * k)
-            if m > 2:
-                x += cnts[m - 2]
-            cnts[m] = x
-        cnts = cnts[:m]
+                    x |= -1 << 5 * k
+            if n > 2:
+                x += cnts[n - 2]
+            cnts[n] = x
+            n += 1
+        cnts = cnts[:n]
         return cnts
     elif impl == 'cython':
         return cython_mask._rle_bytes_to_array(s)
@@ -507,6 +525,7 @@ def _rle_array_to_bytes(counts, impl='auto'):
     # It would be nice if this (un/)compression algo could get a better
     # description.
     from kwimage.structs.mask import _backends
+
     key, cython_mask = _backends.get_backend(['kwimage'])
     if impl == 'auto':
         if cython_mask is None:
@@ -530,4 +549,5 @@ if __name__ == '__main__':
         xdoctest -m kwimage.im_runlen
     """
     import xdoctest
+
     xdoctest.doctest_module(__file__)

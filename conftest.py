@@ -4,7 +4,7 @@ import pytest  # NOQA
 
 def pytest_addoption(parser):
     # Allow --network to be passed in as an option on sys.argv
-    parser.addoption("--network", action="store_true")
+    parser.addoption('--network', action='store_true')
 
 
 def pytest_sessionstart(session):
@@ -23,11 +23,9 @@ def pytest_sessionstart(session):
     # import numpy
     # import scipy
     # from PIL import Image
-
-    if 1:
-        try:
-            import osgeo  # NOQA
-            # from osgeo import osr
-            # from osgeo import gdal  # NOQA
-        except ImportError:
-            ...
+    try:
+        import osgeo  # NOQA
+        # from osgeo import osr
+        # from osgeo import gdal  # NOQA
+    except ImportError:
+        ...

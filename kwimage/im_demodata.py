@@ -1,13 +1,18 @@
 """
 Keep a manifest of demo images used for testing
 """
+
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import ubelt as ub
+
 if TYPE_CHECKING:
-    from typing import Tuple
-    from numpy import ndarray
     from numbers import Number
+    from typing import Tuple
+
+    from numpy import ndarray
 
 
 _TEST_IMAGES = {
@@ -272,10 +277,12 @@ def _update_hashes():
         if REQUIRE_EXISTING_HASH:
             for hasher in hasher_priority:
                 if hasher in item:
-                    grabkw.update({
-                        'hash_prefix': item[hasher],
-                        'hasher': hasher,
-                    })
+                    grabkw.update(
+                        {
+                            'hash_prefix': item[hasher],
+                            'hasher': hasher,
+                        }
+                    )
                     break
 
         if 'fname' in item:
@@ -295,6 +302,7 @@ def _update_hashes():
 
         if ENSURE_METADATA:
             import kwimage
+
             imdata = kwimage.imread(fpath)
             props = item.setdefault('properties', {})
             props['shape'] = imdata.shape
@@ -305,7 +313,10 @@ def _update_hashes():
         if ENSURE_IPFS:
             ipfs_cids = item.get('ipfs_cids', [])
             if not ipfs_cids:
-                info = ub.cmd('ipfs add {} --progress --cid-version=1'.format(fpath), verbose=3)
+                info = ub.cmd(
+                    'ipfs add {} --progress --cid-version=1'.format(fpath),
+                    verbose=3,
+                )
                 cid = info['out'].split(' ')[1]
                 ipfs_cids.append(cid)
                 item['ipfs_cids'] = ipfs_cids
@@ -314,9 +325,15 @@ def _update_hashes():
 
     if ENSURE_IPFS:
         setup_single_dir_commands = []
-        kwimage_demo_image_ipfs_dpath = ub.Path.appdir('kwimage/demodata/ipfs-setup/kwimage-demo-images')
-        setup_single_dir_commands.append(f'rm -rf {kwimage_demo_image_ipfs_dpath}')
-        setup_single_dir_commands.append(f'mkdir -p {kwimage_demo_image_ipfs_dpath}')
+        kwimage_demo_image_ipfs_dpath = ub.Path.appdir(
+            'kwimage/demodata/ipfs-setup/kwimage-demo-images'
+        )
+        setup_single_dir_commands.append(
+            f'rm -rf {kwimage_demo_image_ipfs_dpath}'
+        )
+        setup_single_dir_commands.append(
+            f'mkdir -p {kwimage_demo_image_ipfs_dpath}'
+        )
         pin_commands = []
         for key, item in TEST_IMAGES.items():
             cids = item.get('ipfs_cids')
@@ -324,11 +341,19 @@ def _update_hashes():
             for cid in cids:
                 line = f'ipfs pin add --name {fname} --progress {cid}'
                 pin_commands.append(line)
-                setup_single_dir_commands.append(f'ipfs get {cid} -o {kwimage_demo_image_ipfs_dpath / fname}')
-        setup_single_dir_commands.append(f'ipfs add -r {kwimage_demo_image_ipfs_dpath} --progress --cid-version=1 | tee "kwimage_demodata_pin_job.log"')
-        setup_single_dir_commands.append("NEW_ROOT_CID=$(tail -n 1 kwimage_demodata_pin_job.log | cut -d ' ' -f 2)")
+                setup_single_dir_commands.append(
+                    f'ipfs get {cid} -o {kwimage_demo_image_ipfs_dpath / fname}'
+                )
+        setup_single_dir_commands.append(
+            f'ipfs add -r {kwimage_demo_image_ipfs_dpath} --progress --cid-version=1 | tee "kwimage_demodata_pin_job.log"'
+        )
+        setup_single_dir_commands.append(
+            "NEW_ROOT_CID=$(tail -n 1 kwimage_demodata_pin_job.log | cut -d ' ' -f 2)"
+        )
         setup_single_dir_commands.append('echo "NEW_ROOT_CID=$NEW_ROOT_CID"')
-        setup_single_dir_commands.append('ipfs pin add --name kwimage-demo-images --progress -- "$NEW_ROOT_CID"')
+        setup_single_dir_commands.append(
+            'ipfs pin add --name kwimage-demo-images --progress -- "$NEW_ROOT_CID"'
+        )
 
         print('\n\nTo pin individual images on another machine:')
         print('\n'.join(pin_commands))
@@ -337,8 +362,12 @@ def _update_hashes():
         print('\n'.join(setup_single_dir_commands))
 
 
-def grab_test_image(key: str='astro', space: str='rgb', dsize: Tuple[int, int] | None=None,
-                    interpolation: str='linear') -> ndarray:
+def grab_test_image(
+    key: str = 'astro',
+    space: str = 'rgb',
+    dsize: Tuple[int, int] | None = None,
+    interpolation: str = 'linear',
+) -> ndarray:
     """
     Ensures that the test image exists (this might use the network), reads it
     and returns the the image pixels.
@@ -386,6 +415,7 @@ def grab_test_image(key: str='astro', space: str='rgb', dsize: Tuple[int, int] |
         >>> kwplot.imshow(stacked)
     """
     import kwimage
+
     # from kwimage import im_cv2
     if key == 'checkerboard':
         image = checkerboard()
@@ -393,8 +423,9 @@ def grab_test_image(key: str='astro', space: str='rgb', dsize: Tuple[int, int] |
         fpath = grab_test_image_fpath(key)
         image = kwimage.imread(fpath)
     if dsize:
-        image = kwimage.imresize(image, dsize=dsize,
-                                 interpolation=interpolation)
+        image = kwimage.imresize(
+            image, dsize=dsize, interpolation=interpolation
+        )
     return image
 
 
@@ -427,7 +458,12 @@ def _grabdata_with_mirrors(url, mirror_urls, grabkw):
     return fpath
 
 
-def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, overviews: None | int=None, allow_fallback=True) -> str:
+def grab_test_image_fpath(
+    key: str = 'astro',
+    dsize: None | Tuple[int, int] = None,
+    overviews: None | int = None,
+    allow_fallback=True,
+) -> str:
     """
     Ensures that the test image exists (this might use the network) and returns
     the cached filepath to the requested image.
@@ -488,8 +524,8 @@ def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, 
             return cand
         else:
             raise KeyError(
-                'Unknown key={!r}. Valid keys are {!r}'.format(
-                    key, valid_keys))
+                'Unknown key={!r}. Valid keys are {!r}'.format(key, valid_keys)
+            )
     if not isinstance(item, dict):
         item = {'url': item}
 
@@ -499,10 +535,12 @@ def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, 
     hasher_priority = ['sha256']
     for hasher in hasher_priority:
         if hasher in item:
-            grabkw.update({
-                'hash_prefix': item[hasher],
-                'hasher': hasher,
-            })
+            grabkw.update(
+                {
+                    'hash_prefix': item[hasher],
+                    'hasher': hasher,
+                }
+            )
             break
     if 'fname' in item:
         grabkw['fname'] = item['fname']
@@ -530,11 +568,15 @@ def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, 
             # if all mirrors fail. In that case, create a random image according
             # to the specs. Ideally use a different path, so if networking comes
             # back on we get the real image if we can.
-            import numpy as np
             import kwarray
+            import numpy as np
+
             import kwimage
+
             cache_dpath = ub.Path.appdir(grabkw['appname'])
-            fname = ub.Path(item['fname']).augment(stemsuffix='_random_fallback')
+            fname = ub.Path(item['fname']).augment(
+                stemsuffix='_random_fallback'
+            )
             fallback_fpath = cache_dpath / fname
             if not fallback_fpath.exists():
                 shape = item['properties']['shape']
@@ -559,6 +601,7 @@ def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, 
 
     if augment_params:
         import os
+
         stem_suffix = '_' + ub.urepr(augment_params, compact=True)
         # Make paths nicer
         stem_suffix = stem_suffix.replace('(', '_')
@@ -572,16 +615,19 @@ def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, 
         fpath_aug = ub.Path(ub.augpath(fpath, suffix=stem_suffix, ext=ext))
 
         # stamp = ub.CacheStamp.sidecar_for(fpath_aug, depends=[dsize])
-        stamp = ub.CacheStamp(fpath_aug.name + '.stamp', dpath=fpath_aug.parent,
-                              depends=augment_params, ext='.json')
+        stamp = ub.CacheStamp(
+            fpath_aug.name + '.stamp',
+            dpath=fpath_aug.parent,
+            depends=augment_params,
+            ext='.json',
+        )
         if stamp.expired():
             import kwimage
 
             imdata = kwimage.imread(fpath)
 
             if 'dsize' in augment_params:
-                imdata = kwimage.imresize(
-                    imdata, dsize=augment_params['dsize'])
+                imdata = kwimage.imresize(imdata, dsize=augment_params['dsize'])
 
             writekw = {}
             if 'overviews' in augment_params:
@@ -594,13 +640,21 @@ def grab_test_image_fpath(key: str='astro', dsize: None | Tuple[int, int]=None, 
 
     return fpath
 
+
 # Provide a programatic mechanism to let users test what keys are available.
 grab_test_image.keys = lambda: _TEST_IMAGES.keys()
 grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
 
 
-def checkerboard(num_squares: int | str='auto', square_shape: int | Tuple[int, int] | str='auto', dsize: Tuple[int, int]=(512, 512),
-                 dtype: type=float, on_value: Number | int=1, off_value: Number | int=0, bayer_value=None):
+def checkerboard(
+    num_squares: int | str = 'auto',
+    square_shape: int | Tuple[int, int] | str = 'auto',
+    dsize: Tuple[int, int] = (512, 512),
+    dtype: type = float,
+    on_value: Number | int = 1,
+    off_value: Number | int = 0,
+    bayer_value=None,
+):
     """
     Creates a checkerboard image, mainly for use in testing.
 
@@ -717,9 +771,9 @@ def checkerboard(num_squares: int | str='auto', square_shape: int | Tuple[int, i
     want_w, want_h = dsize
 
     # Resolve number of pixels for the image and the square
-    h, w, num_h, num_w = _resolve_checkerboard_shape_args(square_shape,
-                                                          num_squares, want_w,
-                                                          want_h)
+    h, w, num_h, num_w = _resolve_checkerboard_shape_args(
+        square_shape, num_squares, want_w, want_h
+    )
     # Resolve the color values
     on_value = _resolve_checkerboard_color_arg(on_value, dtype)
     off_value = _resolve_checkerboard_color_arg(off_value, dtype)
@@ -727,15 +781,19 @@ def checkerboard(num_squares: int | str='auto', square_shape: int | Tuple[int, i
         bayer_value = _resolve_checkerboard_color_arg(bayer_value, dtype)
         # For efficiency swap the bayer value with the off value in the
         # following logic.
-        bayer_value, off_value =  off_value, bayer_value
+        bayer_value, off_value = off_value, bayer_value
 
     # All paramters have been resolved, build the image.
     num_pairs_w = int(num_w // 2)
     num_pairs_h = int(num_h // 2)
-    base = np.array([
-        [on_value, off_value] * num_pairs_w,
-        [off_value, on_value] * num_pairs_w
-    ] * num_pairs_h, dtype=dtype)
+    base = np.array(
+        [
+            [on_value, off_value] * num_pairs_w,
+            [off_value, on_value] * num_pairs_w,
+        ]
+        * num_pairs_h,
+        dtype=dtype,
+    )
 
     if len(base.shape) == 3:
         base = base.transpose([2, 0, 1])
@@ -779,9 +837,7 @@ def checkerboard(num_squares: int | str='auto', square_shape: int | Tuple[int, i
     return img
 
 
-def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w,
-                                     want_h):
-
+def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w, want_h):
     if num_squares == 'auto' and square_shape == 'auto':
         num_squares = 8
 
@@ -828,6 +884,7 @@ def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w,
 
 def _resolve_checkerboard_color_arg(value, dtype):
     import kwimage
+
     if isinstance(value, str):
         value = kwimage.Color(value).forimage(dtype)
     return value
@@ -871,4 +928,5 @@ def _next_multiple_of(x, m):
 
     """
     import math
+
     return math.ceil(x / m) * m

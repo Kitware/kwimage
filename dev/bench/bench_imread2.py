@@ -1,5 +1,3 @@
-
-
 def imread2_bench():
     """
     Another imread benchmark
@@ -20,10 +18,7 @@ def imread2_bench():
             64,
             # 128,
         ],
-        'dtype': [
-            'uint8',
-            'float32'
-        ],
+        'dtype': ['uint8', 'float32'],
     }
     data_profiles = list(ub.named_product(data_basis))
 
@@ -39,14 +34,17 @@ def imread2_bench():
         # {'backend': 'cv2', 'space': None},
     ]
 
+    from os.path import join
+
     import numpy as np
     import ubelt as ub
-    from os.path import join
+
     import kwimage
 
     dpath = ub.Path.appdir('kwimage/bench/imread2').ensuredir()
 
     import timerit
+
     read_ti = timerit.Timerit(1, bestof=1, verbose=2)
 
     measures = []
@@ -60,21 +58,22 @@ def imread2_bench():
         fpath = join(dpath, data_profile_key + '.tiff')
 
         for imwrite_profile in imwrite_profiles:
-
             imwrite_profile_key = ub.urepr(imwrite_profile, compact=1, sort=0)
             kwimage.imwrite(fpath, data, **imwrite_profile)
 
             for imread_profile in imread_profiles:
-
                 if imread_profile['backend'] == 'cv2' and channels > 4:
                     continue
 
                 imread_profile_key = ub.urepr(imread_profile, compact=1, sort=0)
 
                 io_profile_key = 'imwrite({})->imread({})'.format(
-                    imwrite_profile_key, imread_profile_key)
+                    imwrite_profile_key, imread_profile_key
+                )
 
-                for timer in read_ti.reset(f'{data_profile_key} {io_profile_key}'):
+                for timer in read_ti.reset(
+                    f'{data_profile_key} {io_profile_key}'
+                ):
                     with timer:
                         kwimage.imread(fpath, **imread_profile)
 
@@ -91,12 +90,13 @@ def imread2_bench():
                 measures.append(row)
 
     import pandas as pd
+
     for row in measures:
         width, height = row['dsize']
         channels = row['channels']
         gridsize = width * height * channels
         if row['dtype'] == 'float32':
-            row['bits'] =  gridsize * 32
+            row['bits'] = gridsize * 32
         elif row['dtype'] == 'uint8':
             row['bits'] = gridsize * 8
         else:
@@ -106,13 +106,18 @@ def imread2_bench():
     print(df)
 
     import kwplot
+
     sns = kwplot.autosns()
     plt = kwplot.autoplt()
 
     df['io_profile_key'] = (
-        'imwrite(' + df['imwrite_profile_key'] + ')' +
-        '->' +
-        'imread(' + df['imread_profile_key'] + ')'
+        'imwrite('
+        + df['imwrite_profile_key']
+        + ')'
+        + '->'
+        + 'imread('
+        + df['imread_profile_key']
+        + ')'
     )
     ax = sns.lineplot(data=df, x='bits', y='min', hue='io_profile_key')
     ax.set_xscale('log')

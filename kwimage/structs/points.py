@@ -1,30 +1,29 @@
 """
 Data structures to represent and manipulate 2D Points
 """
+
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
-import numpy as np
-import ubelt as ub
-import kwarray
+
 import numbers
 import warnings
+from typing import TYPE_CHECKING, Any
+
+import kwarray
+import numpy as np
+import ubelt as ub
+
 from kwimage.structs import _generic
+
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Tuple
-    from typing import Callable
-    import kwimage
-    from numpy.typing import ArrayLike
+    from typing import Any, List, Tuple
+
     from numpy import ndarray
-    from typing import List
-    from typing import Dict
-    import kwcoco
+
     from kwimage._typing import TransformLike
 
 
 class _PointsWarpMixin:
-
-    def _warp_imgaug(self, augmenter, input_dims, inplace: bool=False):
+    def _warp_imgaug(self, augmenter, input_dims, inplace: bool = False):
         """
         Warps by applying an augmenter from the imgaug library
 
@@ -57,8 +56,9 @@ class _PointsWarpMixin:
             >>> new.draw(color='blue', alpha=.4, radius=0.1)
         """
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        new.data['xy'] = new.data['xy']._warp_imgaug(augmenter, input_dims,
-                                                     inplace=inplace)
+        new.data['xy'] = new.data['xy']._warp_imgaug(
+            augmenter, input_dims, inplace=inplace
+        )
         if 'tf_data_to_img' in self.meta:
             # warping via imgaug invalidates the tf_data_to_img transform
             self.meta = self.meta.copy()
@@ -79,6 +79,7 @@ class _PointsWarpMixin:
     @classmethod
     def from_imgaug(cls: Any, kpoi):
         import kwimage
+
         data = kwimage.Coords.from_imgaug(kpoi)
         self = cls(data)
         return self
@@ -91,8 +92,13 @@ class _PointsWarpMixin:
             print('kwimage.mask: no dtype for ' + str(type(self.data)))
             raise
 
-    def warp(self, transform: TransformLike, input_dims: Tuple | None=None,
-             output_dims: Tuple | None=None, inplace: bool=False):
+    def warp(
+        self,
+        transform: TransformLike,
+        input_dims: Tuple | None = None,
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
+    ):
         """
         Generalized coordinate transform.
 
@@ -122,16 +128,18 @@ class _PointsWarpMixin:
             >>> assert np.all(self.warp(np.eye(3)).xy == self.xy)
             >>> assert np.all(self.warp(np.eye(2)).xy == self.xy)
         """
-        import kwimage
         import skimage
+
+        import kwimage
         from kwimage._typing import SKImageGeometricTransform
+
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         if transform is None:
             return new
 
-        if not isinstance(transform, (np.ndarray,
-                                      SKImageGeometricTransform,
-                                      kwimage.Affine)):
+        if not isinstance(
+            transform, (np.ndarray, SKImageGeometricTransform, kwimage.Affine)
+        ):
             try:
                 import imgaug
             except ImportError:
@@ -143,8 +151,9 @@ class _PointsWarpMixin:
                     return new._warp_imgaug(transform, input_dims, inplace=True)
             # else:
             #     raise TypeError(type(transform))
-        new.data['xy'] = new.data['xy'].warp(transform, input_dims,
-                                             output_dims, inplace)
+        new.data['xy'] = new.data['xy'].warp(
+            transform, input_dims, output_dims, inplace
+        )
         if 'tf_data_to_img' in new.meta:
             # if we are maintaining a transform to img space, we need to update it
             new.meta = new.meta.copy()
@@ -153,13 +162,19 @@ class _PointsWarpMixin:
                 tf = skimage.transform.AffineTransform(matrix=transform)
             elif callable(tf):
                 raise NotImplementedError(
-                    'callables cant transform linear data_to_img yet')
+                    'callables cant transform linear data_to_img yet'
+                )
             inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
             # new.meta['tf_data_to_img'] = new.meta['tf_data_to_img'] + inv_tf
             new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
 
-    def scale(self, factor: float | Tuple[float, float], output_dims: Tuple | None=None, inplace: bool=False):
+    def scale(
+        self,
+        factor: float | Tuple[float, float],
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
+    ):
         """
         Scale a points by a factor
 
@@ -175,18 +190,22 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 10
         """
         import skimage
+
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
-        new.data['xy'] = new.data['xy'].scale(factor, output_dims=output_dims,
-                                              inplace=inplace)
+        new.data['xy'] = new.data['xy'].scale(
+            factor, output_dims=output_dims, inplace=inplace
+        )
         if 'tf_data_to_img' in new.meta:
             # if we are maintaining a transform to img space, we need to update it
             new.meta = new.meta.copy()
             tf = skimage.transform.AffineTransform(scale=factor)
             inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
-            new.meta['tf_data_to_img'] = (inv_tf + new.meta['tf_data_to_img'])
+            new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
 
-    def translate(self, offset, output_dims: Tuple | None=None, inplace: bool=False):
+    def translate(
+        self, offset, output_dims: Tuple | None = None, inplace: bool = False
+    ):
         """
         Shift the points
 
@@ -203,6 +222,7 @@ class _PointsWarpMixin:
             >>> assert new.xy.max() <= 11
         """
         import skimage
+
         new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = new.data['xy'].translate(offset, output_dims, inplace)
         if 'tf_data_to_img' in new.meta:
@@ -210,7 +230,7 @@ class _PointsWarpMixin:
             new.meta = new.meta.copy()
             tf = skimage.transform.AffineTransform(translation=offset)
             inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
-            new.meta['tf_data_to_img'] = (inv_tf + new.meta['tf_data_to_img'])
+            new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
 
 
@@ -232,6 +252,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         >>> pts = Points(xy=xy)
         >>> print('pts = {!r}'.format(pts))
     """
+
     # __slots__ = ('data', 'meta',)
 
     # Pre-registered keys for the data dictionary
@@ -239,8 +260,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     # Pre-registered keys for the meta dictionary
     __metakeys__: list[str] = ['classes']
 
-    def __init__(self, data: Any | None=None, meta: Any | None=None, datakeys: list[str] | None=None, metakeys: list[str] | None=None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        data: Any | None = None,
+        meta: Any | None = None,
+        datakeys: list[str] | None = None,
+        metakeys: list[str] | None = None,
+        **kwargs,
+    ) -> None:
         if kwargs:
             if data or meta:
                 raise ValueError('Cannot specify kwargs AND data/meta dicts')
@@ -256,11 +283,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             meta = {key: kwargs.pop(key) for key in _metakeys if key in kwargs}
             if kwargs:
                 raise ValueError(
-                    'Unknown kwargs: {}'.format(sorted(kwargs.keys())))
+                    'Unknown kwargs: {}'.format(sorted(kwargs.keys()))
+                )
 
             if 'xy' in data:
                 if _generic.isinstance_arraytypes(data['xy']):
                     import kwimage
+
                     data['xy'] = kwimage.Coords(data['xy'])
 
         elif isinstance(data, self.__class__):
@@ -293,7 +322,12 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return self.data['xy'].data
 
     @classmethod
-    def random(Points, num: int | tuple[int, ...]=1, classes: Any | None=None, rng: Any | None=None):
+    def random(
+        Points,
+        num: int | tuple[int, ...] = 1,
+        classes: Any | None = None,
+        rng: Any | None = None,
+    ):
         """
         Makes random points; typically for testing purposes
 
@@ -335,13 +369,16 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.tensor()
         """
         impl = self._impl
-        newdata = {k: v.tensor(device) if hasattr(v, 'tensor')
-                   else impl.tensor(v, device)
-                   for k, v in self.data.items()}
+        newdata = {
+            k: v.tensor(device)
+            if hasattr(v, 'tensor')
+            else impl.tensor(v, device)
+            for k, v in self.data.items()
+        }
         new = self.__class__(newdata, self.meta)
         return new
 
-    def round(self, inplace: bool=False):
+    def round(self, inplace: bool = False):
         """
         Rounds data to the nearest integer
 
@@ -353,7 +390,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = kwimage.Points.random(3).scale(10)
             >>> self.round()
         """
-        new = self if inplace else self.__class__(self.data, self.meta)
+        new = self if inplace else self.__class__(self.data.copy(), self.meta)
         new.data['xy'] = self.data['xy'].round()
         return new
 
@@ -366,12 +403,20 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.tensor().numpy().tensor().numpy()
         """
         impl = self._impl
-        newdata = {k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
-                   for k, v in self.data.items()}
+        newdata = {
+            k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
+            for k, v in self.data.items()
+        }
         new = self.__class__(newdata, self.meta)
         return new
 
-    def draw_on(self, image: ndarray | None=None, color: str | Any | List[Any]='white', radius: None | int=None, copy: bool=False):
+    def draw_on(
+        self,
+        image: ndarray | None = None,
+        color: str | Any | List[Any] = 'white',
+        radius: None | int = None,
+        copy: bool = False,
+    ):
         """
 
         Args:
@@ -490,6 +535,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> kwplot.show_if_requested()
         """
         import kwimage
+
         if image is None:
             maxx, maxy = self.xy.max(axis=0)
             maxx = int(np.ceil(maxx) + 1)
@@ -509,7 +555,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         single_color = False
 
         if color == 'distinct':
-            colors = [kwimage.Color(c) for c in kwimage.Color.distinct(len(self))]
+            colors = [
+                kwimage.Color(c) for c in kwimage.Color.distinct(len(self))
+            ]
         elif color == 'classes':
             # TODO: read colors from categories if they exist
             class_idxs = self.data['class_idxs']
@@ -519,7 +567,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             colors = [kwimage.Color(c) for c in colors]
         else:
             num = len(self)
-            if isinstance(color, list) and not isinstance(color, numbers.Number):
+            if isinstance(color, list) and not isinstance(
+                color, numbers.Number
+            ):
                 # Passed list of color for each point
                 colors = [kwimage.Color(c) for c in color]
             else:
@@ -534,18 +584,25 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             if single_color:
                 color_value = np.array(colors[0].forimage(image))
                 image = self.data['xy'].fill(
-                    image, color_value, coord_axes=[1, 0], interp='bilinear')
+                    image, color_value, coord_axes=[1, 0], interp='bilinear'
+                )
             else:
                 # Need to loop when thare are multiple colors
-                color_values = [np.array(kwimage.Color(c).forimage(image))
-                                for c in colors]
+                color_values = [
+                    np.array(kwimage.Color(c).forimage(image)) for c in colors
+                ]
                 xy_pts = self.data['xy'].data.reshape(-1, 2)
                 for xy, color_ in zip(xy_pts, color_values):
                     image = kwimage.subpixel_setvalue(
-                        image, xy[None, :], color_, coord_axes=[1, 0],
-                        interp='bilinear')
+                        image,
+                        xy[None, :],
+                        color_,
+                        coord_axes=[1, 0],
+                        interp='bilinear',
+                    )
         else:
             import cv2
+
             image = kwimage.atleast_3channels(image, copy=copy)
             # note: ellipse has a different return type (UMat) and does not
             # work inplace if the input is not contiguous.
@@ -563,13 +620,29 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 # print('center = {!r}'.format(center))
                 # print('axes = {!r}'.format(axes))
 
-                cv2.ellipse(image, center, axes, angle=0.0, startAngle=0.0,
-                            endAngle=360.0, color=color_, thickness=-1)
+                cv2.ellipse(
+                    image,
+                    center,
+                    axes,
+                    angle=0.0,
+                    startAngle=0.0,
+                    endAngle=360.0,
+                    color=color_,
+                    thickness=-1,
+                )
 
         image = dtype_fixer(image, copy=False)
         return image
 
-    def draw(self, color: str='blue', ax: Any | None=None, alpha: Any | None=None, radius: int=1, setlim: bool=False, **kwargs):
+    def draw(
+        self,
+        color: str = 'blue',
+        ax: Any | None = None,
+        alpha: Any | None = None,
+        radius: int = 1,
+        setlim: bool = False,
+        **kwargs,
+    ):
         """
         TODO: can use kwplot.draw_points
 
@@ -585,9 +658,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = Points.random(10, classes=['a', 'b', 'c'])
             >>> self.draw(radius=0.01, color='classes')
         """
-        import kwimage
         import matplotlib as mpl
         from matplotlib import pyplot as plt
+
+        import kwimage
+
         if ax is None:
             ax = plt.gca()
         xy = self.data['xy'].data.reshape(-1, 2)
@@ -607,14 +682,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 class_idxs = self.data['class_idxs']
                 cls_colors = kwimage.Color.distinct(len(self.meta['classes']))
             except KeyError:
-                raise Exception('cannot draw class colors without class_idxs and classes')
+                raise Exception(
+                    'cannot draw class colors without class_idxs and classes'
+                )
             _keys, _vals = kwarray.group_indices(class_idxs)
             colors = list(ub.take(cls_colors, class_idxs))
         else:
             colors = [color] * len(alpha)
 
-        ptcolors = [kwimage.Color(c, alpha=a).as01('rgba')
-                    for c, a in zip(colors, alpha)]
+        ptcolors = [
+            kwimage.Color(c, alpha=a).as01('rgba')
+            for c, a in zip(colors, alpha)
+        ]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
         circlekw = {
@@ -625,13 +704,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         if 'fc' in kwargs:
             warnings.warn(
                 'Warning: specifying fc to Points.draw overrides '
-                'the color argument. Use color instead')
+                'the color argument. Use color instead'
+            )
         circlekw.update(kwargs)
         fc = circlekw.pop('fc', None)  # hack
 
         collections = []
         for pcolor, idxs in color_groups.items():
-
             # hack for fc
             if fc is not None:
                 pcolor = fc
@@ -655,7 +734,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
         return collections
 
-    def compress(self, flags, axis: int=0, inplace: bool=False):
+    def compress(self, flags, axis: int = 0, inplace: bool = False):
         """
         Filters items based on a boolean criterion
 
@@ -680,7 +759,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 raise
         return new
 
-    def take(self, indices, axis: int=0, inplace: bool=False):
+    def take(self, indices, axis: int = 0, inplace: bool = False):
         """
         Takes a subset of items at specific indices
 
@@ -702,19 +781,20 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return new
 
     @classmethod
-    def concatenate(cls, points, axis: int=0):
+    def concatenate(cls, points, axis: int = 0):
         if len(points) == 0:
             raise ValueError('need at least one box to concatenate')
         if axis != 0:
             raise ValueError('can only concatenate along axis=0')
         import kwimage
+
         first = points[0]
         datas = [p.data['xy'] for p in points]
         newxy = kwimage.Coords.concatenate(datas)
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def to_coco(self, style: str='orig') -> list[Any] | dict[str, Any]:
+    def to_coco(self, style: str = 'orig') -> list[Any] | dict[str, Any]:
         """
         Converts to an mscoco-like representation
 
@@ -781,7 +861,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     catnames = [classes[idx] for idx in class_idxs]
                     new_kpts_v2['keypoint_category_name'] = catnames
                 else:
-                    keypoint_category_id = [_idx_to_id[idx] for idx in class_idxs]
+                    keypoint_category_id = [
+                        _idx_to_id[idx] for idx in class_idxs
+                    ]
                     new_kpts_v2['keypoint_category_id'] = keypoint_category_id
             visible = self.data.get('visible', None)
             if visible is not None:
@@ -830,6 +912,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self.to_wkt()
         """
         import shapely
+
         xy = self.data['xy'].data
         geom = shapely.geometry.multipoint.MultiPoint(xy)
         return geom
@@ -870,13 +953,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> assert np.isclose(self.xy, new.xy).all()
         """
         import kwimage
+
         data: Any = {}
         data['xy'] = kwimage.Coords.from_shapely(geom)
         self = Points(data)
         return self
 
     @classmethod
-    def coerce(cls, data, classes: Any | None=None):
+    def coerce(cls, data, classes: Any | None = None):
         """
         Attempt to coerce data into a Points object
 
@@ -908,7 +992,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return cls.from_coco(coco_kpts, class_idxs=class_idxs, classes=classes)
 
     @classmethod
-    def from_coco(cls, coco_kpts: list | dict, class_idxs: list | None=None, classes: Any | None=None, warn: bool=False):
+    def from_coco(
+        cls,
+        coco_kpts: list | dict,
+        class_idxs: list | None = None,
+        classes: Any | None = None,
+        warn: bool = False,
+    ):
         """
         Args:
             coco_kpts (list | dict): either the original list keypoint encoding
@@ -1009,18 +1099,23 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     # raise Exception('classes should be specified for new-style-v2')
                 else:
                     try:
-                        class_idxs = [classes.id_to_idx[cid]
-                                      for cid in keypoint_category_id]
+                        class_idxs = [
+                            classes.id_to_idx[cid]
+                            for cid in keypoint_category_id
+                        ]
                     except AttributeError:
-                        raise TypeError('classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id')
+                        raise TypeError(
+                            'classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id'
+                        )
                     else:
                         class_idxs = np.array(class_idxs)
 
             xs = np.array(xs)
             ys = np.array(ys)
             xy = np.stack([xs, ys], axis=1)
-            self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
-                       classes=classes)
+            self = cls(
+                xy=xy, visible=visible, class_idxs=class_idxs, classes=classes
+            )
 
         elif len(coco_kpts) and isinstance(ub.peek(coco_kpts), dict):
             # new style (v1)
@@ -1030,7 +1125,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
             if class_idxs is not None:
                 if warn:
-                    warnings.warn('class_idxs should not be specified for new-style')
+                    warnings.warn(
+                        'class_idxs should not be specified for new-style'
+                    )
                 class_idxs = None
 
             drop_cidx = False
@@ -1044,14 +1141,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             if classes is None or not bool(classes):
                 # See if we can infer the classes.
                 # This may cause compatiblity issues.
-                inferred_classes = [kpdict.get('keypoint_category',
-                                               kpdict.get('category', None))
-                                    for kpdict in coco_kpts]
+                inferred_classes = [
+                    kpdict.get(
+                        'keypoint_category', kpdict.get('category', None)
+                    )
+                    for kpdict in coco_kpts
+                ]
                 if all(inferred_classes):
                     if warn:
                         warnings.warn(
                             'Inferring keypoint classes in Points.from_coco. '
-                            'It would be better to specify them explicitly')
+                            'It would be better to specify them explicitly'
+                        )
                     classes = sorted(set(inferred_classes))
 
             for kpdict in coco_kpts:
@@ -1061,7 +1162,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         try:
                             cidx = classes.id_to_idx[cid]
                         except AttributeError:
-                            raise TypeError('classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id')
+                            raise TypeError(
+                                'classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id'
+                            )
                     elif 'keypoint_category' in kpdict:
                         assert classes is not None
                         cname = kpdict['keypoint_category']
@@ -1073,15 +1176,21 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     ### Legacy support, these are not prefered names ###
                     elif 'category_id' in kpdict:
                         if warn:
-                            warnings.warn('Keypoints got category_id, but we would prefer keypoint_category_id')
+                            warnings.warn(
+                                'Keypoints got category_id, but we would prefer keypoint_category_id'
+                            )
                         cid = kpdict['category_id']
                         try:
                             cidx = classes.id_to_idx[cid]
                         except AttributeError:
-                            raise TypeError('classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id')
+                            raise TypeError(
+                                'classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id'
+                            )
                     elif 'category' in kpdict:
                         if warn:
-                            warnings.warn('Keypoints got category, but we would prefer keypoint_category')
+                            warnings.warn(
+                                'Keypoints got category, but we would prefer keypoint_category'
+                            )
                         assert classes is not None
                         cname = kpdict['category']
                         cidx = classes.index(cname)
@@ -1089,7 +1198,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     #     raise Exception('Keypoint category was not specified')
                     cidx_list.append(cidx)
                 else:
-                    if 'keypoint_category_id' in kpdict or 'keypoint_category' in kpdict:
+                    if (
+                        'keypoint_category_id' in kpdict
+                        or 'keypoint_category' in kpdict
+                    ):
                         # warnings.warn('classes should be specified for new-style')
                         # raise Exception('classes should be specified for new-style')
                         cidx_list.append(None)
@@ -1110,8 +1222,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
             xy = np.array(xy)
             visible = np.array(visible)
-            self = cls(xy=xy, visible=visible, class_idxs=cidx_list,
-                       classes=classes)
+            self = cls(
+                xy=xy, visible=visible, class_idxs=cidx_list, classes=classes
+            )
         else:
             # original style
             kp = np.array(coco_kpts).reshape(-1, 3)
@@ -1121,16 +1234,20 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 if len(class_idxs) == 0:
                     if len(kp) > 0:
                         if warn:
-                            warnings.warn('Creating keypoints with unknown class information')
+                            warnings.warn(
+                                'Creating keypoints with unknown class information'
+                            )
                         # raise Exception('Creating keypoints with unknown class information')
                         class_idxs = [-1] * len(xy)
                     else:
                         class_idxs = []
                 else:
                     assert len(class_idxs) == len(xy), '{} {}'.format(
-                        len(class_idxs), len(xy))
-            self = cls(xy=xy, visible=visible, class_idxs=class_idxs,
-                       classes=classes)
+                        len(class_idxs), len(xy)
+                    )
+            self = cls(
+                xy=xy, visible=visible, class_idxs=class_idxs, classes=classes
+            )
         return self
 
 

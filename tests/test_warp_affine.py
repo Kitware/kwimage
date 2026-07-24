@@ -1,22 +1,31 @@
-
 def test_warp_affine():
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
     # Demo how of how we also handle masked arrays
-    import kwimage
     import numpy as np
+
+    import kwimage
+
     _image = kwimage.grab_test_image('pm5644')
     _image = kwimage.ensure_float01(_image)
     _image[100:200, 400:700] = np.nan
     mask = np.isnan(_image)
     data = np.nan_to_num(_image)
     image = np.ma.MaskedArray(data=data, mask=mask)
-    transform = kwimage.Affine.coerce(scale=0.05, offset=10.5, theta=0.3, shearx=0.2)
-    warped1 = kwimage.warp_affine(image, transform, dsize='positive', antialias=1, interpolation='linear')
+    transform = kwimage.Affine.coerce(
+        scale=0.05, offset=10.5, theta=0.3, shearx=0.2
+    )
+    warped1 = kwimage.warp_affine(
+        image, transform, dsize='positive', antialias=1, interpolation='linear'
+    )
     assert isinstance(warped1, np.ma.MaskedArray)
-    warped2 = kwimage.warp_affine(image, transform, dsize='positive', antialias=0)
+    warped2 = kwimage.warp_affine(
+        image, transform, dsize='positive', antialias=0
+    )
     print('warped1.shape = {!r}'.format(warped1.shape))
     print('warped2.shape = {!r}'.format(warped2.shape))
     assert warped2.shape == warped1.shape
@@ -24,6 +33,7 @@ def test_warp_affine():
     if 0:
         # xdoctest: +REQUIRES(--show)
         import kwplot
+
         kwplot.autompl()
         pnum_ = kwplot.PlotNums(nRows=1, nCols=2)
 
@@ -36,11 +46,15 @@ def test_warp_affine():
 
 def test_warp_affine_with_nan_border():
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
-    import kwimage
     import numpy as np
+
+    import kwimage
+
     img = kwimage.ensure_float01(kwimage.grab_test_image())
     M = kwimage.Affine.affine(theta=np.pi / 8)
 
@@ -56,7 +70,7 @@ def test_warp_affine_with_nan_border():
         a1, a2 = np.asarray(a1), np.asarray(a2)
         a1nan, a2nan = np.isnan(a1), np.isnan(a2)
         nan_sameness = a1nan == a2nan
-        value_sameness = (a1 == a2)
+        value_sameness = a1 == a2
         # If they are actually the same, they should be value same xor nansame.
         flags = value_sameness ^ nan_sameness
         return flags
@@ -92,11 +106,15 @@ def test_warp_affine_with_nan_border():
 
 def test_warp_affine_with_many_chans():
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
-    import kwimage
     import numpy as np
+
+    import kwimage
+
     img = np.random.rand(5, 5, 4)
     M = kwimage.Affine.affine(theta=np.pi / 8)
 
@@ -108,22 +126,35 @@ def test_warp_affine_with_many_chans():
 
 def test_warp_affine_float64_nearest_matches_float32():
     from kwimage._backend_info import _have_cv2
+
     if not _have_cv2():
         import pytest
+
         pytest.skip('requires cv2')
-    import kwimage
     import numpy as np
+
+    import kwimage
 
     src64 = np.linspace(0, 1, 36).reshape(6, 6).astype(np.float64)
     src32 = src64.astype(np.float32)
     transform = kwimage.Affine.affine(scale=(8.6, 8.5))
 
     warped32 = kwimage.warp_affine(
-        src32, transform, dsize=(52, 51), interpolation='nearest',
-        border_value=np.nan, backend='cv2')
+        src32,
+        transform,
+        dsize=(52, 51),
+        interpolation='nearest',
+        border_value=np.nan,
+        backend='cv2',
+    )
     warped64 = kwimage.warp_affine(
-        src64, transform, dsize=(52, 51), interpolation='nearest',
-        border_value=np.nan, backend='cv2')
+        src64,
+        transform,
+        dsize=(52, 51),
+        interpolation='nearest',
+        border_value=np.nan,
+        backend='cv2',
+    )
 
     finite32 = np.isfinite(warped32)
     finite64 = np.isfinite(warped64)
@@ -131,4 +162,5 @@ def test_warp_affine_float64_nearest_matches_float32():
     assert finite32.any()
     assert np.array_equal(finite32, finite64)
     assert np.allclose(
-        warped32[finite32], warped64[finite64], atol=1e-7, rtol=0)
+        warped32[finite32], warped64[finite64], atol=1e-7, rtol=0
+    )

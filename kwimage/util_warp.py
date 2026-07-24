@@ -6,15 +6,17 @@ use multiple backends.
 TODO:
     - [ ] Replace internal padded slice with kwarray.padded_slice
 """
+
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-import ubelt as ub
-import numpy as np
+
 import kwarray
+import numpy as np
+import ubelt as ub
+
 if TYPE_CHECKING:
-    from typing import Any
-    from typing import Tuple
-    from typing import Sequence
+    from typing import Any, Sequence, Tuple
 
 
 def _coordinate_grid(dims, align_corners=False):
@@ -56,13 +58,18 @@ def _coordinate_grid(dims, align_corners=False):
 
     """
     import torch
+
     if align_corners:
+
         def _corner_grid(d):
             return torch.linspace(0, d, d)
+
         _grid_fn = _corner_grid
     else:
+
         def _disc_grid(d):
             return torch.arange(0, d)
+
         _grid_fn = _disc_grid
 
     if len(dims) == 2:
@@ -77,16 +84,26 @@ def _coordinate_grid(dims, align_corners=False):
         h_range = _grid_fn(h).view(1, h, 1).expand(d, h, w).float()  # [D, H, W]
         w_range = _grid_fn(w).view(1, 1, w).expand(d, h, w).float()  # [D, H, W]
         ones = torch.ones(d, h, w)
-        pixel_coords = torch.stack((w_range, h_range, d_range, ones), dim=0)  # [4, D, H, W]
+        pixel_coords = torch.stack(
+            (w_range, h_range, d_range, ones), dim=0
+        )  # [4, D, H, W]
         pass
     else:
         raise NotImplementedError('Can only work with 2d and 3d dims')
     return pixel_coords
 
 
-def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='bilinear',
-                padding_mode: str='zeros', isinv: bool=False, ishomog: bool | None=None,
-                align_corners: bool=False, new_mode: bool=False) -> Any:
+def warp_tensor(
+    inputs: Any,
+    mat: Any,
+    output_dims: Tuple[int, ...],
+    mode: str = 'bilinear',
+    padding_mode: str = 'zeros',
+    isinv: bool = False,
+    ishomog: bool | None = None,
+    align_corners: bool = False,
+    new_mode: bool = False,
+) -> Any:
     r"""
     A pytorch implementation of warp affine that works similarly to
     :func:`cv2.warpAffine` and :func:`cv2.warpPerspective`.
@@ -343,6 +360,7 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
     """
     import torch
     import torch.nn.functional as F
+
     if mode == 'linear':
         mode = 'bilinear'
 
@@ -416,7 +434,9 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
     X = ndims + 1
 
     # NOTE: grid_sample in torch<1.3 does not support align_corners=False correctly
-    unwarped_coords = _coordinate_grid(output_dims, align_corners=align_corners)     # [X, *DIMS]
+    unwarped_coords = _coordinate_grid(
+        output_dims, align_corners=align_corners
+    )  # [X, *DIMS]
     unwarped_coords = unwarped_coords.to(device)
 
     unwarped_coords_ = unwarped_coords.view(1, X, -1)  # [1, X, prod(DIMS)]
@@ -431,11 +451,15 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
     # Normalized the warped coordinates that align with the input to [-1, +1]
     # Anything outside of the input range is mapped outside of [-1, +1]
     if align_corners:
-        grid_coords = warped_coords * (2.0 / (input_size))  # normalize from [0, 2]
-        grid_coords -= 1.0                                  # normalize from [-1, +1]
+        grid_coords = warped_coords * (
+            2.0 / (input_size)
+        )  # normalize from [0, 2]
+        grid_coords -= 1.0  # normalize from [-1, +1]
     else:
-        grid_coords = warped_coords * (2.0 / (input_size - 1.0))  # normalize from [0, 2]
-        grid_coords -= 1.0                                        # normalize from [-1, +1]
+        grid_coords = warped_coords * (
+            2.0 / (input_size - 1.0)
+        )  # normalize from [0, 2]
+        grid_coords -= 1.0  # normalize from [-1, +1]
         if new_mode:
             # HACK: For whatever reason the -1,+1 extremes doesn't point to the
             # extreme pixels, but applying this squish factor seems to help.
@@ -444,7 +468,7 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
             # right input pixel and not (+1, +1).
             # Need to figure out what's going on in a more principled way.
             input_dims_ = torch.FloatTensor(list(input_dims))
-            squish = ((input_dims_ - 1.0) / (input_dims_))
+            squish = (input_dims_ - 1.0) / (input_dims_)
             grid_coords = grid_coords * squish[None, :, None]
 
     if False:
@@ -456,27 +480,61 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
         print('### grid')
         print(grid_coords.view(2, *output_dims))
 
-        F.grid_sample(inputs_, torch.FloatTensor(
-            [[[[-1.0, -1.0]]]]), mode='bilinear', align_corners=False)
-        F.grid_sample(inputs_, torch.FloatTensor(
-            [[[[-2 / 3, -2 / 3]]]]), mode='bilinear', align_corners=False)
-        F.grid_sample(inputs_, torch.FloatTensor(
-            [[[[0.0, 0.0]]]]), mode='bilinear', align_corners=False)
-        F.grid_sample(inputs_, torch.FloatTensor(
-            [[[[2 / 3, 2 / 3]]]]), mode='bilinear', align_corners=False)
-        F.grid_sample(inputs_, torch.FloatTensor(
-            [[[[1.0, 1.0]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(
+            inputs_,
+            torch.FloatTensor([[[[-1.0, -1.0]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
+        F.grid_sample(
+            inputs_,
+            torch.FloatTensor([[[[-2 / 3, -2 / 3]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
+        F.grid_sample(
+            inputs_,
+            torch.FloatTensor([[[[0.0, 0.0]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
+        F.grid_sample(
+            inputs_,
+            torch.FloatTensor([[[[2 / 3, 2 / 3]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
+        F.grid_sample(
+            inputs_,
+            torch.FloatTensor([[[[1.0, 1.0]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
 
-        F.grid_sample(inputs_[:, :, 0:2, 0:2], torch.FloatTensor(
-            [[[[-1 / 2, -1 / 2]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(
+            inputs_[:, :, 0:2, 0:2],
+            torch.FloatTensor([[[[-1 / 2, -1 / 2]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
         inputs_ = torch.arange(16).view(1, 1, 4, 4).float() + 1
-        F.grid_sample(inputs_, torch.FloatTensor(
-            [[[[-3 / 4, -3 / 4]]]]), mode='bilinear', align_corners=False)
+        F.grid_sample(
+            inputs_,
+            torch.FloatTensor([[[[-3 / 4, -3 / 4]]]]),
+            mode='bilinear',
+            align_corners=False,
+        )
 
         for f in np.linspace(0.5, 1.0, 10):
             print('f = {!r}'.format(f))
-            print(F.grid_sample(inputs_, torch.FloatTensor(
-                [[[[f, f]]]]), mode='bilinear', align_corners=False))
+            print(
+                F.grid_sample(
+                    inputs_,
+                    torch.FloatTensor([[[[f, f]]]]),
+                    mode='bilinear',
+                    align_corners=False,
+                )
+            )
 
     # The warped coordinate [-1, -1] will references to the left-top pixel of
     # the input, analgously [+1, +1] references the right-bottom pixel of the
@@ -508,14 +566,22 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
     if new_mode:
         # the new grid sample allows you to set align_corners, but I don't
         # remember if the previous logic depends on the old behavior.
-        outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
-                                 padding_mode=padding_mode,
-                                 align_corners=bool(align_corners))
+        outputs_ = F.grid_sample(
+            inputs_,
+            grid_coords,
+            mode=mode,
+            padding_mode=padding_mode,
+            align_corners=bool(align_corners),
+        )
     else:
         # The old grid sample always had align_corners=True
-        outputs_ = F.grid_sample(inputs_, grid_coords, mode=mode,
-                                 padding_mode=padding_mode,
-                                 align_corners=True)
+        outputs_ = F.grid_sample(
+            inputs_,
+            grid_coords,
+            mode=mode,
+            padding_mode=padding_mode,
+            align_corners=True,
+        )
 
     # Unpack outputs to match original input shape
     final_dims = list(prefix_dims) + list(output_dims)
@@ -523,7 +589,7 @@ def warp_tensor(inputs: Any, mat: Any, output_dims: Tuple[int, ...], mode: str='
     return outputs
 
 
-def subpixel_align(dst, src, index, interp_axes: Any | None=None):
+def subpixel_align(dst, src, index, interp_axes: Any | None = None):
     """
     Returns an aligned version of the source tensor and destination index.
 
@@ -536,10 +602,15 @@ def subpixel_align(dst, src, index, interp_axes: Any | None=None):
         # Assume spatial dimensions are trailing
         interp_axes = len(dst.shape) + np.arange(-min(2, len(index)), 0)
 
-    raw_subpixel_starts = np.array([0 if sl.start is None else sl.start
-                                    for sl in index])
-    raw_subpixel_stops = np.array([dst.shape[i] if sl.stop is None else sl.stop
-                                   for i, sl in enumerate(index)])
+    raw_subpixel_starts = np.array(
+        [0 if sl.start is None else sl.start for sl in index]
+    )
+    raw_subpixel_stops = np.array(
+        [
+            dst.shape[i] if sl.stop is None else sl.stop
+            for i, sl in enumerate(index)
+        ]
+    )
     raw_extent = raw_subpixel_stops - raw_subpixel_starts
 
     if not ub.iterable(src):
@@ -551,17 +622,22 @@ def subpixel_align(dst, src, index, interp_axes: Any | None=None):
     if not np.all(np.isclose(src.shape, raw_extent, atol=0.3)):
         raise ValueError(
             'Got src.shape = {}, but the raw slice extent was {}'.format(
-                tuple(src.shape), tuple(raw_extent)))
+                tuple(src.shape), tuple(raw_extent)
+            )
+        )
     if True:
         # check that all non interp slices are integral
-        noninterp_axes = np.where(~kwarray.boolmask(interp_axes, len(dst.shape)))[0]
+        noninterp_axes = np.where(
+            ~kwarray.boolmask(interp_axes, len(dst.shape))
+        )[0]
         for i in noninterp_axes:
             assert raw_subpixel_starts[i] % 1 == 0
             assert raw_subpixel_stops[i] % 1 == 0
 
     # Clip off any out of bounds
     subpixel_st, extra_padding = _rectify_slice(
-        dst.shape, raw_subpixel_starts, raw_subpixel_stops)
+        dst.shape, raw_subpixel_starts, raw_subpixel_stops
+    )
 
     subpixel_starts = np.array([a[0] for a in subpixel_st])
     subpixel_stops = np.array([a[1] for a in subpixel_st])
@@ -571,24 +647,35 @@ def subpixel_align(dst, src, index, interp_axes: Any | None=None):
 
     # Any fractional start dimension will be a positive translate
     translation = np.zeros_like(subpixel_starts, dtype=float)
-    translation += (subpixel_starts % 1)
+    translation += subpixel_starts % 1
     # Any value that is cutoff on the left is a negative translate
     translation -= subpixel_pad_left
 
     # Construct the slice in dst that will correspond to the aligned src
-    aligned_index = tuple([
-        slice(s, t) for s, t in zip(np.floor(subpixel_starts).astype(int),
-                                    np.ceil(subpixel_stops).astype(int))])
+    aligned_index = tuple(
+        [
+            slice(s, t)
+            for s, t in zip(
+                np.floor(subpixel_starts).astype(int),
+                np.ceil(subpixel_stops).astype(int),
+            )
+        ]
+    )
     # Align the source coordinates with the destination coordinates
     output_shape = [sl.stop - sl.start for sl in aligned_index]
     translation_ = [translation[i] for i in interp_axes]
-    aligned_src = subpixel_translate(src, translation_,
-                                     output_shape=output_shape,
-                                     interp_axes=interp_axes)
+    aligned_src = subpixel_translate(
+        src, translation_, output_shape=output_shape, interp_axes=interp_axes
+    )
     return aligned_src, aligned_index
 
 
-def subpixel_set(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
+def subpixel_set(
+    dst: Any,
+    src: Any,
+    index: tuple[slice, ...],
+    interp_axes: tuple[int, ...] | None = None,
+):
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -634,7 +721,12 @@ def subpixel_set(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tupl
     return dst
 
 
-def subpixel_accum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
+def subpixel_accum(
+    dst: Any,
+    src: Any,
+    index: tuple[slice, ...],
+    interp_axes: tuple[int, ...] | None = None,
+):
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -742,7 +834,12 @@ def subpixel_accum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tu
     return dst
 
 
-def subpixel_maximum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
+def subpixel_maximum(
+    dst: Any,
+    src: Any,
+    index: tuple[slice, ...],
+    interp_axes: tuple[int, ...] | None = None,
+):
     """
     Take the max of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -781,7 +878,12 @@ def subpixel_maximum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: 
     return dst
 
 
-def subpixel_minimum(dst: Any, src: Any, index: tuple[slice, ...], interp_axes: tuple[int, ...] | None=None):
+def subpixel_minimum(
+    dst: Any,
+    src: Any,
+    index: tuple[slice, ...],
+    interp_axes: tuple[int, ...] | None = None,
+):
     """
     Take the min of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -869,15 +971,21 @@ def subpixel_slice(inputs: Any, index: tuple[slice, ...]):
           [ 0.    0.    0.  ]]]
     """
     subpixel_starts = np.array(
-        [0 if sl.start is None else sl.start for sl in index])
+        [0 if sl.start is None else sl.start for sl in index]
+    )
     subpixel_stops = np.array(
-        [inputs.shape[i] if sl.stop is None else sl.stop
-         for i, sl in enumerate(index)])
+        [
+            inputs.shape[i] if sl.stop is None else sl.stop
+            for i, sl in enumerate(index)
+        ]
+    )
     is_fractional = ((subpixel_starts % 1) + (subpixel_stops % 1)) > 0
     if not np.any(is_fractional):
         # If none of the slices are fractional just do the simple thing
-        int_index = [slice(int(s), int(t)) for s, t in
-                     zip(subpixel_starts, subpixel_stops)]
+        int_index = [
+            slice(int(s), int(t))
+            for s, t in zip(subpixel_starts, subpixel_stops)
+        ]
         outputs, _ = _padded_slice(inputs, int_index)
     else:
         interp_axes = np.where(is_fractional)[0]
@@ -887,12 +995,15 @@ def subpixel_slice(inputs: Any, index: tuple[slice, ...]):
             output_shape = np.ceil(output_shape)
             # raise ValueError('the slice length must be integral')
         output_shape = output_shape.astype(int)
-        outputs = subpixel_translate(inputs, shift, interp_axes=interp_axes,
-                                     output_shape=output_shape)
+        outputs = subpixel_translate(
+            inputs, shift, interp_axes=interp_axes, output_shape=output_shape
+        )
     return outputs
 
 
-def subpixel_translate(inputs: Any, shift: Any, interp_axes: Any=None, output_shape: Any=None):
+def subpixel_translate(
+    inputs: Any, shift: Any, interp_axes: Any = None, output_shape: Any = None
+):
     """
     Translates an image by a subpixel shift value using bilinear interpolation
 
@@ -983,15 +1094,15 @@ def subpixel_translate(inputs: Any, shift: Any, interp_axes: Any=None, output_sh
             relevant_slice[i] = slice(x, x + d)
         subpxl_vals, _ = _padded_slice(inputs, relevant_slice, **padkw)
     elif interp_order == 1:
-        i, = interp_axes
-        width, = output_dims
-        x, = start
+        (i,) = interp_axes
+        (width,) = output_dims
+        (x,) = start
         # Get quantized pixel locations near subpixel pts
         x0 = int(np.floor(x))
         x1 = x0 + 1
         # Find linear weights
-        wa = (x1 - x)
-        wb = (x - x0)
+        wa = x1 - x
+        wb = x - x0
 
         # Create a (potentially negative) slice containing the relvant area
         relevant_slice = [slice(None)] * ndims
@@ -1024,12 +1135,12 @@ def subpixel_translate(inputs: Any, shift: Any, interp_axes: Any=None, output_sh
         start0 = kwarray.ArrayAPI.ifloor(start)
         start1 = start0 + 1
         alpha = start1 - start
-        beta  = start  - start0
+        beta = start - start0
         # Find bilinear weights
         wa = alpha[1] * alpha[0]
-        wb = alpha[1] *  beta[0]
-        wc =  beta[1] * alpha[0]
-        wd  = beta[1] *  beta[0]
+        wb = alpha[1] * beta[0]
+        wc = beta[1] * alpha[0]
+        wd = beta[1] * beta[0]
 
         # Create a (potentially negative) slice containing the relvant area
         relevant_slice = [slice(None)] * ndims
@@ -1073,8 +1184,9 @@ def subpixel_translate(inputs: Any, shift: Any, interp_axes: Any=None, output_sh
     return subpxl_vals
 
 
-def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
-                  pad_mode='constant', **padkw):
+def _padded_slice(
+    data, in_slice, ndim=None, pad_slice=None, pad_mode='constant', **padkw
+):
     """
     Allows slices with out-of-bound coordinates.  Any out of bounds coordinate
     will be sampled via padding.
@@ -1135,8 +1247,9 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
     low_dims = [sl.start for sl in in_slice]
     high_dims = [sl.stop for sl in in_slice]
 
-    data_slice, extra_padding = _rectify_slice(data_dims, low_dims, high_dims,
-                                               pad_slice=pad_slice)
+    data_slice, extra_padding = _rectify_slice(
+        data_dims, low_dims, high_dims, pad_slice=pad_slice
+    )
 
     in_slice_clipped = tuple(slice(*d) for d in data_slice)
     # Get the parts of the image that are in bounds
@@ -1151,14 +1264,16 @@ def _padded_slice(data, in_slice, ndim=None, pad_slice=None,
             extra_padding = extra_padding + [(0, 0)]
 
         impl = kwarray.ArrayAPI.impl(data_clipped)
-        data_sliced = impl.pad(data_clipped, extra_padding, mode=pad_mode,
-                               **padkw)
+        data_sliced = impl.pad(
+            data_clipped, extra_padding, mode=pad_mode, **padkw
+        )
 
     st_dims = data_slice[0:ndim]
     pad_dims = extra_padding[0:ndim]
 
-    st_dims = [(s - pad[0], t + pad[1])
-               for (s, t), pad in zip(st_dims, pad_dims)]
+    st_dims = [
+        (s - pad[0], t + pad[1]) for (s, t), pad in zip(st_dims, pad_dims)
+    ]
     return data_sliced, st_dims
 
 
@@ -1224,7 +1339,9 @@ def _rectify_slice(data_dims, low_dims, high_dims, pad_slice=None):
     # Normalize to left/right pad value for each dim
     pad_slice = [p if ub.iterable(p) else [p, p] for p in pad_slice]
 
-    for D_img, d_low, d_high, d_pad in zip(data_dims, low_dims, high_dims, pad_slice):
+    for D_img, d_low, d_high, d_pad in zip(
+        data_dims, low_dims, high_dims, pad_slice
+    ):
         if d_low is None:
             d_low = 0
         if d_high is None:
@@ -1232,8 +1349,8 @@ def _rectify_slice(data_dims, low_dims, high_dims, pad_slice=None):
         if d_low > d_high:
             raise ValueError('d_low > d_high: {} > {}'.format(d_low, d_high))
         # Determine where the bounds would be if the image size was inf
-        raw_low = d_low - d_pad[0]
-        raw_high = d_high + d_pad[1]
+        raw_low = d_low - d_pad[0]  # type: ignore
+        raw_high = d_high + d_pad[1]  # type: ignore
         # Clip the slice positions to the real part of the image
         sl_low = min(D_img, max(0, raw_low))
         sl_high = min(D_img, max(0, raw_high))
@@ -1302,7 +1419,9 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
         >>> kwplot.imshow(results['warp_tensor(cv2)'][0, 0], fnum=1, pnum=(1, 2, 2), title='cv2')
     """
     import cv2
+
     import kwimage
+
     impl = kwarray.ArrayAPI.impl(inputs)
 
     inputs = impl.numpy(inputs)
@@ -1343,7 +1462,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     return outputs
 
 
-def warp_points(matrix: Any, pts: Any, homog_mode: str='divide'):
+def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide'):
     """
     Warp ND points / coordinates using a transformation matrix.
 
@@ -1463,7 +1582,7 @@ def warp_points(matrix: Any, pts: Any, homog_mode: str='divide'):
     return new_pts
 
 
-def remove_homog(pts, mode: str='divide'):
+def remove_homog(pts, mode: str = 'divide'):
     """
     Remove homogenous coordinate to a point array.
 
@@ -1519,14 +1638,21 @@ def add_homog(pts):
         >>> # cv2 is 4x faster, but has more restrictive inputs
     """
     import kwarray
+
     impl = kwarray.ArrayAPI.coerce(pts)
-    new_pts = impl.cat([
-        pts, impl.ones(pts.shape[0:-1] + (1,), dtype=pts.dtype)], axis=-1)
+    new_pts = impl.cat(
+        [pts, impl.ones(pts.shape[0:-1] + (1,), dtype=pts.dtype)], axis=-1
+    )
     return new_pts
 
 
-def subpixel_getvalue(img: Any, pts: Any, coord_axes: Sequence | None=None, interp: str='bilinear',
-                      bordermode: str='edge'):
+def subpixel_getvalue(
+    img: Any,
+    pts: Any,
+    coord_axes: Sequence | None = None,
+    interp: str = 'bilinear',
+    bordermode: str = 'edge',
+):
     """
     Get values at subpixel locations
 
@@ -1611,8 +1737,14 @@ def subpixel_getvalue(img: Any, pts: Any, coord_axes: Sequence | None=None, inte
     return subpxl_vals
 
 
-def subpixel_setvalue(img: Any, pts: Any, value: Any, coord_axes: Sequence | None=None,
-                      interp: str='bilinear', bordermode: str='edge'):
+def subpixel_setvalue(
+    img: Any,
+    pts: Any,
+    value: Any,
+    coord_axes: Sequence | None = None,
+    interp: str = 'bilinear',
+    bordermode: str = 'edge',
+):
     """
     Set values at subpixel locations
 
@@ -1713,10 +1845,10 @@ def _bilinear_coords(ptsT, impl, img, coord_axes):
     r1 = impl.clip(r1, 0, r_extent - 1, out=r1)
 
     # Find bilinear weights
-    alpha0 = (c - c0)
-    alpha1 = (c1 - c)
-    beta0 = (r - r0)
-    beta1 = (r1 - r)
+    alpha0 = c - c0
+    alpha1 = c1 - c
+    beta0 = r - r0
+    beta1 = r1 - r
     wa = alpha1 * beta1
     wb = alpha1 * beta0
     wc = alpha0 * beta1
@@ -1724,10 +1856,10 @@ def _bilinear_coords(ptsT, impl, img, coord_axes):
 
     nChannels = 1 if len(img.shape) == 2 else img.shape[2]
     if nChannels != 1:
-        wa = impl.T(impl.asarray([wa] *  nChannels))
-        wb = impl.T(impl.asarray([wb] *  nChannels))
-        wc = impl.T(impl.asarray([wc] *  nChannels))
-        wd = impl.T(impl.asarray([wd] *  nChannels))
+        wa = impl.T(impl.asarray([wa] * nChannels))
+        wb = impl.T(impl.asarray([wb] * nChannels))
+        wc = impl.T(impl.asarray([wc] * nChannels))
+        wd = impl.T(impl.asarray([wd] * nChannels))
 
     r0 = impl.astype(r0, int)
     r1 = impl.astype(r1, int)

@@ -35,14 +35,16 @@ mkinit ~/code/kwimage/kwimage/__init__.py --relative --nomod  --diff --lazy-load
 """
 
 import os
+
 if os.environ.get('REQUIRE_CV2', ''):
     try:
         if not os.environ.get('_ARGCOMPLETE', ''):
             import cv2  # NOQA
     except ImportError as ex:
         import ubelt as ub
+
         msg = ub.paragraph(
-            '''
+            """
             The kwimage module failed to import the cv2 module.  This may be due to
             an issue https://github.com/opencv/opencv-python/issues/467 which
             prevents us from marking cv2 as package dependency.
@@ -59,11 +61,15 @@ if os.environ.get('REQUIRE_CV2', ''):
             We appologize for this issue and hope this documentation is sufficient.
 
             orig_ex={!r}
-            ''').format(ex)
+            """
+        ).format(ex)
         raise ImportError(msg)
 
 __ignore__ = [
-    'BASE_COLORS', 'XKCD_COLORS', 'TABLEAU_COLORS', 'CSS4_COLORS',
+    'BASE_COLORS',
+    'XKCD_COLORS',
+    'TABLEAU_COLORS',
+    'CSS4_COLORS',
     'TORCH_GRID_SAMPLE_HAS_ALIGN',
 ]
 
@@ -195,28 +201,90 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
     },
 )
 
-__all__ = ['Affine', 'Box', 'Boxes', 'Color', 'Coords', 'Detections',
-           'Heatmap', 'Linear', 'Mask', 'MaskList', 'Matrix', 'MultiPolygon',
-           'Points', 'PointsList', 'Polygon', 'PolygonList', 'Projective',
-           'Segmentation', 'SegmentationList', 'Transform', 'add_homog',
-           'atleast_3channels', 'available_nms_impls', 'checkerboard',
-           'connected_components', 'convert_colorspace', 'daq_spatial_nms',
-           'decode_run_length', 'draw_boxes_on_image', 'draw_clf_on_image',
-           'draw_header_text', 'draw_line_segments_on_image',
-           'draw_text_on_image', 'draw_vector_field', 'encode_run_length',
-           'ensure_alpha_channel', 'ensure_float01', 'ensure_uint255',
-           'exactly_1channel', 'fill_nans_with_checkers',
-           'find_robust_normalizers', 'fourier_mask', 'gaussian_blur',
-           'gaussian_patch', 'grab_test_image', 'grab_test_image_fpath',
-           'imcrop', 'imread', 'imresize', 'imscale', 'imwrite',
-           'load_image_shape', 'make_channels_comparable', 'make_heatmask',
-           'make_orimask', 'make_vector_field', 'morphology',
-           'nodata_checkerboard', 'non_max_supression', 'normalize',
-           'normalize_intensity', 'num_channels', 'overlay_alpha_images',
-           'overlay_alpha_layers', 'padded_slice', 'radial_fourier_mask',
-           'remove_homog', 'rle_translate', 'smooth_prob', 'stack_images',
-           'stack_images_grid', 'subpixel_accum', 'subpixel_align',
-           'subpixel_getvalue', 'subpixel_maximum', 'subpixel_minimum',
-           'subpixel_set', 'subpixel_setvalue', 'subpixel_slice',
-           'subpixel_translate', 'warp_affine', 'warp_image', 'warp_points',
-           'warp_projective', 'warp_tensor']
+__all__ = [
+    'Affine',
+    'Box',
+    'Boxes',
+    'Color',
+    'Coords',
+    'Detections',
+    'Heatmap',
+    'Linear',
+    'Mask',
+    'MaskList',
+    'Matrix',
+    'MultiPolygon',
+    'Points',
+    'PointsList',
+    'Polygon',
+    'PolygonList',
+    'Projective',
+    'Segmentation',
+    'SegmentationList',
+    'Transform',
+    'add_homog',
+    'atleast_3channels',
+    'available_nms_impls',
+    'checkerboard',
+    'connected_components',
+    'convert_colorspace',
+    'daq_spatial_nms',
+    'decode_run_length',
+    'draw_boxes_on_image',
+    'draw_clf_on_image',
+    'draw_header_text',
+    'draw_line_segments_on_image',
+    'draw_text_on_image',
+    'draw_vector_field',
+    'encode_run_length',
+    'ensure_alpha_channel',
+    'ensure_float01',
+    'ensure_uint255',
+    'exactly_1channel',
+    'fill_nans_with_checkers',
+    'find_robust_normalizers',
+    'fourier_mask',
+    'gaussian_blur',
+    'gaussian_patch',
+    'grab_test_image',
+    'grab_test_image_fpath',
+    'imcrop',
+    'imread',
+    'imresize',
+    'imscale',
+    'imwrite',
+    'load_image_shape',
+    'make_channels_comparable',
+    'make_heatmask',
+    'make_orimask',
+    'make_vector_field',
+    'morphology',
+    'nodata_checkerboard',
+    'non_max_supression',
+    'normalize',
+    'normalize_intensity',
+    'num_channels',
+    'overlay_alpha_images',
+    'overlay_alpha_layers',
+    'padded_slice',
+    'radial_fourier_mask',
+    'remove_homog',
+    'rle_translate',
+    'smooth_prob',
+    'stack_images',
+    'stack_images_grid',
+    'subpixel_accum',
+    'subpixel_align',
+    'subpixel_getvalue',
+    'subpixel_maximum',
+    'subpixel_minimum',
+    'subpixel_set',
+    'subpixel_setvalue',
+    'subpixel_slice',
+    'subpixel_translate',
+    'warp_affine',
+    'warp_image',
+    'warp_points',
+    'warp_projective',
+    'warp_tensor',
+]

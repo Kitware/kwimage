@@ -1,11 +1,11 @@
-import skimage
-import numpy as np
-import kwplot
-import ubelt as ub
 import cv2
 import kwplot
-import kwimage
+import numpy as np
 import shapely
+import skimage
+import ubelt as ub
+
+import kwimage
 
 
 def check_fill_poly_properties():
@@ -49,12 +49,11 @@ def check_fill_poly_properties():
 
     geom = shapely.geometry.Polygon(
         shell=self.data['exterior'].data,
-        holes=[c.data for c in self.data['interiors']]
+        holes=[c.data for c in self.data['interiors']],
     )
 
     xs, ys = self.data['exterior'].data.T
     rr, cc = skimage.draw.polygon(xs, ys)
-
 
     mask = np.zeros(shape, dtype=np.uint8)
 
@@ -80,12 +79,15 @@ def check_fill_poly_properties():
             rr, cc = skimage.draw.polygon(xs, ys)
 
     from PIL import Image, ImageDraw
+
     for timer in ti.reset('PIL'):
         height, width = shape
         pil_img = Image.new('L', (width, height), 0)
         with timer:
             draw_obj = ImageDraw.Draw(pil_img)
-            pil_poly = self.data['exterior'].data.astype(np.int).ravel().tolist()
+            pil_poly = (
+                self.data['exterior'].data.astype(np.int).ravel().tolist()
+            )
             pil_poly = pil_poly + pil_poly[0:2]
             draw_obj.polygon(pil_poly, outline=0, fill=255)
             mask = np.array(pil_img)

@@ -3,7 +3,9 @@ Helpers that may be required across different backends.
 """
 
 
-def _coerce_warp_dsize_inputs(dsize, input_dsize, transform, require_warped_info=False):
+def _coerce_warp_dsize_inputs(
+    dsize, input_dsize, transform, require_warped_info=False
+):
     """
     Given a warp operation, we will often need to preallocate size for the
     destination canvas. This may be specified by the user, but it is helpful to
@@ -42,6 +44,7 @@ def _coerce_warp_dsize_inputs(dsize, input_dsize, transform, require_warped_info
             ...
     """
     import numpy as np
+
     import kwimage
 
     w, h = input_dsize
@@ -54,7 +57,9 @@ def _coerce_warp_dsize_inputs(dsize, input_dsize, transform, require_warped_info
         # calculate dimensions needed for auto/max/try_large_warp
         input_box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = input_box.warp(transform)
-        max_dsize = tuple(map(int, warped_box.to_xywh().quantize().data[0, 2:4]))
+        max_dsize = tuple(
+            map(int, warped_box.to_xywh().quantize().data[0, 2:4])
+        )
         new_origin = warped_box.to_ltrb().data[0, 0:2]
         if 0:
             # import rich
@@ -103,6 +108,7 @@ def _coerce_warp_dsize_inputs(dsize, input_dsize, transform, require_warped_info
                 dsize = (new_w, new_h)
         elif dsize in {'content', 'max'}:
             dsize = max_dsize
+            assert new_origin is not None
             transform_ = kwimage.Affine.translate(-new_origin) @ transform
             new_origin = np.array([0, 0])
         else:

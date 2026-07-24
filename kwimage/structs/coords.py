@@ -3,22 +3,25 @@ Coordinates the fundamental "point" datatype. They do not contain metadata,
 only geometry. See the `Points` data type for a structure that maintains
 metadata on top of coordinate data.
 """
+
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
+
+import warnings
+from typing import TYPE_CHECKING, Any
+
+import kwarray
 import numpy as np
 import ubelt as ub
-import warnings
-import kwarray
+
 from kwimage.structs import _generic
+
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
-    from typing import Sequence
-    from typing import Tuple
-    from typing import Callable
-    from typing import Any
-    from numpy import ndarray
-    from typing import List
+    from typing import Any, List, Sequence, Tuple
+
     import matplotlib as mpl
+    from numpy import ndarray
+    from numpy.typing import ArrayLike
+
     from kwimage._typing import TransformLike
 
 try:
@@ -29,8 +32,13 @@ except ImportError:
 
 try:
     import imgaug
-    _HAS_IMGAUG_FLIP_BUG = LooseVersion(imgaug.__version__) <= LooseVersion('0.2.9') and not hasattr(imgaug.augmenters.size, '_crop_and_pad_kpsoi')
-    _HAS_IMGAUG_XY_ARRAY = LooseVersion(imgaug.__version__) >= LooseVersion('0.2.9')
+
+    _HAS_IMGAUG_FLIP_BUG = LooseVersion(imgaug.__version__) <= LooseVersion(
+        '0.2.9'
+    ) and not hasattr(imgaug.augmenters.size, '_crop_and_pad_kpsoi')
+    _HAS_IMGAUG_XY_ARRAY = LooseVersion(imgaug.__version__) >= LooseVersion(
+        '0.2.9'
+    )
 except ImportError:
     imgaug = None
     _HAS_IMGAUG_FLIP_BUG = None
@@ -40,7 +48,8 @@ except Exception as ex:
     warnings.warn(
         f'The imgaug module was installed, but failed to import. '
         f'The module is deprecated and is no longer compatible with numpy 2.x. '
-        f'The error was: {ex}')
+        f'The error was: {ex}'
+    )
     _HAS_IMGAUG_FLIP_BUG = None
     _HAS_IMGAUG_XY_ARRAY = None
 
@@ -108,9 +117,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         >>> self.numpy()
         >>> #self.draw_on()
     """
+
     # __slots__ = ('data', 'meta',)  # turn on when no longer developing
 
-    def __init__(self, data: Any | None=None, meta: Any | None=None) -> None:
+    def __init__(
+        self, data: Any | None = None, meta: Any | None = None
+    ) -> None:
         if isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data and meta are explicitly specified
@@ -154,7 +166,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return new
 
     @classmethod
-    def random(Coords, num: int=1, dim: int=2, rng: Any | None=None, meta: Any | None=None):
+    def random(
+        Coords,
+        num: int = 1,
+        dim: int = 2,
+        rng: Any | None = None,
+        meta: Any | None = None,
+    ):
         """
         Makes random coordinates; typically for testing purposes
         """
@@ -176,7 +194,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         return self._impl.is_tensor
 
-    def compress(self, flags: ArrayLike, axis: int=0, inplace: bool=False) -> Coords:
+    def compress(
+        self, flags: ArrayLike, axis: int = 0, inplace: bool = False
+    ) -> Coords:
         """
         Filters items based on a boolean criterion
 
@@ -208,7 +228,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.compress(new.data, flags, axis=axis)
         return new
 
-    def take(self, indices: ArrayLike, axis: int=0, inplace: bool=False) -> Coords:
+    def take(
+        self, indices: ArrayLike, axis: int = 0, inplace: bool = False
+    ) -> Coords:
         """
         Takes a subset of items at specific indices
 
@@ -234,7 +256,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.take(new.data, indices, axis=axis)
         return new
 
-    def astype(self, dtype, inplace: bool=False) -> Coords:
+    def astype(self, dtype, inplace: bool = False) -> Coords:
         """
         Changes the data type
 
@@ -249,7 +271,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.astype(new.data, dtype, copy=not inplace)
         return new
 
-    def round(self, decimals: int=0, inplace: bool=False) -> Coords:
+    def round(self, decimals: int = 0, inplace: bool = False) -> Coords:
         """
         Rounds data to the specified decimal place
 
@@ -290,7 +312,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return self.__class__(data_, self.meta)
 
     @classmethod
-    def concatenate(cls, coords: Sequence[Coords], axis: int=0) -> Coords:
+    def concatenate(cls, coords: Sequence[Coords], axis: int = 0) -> Coords:
         """
         Concatenates lists of coordinates together
 
@@ -379,7 +401,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def reorder_axes(self, new_order: Tuple[int], inplace: bool=False) -> Coords:
+    def reorder_axes(
+        self, new_order: Tuple[int], inplace: bool = False
+    ) -> Coords:
         """
         Change the ordering of the coordinate axes.
 
@@ -427,7 +451,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.all(bad.data[:, 1] == self.data[:, 0])
         """
         impl = self._impl
-        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        new = (
+            self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        )
 
         if True:
             # --- Method 1 - Slicing ---
@@ -445,6 +471,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             # Benchmark different methods, using slicing tricks seems
             # to have the best default behavior
             import timerit
+
             ti = timerit.Timerit(100, bestof=10, verbose=2)
             for timer in ti.reset('method2-apply'):
                 new = self.copy()
@@ -469,8 +496,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     new.data += 10
         return new
 
-    def warp(self, transform: TransformLike, input_dims: Tuple | None=None, output_dims: Tuple | None=None,
-             inplace: bool=False) -> Coords:
+    def warp(
+        self,
+        transform: TransformLike,
+        input_dims: Tuple | None = None,
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
+    ) -> Coords:
         """
         Generalized coordinate transform.
 
@@ -541,8 +573,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         import kwimage
         from kwimage._typing import SKImageGeometricTransform
+
         impl = self._impl
-        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        new = (
+            self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        )
         if transform is None:
             return new
         elif _generic.isinstance_arraytypes(transform):
@@ -552,7 +587,6 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         elif isinstance(transform, SKImageGeometricTransform):
             matrix = transform.params
         else:
-
             ### Try to accept imgaug tranforms ###
             if imgaug is not None:
                 if isinstance(transform, imgaug.augmenters.Augmenter):
@@ -656,7 +690,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> new.draw(color='blue', alpha=.8, radius=0.5, coord_axes=[1, 0])
         """
         impl = self._impl
-        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        new = (
+            self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        )
         kpoi = new.to_imgaug(input_dims=input_dims)
         # print('kpoi = {!r}'.format(kpoi))
         new_kpoi = augmenter.augment_keypoints(kpoi)
@@ -666,7 +702,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             # imgaug.__version__ >= 0.2.9
             xy = new_kpoi.to_xy_array().astype(dtype)
         else:
-            xy = np.array([[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype)
+            xy = np.array(
+                [[kp.x, kp.y] for kp in new_kpoi.keypoints], dtype=dtype
+            )
         new.data = xy
         return new
 
@@ -688,6 +726,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.allclose(new.data, self.data)
         """
         import imgaug
+
         if _HAS_IMGAUG_FLIP_BUG:
             # Hack to fix imgaug bug
             h, w = input_dims
@@ -701,7 +740,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
             else:
                 kpoi = imgaug.KeypointsOnImage.from_xy_array(
-                    self.data, shape=input_dims)
+                    self.data, shape=input_dims
+                )
         else:
             kps = [imgaug.Keypoint(x, y) for x, y in self.data]
             kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
@@ -735,6 +775,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> print(f'geom={geom}')
         """
         import shapely
+
         geom = shapely.geometry.multipoint.MultiPoint(self.data)
         return geom
 
@@ -770,7 +811,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         self = cls(xy)
         return self
 
-    def scale(self, factor: float | Tuple[float, float], about: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False) -> Coords:
+    def scale(
+        self,
+        factor: float | Tuple[float, float],
+        about: Tuple | None = None,
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
+    ) -> Coords:
         """
         Scale coordinates by a factor
 
@@ -800,7 +847,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert new.data.dtype.kind == 'f'
         """
         impl = self._impl
-        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        new = (
+            self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        )
         data: Any = new.data
 
         # if not inplace:
@@ -814,7 +863,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             else:
                 factor_ = factor
 
-            if self._impl.dtype_kind(data) != 'f' and self._impl.dtype_kind(factor_) == 'f':
+            if (
+                self._impl.dtype_kind(data) != 'f'
+                and self._impl.dtype_kind(factor_) == 'f'
+            ):
                 data: Any = self._impl.astype(data, factor_.dtype)
 
             assert factor_.shape == (dim,)
@@ -829,7 +881,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = data
         return new
 
-    def translate(self, offset: float | Tuple[float, float], output_dims: Tuple | None=None, inplace: bool=False) -> Coords:
+    def translate(
+        self,
+        offset: float | Tuple[float, float],
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
+    ) -> Coords:
         """
         Shift the coordinates
 
@@ -852,7 +909,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> Coords.random(3, dim=3, rng=0).translate((1, 2, 3))
         """
         impl = self._impl
-        new = self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        new = (
+            self if inplace else self.__class__(impl.copy(self.data), self.meta)
+        )
         data: Any = new.data
         if not inplace:
             data = new.data = impl.copy(data)
@@ -869,7 +928,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data += offset_
         return new
 
-    def rotate(self, theta: float, about: Tuple | None=None, output_dims: Tuple | None=None, inplace: bool=False) -> Coords:
+    def rotate(
+        self,
+        theta: float,
+        about: Tuple | None = None,
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
+    ) -> Coords:
         """
         Rotate the coordinates about a point.
 
@@ -934,8 +999,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         if about is None:
             sin_ = np.sin(theta)
             cos_ = np.cos(theta)
-            rot_ = np.array([[cos_, -sin_],
-                             [sin_,  cos_]], dtype=dtype)
+            rot_ = np.array([[cos_, -sin_], [sin_, cos_]], dtype=dtype)
         else:
             about_ = self._rectify_about(about)
             """
@@ -984,10 +1048,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             x0, y0 = about_
             sin_ = np.sin(theta)
             cos_ = np.cos(theta)
-            rot_ = np.array([
-                [ cos_, -sin_, -x0 * cos_ + y0 * sin_ + x0],
-                [ sin_,  cos_, -x0 * sin_ - y0 * cos_ + y0],
-                [    0,     0,                           1]])
+            rot_ = np.array(
+                [
+                    [cos_, -sin_, -x0 * cos_ + y0 * sin_ + x0],
+                    [sin_, cos_, -x0 * sin_ - y0 * cos_ + y0],
+                    [0, 0, 1],
+                ]
+            )
         return self.warp(rot_, output_dims=output_dims, inplace=inplace)
 
     def _rectify_about(self, about):
@@ -1011,7 +1078,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 about_ = about if ub.iterable(about) else [about] * self.dim
         return about_
 
-    def fill(self, image, value, coord_axes: Tuple | None=None, interp: str='bilinear') -> ndarray:
+    def fill(
+        self,
+        image,
+        value,
+        coord_axes: Tuple | None = None,
+        interp: str = 'bilinear',
+    ) -> ndarray:
         """
         Sets sub-coordinate locations in a grid to a particular value
 
@@ -1024,12 +1097,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             ndarray: image with coordinates rasterized on it
         """
         import kwimage
+
         index = self.data
-        image = kwimage.subpixel_setvalue(image, index, value,
-                                          coord_axes=coord_axes, interp=interp)
+        image = kwimage.subpixel_setvalue(
+            image, index, value, coord_axes=coord_axes, interp=interp
+        )
         return image
 
-    def soft_fill(self, image, coord_axes: Tuple | None=None, radius: int=5) -> ndarray:
+    def soft_fill(
+        self, image, coord_axes: Tuple | None = None, radius: int = 5
+    ) -> ndarray:
         """
         Used for drawing keypoint truth in heatmaps
 
@@ -1090,21 +1167,21 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         image_ndims = len(image.shape)
 
         for pt in self.data:
-
             # Find a grid of coordinates on the image to fill for this point
             low = np.floor(pt - radius).astype(int)
             high = np.ceil(pt + radius).astype(int)
-            grid = np.dstack(np.mgrid[tuple(
-                slice(s, t) for s, t in zip(low, high))])
+            grid = np.dstack(
+                np.mgrid[tuple(slice(s, t) for s, t in zip(low, high))]
+            )
 
             # Flatten the grid into a list of coordinates to be filled
             rows_of_coords = grid.reshape(-1, grid.shape[-1])
 
             # Remove grid coordinates that are out of bounds
             lower_bound = np.array([0, 0])
-            upper_bound = np.array([
-                image.shape[i] for i in coord_axes
-            ])[None, :]
+            upper_bound = np.array([image.shape[i] for i in coord_axes])[
+                None, :
+            ]
             in_bounds_flags1 = (rows_of_coords >= lower_bound).all(axis=1)
             rows_of_coords = rows_of_coords[in_bounds_flags1]
             in_bounds_flags2 = (rows_of_coords < upper_bound).all(axis=1)
@@ -1137,11 +1214,15 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                     if len(rows_of_coords) == 1:
                         if len(new_values.shape) != 0:
                             import warnings
-                            warnings.warn(ub.paragraph(
-                                '''
+
+                            warnings.warn(
+                                ub.paragraph(
+                                    """
                                 Scipy fixed the bug in multivariate_normal!
                                 We can remove this stupid hack!
-                                '''))
+                                """
+                                )
+                            )
                         else:
                             # Ensure new_values is always a list of scalars
                             new_values = new_values[None]
@@ -1165,8 +1246,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         return image
 
-    def draw_on(self, image: Any | None=None, fill_value: int=1, coord_axes: Tuple=[1, 0],
-                interp: str='bilinear') -> ndarray:
+    def draw_on(
+        self,
+        image: Any | None = None,
+        fill_value: int = 1,
+        coord_axes: Tuple = [1, 0],
+        interp: str = 'bilinear',
+    ) -> ndarray:
         """
         Note:
             unlike other methods, the defaults assume x/y internal data
@@ -1210,12 +1296,20 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             shape_ = self._impl.max(self.data, axis=0).astype(int)
             shape = tuple((shape_ + 1).tolist())
             image = self._impl.zeros(self.meta.get('shape', shape))
-        image = self.fill(image, fill_value, coord_axes=coord_axes,
-                          interp=interp)
+        image = self.fill(
+            image, fill_value, coord_axes=coord_axes, interp=interp
+        )
         return image
 
-    def draw(self, color: str='blue', ax: Any | None=None, alpha: Any | None=None, coord_axes: Tuple=[1, 0],
-             radius: int=1, setlim: bool=False) -> List[mpl.collections.PatchCollection]:
+    def draw(
+        self,
+        color: str = 'blue',
+        ax: Any | None = None,
+        alpha: Any | None = None,
+        coord_axes: Tuple = [1, 0],
+        radius: int = 1,
+        setlim: bool = False,
+    ) -> List[mpl.collections.PatchCollection]:
         """
         Draw these coordinates via matplotlib
 
@@ -1247,8 +1341,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> plt.gca().set_aspect('equal')
         """
         import matplotlib as mpl
-        import kwimage
         from matplotlib import pyplot as plt
+
+        import kwimage
+
         if ax is None:
             ax = plt.gca()
         data: Any = self.data
@@ -1265,10 +1361,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         ptcolors = [kwimage.Color(color, alpha=a).as01('rgba') for a in alpha]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
-        default_centerkw = {
-            'radius': radius,
-            'fill': True
-        }
+        default_centerkw = {'radius': radius, 'fill': True}
         centerkw = default_centerkw.copy()
         collections = []
         for pcolor, idxs in color_groups.items():
@@ -1298,10 +1391,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             ax.set_ylim(y1, y2)
         return collections
 
+
 if __name__ == '__main__':
     """
     CommandLine:
         python -m kwimage.structs.coords all
     """
     import xdoctest
+
     xdoctest.doctest_module(__file__)

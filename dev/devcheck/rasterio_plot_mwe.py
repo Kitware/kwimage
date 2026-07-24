@@ -1,28 +1,30 @@
-
-
 def rasterio_mwe():
     import tempfile
-    import kwimage
-    from osgeo import osr
+
     import ubelt as ub
+    from osgeo import osr
+
+    import kwimage
 
     img_dpath = ub.Path(tempfile.mkdtemp())
 
     # Create a polygon in "World Space"
-    wld_polygon_crs84 = kwimage.Polygon(exterior=[
-        [15, -20],
-        [14, -30],
-        [13, -31],
-        [17, -32],
-        [18, -28],
-        [16, -25],
-    ])
+    wld_polygon_crs84 = kwimage.Polygon(
+        exterior=[
+            [15, -20],
+            [14, -30],
+            [13, -31],
+            [17, -32],
+            [18, -28],
+            [16, -25],
+        ]
+    )
     wld_box_crs84 = wld_polygon_crs84.bounding_box()
     wld_box_corners_crs84 = wld_box_crs84.corners()
 
     # This will correspond to an image we will write.
     img_width, img_height = 200, 300
-    image_box = kwimage.Boxes([[0, 0, img_width, img_height]], "xywh")
+    image_box = kwimage.Boxes([[0, 0, img_width, img_height]], 'xywh')
     image_corners = image_box.corners().astype(float)
 
     # Using the corners of the image box in pixel space and world box in CRS84,
@@ -32,7 +34,11 @@ def rasterio_mwe():
     # Inspecting the transform shows that it is an offset, two positive scale
     # factors, and negligable rotation / skew. This makes sense given the
     # corner points we fit.
-    print('wld_box_corners_crs84 =\n{}'.format(ub.urepr(wld_box_corners_crs84, nl=1)))
+    print(
+        'wld_box_corners_crs84 =\n{}'.format(
+            ub.urepr(wld_box_corners_crs84, nl=1)
+        )
+    )
     print('image_corners =\n{}'.format(ub.urepr(image_corners, nl=1)))
     print('Transform WLD -> IMG ' + ub.urepr(tf_img_from_wld.decompose()))
 
@@ -43,7 +49,7 @@ def rasterio_mwe():
     wld_polygon_pxl = wld_polygon_crs84.warp(tf_img_from_wld)
 
     # Now lets make some random image data and draw our feature on it.
-    _imdata = kwimage.grab_test_image("amazon")
+    _imdata = kwimage.grab_test_image('amazon')
     imdata = kwimage.imresize(_imdata, dsize=(img_width, img_height))
     imdata = kwimage.ensure_float01(imdata)
     imdata = wld_polygon_pxl.draw_on(imdata, color='orange', alpha=0.8)
@@ -61,10 +67,10 @@ def rasterio_mwe():
     kwimage.imwrite(
         img_fpath,
         imdata,
-        backend="gdal",
+        backend='gdal',
         crs=crs,
         transform=tf_wld_from_img,
-        overviews="auto",
+        overviews='auto',
     )
 
     ####
@@ -89,6 +95,7 @@ def rasterio_mwe():
     # First let's draw the image in pixel space and overlay the pixel space
     # world polygon on top of it.
     import kwplot
+
     kwplot.autompl()
     imdata = kwimage.imread(img_fpath)
     _, ax = kwplot.imshow(imdata, pnum=(1, 3, 1))
@@ -110,6 +117,7 @@ def rasterio_mwe():
 
     # Hmm, the data is upside down. That seems off.
     from osgeo import gdal
+
     gdal_info = gdal.Info(str(img_fpath), format='json')
     cornerCoordinates = gdal_info['cornerCoordinates']
 
@@ -121,5 +129,3 @@ def rasterio_mwe():
     # Hmm, but the rasterio bands are indicating -32 is at the bottom.  that
     # doesn't seem to agree with the metadata in the geotiff. Why is this?
     print(f'source.bounds={source.bounds}')
-
-

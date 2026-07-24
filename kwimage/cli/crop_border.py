@@ -11,13 +11,19 @@ class CropBorderCLI(scfg.DataConfig):
     all white) borders, and then saves the result to the specified destination.
     If no destination is provided, the original image is overwritten.
     """
+
     __command__ = 'crop_border'
-    src = scfg.Value(None, position=1, help="Path to the input image.")
-    dst = scfg.Value(None, position=2, help=ub.paragraph(
-        '''
+    src = scfg.Value(None, position=1, help='Path to the input image.')
+    dst = scfg.Value(
+        None,
+        position=2,
+        help=ub.paragraph(
+            """
         Path to save the cropped image. Defaults to overwriting the input file
         if not specified
-        '''))
+        """
+        ),
+    )
 
     @classmethod
     def main(cls, argv=1, **kwargs):
@@ -32,9 +38,11 @@ class CropBorderCLI(scfg.DataConfig):
             >>> cls.main(argv=argv, **config)
         """
         import rich
-        import kwimage
         from rich.markup import escape
+
+        import kwimage
         from kwimage.im_core import crop_border_by_color
+
         config = cls.cli(argv=argv, data=kwargs, strict=True)
         rich.print('config = ' + escape(ub.urepr(config, nl=1)))
 

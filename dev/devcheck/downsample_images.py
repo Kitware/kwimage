@@ -1,16 +1,33 @@
-
 def resize_all():
     in_dpath = '/media/joncrall/raid/Pictures/Bezoar'
     out_dpath = '/media/joncrall/raid/Pictures/BezoarSmall'
 
     IMAGE_EXTENSIONS = (
-        '.bmp', '.pgm', '.jpg', '.jpeg', '.png', '.tif', '.tiff',
-        '.ntf', '.nitf', '.ptif', '.cog.tiff', '.cog.tif', '.r0',
-        '.r1', '.r2', '.r3', '.r4', '.r5', '.nsf',
+        '.bmp',
+        '.pgm',
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.tif',
+        '.tiff',
+        '.ntf',
+        '.nitf',
+        '.ptif',
+        '.cog.tiff',
+        '.cog.tif',
+        '.r0',
+        '.r1',
+        '.r2',
+        '.r3',
+        '.r4',
+        '.r5',
+        '.nsf',
     )
     import os
     from os.path import join, relpath
+
     import kwimage
+
     recursive = False
 
     max_dim = 2000
@@ -28,6 +45,7 @@ def resize_all():
             tasks.append((in_fpath, out_fpath))
 
     import ubelt as ub
+
     for in_fpath, out_fpath in ub.ProgIter(tasks):
         in_imdata = kwimage.imread(in_fpath)
         out_imdata = kwimage.imresize(in_imdata, max_dim=max_dim)

@@ -5,18 +5,23 @@ Timed best=2.426 ms, mean=2.539 ± 0.1 ms for impl=torch,type=tensor-cuda0
 Timed best=4.455 ms, mean=4.686 ± 0.2 ms for impl=torch,type=ndarray
 Timed best=12.725 ms, mean=13.007 ± 0.2 ms for impl=numpy,type=ndarray
 """
-import torch
-import numpy as np
-import kwimage
+
 import copy
-import ubelt as ub
-import timerit
 import itertools as it
+
+import numpy as np
+import timerit
+import torch
+import ubelt as ub
+
+import kwimage
+
 # from kwimage.algo._nms_backend.torch_nms import torch_nms
 
 
 def ensure_numpy_indices(keep):
     import kwarray
+
     keep = kwarray.ArrayAPI.numpy(keep)
     # if torch.is_tensor(keep):
     #     keep = keep.data.cpu().numpy()
@@ -67,7 +72,22 @@ def benchamrk_det_nms():
     # max number of boxes yolo will spit out at a time
     max_boxes = 19 * 19 * 5
 
-    xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 700, 1000, 1500, max_boxes]
+    xdata = [
+        10,
+        20,
+        40,
+        80,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        1000,
+        1500,
+        max_boxes,
+    ]
     # xdata = [10, 20, 40, 80, 100, 200, 300, 400, 500]
 
     # Demo values
@@ -77,13 +97,34 @@ def benchamrk_det_nms():
         xdata = [10, 100, 500, 1000, 1500, 2000, 5000, 10000]
 
     if ub.argflag('--medium'):
-        xdata = [1000, 5000, 10000, 20000, 50000, ]
+        xdata = [
+            1000,
+            5000,
+            10000,
+            20000,
+            50000,
+        ]
 
     if ub.argflag('--large'):
-        xdata = [1000, 5000, 10000, 20000, 50000, 100000, ]
+        xdata = [
+            1000,
+            5000,
+            10000,
+            20000,
+            50000,
+            100000,
+        ]
 
     if ub.argflag('--extra-large'):
-        xdata = [1000, 2000, 10000, 20000, 40000, 100000, 200000, ]
+        xdata = [
+            1000,
+            2000,
+            10000,
+            20000,
+            40000,
+            100000,
+            200000,
+        ]
 
     title_parts = []
 
@@ -99,15 +140,12 @@ def benchamrk_det_nms():
     title_parts.append('thresh={:.2f}'.format(thresh))
 
     from kwimage.algo.algo_nms import available_nms_impls
+
     valid_impls = available_nms_impls()
     print('valid_impls = {!r}'.format(valid_impls))
 
     basis = {
-        'type': [
-            'ndarray',
-            'tensor-cpu',
-            'tensor-cuda0'
-        ],
+        'type': ['ndarray', 'tensor-cpu', 'tensor-cuda0'],
         # 'daq': [True, False],
         # 'daq': [False],
         # 'device': [None],
@@ -121,8 +159,9 @@ def benchamrk_det_nms():
     # if torch.cuda.is_available():
     #     basis['device'].append(0)
 
-    combos = [ub.dzip(basis.keys(), vals)
-              for vals in it.product(*basis.values())]
+    combos = [
+        ub.dzip(basis.keys(), vals) for vals in it.product(*basis.values())
+    ]
 
     def is_valid_combo(combo):
         # if combo['impl'] in {'py', 'cython_cpu'} and combo['device'] is not None:
@@ -149,12 +188,10 @@ def benchamrk_det_nms():
                 {'impl': 'numpy', 'type': 'tensor-cpu'},
                 # {'impl': 'cython_gpu', 'type': 'tensor-cpu'},
                 {'impl': 'cython_cpu', 'type': 'tensor-cpu'},
-
                 # {'impl': 'torch', 'type': 'tensor-cuda0'},
                 {'impl': 'numpy', 'type': 'tensor-cuda0'},
                 # {'impl': 'cython_gpu', 'type': 'tensor-cuda0'},
                 # {'impl': 'cython_cpu', 'type': 'tensor-cuda0'},
-
                 {'impl': 'torchvision', 'type': 'ndarray'},
             ]
             for known in known_bad:
@@ -162,11 +199,11 @@ def benchamrk_det_nms():
                     return False
 
         return True
+
     combos = list(filter(is_valid_combo, combos))
 
     times = ub.ddict(list)
     for num in xdata:
-
         if num > 10000:
             N = 1
             bestof = 1
@@ -194,8 +231,12 @@ def benchamrk_det_nms():
 
         if SMALL_BOXES:
             max_dim = 100
-            np_dets1.boxes.data[..., 2] = np.minimum(np_dets1.boxes.width, max_dim).ravel()
-            np_dets1.boxes.data[..., 3] = np.minimum(np_dets1.boxes.height, max_dim).ravel()
+            np_dets1.boxes.data[..., 2] = np.minimum(
+                np_dets1.boxes.width, max_dim
+            ).ravel()
+            np_dets1.boxes.data[..., 3] = np.minimum(
+                np_dets1.boxes.height, max_dim
+            ).ravel()
 
         np_dets2 = copy.deepcopy(np_dets1)
         np_dets2.boxes.translate(10, inplace=True)
@@ -251,7 +292,11 @@ def benchamrk_det_nms():
                 ious = kept.ious(kept)
                 max_iou = (np.tril(ious) - np.eye(len(ious))).max()
                 if max_iou > thresh:
-                    print('{} produced a bad result with max_iou={}'.format(key, max_iou))
+                    print(
+                        '{} produced a bad result with max_iou={}'.format(
+                            key, max_iou
+                        )
+                    )
 
         # Check result consistency:
         print('\nResult stats:')
@@ -280,10 +325,7 @@ def benchamrk_det_nms():
         ylabel = 'seconds'
         reverse = False
         yscale = 'linear'
-    scores = {
-        key: vals[-1]
-        for key, vals in ydata.items()
-    }
+    scores = {key: vals[-1] for key, vals in ydata.items()}
     ydata = ub.dict_subset(ydata, ub.argsort(scores, reverse=reverse))
 
     ###
@@ -294,7 +336,6 @@ def benchamrk_det_nms():
     record = lines.append
     record('### times_of_interest = {!r}'.format(times_of_interest))
     for x in times_of_interest:
-
         if times_of_interest[-1] == x:
             record('else:')
         elif times_of_interest[0] == x:
@@ -303,16 +344,23 @@ def benchamrk_det_nms():
             record('elif num <= {}:'.format(x))
 
         if x in xdata:
-            pos =  xdata.index(x)
+            pos = xdata.index(x)
             score_wrt_x = {}
             for key, vals in ydata.items():
                 score_wrt_x[key] = vals[pos]
 
             typekeys = ['tensor-cuda0', 'tensor-cpu', 'ndarray']
-            type_groups = dict([
-                (b, ub.group_items(score_wrt_x, lambda y: y.endswith(b))[True])
-                for b in typekeys
-            ])
+            type_groups = dict(
+                [
+                    (
+                        b,
+                        ub.group_items(score_wrt_x, lambda y: y.endswith(b))[
+                            True
+                        ],
+                    )
+                    for b in typekeys
+                ]
+            )
             # print('\n=========')
             # print('x = {!r}'.format(x))
             record('    if code not in {!r}:'.format(set(typekeys)))
@@ -337,15 +385,24 @@ def benchamrk_det_nms():
 
                 ordered_impls = list(ub.oset(ordered_impls) - {'auto'})
                 ordered_impls2.pop('auto', None)
-                record('        # {}'.format(ub.urepr(ordered_impls2, precision=1, nl=0, explicit=True)))
-                record('        preference = {}'.format(ub.urepr(ordered_impls, nl=0)))
+                record(
+                    '        # {}'.format(
+                        ub.urepr(
+                            ordered_impls2, precision=1, nl=0, explicit=True
+                        )
+                    )
+                )
+                record(
+                    '        preference = {}'.format(
+                        ub.urepr(ordered_impls, nl=0)
+                    )
+                )
     record('### end times of interest ')
     print(ub.indent('\n'.join(lines), ' ' * 8))
     ###
 
     markers = {
-        key: 'o' if 'auto' in key else ''
-        for key, score in scores.items()
+        key: 'o' if 'auto' in key else '' for key, score in scores.items()
     }
 
     if ub.argflag('--daq'):
@@ -362,9 +419,14 @@ def benchamrk_det_nms():
     title = 'NSM-impl speed: ' + ', '.join(title_parts)
 
     import kwplot
+
     kwplot.autompl()
     kwplot.multi_plot(
-        xdata, ydata, xlabel='num boxes', ylabel=ylabel, label=labels,
+        xdata,
+        ydata,
+        xlabel='num boxes',
+        ylabel=ylabel,
+        label=labels,
         yscale=yscale,
         title=title,
         marker=markers,

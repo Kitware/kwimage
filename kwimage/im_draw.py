@@ -1,15 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import itertools as it
+from typing import TYPE_CHECKING
+
 import numpy as np
+
 if TYPE_CHECKING:
-    from numpy import ndarray
-    from typing import Tuple
-    from typing import Sequence
-    import kwimage
-    from typing import List
-    from typing import Any
     from numbers import Number
+    from typing import Any, List, Sequence, Tuple
+
+    from numpy import ndarray
+
+    import kwimage
 
 
 def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
@@ -39,10 +41,11 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
 
     """
     from PIL import Image, ImageDraw, ImageFont
+
     # fontpath = "./simsun.ttc"
     # unicode_font = ImageFont.truetype("DejaVuSans.ttf", font_size)
     if fontpath is None:
-        fontpath = "DejaVuSans.ttf"
+        fontpath = 'DejaVuSans.ttf'
     # fontpath = "arial.ttf"
     # fontpath = '/home/joncrall/Downloads/Arial.ttf'
     font = ImageFont.truetype(fontpath, fontsize)
@@ -65,6 +68,7 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
     img_pil = Image.fromarray(img)
     draw = ImageDraw.Draw(img_pil)
     from kwimage import Color
+
     color = Color.coerce('black').as255()
 
     # anchor - https://pillow.readthedocs.io/en/stable/handbook/text-anchors.html#text-anchors
@@ -73,7 +77,13 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
     return new_img
 
 
-def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, int] | None=None, return_info: bool=False, **kwargs) -> ndarray | Tuple[ndarray, dict]:
+def draw_text_on_image(
+    img: ndarray | None | dict,
+    text: str,
+    org: Tuple[int, int] | None = None,
+    return_info: bool = False,
+    **kwargs,
+) -> ndarray | Tuple[ndarray, dict]:
     r"""
     Draws multiline text on an image using opencv
 
@@ -245,8 +255,9 @@ def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, in
         >>> kwplot.imshow(canvas)
         >>> kwplot.show_if_requested()
     """
-    import kwimage
     import cv2
+
+    import kwimage
 
     if 'color' not in kwargs:
         # kwargs['color'] = 'red'
@@ -312,7 +323,9 @@ def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, in
         # Special case: when the alignment is non left-top, AND we don't have
         # an origin we need to do a bit of extra computation to figure out what
         # the width / height need to be
-        text_w, text_h = _text_sizes(text, (1, 1), border_thickness, kwargs, None, halign='left')[0:2]
+        text_w, text_h = _text_sizes(
+            text, (1, 1), border_thickness, kwargs, None, halign='left'
+        )[0:2]
         if given_w is None:
             given_w = text_w
         if given_h is None:
@@ -339,7 +352,19 @@ def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, in
             raise KeyError(valign)
 
     org = (x0, y0)
-    text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org = _text_sizes(text, org, border_thickness, kwargs, valign, halign)
+    (
+        text_w,
+        text_h,
+        x0,
+        lines,
+        abs_top_y,
+        first_h,
+        total_h,
+        total_w,
+        final_baseline,
+        line_sizes,
+        line_org,
+    ) = _text_sizes(text, org, border_thickness, kwargs, valign, halign)
 
     if isinstance(img, dict):
         # if image is unspecified allocate just enough space for text
@@ -366,7 +391,7 @@ def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, in
 
     for i, line in enumerate(lines):
         xy = tuple(line_org[i])
-        img = cv2.putText(img, line, xy, **kwargs)
+        img = _cv2_put_text_compat(img, line, xy, kwargs)
 
     if return_info:
         info = {
@@ -378,8 +403,62 @@ def draw_text_on_image(img: ndarray | None | dict, text: str, org: Tuple[int, in
         return img
 
 
+def _cv2_put_text_compat(img, text, xy, kwargs):
+    """Call ``cv2.putText`` across OpenCV 3.x through 5.x.
+
+    OpenCV 5's replacement text renderer only accepts uint8 destination
+    images.  Older OpenCV versions accepted other image dtypes, but silently
+    disabled antialiasing for them.  Preserve that behavior by first trying
+    the native call and, only when it rejects a non-uint8 image, rasterizing a
+    binary uint8 text mask and assigning the requested color into the original
+    image.
+
+    The mask fallback avoids quantizing the input image and preserves masked
+    array masks, NaNs outside the text pixels, the input dtype, and inplace
+    behavior.
+    """
+    import cv2
+
+    try:
+        return cv2.putText(img, text, xy, **kwargs)
+    except cv2.error as ex:
+        image_data = np.asarray(img)
+        is_uint8_depth_error = 'img.depth() == CV_8U' in str(ex)
+        if image_data.dtype == np.uint8 or not is_uint8_depth_error:
+            raise
+
+    mask = np.zeros(image_data.shape[0:2], dtype=np.uint8)
+    mask_kwargs = kwargs.copy()
+    mask_kwargs['color'] = 255
+    if mask_kwargs.get('lineType', None) == cv2.LINE_AA:
+        # OpenCV 4 used non-antialiased drawing for non-uint8 destinations.
+        # Keeping a binary mask also avoids introducing extra intermediate
+        # values into float images that historically only contained the
+        # background and requested drawing colors.
+        mask_kwargs['lineType'] = cv2.LINE_8
+    cv2.putText(mask, text, xy, **mask_kwargs)
+
+    text_pixels = mask != 0
+    color = np.asarray(kwargs['color'])
+    if image_data.ndim == 2:
+        draw_value = color.ravel()[0]
+    else:
+        num_channels = image_data.shape[2]
+        color = color.ravel()
+        if color.size < num_channels:
+            color = np.pad(color, (0, num_channels - color.size))
+        draw_value = color[:num_channels]
+
+    # Write through np.asarray so assigning into a MaskedArray does not alter
+    # its mask.  This also overwrites NaNs where glyph pixels are opaque, as
+    # the old OpenCV implementation did.
+    image_data[text_pixels] = draw_value
+    return img
+
+
 def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
     import cv2
+
     getsize_kw = {
         k: kwargs[k]
         for k in ['fontFace', 'fontScale', 'thickness']
@@ -398,7 +477,9 @@ def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
     for line in lines:
         # TODO: better handling of baseline
         # https://en.wikipedia.org/wiki/Baseline_(typography)
-        (line_width, line_height), baseline = cv2.getTextSize(line, **getsize_kw)
+        (line_width, line_height), baseline = cv2.getTextSize(
+            line, **getsize_kw
+        )
         line_sizes.append((line_width, line_height))
         final_baseline = baseline
     line_sizes = np.array(line_sizes)
@@ -417,7 +498,7 @@ def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
 
     first_h = line_sizes[0, 1]
 
-    total_h = (abs_bot_y - abs_top_y)
+    total_h = abs_bot_y - abs_top_y
     total_w = line_sizes.T[0].max()
 
     if valign is not None:
@@ -426,7 +507,7 @@ def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
             # in the multiline case we need to subtract the total
             # height of all lines but the first to ensure the last
             # line is on the bottom.
-            line_org[:, 1] -= (total_h - first_h)
+            line_org[:, 1] -= total_h - first_h
         elif valign == 'center':
             # Change from bottom to center
             line_org[:, 1] += first_h - total_h // 2
@@ -455,10 +536,29 @@ def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
     text_w = total_w + border_thickness + abs_left_x
     text_h = total_h + border_thickness + abs_top_y + final_baseline
 
-    return text_w, text_h, x0, lines, abs_top_y, first_h, total_h, total_w, final_baseline, line_sizes, line_org
+    return (
+        text_w,
+        text_h,
+        x0,
+        lines,
+        abs_top_y,
+        first_h,
+        total_h,
+        total_w,
+        final_baseline,
+        line_sizes,
+        line_org,
+    )
 
 
-def draw_clf_on_image(im: ndarray, classes: Sequence[str] | Any, tcx: int | None=None, probs: ndarray | None=None, pcx: int | None=None, border: int=1):
+def draw_clf_on_image(
+    im: ndarray,
+    classes: Sequence[str] | Any,
+    tcx: int | None = None,
+    probs: ndarray | None = None,
+    pcx: int | None = None,
+    border: int = 1,
+):
     """
     Draws classification label on an image.
 
@@ -497,11 +597,13 @@ def draw_clf_on_image(im: ndarray, classes: Sequence[str] | Any, tcx: int | None
         >>> kwplot.show_if_requested()
     """
     import kwimage
+
     im_ = kwimage.atleast_3channels(im)
     w, h = im.shape[0:2][::-1]
 
     if pcx is None and probs is not None:
         import kwarray
+
         probs = kwarray.ArrayAPI.numpy(probs)
         pcx = probs.argmax()
 
@@ -520,7 +622,9 @@ def draw_clf_on_image(im: ndarray, classes: Sequence[str] | Any, tcx: int | None
         elif probs is None:
             true_label = 't:{tcx}:\n{true_name}'.format(**locals())
         else:
-            true_label = 't:{tcx}@{true_score:.2f}:\n{true_name}'.format(**locals())
+            true_label = 't:{tcx}@{true_score:.2f}:\n{true_name}'.format(
+                **locals()
+            )
 
     pred_label = None
     if pcx is not None:
@@ -528,12 +632,11 @@ def draw_clf_on_image(im: ndarray, classes: Sequence[str] | Any, tcx: int | None
         if probs is None:
             pred_label = 'p:{pcx}:\n{pred_name}'.format(**locals())
         else:
-            pred_label = 'p:{pcx}@{pred_score:.2f}:\n{pred_name}'.format(**locals())
+            pred_label = 'p:{pcx}@{pred_score:.2f}:\n{pred_name}'.format(
+                **locals()
+            )
 
-    fontkw = {
-        'fontScale': 1.0,
-        'thickness': 2
-    }
+    fontkw = {'fontScale': 1.0, 'thickness': 2}
     color = 'dodgerblue' if pcx == tcx else 'orangered'
 
     # im_ = draw_text_on_image(im_, pred_label, org=org1 - 2,
@@ -542,16 +645,36 @@ def draw_clf_on_image(im: ndarray, classes: Sequence[str] | Any, tcx: int | None
     #                          color='white', valign='top', **fontkw)
 
     if pred_label is not None:
-        im_ = draw_text_on_image(im_, pred_label, org=org1, color=color,
-                                 border=border, valign='bottom', **fontkw)
+        im_ = draw_text_on_image(
+            im_,
+            pred_label,
+            org=org1,
+            color=color,
+            border=border,
+            valign='bottom',
+            **fontkw,
+        )
     if true_label is not None:
-        im_ = draw_text_on_image(im_, true_label, org=org2, color='lawngreen',
-                                 valign='top', border=border, **fontkw)
+        im_ = draw_text_on_image(
+            im_,
+            true_label,
+            org=org2,
+            color='lawngreen',
+            valign='top',
+            border=border,
+            **fontkw,
+        )
     return im_
 
 
-def draw_boxes_on_image(img: ndarray, boxes: kwimage.Boxes | ndarray, color: str='blue', thickness: int=1,
-                        box_format: Any | None=None, colorspace: str='rgb'):
+def draw_boxes_on_image(
+    img: ndarray,
+    boxes: kwimage.Boxes | ndarray,
+    color: str = 'blue',
+    thickness: int = 1,
+    box_format: Any | None = None,
+    colorspace: str = 'rgb',
+):
     """
     Draws boxes on an image.
 
@@ -576,8 +699,10 @@ def draw_boxes_on_image(img: ndarray, boxes: kwimage.Boxes | ndarray, color: str
         >>> kwplot.figure(doclf=True, fnum=1)
         >>> kwplot.imshow(img2)
     """
-    import kwimage
     import cv2
+
+    import kwimage
+
     if not isinstance(boxes, kwimage.Boxes):
         if box_format is None:
             raise ValueError('specify box_format')
@@ -597,8 +722,14 @@ def draw_boxes_on_image(img: ndarray, boxes: kwimage.Boxes | ndarray, color: str
 
 
 def draw_line_segments_on_image(
-        img, pts1: ndarray, pts2: ndarray, color: str | List='blue', colorspace: str='rgb', thickness: int=1,
-        **kwargs) -> ndarray:
+    img,
+    pts1: ndarray,
+    pts2: ndarray,
+    color: str | List = 'blue',
+    colorspace: str = 'rgb',
+    thickness: int = 1,
+    **kwargs,
+) -> ndarray:
     """
     Draw line segments between pts1 and pts2 on an image.
 
@@ -646,6 +777,7 @@ def draw_line_segments_on_image(
         >>> kwplot.imshow(img2)
     """
     import cv2
+
     num = len(pts1)
     colors = _broadcast_colors(color, num, img, colorspace)
 
@@ -661,7 +793,9 @@ def draw_line_segments_on_image(
     return img
 
 
-def draw_polyline_on_image(image, xy_pts, edgecolor='blue', thickness=1, **kwargs):
+def draw_polyline_on_image(
+    image, xy_pts, edgecolor='blue', thickness=1, **kwargs
+):
     """
     Draw a path (i.e. polyline / linestring) on an image.
 
@@ -696,7 +830,8 @@ def draw_polyline_on_image(image, xy_pts, edgecolor='blue', thickness=1, **kwarg
     if len(pts1):
         # Draw edges.
         image = draw_line_segments_on_image(
-            image, pts1, pts2, color=edgecolor, thickness=thickness, **kwargs)
+            image, pts1, pts2, color=edgecolor, thickness=thickness, **kwargs
+        )
     return image
 
 
@@ -725,9 +860,11 @@ def _broadcast_colors(color, num, img, colorspace):
     """
     # Note there is an ambiguity when num=3 and color=[int, int, int]
     # that must be resolved by checking num channels in the image
-    import kwimage
-    import ubelt as ub
     import numbers
+
+    import ubelt as ub
+
+    import kwimage
 
     needs_broadcast = True  # assume the list wasnt given by default
     if ub.iterable(color):
@@ -748,8 +885,13 @@ def _broadcast_colors(color, num, img, colorspace):
     return colors
 
 
-def make_heatmask(probs: ndarray, cmap: str='plasma', with_alpha: float=1.0, space: str='rgb',
-                  dsize: tuple | None=None):
+def make_heatmask(
+    probs: ndarray,
+    cmap: str = 'plasma',
+    with_alpha: float = 1.0,
+    space: str = 'rgb',
+    dsize: tuple | None = None,
+):
     """
     Colorizes a single-channel intensity mask (with an alpha channel)
 
@@ -777,9 +919,11 @@ def make_heatmask(probs: ndarray, cmap: str='plasma', with_alpha: float=1.0, spa
         >>>               title='make_heatmask')
         >>> kwplot.show_if_requested()
     """
-    import kwimage
     import matplotlib as mpl
     import matplotlib.cm  # NOQA
+
+    import kwimage
+
     assert len(probs.shape) == 2
     try:
         cmap_ = mpl.colormaps[cmap]
@@ -787,18 +931,23 @@ def make_heatmask(probs: ndarray, cmap: str='plasma', with_alpha: float=1.0, spa
         cmap_ = mpl.cm.get_cmap(cmap)
     probs = kwimage.ensure_float01(probs)
     heatmask = cmap_(probs).astype(np.float32)
-    heatmask = kwimage.convert_colorspace(heatmask, 'rgba', space, implicit=True)
+    heatmask = kwimage.convert_colorspace(
+        heatmask, 'rgba', space, implicit=True
+    )
     if with_alpha is not False and with_alpha is not None:
-        heatmask[:, :, 3] = (probs * with_alpha)  # assign probs to alpha channel
+        heatmask[:, :, 3] = probs * with_alpha  # assign probs to alpha channel
     if dsize is not None:
         import cv2
+
         heatmask = cv2.resize(
-            heatmask, tuple(dsize),
-            interpolation=cv2.INTER_NEAREST)
+            heatmask, tuple(dsize), interpolation=cv2.INTER_NEAREST
+        )
     return heatmask
 
 
-def make_orimask(radians: ndarray, mag: ndarray | None=None, alpha: float | ndarray=1.0) -> ndarray:
+def make_orimask(
+    radians: ndarray, mag: ndarray | None = None, alpha: float | ndarray = 1.0
+) -> ndarray:
     """
     Makes a colormap in HSV space where the orientation changes color and mag
     changes the saturation/value.
@@ -836,6 +985,8 @@ def make_orimask(radians: ndarray, mag: ndarray | None=None, alpha: float | ndar
     """
     import matplotlib as mpl
     import matplotlib.cm  # NOQA
+    import kwimage
+
     TAU = np.pi * 2
     # Map radians to 0 to 1
     ori01 = (radians % TAU) / TAU
@@ -845,7 +996,6 @@ def make_orimask(radians: ndarray, mag: ndarray | None=None, alpha: float | ndar
         cmap_ = mpl.cm.get_cmap('hsv')
     color_rgb = cmap_(ori01)[..., 0:3].astype(np.float32)
     if mag is not None:
-        import kwimage
         if mag.max() > 1:
             mag = mag / mag.max()
         color_hsv = kwimage.convert_colorspace(color_rgb, 'rgb', 'hsv')
@@ -865,8 +1015,18 @@ def make_orimask(radians: ndarray, mag: ndarray | None=None, alpha: float | ndar
     return orimask
 
 
-def make_vector_field(dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh: float=0.0, scale: float=1.0, alpha: float=1.0,
-                      color: str | tuple | kwimage.Color='strawberry', thickness: int=1, tipLength: float=0.1, line_type: int | str='aa') -> ndarray:
+def make_vector_field(
+    dx: ndarray,
+    dy: ndarray,
+    stride: int | float = 0.02,
+    thresh: float = 0.0,
+    scale: float = 1.0,
+    alpha: float = 1.0,
+    color: str | tuple | kwimage.Color = 'strawberry',
+    thickness: int = 1,
+    tipLength: float = 0.1,
+    line_type: int | str = 'aa',
+) -> ndarray:
     """
     Create an image representing a 2D vector field.
 
@@ -920,11 +1080,20 @@ def make_vector_field(dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh
     """
     # import warnings
     import ubelt as ub
-    ub.schedule_deprecation('kwimage', 'make_vector_field', 'method',
-                            migration='use draw_vector_field instead',
-                            deprecate='0.9.1', error='1.0.0', remove='1.1.0')
+
+    ub.schedule_deprecation(
+        'kwimage',
+        'make_vector_field',
+        'method',
+        migration='use draw_vector_field instead',
+        deprecate='0.9.1',
+        error='1.0.0',
+        remove='1.1.0',
+    )
     import cv2
+
     import kwimage
+
     color = kwimage.Color(color).as255('rgb')
     vecmask = np.zeros(dx.shape + (3,), dtype=np.uint8)
 
@@ -966,12 +1135,18 @@ def make_vector_field(dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh
         XYUV[2] *= scale
         XYUV[3] *= scale
 
-    for (x, y, u, v) in zip(*XYUV):
+    for x, y, u, v in zip(*XYUV):
         pt1 = (int(x), int(y))
         pt2 = tuple(map(int, map(np.round, (x + u, y + v))))
-        cv2.arrowedLine(vecmask, pt1, pt2, color=color, thickness=thickness,
-                        tipLength=tipLength,
-                        line_type=line_type)
+        cv2.arrowedLine(
+            vecmask,
+            pt1,
+            pt2,
+            color=color,
+            thickness=thickness,
+            tipLength=tipLength,
+            line_type=line_type,
+        )
 
     vecmask = kwimage.ensure_float01(vecmask)
     if isinstance(alpha, np.ndarray):
@@ -986,9 +1161,19 @@ def make_vector_field(dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh
     return vecmask
 
 
-def draw_vector_field(image: ndarray, dx: ndarray, dy: ndarray, stride: int | float=0.02, thresh: float=0.0, scale: float=1.0,
-                      alpha: float=1.0, color: str | tuple | kwimage.Color='strawberry', thickness: int=1, tipLength: float=0.1,
-                      line_type: int | str='aa') -> ndarray:
+def draw_vector_field(
+    image: ndarray,
+    dx: ndarray,
+    dy: ndarray,
+    stride: int | float = 0.02,
+    thresh: float = 0.0,
+    scale: float = 1.0,
+    alpha: float = 1.0,
+    color: str | tuple | kwimage.Color = 'strawberry',
+    thickness: int = 1,
+    tipLength: float = 0.1,
+    line_type: int | str = 'aa',
+) -> ndarray:
     """
     Create an image representing a 2D vector field.
 
@@ -1042,6 +1227,7 @@ def draw_vector_field(image: ndarray, dx: ndarray, dy: ndarray, stride: int | fl
         >>> kwplot.show_if_requested()
     """
     import cv2
+
     import kwimage
 
     if image is None:
@@ -1091,12 +1277,18 @@ def draw_vector_field(image: ndarray, dx: ndarray, dy: ndarray, stride: int | fl
     if alpha is not None and alpha is not False and alpha != 1:
         raise NotImplementedError
 
-    for (x, y, u, v) in zip(*XYUV):
+    for x, y, u, v in zip(*XYUV):
         pt1 = (int(x), int(y))
         pt2 = tuple(map(int, map(np.round, (x + u, y + v))))
-        cv2.arrowedLine(image, pt1, pt2, color=color, thickness=thickness,
-                        tipLength=tipLength,
-                        line_type=line_type)
+        cv2.arrowedLine(
+            image,
+            pt1,
+            pt2,
+            color=color,
+            thickness=thickness,
+            tipLength=tipLength,
+            line_type=line_type,
+        )
 
     if isinstance(alpha, np.ndarray):
         # Alpha specified as explicit numpy array
@@ -1112,9 +1304,16 @@ def draw_vector_field(image: ndarray, dx: ndarray, dy: ndarray, stride: int | fl
     return image
 
 
-def draw_header_text(image: ndarray | dict | None=None, text: str | None=None, fit: bool | str=False, color: str | Tuple='strawberry',
-                     halign: str='center', stack: bool | str='auto', bg_color: str='black',
-                     **kwargs) -> ndarray:
+def draw_header_text(
+    image: ndarray | dict | None = None,
+    text: str | None = None,
+    fit: bool | str = False,
+    color: str | Tuple = 'strawberry',
+    halign: str = 'center',
+    stack: bool | str = 'auto',
+    bg_color: str = 'black',
+    **kwargs,
+) -> ndarray:
     """
     Places a black bar on top of an image and writes text in it
 
@@ -1203,8 +1402,9 @@ def draw_header_text(image: ndarray | dict | None=None, text: str | None=None, f
         >>> kwplot.show_if_requested()
     """
     # import cv2
-    import kwimage
     import ubelt as ub
+
+    import kwimage
 
     if text is None:
         raise ValueError('text must be provided')
@@ -1238,12 +1438,14 @@ def draw_header_text(image: ndarray | dict | None=None, text: str | None=None, f
         'thickness',
     ]
     kwargs = ub.udict(kwargs)
-    default_draw_kw = ub.udict({
-        'valign': 'top',
-        'halign': halign,
-        'org': None,
-        'color': color,
-    })
+    default_draw_kw = ub.udict(
+        {
+            'valign': 'top',
+            'halign': halign,
+            'org': None,
+            'color': color,
+        }
+    )
     draw_kw = default_draw_kw | (ub.udict(kwargs) & draw_keys)
     kwargs -= draw_keys
 
@@ -1268,7 +1470,10 @@ def draw_header_text(image: ndarray | dict | None=None, text: str | None=None, f
                 if header.shape[1] > width:
                     header = kwimage.imresize(header, dsize=(width, None))
                 elif header.shape[1] < width:
-                    header = np.pad(header, [(0, 0), ((width - header.shape[1]) // 2, 0), (0, 0)])
+                    header = np.pad(
+                        header,
+                        [(0, 0), ((width - header.shape[1]) // 2, 0), (0, 0)],
+                    )
                 else:
                     pass
         else:
@@ -1296,8 +1501,12 @@ def draw_header_text(image: ndarray | dict | None=None, text: str | None=None, f
         return header
 
 
-def fill_nans_with_checkers(canvas: np.ndarray, square_shape: int | Tuple[int, int] | str=8,
-                            on_value: Number | str='auto', off_value: Number | str='auto') -> np.ndarray:
+def fill_nans_with_checkers(
+    canvas: np.ndarray,
+    square_shape: int | Tuple[int, int] | str = 8,
+    on_value: Number | str = 'auto',
+    off_value: Number | str = 'auto',
+) -> np.ndarray:
     """
     Fills nan or masked values with a 2d checkerboard pattern.
 
@@ -1384,12 +1593,22 @@ def fill_nans_with_checkers(canvas: np.ndarray, square_shape: int | Tuple[int, i
         >>> print(canvas)
     """
     invalid_mask = np.isnan(canvas)
-    return _masked_checkerboard(canvas, invalid_mask, square_shape, on_value=on_value, off_value=off_value)
+    return _masked_checkerboard(
+        canvas,
+        invalid_mask,
+        square_shape,
+        on_value=on_value,
+        off_value=off_value,
+    )
 
 
-def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value):
-    import kwimage
+def _masked_checkerboard(
+    canvas, invalid_mask, square_shape, on_value, off_value
+):
     import kwarray
+
+    import kwimage
+
     canvas = kwarray.atleast_nd(canvas, 3)
     invalid_mask = kwarray.atleast_nd(invalid_mask, 3)
     allchan_invalid_mask = invalid_mask.all(axis=2, keepdims=True)
@@ -1411,8 +1630,11 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value
 
     if any_total_nans or any_partial_nans:
         checkers2d = kwimage.checkerboard(
-            square_shape=square_shape, dsize=dsize, dtype=canvas.dtype,
-            on_value=on_value)
+            square_shape=square_shape,
+            dsize=dsize,
+            dtype=canvas.dtype,
+            on_value=on_value,
+        )
 
         if any_total_nans:
             # canvas = kwimage.ensure_alpha_channel(canvas, (1 - invalid_mask))
@@ -1431,7 +1653,12 @@ def _masked_checkerboard(canvas, invalid_mask, square_shape, on_value, off_value
     return canvas
 
 
-def nodata_checkerboard(canvas: ndarray, square_shape: int=8, on_value: Number | str='auto', off_value: Number | str='auto') -> ndarray:
+def nodata_checkerboard(
+    canvas: ndarray,
+    square_shape: int = 8,
+    on_value: Number | str = 'auto',
+    off_value: Number | str = 'auto',
+) -> ndarray:
     """
     Fills nans or masked values with a checkerbord pattern.
 
@@ -1537,7 +1764,8 @@ def nodata_checkerboard(canvas: ndarray, square_shape: int=8, on_value: Number |
 
     if invalid_mask is not None:
         out_canvas = _masked_checkerboard(
-            out_canvas, invalid_mask, square_shape, on_value, off_value)
+            out_canvas, invalid_mask, square_shape, on_value, off_value
+        )
 
     if is_masked:
         out_canvas = np.ma.MaskedArray(data=out_canvas, mask=invalid_mask)

@@ -9,17 +9,22 @@ def triangulate_polygon_interior(polygon):
     References:
         https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
     """
-    import numpy as np
     # from shapely.geometry import Polygon
     # import shapely.wkt
     # from shapely.ops import triangulate
     import geopandas as gpd
+    import numpy as np
     from geovoronoi import voronoi_regions_from_coords
     from scipy.spatial import Delaunay
+
     import kwimage
 
     poly_points = []
-    gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode(index_parts=True).reset_index()
+    gdf_poly_exterior = (
+        gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]})
+        .explode(index_parts=True)
+        .reset_index()
+    )
     for geom in gdf_poly_exterior.geometry:
         poly_points += np.array(geom.coords).tolist()
 
@@ -28,14 +33,24 @@ def triangulate_polygon_interior(polygon):
     except Exception:
         poly_points = poly_points
     else:
-        gdf_poly_interior = gpd.GeoDataFrame({'geometry': [polygon.interiors]}).explode(index_parts=True).reset_index()
+        gdf_poly_interior = (
+            gpd.GeoDataFrame({'geometry': [polygon.interiors]})
+            .explode(index_parts=True)
+            .reset_index()
+        )
         for geom in gdf_poly_interior.geometry:
             poly_points += np.array(geom.coords).tolist()
 
-    poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1, 2)
+    poly_points = np.array(
+        [item for sublist in poly_points for item in sublist]
+    ).reshape(-1, 2)
 
     poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon)
-    gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode(index_parts=True).reset_index()
+    gdf_poly_voronoi = (
+        gpd.GeoDataFrame({'geometry': poly_shapes})
+        .explode(index_parts=True)
+        .reset_index()
+    )
 
     final_points_accum = []
     final_simplices_accum = []
@@ -47,7 +62,11 @@ def triangulate_polygon_interior(polygon):
 
         inside_row_indexes = []
         for row_index, simplex_idxs in enumerate(tri.simplices):
-            centroid = kwimage.Polygon(exterior=tri.points[simplex_idxs]).to_shapely().centroid
+            centroid = (
+                kwimage.Polygon(exterior=tri.points[simplex_idxs])
+                .to_shapely()
+                .centroid
+            )
             if centroid.within(polygon):
                 inside_row_indexes.append(row_index)
 

@@ -1,25 +1,33 @@
 def test_geotiff():
-    """
-    """
+    """ """
     from kwimage import im_io
+
     if not im_io._have_gdal():
         import pytest
+
         pytest.skip()
 
-    import kwimage
     import ubelt as ub
+
+    import kwimage
+
     dpath = ub.Path.appdir('kwimage/tests/geotiff').ensuredir()
     fpath = dpath / 'dummy_geotiff.tif'
 
     # Make a random polygon in world space
     lat_max = 180 - 1e-7
     lon_max = 90 - 1e-7
-    wld_poly = kwimage.Polygon.random().translate((-.5, -.5)).scale(2).scale((lat_max, lon_max))
+    wld_poly = (
+        kwimage.Polygon.random()
+        .translate((-0.5, -0.5))
+        .scale(2)
+        .scale((lat_max, lon_max))
+    )
 
     # With bounds that are associated to an image of size
     img_dsize = (640, 480)
     # Make a dummy geotiff
-    _imdata = kwimage.grab_test_image("amazon")
+    _imdata = kwimage.grab_test_image('amazon')
     imdata = kwimage.imresize(_imdata, dsize=img_dsize)
     imdata = kwimage.ensure_float01(imdata)
 
@@ -34,6 +42,7 @@ def test_geotiff():
 
     # The CRS should be CRS-84
     from osgeo import osr
+
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
@@ -54,16 +63,18 @@ def test_geotiff():
     kwimage.imwrite(
         fpath,
         imdata,
-        backend="gdal",
+        backend='gdal',
         nodata_value=nodata_value,
         crs=crs,
         transform=tf_wld_from_img,
-        overviews="auto",
+        overviews='auto',
         metadata=metadata,
     )
 
-    from osgeo import gdal
     import os
+
+    from osgeo import gdal
+
     dset = gdal.Open(os.fspath(fpath), gdal.GA_ReadOnly)
     info = gdal.Info(dset, format='json', allMetadata=True, listMDD=True)
     print('info = {}'.format(ub.urepr(info, nl=True)))

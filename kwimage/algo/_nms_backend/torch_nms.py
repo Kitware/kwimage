@@ -1,11 +1,21 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 import numpy as np
+
 if TYPE_CHECKING:
     from typing import Any
 
 
-def torch_nms(ltrb: Any, scores: Any, classes: Any | None=None, thresh: float=.5, bias: int=0, fast: bool=False) -> Any:
+def torch_nms(
+    ltrb: Any,
+    scores: Any,
+    classes: Any | None = None,
+    thresh: float = 0.5,
+    bias: int = 0,
+    fast: bool = False,
+) -> Any:
     """
     Non maximum suppression implemented with pytorch tensors
 
@@ -62,6 +72,7 @@ def torch_nms(ltrb: Any, scores: Any, classes: Any | None=None, thresh: float=.5
         >>> bboxes[keep]
     """
     import torch
+
     import kwimage
 
     if ltrb.numel() == 0:
@@ -96,8 +107,10 @@ def torch_nms(ltrb: Any, scores: Any, classes: Any | None=None, thresh: float=.5
 
     if classes is not None:
         ordered_classes = classes[order]
-        same_class = (ordered_classes.unsqueeze(0) == ordered_classes.unsqueeze(1))
-        conflicting = (conflicting & same_class)
+        same_class = ordered_classes.unsqueeze(0) == ordered_classes.unsqueeze(
+            1
+        )
+        conflicting = conflicting & same_class
     # Now we have a 2D matrix where conflicting[i, j] indicates if box[i]
     # conflicts with box[j]. For each box[i] we want to only keep the first
     # one that does not conflict with any other box[j].
@@ -136,10 +149,10 @@ def torch_nms(ltrb: Any, scores: Any, classes: Any | None=None, thresh: float=.5
                     n_conflicts_post -= conflicting[i]
 
             n_conflicts = n_conflicts_post.to(n_conflicts.device)
-            ordered_keep = (n_conflicts == 0)
+            ordered_keep = n_conflicts == 0
     else:
         # Now we can simply keep any box that has no conflicts.
-        ordered_keep = (n_conflicts == 0)
+        ordered_keep = n_conflicts == 0
 
     # Unsort, so keep is aligned with input boxes
     shape = ordered_keep.size()
@@ -149,29 +162,35 @@ def torch_nms(ltrb: Any, scores: Any, classes: Any | None=None, thresh: float=.5
 
 
 def test_class_torch() -> None:
+    import kwarray
     import numpy as np
     import torch
     import ubelt as ub
-    import kwarray
+
     import kwimage
 
-    thresh = .5
+    thresh = 0.5
 
     num = 500
     rng = kwarray.ensure_rng(0)
-    cpu_boxes = kwimage.Boxes.random(num, scale=400.0, rng=rng, format='ltrb', tensor=True)
+    cpu_boxes = kwimage.Boxes.random(
+        num, scale=400.0, rng=rng, format='ltrb', tensor=True
+    )
     cpu_ltrb = cpu_boxes.to_ltrb().data
     # cpu_scores = torch.Tensor(rng.rand(len(cpu_ltrb)))
     # make all scores unique to ensure comparability
-    cpu_scores = torch.Tensor(np.linspace(0, 1, len(cpu_ltrb)))
-    cpu_cls = torch.LongTensor(rng.randint(0, 10, len(cpu_ltrb)))
+    _nboxes = len(cpu_ltrb)
+    cpu_scores = torch.Tensor(np.linspace(0, 1, _nboxes))
+    cpu_cls = torch.LongTensor(rng.randint(0, 10, _nboxes))  # type: ignore
 
     ltrb = cpu_boxes.to_ltrb().data.to('cuda')
     scores = cpu_scores.to('cuda')
     classes = cpu_cls.to('cuda')
 
     keep1 = []
-    for idxs in ub.group_items(range(len(classes)), classes.cpu().numpy()).values():
+    for idxs in ub.group_items(
+        range(len(classes)), classes.cpu().numpy()
+    ).values():
         # cls_ltrb = ltrb.take(idxs, axis=0)
         # cls_scores = scores.take(idxs, axis=0)
         cls_ltrb = ltrb[idxs]
@@ -183,10 +202,14 @@ def test_class_torch() -> None:
     keep_ = torch_nms(ltrb, scores, classes=classes, thresh=thresh, bias=0)
     keep2 = np.where(keep_.cpu().numpy())[0].tolist()
 
-    keep3 = kwimage.non_max_supression(ltrb.cpu().numpy(),
-                                       scores.cpu().numpy(),
-                                       classes=classes.cpu().numpy(),
-                                       thresh=thresh, bias=0, impl='gpu')
+    keep3 = kwimage.non_max_supression(
+        ltrb.cpu().numpy(),
+        scores.cpu().numpy(),
+        classes=classes.cpu().numpy(),
+        thresh=thresh,
+        bias=0,
+        impl='gpu',
+    )
 
     print(len(keep1))
     print(len(keep2))
@@ -198,4 +221,5 @@ def test_class_torch() -> None:
 
 if __name__ == '__main__':
     import xdoctest
+
     xdoctest.doctest_module(__file__)

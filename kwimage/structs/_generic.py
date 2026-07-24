@@ -1,14 +1,19 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import ubelt as ub
-import sys
-import kwarray
+
 import numbers
+import sys
+from typing import TYPE_CHECKING, Generic, TypeVar
+
+import kwarray
 import numpy as np
+import ubelt as ub
+
 if TYPE_CHECKING:
-    from typing import Sequence
     from collections.abc import Generator
-    from typing import Any
+    from typing import Any, Sequence, MutableSequence
+
+T = TypeVar("T")
+
 # from collections import abc
 # import abc
 
@@ -86,7 +91,7 @@ class Spatial(ub.NiceRepr):
 
 
 # class ListProxy(abc.MutableSequence):
-class _ExperimentalListProxy:
+class _ExperimentalListProxy(Generic[T]):
     """
     We may modify this implementation to be more generic in the future and
     directly inherit from :class:`abc.MutableSequence`. This intermediate form
@@ -97,6 +102,7 @@ class _ExperimentalListProxy:
 
     Requires that the inheriting class has a ``data`` attribute.
     """
+    data: MutableSequence[T]
 
     def __getitem__(self, index):
         """Retrieve an item by its index."""
@@ -158,7 +164,7 @@ class _ExperimentalListProxy:
         """Return a reverse iterator over the sequence."""
         return self.data.__reversed__()
 
-    def index(self, value, start=0, stop=None):
+    def index(self, value, start : int = 0, stop : int = sys.maxsize):
         """
         Return the index of the first occurrence of a value.
         Raise ValueError if the value is not present.
@@ -189,7 +195,7 @@ class ObjectList(Spatial, _ExperimentalListProxy):
 
     # __slots__ = ('data', 'meta',)
 
-    def __init__(self, data, meta: Any | None=None) -> None:
+    def __init__(self, data: MutableSequence[T], meta: Any | None = None) -> None:
         if meta is None:
             meta = {}
         self.data = data
@@ -205,7 +211,7 @@ class ObjectList(Spatial, _ExperimentalListProxy):
     @property
     def dtype(self):
         try:
-            return self.data.dtype
+            return self.data.dtype  # type: ignore
         except Exception:
             print('kwimage._generic: no dtype for ' + str(type(self.data)))
             raise
@@ -213,50 +219,78 @@ class ObjectList(Spatial, _ExperimentalListProxy):
     def __nice__(self):
         return 'n={}'.format(len(self))
 
-    def translate(self, offset, output_dims: Any | None=None, inplace: bool=False):
-        newdata = [None if item is None else
-                   item.translate(offset, output_dims=output_dims,
-                                  inplace=inplace)
-                   for item in self.data]
+    def translate(
+        self, offset, output_dims: Any | None = None, inplace: bool = False
+    ):
+        newdata = [
+            None
+            if item is None
+            else item.translate(
+                offset, output_dims=output_dims, inplace=inplace
+            )
+            for item in self.data
+        ]
         return self.__class__(newdata, self.meta)
 
-    def scale(self, factor, output_dims: Any | None=None, inplace: bool=False):
-        newdata = [None if item is None else
-                   item.scale(factor, output_dims=output_dims, inplace=inplace)
-                   for item in self.data]
+    def scale(
+        self, factor, output_dims: Any | None = None, inplace: bool = False
+    ):
+        newdata = [
+            None
+            if item is None
+            else item.scale(factor, output_dims=output_dims, inplace=inplace)
+            for item in self.data
+        ]
         return self.__class__(newdata, self.meta)
 
-    def warp(self, transform, input_dims: Any | None=None, output_dims: Any | None=None, inplace: bool=False):
+    def warp(
+        self,
+        transform,
+        input_dims: Any | None = None,
+        output_dims: Any | None = None,
+        inplace: bool = False,
+    ):
         if inplace:
             for item in self.data:
                 if item is not None:
-                    item.warp(transform, input_dims=input_dims,
-                              output_dims=output_dims, inplace=inplace)
+                    item.warp(
+                        transform,
+                        input_dims=input_dims,
+                        output_dims=output_dims,
+                        inplace=inplace,
+                    )
             return self
         else:
-            newdata = [None if item is None else
-                       item.warp(transform, input_dims=input_dims,
-                                 output_dims=output_dims, inplace=inplace)
-                       for item in self.data]
+            newdata = [
+                None
+                if item is None
+                else item.warp(
+                    transform,
+                    input_dims=input_dims,
+                    output_dims=output_dims,
+                    inplace=inplace,
+                )
+                for item in self.data
+            ]
             return self.__class__(newdata, self.meta)
 
     def apply(self, func):
         newdata = [None if item is None else func(item) for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def to_coco(self, style: str='orig') -> Generator[Any, None, None]:
+    def to_coco(self, style: str = 'orig') -> Generator[Any, None, None]:
         for item in self.data:
             if item is None:
                 yield None
             else:
                 yield item.to_coco(style=style)
 
-    def compress(self, flags, axis: int=0):
+    def compress(self, flags, axis: int = 0):
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))
         return self.__class__(newdata, self.meta)
 
-    def take(self, indices, axis: int=0):
+    def take(self, indices, axis: int = 0):
         assert axis == 0
         newdata = list(ub.take(self.data, indices))
         return self.__class__(newdata, self.meta)
@@ -267,7 +301,10 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         """
         if 'setlim' in kwargs:
             import warnings
-            warnings.warn('ObjectList currently need special handling for setlim kwarg')
+
+            warnings.warn(
+                'ObjectList currently need special handling for setlim kwarg'
+            )
         patches = []
         for item in self.data:
             if item is not None:
@@ -304,7 +341,9 @@ class ObjectList(Spatial, _ExperimentalListProxy):
             # draw_on, instead we will draw with full alpha on an empty canvas
             # and then blend together everything at the end.
             orig_canvas = image
-            overlay_canvas = np.zeros_like(image, shape=(image.shape[0:2] + (4,)))
+            overlay_canvas = np.zeros_like(
+                image, shape=(image.shape[0:2] + (4,))
+            )
             image = overlay_canvas
             kwargs['alpha'] = None
 
@@ -337,7 +376,9 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         return self.apply(lambda item: item.numpy())
 
     @classmethod
-    def concatenate(cls, items: Sequence[ObjectList], axis: int | None=0) -> ObjectList:
+    def concatenate(
+        cls, items: Sequence[ObjectList], axis: int | None = 0
+    ) -> ObjectList:
         """
         Args:
             items (Sequence[ObjectList]): multiple object lists of the same type
@@ -358,11 +399,11 @@ class ObjectList(Spatial, _ExperimentalListProxy):
             >>> assert len(new) == 3
         """
         if len(items) == 0:
-            new = cls([])
-        else:
-            newdata = []
-            for item in items:
-                newdata.extend(item.data)
+            return cls([])
+
+        newdata = []
+        for item in items:
+            newdata.extend(item.data)
 
         newmeta = items[0].meta
         new = cls(newdata, newmeta)
@@ -388,8 +429,12 @@ def _handle_perinstance_color_arg(selflen, instkw_list, kwargs, argname):
     """
     if argname in kwargs:
         color = kwargs.pop(argname, None)
-        if (ub.iterable(color) and len(color) == selflen and
-             len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
+        if (
+            ub.iterable(color)
+            and len(color) == selflen
+            and len(color) > 0
+            and not isinstance(ub.peek(color), numbers.Number)
+        ):
             for d, c in zip(instkw_list, color):
                 d[argname] = c
         else:
@@ -401,8 +446,13 @@ def _coerce_color_list_for(image, color, num):
     Get a list of colors for each item
     """
     import kwimage
-    if (ub.iterable(color) and len(color) == num and
-         len(color) > 0 and not isinstance(ub.peek(color), numbers.Number)):
+
+    if (
+        ub.iterable(color)
+        and len(color) == num
+        and len(color) > 0
+        and not isinstance(ub.peek(color), numbers.Number)
+    ):
         color_list = [kwimage.Color(c).forimage(image) for c in color]
     else:
         color_list = [kwimage.Color(color).forimage(image)] * num
@@ -414,6 +464,7 @@ def _consistent_dtype_fixer(data):
     helper for ensuring out.dtype == in.dtype
     """
     import kwimage
+
     if data.dtype.kind == 'f':
         return kwimage.ensure_float01
     elif data.dtype.kind == 'u':
@@ -489,6 +540,7 @@ def _setlim(xmin, ymin, xmax, ymax, setlim=False, ax=None):
     """
     if ax is None:
         from matplotlib import pyplot as plt
+
         ax = plt.gca()
 
     if isinstance(setlim, str):
@@ -527,6 +579,7 @@ def _setlim2(xmin=None, ymin=None, xmax=None, ymax=None, setlim=False, ax=None):
     """
     if ax is None:
         from matplotlib import pyplot as plt
+
         ax = plt.gca()
 
     # Parse options
@@ -542,15 +595,29 @@ def _setlim2(xmin=None, ymin=None, xmax=None, ymax=None, setlim=False, ax=None):
 
     # The logic is the same for both x and y so abstract it a bit.
     requests = [
-        {'request_min': xmin, 'request_max': xmax, 'getter': ax.get_xlim, 'setter': ax.set_xlim},
-        {'request_min': ymin, 'request_max': ymax, 'getter': ax.get_ylim, 'setter': ax.set_ylim},
+        {
+            'request_min': xmin,
+            'request_max': xmax,
+            'getter': ax.get_xlim,
+            'setter': ax.set_xlim,
+        },
+        {
+            'request_min': ymin,
+            'request_max': ymax,
+            'getter': ax.get_ylim,
+            'setter': ax.set_ylim,
+        },
     ]
 
     for request in requests:
-        _setlim_for_dim(**request, scale_factor=scale_factor, growonly_mode=growonly_mode)
+        _setlim_for_dim(
+            **request, scale_factor=scale_factor, growonly_mode=growonly_mode
+        )
 
 
-def _setlim_for_dim(request_min, request_max, getter, setter, scale_factor, growonly_mode):
+def _setlim_for_dim(
+    request_min, request_max, getter, setter, scale_factor, growonly_mode
+):
     """
     Example:
         >>> def getter():
@@ -596,11 +663,14 @@ def _setlim_for_dim(request_min, request_max, getter, setter, scale_factor, grow
     setter(request_min, request_max)
 
 
-def _handle_color_args_for(color, alpha, border, fill, edgecolor, facecolor, image):
+def _handle_color_args_for(
+    color, alpha, border, fill, edgecolor, facecolor, image
+):
     """
     Common logic for boxes and polygons
     """
     import kwimage
+
     if facecolor is None:
         if fill:
             facecolor = color

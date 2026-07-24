@@ -1,10 +1,13 @@
 """
 Not sure how to best classify these functions
 """
+
 from __future__ import annotations
-import ubelt as ub
-import numpy as np
+
 import typing as _t
+
+import numpy as np
+import ubelt as ub
 
 
 def num_channels(img: np.ndarray) -> int:
@@ -36,12 +39,17 @@ def num_channels(img: np.ndarray) -> int:
         # Previously threw an error when n_channels was not 1, 3, or 4
         n_channels = img.shape[2]
     else:
-        raise ValueError('Cannot determine number of channels '
-                         'for img.shape={}'.format(img.shape))
+        raise ValueError(
+            'Cannot determine number of channels for img.shape={}'.format(
+                img.shape
+            )
+        )
     return n_channels
 
 
-def ensure_float01(img: np.ndarray, dtype: _t.Any = np.float32, copy: bool = True) -> np.ndarray:
+def ensure_float01(
+    img: np.ndarray, dtype: _t.Any = np.float32, copy: bool = True
+) -> np.ndarray:
     """
     Ensure that an image is encoded using a float32 properly
 
@@ -71,10 +79,13 @@ def ensure_float01(img: np.ndarray, dtype: _t.Any = np.float32, copy: bool = Tru
             # Only check min/max if the image is not a uint8
             if img.min() < 0 or img.max() > 255:
                 import kwarray
+
                 raise ValueError(
                     'The image type is int, but its values are not '
                     'between 0 and 255. Image stats are {}'.format(
-                        kwarray.stats_dict(img)))
+                        kwarray.stats_dict(img)
+                    )
+                )
         img_ = img.astype(dtype, copy=copy) / 255.0
     else:
         img_ = img.astype(dtype, copy=copy)
@@ -110,21 +121,27 @@ def ensure_uint255(img: np.ndarray, copy: bool = True) -> np.ndarray:
     elif img.dtype.kind == 'i':
         if img.min() < 0 or img.max() > 255:
             import kwarray
+
             raise AssertionError(
                 'The image type is signed int, but its values are not '
                 'between 0 and 255. Image stats are {}'.format(
-                    kwarray.stats_dict(img)))
+                    kwarray.stats_dict(img)
+                )
+            )
         img_ = img.astype(np.uint8, copy=copy)
     else:
         # If the image is a float check that it is between 0 and 1
         # Use a +- epsilon of 1e-3 to account for floating errors
         eps = 1e-3
-        if (img.min() < (0 - eps) or img.max() > (1 + eps)):
+        if img.min() < (0 - eps) or img.max() > (1 + eps):
             import kwarray
+
             raise ValueError(
                 'The image type is float, but its values are not '
                 'between 0 and 1. Image stats are {}'.format(
-                    kwarray.stats_dict(img)))
+                    kwarray.stats_dict(img)
+                )
+            )
         img_ = (img.clip(0, 1) * 255).astype(np.uint8, copy=copy)
     return img_
 
@@ -136,7 +153,9 @@ def ensure_uint255(img: np.ndarray, copy: bool = True) -> np.ndarray:
 #             pass
 
 
-def make_channels_comparable(img1: np.ndarray, img2: np.ndarray, atleast3d: bool = False) -> tuple[np.ndarray, np.ndarray]:
+def make_channels_comparable(
+    img1: np.ndarray, img2: np.ndarray, atleast3d: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Broadcasts image arrays so they can have elementwise operations applied
 
@@ -175,9 +194,9 @@ def make_channels_comparable(img1: np.ndarray, img2: np.ndarray, atleast3d: bool
         if len(img1.shape) == 2 and len(img2.shape) == 2:
             # Both images are 2d grayscale
             if atleast3d:
-                # add the third dim with 1 channel
-                img1 = img1[:, None]
-                img2 = img2[:, None]
+                # Add the channel dimension at the end (H, W, C).
+                img1 = img1[..., None]
+                img2 = img2[..., None]
         elif len(img1.shape) == 3 and len(img2.shape) == 2:
             # Image 2 is grayscale
             if c1 == 3:
@@ -206,26 +225,33 @@ def make_channels_comparable(img1: np.ndarray, img2: np.ndarray, atleast3d: bool
                 img1 = np.tile(img1, 3)
             elif c1 == 3 and c2 == 1:
                 img2 = np.tile(img2, 3)
-            elif c1 == 1 and c2  == 4:
+            elif c1 == 1 and c2 == 4:
                 img1 = np.dstack((np.tile(img1, 3), _alpha_fill_for(img1)))
-            elif c1 == 4 and c2  == 1:
+            elif c1 == 4 and c2 == 1:
                 img2 = np.dstack((np.tile(img2, 3), _alpha_fill_for(img2)))
-            elif c1 == 3 and c2  == 4:
+            elif c1 == 3 and c2 == 4:
                 img1 = np.dstack((img1, _alpha_fill_for(img1)))
-            elif c1 == 4 and c2  == 3:
+            elif c1 == 4 and c2 == 3:
                 img2 = np.dstack((img2, _alpha_fill_for(img2)))
             else:
-                raise AssertionError('Unknown shape case: %r, %r' % (img1.shape, img2.shape))
+                raise AssertionError(
+                    'Unknown shape case: %r, %r' % (img1.shape, img2.shape)
+                )
         else:
-            raise AssertionError('Unknown shape case: %r, %r' % (img1.shape, img2.shape))
+            raise AssertionError(
+                'Unknown shape case: %r, %r' % (img1.shape, img2.shape)
+            )
+    elif atleast3d and img1.ndim == 2:
+        # Equal-shape grayscale inputs never enter the branch above.
+        img1 = img1[..., None]
+        img2 = img2[..., None]
     return img1, img2
 
 
 def _alpha_fill_for(img: np.ndarray) -> np.ndarray:
-    """ helper for make_channels_comparable """
-    fill_value = (255 if img.dtype.kind in ('i', 'u') else 1)
-    alpha_chan = np.full(img.shape[0:2], dtype=img.dtype,
-                         fill_value=fill_value)
+    """helper for make_channels_comparable"""
+    fill_value = 255 if img.dtype.kind in ('i', 'u') else 1
+    alpha_chan = np.full(img.shape[0:2], dtype=img.dtype, fill_value=fill_value)
     return alpha_chan
 
 
@@ -267,7 +293,9 @@ def atleast_3channels(arr: np.ndarray, copy: bool = True) -> np.ndarray:
         elif c in [3, 4]:
             res = arr.copy() if copy else arr
         else:
-            raise ValueError('Cannot handle ndims={} with c={}'.format(ndims, c))
+            raise ValueError(
+                'Cannot handle ndims={} with c={}'.format(ndims, c)
+            )
     else:
         raise ValueError('Cannot handle arr.shape={}'.format(arr.shape))
     return res
@@ -362,9 +390,14 @@ def padded_slice(
             about the transform. Defaults to False.
     """
     ub.schedule_deprecation(
-        'kwimage', 'padded_slice', 'function',
+        'kwimage',
+        'padded_slice',
+        'function',
         migration='use kwarray.padded_slice instead',
-        deprecate='now', error='0.11.0', remove='0.12.0')
+        deprecate='now',
+        error='0.11.0',
+        remove='0.12.0',
+    )
 
     if isinstance(in_slice, slice):
         in_slice = [in_slice]
@@ -373,15 +406,17 @@ def padded_slice(
     data_dims = data.shape[:ndim]
 
     # separate requested slice into an in-bounds part and a padding part
-    data_slice, extra_padding = _padded_slice_embed(in_slice, data_dims,
-                                                    pad=pad)
+    data_slice, extra_padding = _padded_slice_embed(
+        in_slice, data_dims, pad=pad
+    )
 
     # Get the parts of the image that are in-bounds
     data_clipped = data[data_slice]
 
     # Apply the padding part
     data_sliced, transform = _padded_slice_apply(
-        data_clipped, data_slice, extra_padding, padkw=padkw)
+        data_clipped, data_slice, extra_padding, padkw=padkw
+    )
 
     if return_info:
         return data_sliced, transform
@@ -412,14 +447,13 @@ def _padded_slice_apply(
             extra_padding = extra_padding + ([(0, 0)] * trailing_dims)
         data_sliced = np.pad(data_clipped, extra_padding, **padkw)
 
-    st_dims = [(sl.start - pad_[0], sl.stop + pad_[1])
-               for sl, pad_ in zip(data_slice, extra_padding)]
+    st_dims = [
+        (sl.start - pad_[0], sl.stop + pad_[1])
+        for sl, pad_ in zip(data_slice, extra_padding)
+    ]
 
     # TODO: return a better transform back to the original space
-    transform = {
-        'st_dims': st_dims,
-        'st_offset': [d[0] for d in st_dims]
-    }
+    transform = {'st_dims': st_dims, 'st_offset': [d[0] for d in st_dims]}
     return data_sliced, transform
 
 
@@ -503,7 +537,9 @@ def _padded_slice_embed(
     pad_slice = [p if ub.iterable(p) else [p, p] for p in pad]
 
     # Determine the real part of the image that can be sliced out
-    for D_img, d_low, d_high, d_pad in zip(data_dims, low_dims, high_dims, pad_slice):
+    for D_img, d_low, d_high, d_pad in zip(
+        data_dims, low_dims, high_dims, pad_slice
+    ):
         if d_low > d_high:
             raise ValueError('d_low > d_high: {} > {}'.format(d_low, d_high))
         # Determine where the bounds would be if the image size was inf
@@ -545,29 +581,44 @@ def normalize(
         DEPRECATED: this function has been MOVED to ``kwarray.normalize``
     """
     import kwarray
+
     ub.schedule_deprecation(
-        'kwimage', 'normalize', 'function',
+        'kwimage',
+        'normalize',
+        'function',
         migration='use kwarray.normalize instead',
-        deprecate='0.10.0', error='0.11.0', remove='0.12.0')
+        deprecate='0.10.0',
+        error='0.11.0',
+        remove='0.12.0',
+    )
     return kwarray.normalize(arr, mode=mode, alpha=alpha, beta=beta, out=out)
 
 
-def find_robust_normalizers(data: np.ndarray, params: str | dict[str, _t.Any] = 'auto') -> _t.Any:
+def find_robust_normalizers(
+    data: np.ndarray, params: str | dict[str, _t.Any] = 'auto'
+) -> _t.Any:
     """
     Finds robust normalization statistics for a single observation
 
     REMOVED IN FAVOR of kwarray.find_robust_normalizers
     """
     import kwarray
+
     ub.schedule_deprecation(
-        'kwimage', 'find_robust_normalizers', 'function',
+        'kwimage',
+        'find_robust_normalizers',
+        'function',
         migration=ub.paragraph(
-            '''
+            """
             use kwarray.find_robust_normalizers instead.  Note: the default
             here is params=sigmoid, but in kwarray params default to linear.
             Modify the code accordintly.
-            '''),
-        deprecate='0.10.0', error='0.11.0', remove='0.12.0')
+            """
+        ),
+        deprecate='0.10.0',
+        error='0.11.0',
+        remove='0.12.0',
+    )
     if isinstance(params, str) and params == 'auto':
         # Override kwarray defaults for backwards compatability
         params = {
@@ -688,6 +739,7 @@ def normalize_intensity(
         >>>     ax.set_title(row['key'])
     """
     import kwarray
+
     if isinstance(params, str) and params == 'auto':
         # Override kwarray defaults for backwards compatability
         params = {
@@ -696,9 +748,15 @@ def normalize_intensity(
             'high': 0.9,
             'mode': 'sigmoid',
         }
-    return kwarray.robust_normalize(imdata, return_info=return_info,
-                                    nodata=nodata, axis=axis, dtype=dtype,
-                                    params=params, mask=mask)
+    return kwarray.robust_normalize(
+        imdata,
+        return_info=return_info,
+        nodata=nodata,
+        axis=axis,
+        dtype=dtype,
+        params=params,
+        mask=mask,
+    )
 
 
 def crop_border_by_color(
@@ -737,8 +795,10 @@ def crop_border_by_color(
         >>> cropped = crop_border_by_color(img)
         >>> assert cropped.shape == (6, 6, 3)
     """
-    import kwimage
     import numpy as np
+
+    import kwimage
+
     if fillval is None:
         fillval = np.array([255] * kwimage.num_channels(img))
     # for colored images
@@ -755,7 +815,9 @@ def crop_border_by_color(
     return cropped_img
 
 
-def _get_pixel_dist(img: np.ndarray, pixel: np.ndarray, channel: int | None = None) -> np.ndarray:
+def _get_pixel_dist(
+    img: np.ndarray, pixel: np.ndarray, channel: int | None = None
+) -> np.ndarray:
     """
     Computes the absolute difference between an image and a reference pixel
     value.
@@ -784,13 +846,24 @@ def _get_pixel_dist(img: np.ndarray, pixel: np.ndarray, channel: int | None = No
         >>> channel = None
         >>> _get_pixel_dist(img, pixel, channel)
     """
-    import kwimage
     import numpy as np
+
+    import kwimage
+
     pixel = np.asarray(pixel)
     if len(pixel.shape) < 2:
         pixel = pixel[None, None, :]
     img, pixel = kwimage.make_channels_comparable(img, pixel)
-    dist = np.abs(img - pixel)
+    if img.dtype.kind in 'iu' and pixel.dtype.kind in 'iu':
+        # Integer subtraction can wrap before abs (e.g. uint8(0) - 255).
+        # Promote to a signed type large enough for normal image integers.
+        work_dtype = np.result_type(img.dtype, pixel.dtype, np.int64)
+        dist = np.abs(
+            img.astype(work_dtype, copy=False)
+            - pixel.astype(work_dtype, copy=False)
+        )
+    else:
+        dist = np.abs(img - pixel)
     if len(img.shape) > 2:
         if channel is None:
             dist = np.sum(dist, axis=2)
@@ -846,9 +919,11 @@ def _get_crop_slices(isfill: np.ndarray) -> tuple[slice, slice]:
         >>> assert rowslice.start == 2 and rowslice.stop == 4
         >>> assert colslice.start == 2 and colslice.stop == 3
     """
-    import numpy as np
-    import kwarray
     from functools import reduce
+
+    import kwarray
+    import numpy as np
+
     fill_colxs = [np.where(row)[0] for row in isfill]
     fill_rowxs = [np.where(col)[0] for col in isfill.T]
     nRows, nCols = isfill.shape[0:2]
@@ -879,10 +954,10 @@ def _get_crop_slices(isfill: np.ndarray) -> tuple[slice, slice]:
             return endpoint + 1
         return min(consec_index)
 
-    consec_rows_top    = get_min_consec_endpoint(consec_rows_list, 0)
+    consec_rows_top = get_min_consec_endpoint(consec_rows_list, 0)
     consec_rows_bottom = get_max_consec_endpoint(consec_rows_list, nRows - 1)
-    remove_cols_left   = get_min_consec_endpoint(consec_cols_list, 0)
-    remove_cols_right  = get_max_consec_endpoint(consec_cols_list, nCols - 1)
+    remove_cols_left = get_min_consec_endpoint(consec_cols_list, 0)
+    remove_cols_right = get_max_consec_endpoint(consec_cols_list, nCols - 1)
     rowslice = slice(consec_rows_top, consec_rows_bottom)
     colslice = slice(remove_cols_left, remove_cols_right)
     return rowslice, colslice
