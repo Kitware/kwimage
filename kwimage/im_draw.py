@@ -407,11 +407,11 @@ def _cv2_put_text_compat(img, text, xy, kwargs):
     """Call ``cv2.putText`` across OpenCV 3.x through 5.x.
 
     OpenCV 5's replacement text renderer only accepts uint8 destination
-    images.  Older OpenCV versions accepted other image dtypes, but silently
-    disabled antialiasing for them.  Preserve that behavior by first trying
-    the native call and, only when it rejects a non-uint8 image, rasterizing a
-    binary uint8 text mask and assigning the requested color into the original
-    image.
+    images with 1, 3, or 4 channels.  Older OpenCV versions accepted other
+    dtypes and two-channel images, but silently disabled antialiasing for
+    those cases. Preserve that behavior by using the native call when it is
+    supported and otherwise rasterizing a binary uint8 text mask before
+    assigning the requested color into the original image.
 
     The mask fallback avoids quantizing the input image and preserves masked
     array masks, NaNs outside the text pixels, the input dtype, and inplace
@@ -419,22 +419,29 @@ def _cv2_put_text_compat(img, text, xy, kwargs):
     """
     import cv2
 
-    try:
-        return cv2.putText(img, text, xy, **kwargs)
-    except cv2.error as ex:
-        image_data = np.asarray(img)
-        is_uint8_depth_error = 'img.depth() == CV_8U' in str(ex)
-        if image_data.dtype == np.uint8 or not is_uint8_depth_error:
-            raise
+    image_data = np.asarray(img)
+    needs_channel_fallback = (
+        image_data.ndim == 3 and image_data.shape[2] == 2
+    )
+    if not needs_channel_fallback:
+        try:
+            return cv2.putText(img, text, xy, **kwargs)
+        except cv2.error as ex:
+            is_uint8_depth_error = (
+                image_data.dtype != np.uint8 and
+                'img.depth() == CV_8U' in str(ex)
+            )
+            if not is_uint8_depth_error:
+                raise
 
     mask = np.zeros(image_data.shape[0:2], dtype=np.uint8)
     mask_kwargs = kwargs.copy()
     mask_kwargs['color'] = 255
     if mask_kwargs.get('lineType', None) == cv2.LINE_AA:
-        # OpenCV 4 used non-antialiased drawing for non-uint8 destinations.
-        # Keeping a binary mask also avoids introducing extra intermediate
-        # values into float images that historically only contained the
-        # background and requested drawing colors.
+        # OpenCV 4 used non-antialiased drawing for non-uint8 and
+        # two-channel destinations. Keeping a binary mask also avoids
+        # introducing intermediate values into float images that
+        # historically only contained the background and draw colors.
         mask_kwargs['lineType'] = cv2.LINE_8
     cv2.putText(mask, text, xy, **mask_kwargs)
 

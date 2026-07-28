@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Drop Python 3.9
 
 ### Fixed
+* Worked around OpenCV 5 rejecting two-channel images in `draw_text_on_image`.
 * Worked around the OpenCV 4.13.x `warpAffine` regression for `float64` inputs with nearest-neighbor interpolation.
 
 

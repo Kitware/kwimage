@@ -41,6 +41,42 @@ def test_draw_text_non_uint8_opencv5_fallback(monkeypatch):
     assert set(np.unique(result)).issubset({0.0, 1.0})
 
 
+def test_draw_text_two_channel_opencv5_fallback(monkeypatch):
+    """Exercise OpenCV 5's rejection of two-channel destinations."""
+    cv2 = _require_cv2()
+    import kwimage
+
+    real_put_text = cv2.putText
+
+    def restricted_channel_put_text(img, *args, **kwargs):
+        image_data = np.asarray(img)
+        if image_data.ndim == 3 and image_data.shape[2] not in {1, 3, 4}:
+            raise cv2.error(
+                "OpenCV(5.0.0): (-215:Assertion failed) "
+                "nch == 1 || nch == 3 || nch == 4 in function 'putText'"
+            )
+        return real_put_text(img, *args, **kwargs)
+
+    monkeypatch.setattr(cv2, 'putText', restricted_channel_put_text)
+
+    image = np.zeros((80, 240, 2), dtype=np.uint8)
+    result = kwimage.draw_text_on_image(
+        image,
+        'opencv5',
+        org=(2, 30),
+        color='white',
+        lineType=cv2.LINE_AA,
+    )
+
+    assert result is image
+    assert result.shape == (80, 240, 2)
+    assert result.dtype == np.uint8
+    drawn = np.any(result != 0, axis=2)
+    assert np.any(drawn)
+    assert np.all(result[drawn] == 255)
+    assert np.all(result[~drawn] == 0)
+
+
 def test_draw_text_masked_array_preserves_mask(monkeypatch):
     cv2 = _require_cv2()
     import kwimage
