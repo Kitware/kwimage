@@ -1,108 +1,223 @@
 [build-system]
-requires = [ "setuptools>=41.0.1", "wheel>=0.37.1",]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools>=77",
+  "wheel>=0.37.1",
+]
+
+[project]
+name = "kwimage"
+description = "The kwimage module"
+license = "Apache-2.0"
+license-files = [
+  "LICENSE",
+]
+authors = [ { name = "Jon Crall", email = "jon.crall@kitware.com" } ]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Utilities",
+]
+dynamic = [
+  "dependencies",
+  "optional-dependencies",
+  "readme",
+  "version",
+]
+urls.Homepage = "https://gitlab.kitware.com/computer-vision/kwimage"
+scripts.kwimage = "kwimage.cli.__main__:main"
+
+[tool.setuptools]
+include-package-data = true
+dynamic.dependencies.file = [
+  "requirements/runtime.txt",
+]
+dynamic.optional-dependencies.all.file = [
+  "requirements/optional.txt",
+  "requirements/headless.txt",
+  "requirements/graphics.txt",
+  "requirements/gdal.txt",
+  "requirements/problematic.txt",
+]
+dynamic.optional-dependencies.docs.file = [
+  "requirements/docs-metadata.txt",
+  "requirements/tests.txt",
+  "requirements/headless.txt",
+  "requirements/optional.txt",
+  "requirements/runtime.txt",
+]
+dynamic.optional-dependencies.gdal.file = [
+  "requirements/gdal.txt",
+]
+dynamic.optional-dependencies.graphics.file = [
+  "requirements/graphics.txt",
+]
+dynamic.optional-dependencies.headless.file = [
+  "requirements/headless.txt",
+]
+dynamic.optional-dependencies.linting.file = [
+  "requirements/linting.txt",
+]
+dynamic.optional-dependencies.optional.file = [
+  "requirements/optional.txt",
+]
+dynamic.optional-dependencies.problematic.file = [
+  "requirements/problematic.txt",
+]
+dynamic.optional-dependencies.tests.file = [
+  "requirements/tests.txt",
+]
+dynamic.readme.file = [
+  "README.rst",
+]
+dynamic.readme.content-type = "text/x-rst"
+dynamic.version.attr = "kwimage.__version__"
+package-data."*" = [
+  "requirements/*.txt",
+]
+package-data.kwimage = [
+  "py.typed",
+]
+packages.find.where = [
+  ".",
+]
+packages.find.include = [
+  "kwimage*",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 80
+format.indent-style = "space"
+format.quote-style = "single"
+format.line-ending = "auto"
+format.skip-magic-trailing-comma = false
+format.docstring-code-format = false
+lint.select = [
+  "E",
+  "F",
+  "I",
+]
+lint.ignore = [
+  "E402",
+  "E501",
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.ty]
+rules.unused-type-ignore-comment = "ignore"
+rules.unresolved-import = "ignore"
+src.include = [
+  "kwimage",
+]
+
+[[tool.ty.overrides]]
+include = [
+  "kwimage/algo/algo_nms.py",
+  "kwimage/transform.py",
+  "kwimage/structs/boxes.py",
+  "kwimage/im_demodata.py",
+  "kwimage/im_cv2.py",
+  "kwimage/im_draw.py",
+  "kwimage/structs/polygon.py",
+  "kwimage/structs/mask.py",
+  "kwimage/structs/coords.py",
+  "kwimage/structs/segmentation.py",
+  "kwimage/im_io.py",
+  "kwimage/im_core.py",
+  "kwimage/structs/points.py",
+  "kwimage/im_filter.py",
+  "kwimage/im_runlen.py",
+  "kwimage/im_stack.py",
+  "kwimage/cli/crop_border.py",
+  "kwimage/cli/stack_images.py",
+  "kwimage/im_alphablend.py",
+  "kwimage/cli/__main__.py",
+  "kwimage/im_transform.py",
+]
+rules.all = "ignore"
+
+[tool.pytest]
+ini_options.addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py --ignore-glob=dev --ignore-glob=docs"
+ini_options.norecursedirs = ".git ignore build __pycache__ dev _skbuild docs"
+ini_options.filterwarnings = [
+  "default",
+  "ignore:.*No cfgstr given in Cacher constructor or call.*:Warning",
+  "ignore:.*Define the __nice__ method for.*:Warning",
+  "ignore:.*private pytest class or function.*:Warning",
+]
+
+[tool.coverage]
+run.branch = true
+report.exclude_lines = [
+  ".*  # nocover",
+  ".*  # pragma: no cover",
+  ".*if six.PY2:",
+  "^ *pass *$",
+  "^ *raise",
+  "def __repr__",
+  "if __name__ == .__main__.:",
+  "if _debug:",
+  "if 0:",
+  "if trace is not None",
+  "pragma: no cover",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "verbose = .*",
+]
+report.omit = [
+  "*/setup.py",
+  "kwimage/__main__.py",
+]
 
 [tool.xcookie]
-tags = [ "purepy", "gitlab", "kitware", "cv2", "gdal"]
+tags = [
+  "purepy",
+  "gitlab",
+  "kitware",
+  "cv2",
+  "gdal",
+]
 mod_name = "kwimage"
-author = 'Jon Crall'
-author_email = 'jon.crall@kitware.com'
+author = "Jon Crall"
+author_email = "jon.crall@kitware.com"
 repo_name = "kwimage"
-#ci_cpython_versions = ['3.10', '3.11', '3.12', '3.13', '3.14']
 min_python = "3.10"
 max_python = "3.14"
-url = 'https://gitlab.kitware.com/computer-vision/kwimage'
+url = "https://gitlab.kitware.com/computer-vision/kwimage"
 dev_status = "beta"
 typed = true
 render_doc_images = 1
 classifiers = [
-    "Development Status :: 4 - Beta",
-    'Intended Audience :: Developers',
-    'Intended Audience :: Science/Research',
-    'Topic :: Scientific/Engineering',
-    'Topic :: Software Development',
-    'Topic :: Software Development :: Libraries :: Python Modules',
-    'Topic :: Utilities',
-    # This should be interpreted as Apache License v2.0
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Utilities",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
-
-[tool.xcookie.entry_points]
-console_scripts = [
-    "kwimage = kwimage.cli.__main__:main",
+description = "The kwimage module"
+use_setup_py = false
+enable_gpg = true
+use_pyproject_requirements = false
+entry_points.console_scripts = [
+  "kwimage = kwimage.cli.__main__:main",
 ]
-
-[tool.pytest.ini_options]
-addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py"
-norecursedirs = ".git ignore build __pycache__ dev docs _skbuild"
-filterwarnings = [ "default", "ignore:.*No cfgstr given in Cacher constructor or call.*:Warning", "ignore:.*Define the __nice__ method for.*:Warning", "ignore:.*private pytest class or function.*:Warning",]
-
-[tool.coverage.run]
-branch = true
-
-[tool.coverage.report]
-exclude_lines = [ "pragma: no cover", ".*  # pragma: no cover", ".*  # nocover", "def __repr__", "raise AssertionError", "raise NotImplementedError", "if 0:", "if trace is not None", "verbose = .*", "^ *raise", "^ *pass *$", "if _debug:", "if __name__ == .__main__.:", ".*if six.PY2:",]
-omit = [ "kwimage/__main__.py", "*/setup.py",]
-
-
-[tool.ruff]
-line-length = 80
-target-version = "py39"
-
-[tool.ruff.lint]
-# Enable Flake8 (E, F) and isort (I) rules.
-select = ["E", "F", "I"]
-# Ignore specific rules, for example, E501 (line too long) as it's handled by the formatter.
-ignore = [
-    "E501",  # line too long
-    "E402",  # Module level import not at top of file
-]
-
-[tool.ruff.format]
-quote-style = "single"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
-docstring-code-format = false
-
-[tool.ty.rules]
-unused-type-ignore-comment = "ignore"
-unresolved-import = "ignore"
-
-[tool.ty.src]
-include = ["kwimage"]
-
-[[tool.ty.overrides]]
-include = [
-    "kwimage/algo/algo_nms.py",
-    "kwimage/transform.py",
-    "kwimage/structs/boxes.py",
-    "kwimage/im_demodata.py",
-    "kwimage/im_cv2.py",
-    "kwimage/im_draw.py",
-    "kwimage/structs/polygon.py",
-    "kwimage/structs/mask.py",
-    "kwimage/structs/coords.py",
-    "kwimage/structs/segmentation.py",
-    "kwimage/im_io.py",
-    "kwimage/im_core.py",
-    "kwimage/structs/points.py",
-    "kwimage/im_filter.py",
-    "kwimage/im_runlen.py",
-    "kwimage/im_stack.py",
-    "kwimage/cli/crop_border.py",
-    "kwimage/cli/stack_images.py",
-    "kwimage/im_alphablend.py",
-    "kwimage/cli/__main__.py",
-    "kwimage/im_transform.py",
-]
-
-[tool.ty.overrides.rules]
-all = "ignore"
-
-[tool.mypy]
-ignore_missing_imports = true
