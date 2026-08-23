@@ -9,10 +9,16 @@ import numpy as np
 import ubelt as ub
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-    from typing import Any, Sequence, MutableSequence
+    from collections.abc import Callable, Generator, Iterable, Iterator
+    from typing import Any, MutableSequence, Protocol, Sequence
+
+    class _DrawableObject(Protocol):
+        def to_coco(self, style: str = 'orig') -> Any: ...
+        def draw(self, **kwargs: Any) -> Any: ...
+        def draw_on(self, image: Any, **kwargs: Any) -> Any: ...
 
 T = TypeVar('T')
+ObjectListT = TypeVar('ObjectListT', bound='ObjectList[Any]')
 
 # from collections import abc
 # import abc
@@ -26,7 +32,7 @@ T = TypeVar('T')
 #     ARRAY_TYPES = (np.ndarray, torch.Tensor)
 
 
-def isinstance_arraytypes(obj):
+def isinstance_arraytypes(obj: object) -> bool:
     """
     workaround so we dont need to import torch at the global level
     """
@@ -105,79 +111,79 @@ class _ExperimentalListProxy(Generic[T]):
 
     data: MutableSequence[T]
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> Any:
         """Retrieve an item by its index."""
         return self.data[index]
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: Any, value: T) -> None:
         """Update an item at the specified index."""
         self.data[index] = value
 
-    def __delitem__(self, index):
+    def __delitem__(self, index: Any) -> None:
         """Delete an item at the specified index."""
         del self.data[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the length of the sequence."""
         return len(self.data)
 
-    def insert(self, index, value):
+    def insert(self, index: int, value: T) -> None:
         """Insert an item at a specific index."""
         self.data.insert(index, value)
 
-    def append(self, value):
+    def append(self, value: T) -> None:
         """Add an item to the end of the sequence."""
         self.data.append(value)
 
-    def clear(self):
+    def clear(self) -> None:
         """Remove all items from the sequence."""
         self.data.clear()
 
-    def reverse(self):
+    def reverse(self) -> None:
         """Reverse the sequence in place."""
         self.data.reverse()
 
-    def extend(self, other):
+    def extend(self, other: Iterable[T]) -> None:
         """Extend the sequence by appending elements from an iterable."""
         self.data.extend(other)
 
-    def pop(self, index=-1):
+    def pop(self, index: int = -1) -> T:
         """Remove and return an item at the given index."""
         return self.data.pop(index)
 
-    def remove(self, value):
+    def remove(self, value: T) -> None:
         """Remove the first occurrence of a value."""
         self.data.remove(value)
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: Iterable[T]) -> MutableSequence[T]:
         """Support in-place addition (+=) to extend the sequence."""
         return self.data.__iadd__(other)
 
-    def __contains__(self, item):
+    def __contains__(self, item: object) -> bool:
         """Check if the item is in the sequence."""
         return item in self.data
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         """Return an iterator over the sequence."""
         return iter(self.data)
 
-    def __reversed__(self):
+    def __reversed__(self) -> Iterator[T]:
         """Return a reverse iterator over the sequence."""
         return self.data.__reversed__()
 
-    def index(self, value, start: int = 0, stop: int = sys.maxsize):
+    def index(self, value: T, start: int = 0, stop: int = sys.maxsize) -> int:
         """
         Return the index of the first occurrence of a value.
         Raise ValueError if the value is not present.
         """
         return self.data.index(value, start, stop)
 
-    def count(self, value):
+    def count(self, value: T) -> int:
         """Return the number of occurrences of a value."""
         return self.data.count(value)
 
 
-class ObjectList(Spatial, _ExperimentalListProxy):
+class ObjectList(Spatial, _ExperimentalListProxy[T]):
     """
     Stores a list of potentially heterogenous structures, each item usually
     corresponds to a different object.
@@ -204,17 +210,17 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         self.data = data
         self.meta = meta
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int]:
         return (len(self),)
 
     @property
-    def dtype(self):
+    def dtype(self) -> Any:
         try:
-            return self.data.dtype  # type: ignore
+            return getattr(self.data, 'dtype')
         except Exception:
             print('kwimage._generic: no dtype for ' + str(type(self.data)))
             raise
@@ -223,8 +229,11 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         return 'n={}'.format(len(self))
 
     def translate(
-        self, offset, output_dims: Any | None = None, inplace: bool = False
-    ):
+        self: ObjectListT,
+        offset: Any,
+        output_dims: Any | None = None,
+        inplace: bool = False,
+    ) -> ObjectListT:
         newdata = [
             None
             if item is None
@@ -236,8 +245,11 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         return self.__class__(newdata, self.meta)
 
     def scale(
-        self, factor, output_dims: Any | None = None, inplace: bool = False
-    ):
+        self: ObjectListT,
+        factor: Any,
+        output_dims: Any | None = None,
+        inplace: bool = False,
+    ) -> ObjectListT:
         newdata = [
             None
             if item is None
@@ -247,12 +259,12 @@ class ObjectList(Spatial, _ExperimentalListProxy):
         return self.__class__(newdata, self.meta)
 
     def warp(
-        self,
-        transform,
+        self: ObjectListT,
+        transform: Any,
         input_dims: Any | None = None,
         output_dims: Any | None = None,
         inplace: bool = False,
-    ):
+    ) -> ObjectListT:
         if inplace:
             for item in self.data:
                 if item is not None:
@@ -277,28 +289,36 @@ class ObjectList(Spatial, _ExperimentalListProxy):
             ]
             return self.__class__(newdata, self.meta)
 
-    def apply(self, func):
+    def apply(
+        self: ObjectListT, func: Callable[[T], Any]
+    ) -> ObjectListT:
         newdata = [None if item is None else func(item) for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def to_coco(self, style: str = 'orig') -> Generator[Any, None, None]:
+    def to_coco(
+        self: ObjectList[_DrawableObject], style: str = 'orig'
+    ) -> Generator[Any, None, None]:
         for item in self.data:
             if item is None:
                 yield None
             else:
                 yield item.to_coco(style=style)
 
-    def compress(self, flags, axis: int = 0):
+    def compress(
+        self: ObjectListT, flags: Iterable[bool], axis: int = 0
+    ) -> ObjectListT:
         assert axis == 0
         newdata = list(ub.compress(self.data, flags))
         return self.__class__(newdata, self.meta)
 
-    def take(self, indices, axis: int = 0):
+    def take(
+        self: ObjectListT, indices: Iterable[int], axis: int = 0
+    ) -> ObjectListT:
         assert axis == 0
         newdata = list(ub.take(self.data, indices))
         return self.__class__(newdata, self.meta)
 
-    def draw(self, **kwargs):
+    def draw(self: ObjectList[_DrawableObject], **kwargs: Any) -> list[Any]:
         """
         Generic draw method for list of spatial annotations
         """
@@ -315,7 +335,9 @@ class ObjectList(Spatial, _ExperimentalListProxy):
                 patches.append(patch)
         return patches
 
-    def draw_on(self, image, **kwargs):
+    def draw_on(
+        self: ObjectList[_DrawableObject], image: Any, **kwargs: Any
+    ) -> Any:
         """
         TODO:
             document fastdraw - it flattens all subobjects into the same layer
@@ -372,10 +394,12 @@ class ObjectList(Spatial, _ExperimentalListProxy):
 
         return image
 
-    def tensor(self, device=ub.NoParam):
+    def tensor(
+        self: ObjectListT, device: Any = ub.NoParam
+    ) -> ObjectListT:
         return self.apply(lambda item: item.tensor(device))
 
-    def numpy(self):
+    def numpy(self: ObjectListT) -> ObjectListT:
         return self.apply(lambda item: item.numpy())
 
     @classmethod

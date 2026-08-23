@@ -103,7 +103,23 @@ class _HeatmapDrawMixin(object):
     mixin methods for drawing heatmap details
     """
 
-    def _colorize_class_idx(self):
+    if TYPE_CHECKING:
+        data: dict[str, Any]
+        meta: dict[str, Any]
+        class_probs: Any
+        classes: Any
+        offset: Any
+        diameter: Any
+        img_dims: Any
+        tf_data_to_img: Any
+        shape: Any
+        bounds: Any
+
+        def _warp_imgspace(self, *args: Any, **kwargs: Any) -> Any: ...
+        def upscale(self, *args: Any, **kwargs: Any) -> Any: ...
+        def warp(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def _colorize_class_idx(self) -> ndarray:
         """
         Visualization logic for discrete class index rasters.
         Negative indexes are interpreted as an "ignore" class.
@@ -127,10 +143,10 @@ class _HeatmapDrawMixin(object):
         import kwimage
 
         # Ignore cases where index is negative?
-        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(  # type: ignore
+        cidxs = kwarray.ArrayAPI.numpy(self.data['class_idx']).astype(
             int, copy=True
         )
-        classes = self.meta['classes']  # type: ignore
+        classes = self.meta['classes']
         if classes is None:
             # hack to get something, even though we dont have full info as to
             # what the classes are.
@@ -185,7 +201,7 @@ class _HeatmapDrawMixin(object):
         interpolation: str = 'linear',
         imgspace: bool = False,
         cmap: Any | None = None,
-    ):
+    ) -> ndarray:
         """
         Creates a colorized version of a heatmap channel suitable for
         visualization
@@ -262,16 +278,18 @@ class _HeatmapDrawMixin(object):
         import kwplot
 
         if channel is None:
-            if 'class_idx' in self.data:  # type: ignore
+            if 'class_idx' in self.data:
                 channel = 'class_idx'
-            elif 'class_probs' in self.data:  # type: ignore
+            elif 'class_probs' in self.data:
                 channel = 'class_probs'
-            elif 'class_energy' in self.data:  # type: ignore
+            elif 'class_energy' in self.data:
                 channel = 'class_energy'
             else:
                 raise Exception('unsure how to default channel')
 
-        def _per_channel_color(data, with_alpha, classes=None):
+        def _per_channel_color(
+            data: Any, with_alpha: float, classes: Any | None = None
+        ) -> ndarray:
             # Another hacky mode
             # data = a.data['class_energy']
             import kwimage
@@ -325,7 +343,7 @@ class _HeatmapDrawMixin(object):
                 import torch
 
                 chw = torch.Tensor(colormask.transpose(2, 0, 1))
-                colormask = self._warp_imgspace(  # type: ignore
+                colormask = self._warp_imgspace(
                     chw, interpolation=interpolation
                 ).transpose(1, 2, 0)
             return colormask
@@ -333,40 +351,40 @@ class _HeatmapDrawMixin(object):
         if isinstance(channel, str):
             # TODO: this is a bit hacky / inefficient, needs cleanup
             if imgspace:
-                mat = self.tf_data_to_img.params  # type: ignore
-                output_dims = self.img_dims  # type: ignore
-                a = self.warp(  # type: ignore
+                mat = self.tf_data_to_img.params
+                output_dims = self.img_dims
+                a = self.warp(
                     mat, version='old', output_dims=output_dims
                 ).numpy()
             else:
                 a = self
             if channel == 'offset':
-                mask = np.linalg.norm(a.offset, axis=0)  # type: ignore
+                mask = np.linalg.norm(a.offset, axis=0)
             elif channel == 'diameter':
-                mask = np.linalg.norm(a.diameter, axis=0)  # type: ignore
+                mask = np.linalg.norm(a.diameter, axis=0)
             elif channel == 'class_probs_max':
-                if 'class_probs' in a.data:  # type: ignore
-                    data = a.data['class_probs']  # type: ignore
+                if 'class_probs' in a.data:
+                    data = a.data['class_probs']
                 else:
                     # HACK HACK HACK
-                    data = a.data['class_energy']  # type: ignore
+                    data = a.data['class_energy']
                     low = min(0, data.min())
                     high = max(1, data.max())
                     data = (data - low) / (high - low)
                 mask = data.max(axis=0)
             elif channel == 'class_energy_max':
-                mask = a.data['class_energy'].max(axis=0)  # type: ignore
+                mask = a.data['class_energy'].max(axis=0)
                 mask -= mask.min()
             elif channel == 'class_probs_color' or channel == 'class_probs':
-                if 'class_probs' in a.data:  # type: ignore
-                    data = a.data['class_probs']  # type: ignore
+                if 'class_probs' in a.data:
+                    data = a.data['class_probs']
                 else:
                     # HACK HACK HACK
-                    data = a.data['class_energy']  # type: ignore
+                    data = a.data['class_energy']
                     low = min(0, data.min())
                     high = max(1, data.max())
                     data = (data - low) / (high - low)
-                classes = self.classes  # type: ignore
+                classes = self.classes
                 colormask = _per_channel_color(data, with_alpha, classes)
                 return colormask
             elif channel == 'class_energy_color' or channel == 'class_energy':
@@ -374,7 +392,7 @@ class _HeatmapDrawMixin(object):
                 import scipy
                 import scipy.special
 
-                data = a.data['class_energy']  # type: ignore
+                data = a.data['class_energy']
                 if 1:
                     # Assume 0-1 range, but stretch beyond if needed
                     low = min(0, data.min())
@@ -382,7 +400,7 @@ class _HeatmapDrawMixin(object):
                     data = (data - low) / (high - low)
                 else:
                     data = scipy.special.softmax(data, axis=0)
-                classes = self.classes  # type: ignore
+                classes = self.classes
                 colormask = _per_channel_color(data, with_alpha, classes)
                 return colormask
             else:
@@ -390,9 +408,9 @@ class _HeatmapDrawMixin(object):
             mask = mask / np.maximum(mask.max(), 1e-9)
         else:
             if imgspace:
-                mask = self.upscale(channel, interpolation=interpolation)[0]  # type: ignore
+                mask = self.upscale(channel, interpolation=interpolation)[0]
             else:
-                mask = self.class_probs[channel]  # type: ignore
+                mask = self.class_probs[channel]
 
             if invert:
                 mask = 1 - mask
@@ -405,11 +423,11 @@ class _HeatmapDrawMixin(object):
     def draw_stacked(
         self,
         image: Any | None = None,
-        dsize=(224, 224),
-        ignore_class_idxs={},
+        dsize: tuple[int, int] = (224, 224),
+        ignore_class_idxs: Any = {},
         top: Any | None = None,
         chosen_cxs: Any | None = None,
-    ):
+    ) -> ndarray:
         """
         Draws per-class probabilities and stacks them into a single image
 
@@ -429,7 +447,7 @@ class _HeatmapDrawMixin(object):
 
         mat = None
         if image is not None:
-            tf = self.tf_data_to_img  # type: ignore
+            tf = self.tf_data_to_img
             if tf is not None:
                 mat = np.linalg.inv(tf.params)
 
@@ -439,19 +457,19 @@ class _HeatmapDrawMixin(object):
         except Exception:
             cmap = mpl.cm.get_cmap(cmap_name)
 
-        level_dsize = self.class_probs.shape[-2:][::-1]  # type: ignore
+        level_dsize = self.class_probs.shape[-2:][::-1]
 
         if chosen_cxs is None:
             if top is not None:
                 # Find the categories with the most "heat"
-                cx_to_score = self.class_probs.mean(2).mean(1)  # type: ignore
+                cx_to_score = self.class_probs.mean(2).mean(1)
                 for cx in ignore_class_idxs:
                     cx_to_score[cx] = -np.inf
                 chosen_cxs = kwarray.ArrayAPI.numpy(cx_to_score).argsort()[
                     ::-1
                 ][:top]
             else:
-                chosen_cxs = np.arange(self.class_probs.shape[0])  # type: ignore
+                chosen_cxs = np.arange(self.class_probs.shape[0])
 
         if image is not None:
             if mat is not None:
@@ -468,11 +486,11 @@ class _HeatmapDrawMixin(object):
         for cx in chosen_cxs:
             if cx in ignore_class_idxs:
                 continue
-            if self.classes:  # type: ignore
-                node = self.classes[cx]  # type: ignore
+            if self.classes:
+                node = self.classes[cx]
             else:
                 node = 'cx={}'.format(cx)
-            c = self.class_probs[cx]  # type: ignore
+            c = self.class_probs[cx]
             c = cmap(c)
             c = (c[..., 0:3] * 255.0).astype(np.uint8)
             c = cv2.resize(c, dsize)
@@ -489,7 +507,7 @@ class _HeatmapDrawMixin(object):
         channel: int | str | None = None,
         image: Any | None = None,
         imgspace: Any | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         Accepts same args as draw_on, but uses maplotlib
@@ -504,9 +522,9 @@ class _HeatmapDrawMixin(object):
 
         if image is None:
             if imgspace:
-                dims = self.img_dims  # type: ignore
+                dims = self.img_dims
             else:
-                dims = self.bounds  # type: ignore
+                dims = self.bounds
             shape = tuple(dims) + (4,)
             image = np.zeros(shape, dtype=np.float32)
         image = self.draw_on(
@@ -524,7 +542,7 @@ class _HeatmapDrawMixin(object):
         vecs: bool = False,
         kpts: Any | None = None,
         imgspace: bool | None = None,
-    ):
+    ) -> ndarray:
         """
         Overlays a heatmap channel on top of an image
 
@@ -612,30 +630,29 @@ class _HeatmapDrawMixin(object):
 
         if image is None:
             if imgspace:
-                image = np.zeros(self.img_dims)  # type: ignore
+                image = np.zeros(self.img_dims)
             else:
-                image = np.zeros((*self.shape[-2:], 3))  # type: ignore
+                image = np.zeros((*self.shape[-2:], 3))
 
         if channel is None:
-            if 'class_idx' in self.data:  # type: ignore
+            if 'class_idx' in self.data:
                 channel = 'class_idx'
-            elif 'class_probs' in self.data:  # type: ignore
+            elif 'class_probs' in self.data:
                 channel = 'class_probs'
-            elif 'class_energy' in self.data:  # type: ignore
+            elif 'class_energy' in self.data:
                 channel = 'class_energy'
             else:
                 raise Exception('unsure how to default channel')
 
         if imgspace is None:
-            if np.all(image.shape[0:2] == np.array(self.img_dims)):  # type: ignore
-                imgspace = True
+            imgspace = bool(np.all(image.shape[0:2] == np.array(self.img_dims)))
 
         colormask = self.colorize(
             channel,
             invert=invert,
             with_alpha=with_alpha,
             interpolation=interpolation,
-            imgspace=imgspace,  # type: ignore
+            imgspace=imgspace,
         )
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
@@ -649,8 +666,8 @@ class _HeatmapDrawMixin(object):
         if kpts is not None:
             # TODO: make a nicer keypoint offset vector visuliazation
             if kpts is True:
-                if self.data.get('keypoints', None) is not None:  # type: ignore
-                    keypoints = self.data['keypoints']  # type: ignore
+                if self.data.get('keypoints', None) is not None:
+                    keypoints = self.data['keypoints']
                     kpts = list(range(len(keypoints.shape[1])))
             if not ub.iterable(kpts):
                 kpts = [kpts]
@@ -658,10 +675,10 @@ class _HeatmapDrawMixin(object):
             vec_colors = kwimage.Color.distinct(len(kpts) + E)
 
         if vecs:
-            if self.data.get('offset', None) is not None:  # type: ignore
+            if self.data.get('offset', None) is not None:
                 # Hack
                 # Visualize center offset vectors
-                dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])  # type: ignore
+                dy, dx = kwarray.ArrayAPI.numpy(self.data['offset'])
                 color = vec_colors[0]
                 vecmask = kwimage.make_vector_field(
                     dx,
@@ -675,7 +692,7 @@ class _HeatmapDrawMixin(object):
                 import torch
 
                 chw = torch.Tensor(vecmask.transpose(2, 0, 1))
-                vecalign = self._warp_imgspace(chw, interpolation=interpolation)  # type: ignore
+                vecalign = self._warp_imgspace(chw, interpolation=interpolation)
                 vecalign = vecalign.transpose(1, 2, 0)
                 layers.append(vecalign)
 
@@ -683,8 +700,8 @@ class _HeatmapDrawMixin(object):
             import torch
 
             # TODO: make a nicer keypoint offset vector visuliazation
-            if self.data.get('keypoints', None) is not None:  # type: ignore
-                keypoints = self.data['keypoints']  # type: ignore
+            if self.data.get('keypoints', None) is not None:
+                keypoints = self.data['keypoints']
                 for i, k in enumerate(kpts):
                     # color = (np.array(vec_colors[k]) * 255).astype(np.uint8)
                     color = vec_colors[i + E]
@@ -707,7 +724,7 @@ class _HeatmapDrawMixin(object):
                     )
                     vec_alpha = max(0.1, vec_alpha - 0.1)
                     chw = torch.Tensor(vecmask.transpose(2, 0, 1))
-                    vecalign = self._warp_imgspace(  # type: ignore
+                    vecalign = self._warp_imgspace(
                         chw, interpolation=interpolation
                     )
                     vecalign = vecalign.transpose(1, 2, 0)
@@ -726,7 +743,17 @@ class _HeatmapWarpMixin(object):
     mixin method having to do with warping and aligning heatmaps
     """
 
-    def _align_other(self, other):
+    if TYPE_CHECKING:
+        data: dict[str, Any]
+        meta: dict[str, Any]
+        __spatialkeys__: list[str]
+        class_probs: Any
+        classes: Any
+        dims: Any
+        img_dims: Any
+        tf_data_to_img: Any
+
+    def _align_other(self, other: Heatmap) -> Heatmap:
         """
         Warp another Heatmap (with the same underlying imgdims) into the same
         space as this heatmap. This lets us perform elementwise operations on
@@ -758,21 +785,21 @@ class _HeatmapWarpMixin(object):
         if self is other:
             return other
         # The heatmaps must belong to the same image space
-        assert self.classes == other.classes  # type: ignore
-        assert np.all(self.img_dims == other.img_dims)  # type: ignore
+        assert self.classes == other.classes
+        assert np.all(self.img_dims == other.img_dims)
 
-        img_to_self = np.linalg.inv(self.tf_data_to_img.params)  # type: ignore
+        img_to_self = np.linalg.inv(self.tf_data_to_img.params)
         other_to_img = other.tf_data_to_img.params
         other_to_self = np.matmul(img_to_self, other_to_img)
 
         mat = other_to_self
-        output_dims = self.class_probs.shape[1:]  # type: ignore
+        output_dims = self.class_probs.shape[1:]
 
         # other now exists in the same space as self
         new_other = other.warp(mat, output_dims=output_dims)
         return new_other
 
-    def _align(self, mask, interpolation='linear'):
+    def _align(self, mask: Any, interpolation: str = 'linear') -> ndarray:
         """
         Align a linear combination of heatmap channels with the original image
 
@@ -782,29 +809,31 @@ class _HeatmapWarpMixin(object):
 
         import kwimage
 
-        M = self.tf_data_to_img.params[0:3]  # type: ignore
-        dsize = tuple(map(int, self.img_dims[::-1]))  # type: ignore
+        M = self.tf_data_to_img.params[0:3]
+        dsize = tuple(map(int, self.img_dims[::-1]))
         flags = kwimage.im_cv2._coerce_interpolation(interpolation)
         aligned = cv2.warpAffine(mask, M[0:2], dsize=tuple(dsize), flags=flags)
         aligned = np.clip(aligned, 0, 1)
         return aligned
 
-    def _warp_imgspace(self, chw, interpolation='linear'):
+    def _warp_imgspace(
+        self, chw: Any, interpolation: str = 'linear'
+    ) -> ndarray:
         import kwimage
 
-        if self.tf_data_to_img is None and self.img_dims is None:  # type: ignore
+        if self.tf_data_to_img is None and self.img_dims is None:
             aligned = chw.cpu().numpy()
         else:
             import torch
 
-            if self.tf_data_to_img is None:  # type: ignore
+            if self.tf_data_to_img is None:
                 # If img dims are the same then we dont need a transform we
                 # know its identity
-                if self.img_dims == self.dims:  # type: ignore
+                if self.img_dims == self.dims:
                     return chw.cpu().numpy()
 
-            output_dims = self.img_dims  # type: ignore
-            mat = torch.Tensor(self.tf_data_to_img.params[0:3])  # type: ignore
+            output_dims = self.img_dims
+            mat = torch.Tensor(self.tf_data_to_img.params[0:3])
             outputs = kwimage.warp_tensor(
                 chw[None, :], mat, output_dims=output_dims, mode=interpolation
             )
@@ -813,7 +842,7 @@ class _HeatmapWarpMixin(object):
 
     def upscale(
         self, channel: ndarray | None = None, interpolation: str = 'linear'
-    ):
+    ) -> ndarray:
         """
         Warp the heatmap with the image dimensions
 
@@ -834,9 +863,9 @@ class _HeatmapWarpMixin(object):
         import torch
 
         if channel is None:
-            chw = torch.Tensor(self.class_probs)  # type: ignore
+            chw = torch.Tensor(self.class_probs)
         else:
-            chw = torch.Tensor(self.class_probs[channel])[None, :]  # type: ignore
+            chw = torch.Tensor(self.class_probs[channel])[None, :]
         aligned = self._warp_imgspace(chw, interpolation=interpolation)
         return aligned
 
@@ -917,7 +946,7 @@ class _HeatmapWarpMixin(object):
         import kwimage
 
         if mat is None:
-            mat = self.tf_data_to_img.params  # type: ignore
+            mat = self.tf_data_to_img.params
 
         if isinstance(mat, skimage.transform.AffineTransform):
             mat = mat.params
@@ -925,7 +954,7 @@ class _HeatmapWarpMixin(object):
             mat = mat.matrix
 
         newdata = {}
-        newmeta = self.meta.copy()  # type: ignore
+        newmeta = self.meta.copy()
 
         impl = kwarray.ArrayAPI.coerce('tensor')
 
@@ -968,7 +997,7 @@ class _HeatmapWarpMixin(object):
             # according to scale. NOTE: old behavior was to use the img_dims
             # but this has problems when we are making something smaller.
             def _auto_select_warped_output_shape(mat):
-                h, w = self.dims  # type: ignore
+                h, w = self.dims
                 # Warp corners of the box and determine a new output shape
                 corners = kwimage.Coords(
                     np.array(
@@ -987,7 +1016,7 @@ class _HeatmapWarpMixin(object):
                 return output_dims
 
             output_dims = _auto_select_warped_output_shape(mat_notrans)
-            if self.img_dims is not None:  # type: ignore
+            if self.img_dims is not None:
                 import warnings
 
                 warnings.warn(
@@ -1007,16 +1036,16 @@ class _HeatmapWarpMixin(object):
         # thats because there was no translation factor. I'm pretty sure the
         # code on the bottom is correct. Obviously if something messes up, it
         # should probably be reverted. Left-vs-right is hard.
-        if self.tf_data_to_img is not None:  # type: ignore
-            newmeta['tf_data_to_img'] = inv_tf + self.tf_data_to_img  # type: ignore
+        if self.tf_data_to_img is not None:
+            newmeta['tf_data_to_img'] = inv_tf + self.tf_data_to_img
 
-        for k, v in self.data.items():  # type: ignore
+        for k, v in self.data.items():
             if v is not None:
                 v = kwarray.ArrayAPI.tensor(v)
                 # For spatial keys we need to transform the underlying values
                 # in addition to where those values are located.
                 if modify_spatial_coords:
-                    if k in self.__spatialkeys__:  # type: ignore
+                    if k in self.__spatialkeys__:
                         pts = impl.contiguous(impl.T(v))
                         pts = kwimage.warp_points(mat_notrans, pts)
                         v = impl.contiguous(impl.T(pts))
@@ -1041,22 +1070,23 @@ class _HeatmapWarpMixin(object):
 
                 newdata[k] = impl.asarray(new_v)
 
-        newself = self.__class__(newdata, newmeta)  # type: ignore
-        return newself  # type: ignore
+        cls = cast(Any, self.__class__)
+        newself = cast(Heatmap, cls(newdata, newmeta))
+        return newself
 
     def scale(
         self,
-        factor,
+        factor: float | Sequence[float],
         output_dims: Any | None = None,
         interpolation: str = 'linear',
-    ):
+    ) -> Heatmap:
         """
         Scale the heatmap
         """
         if not ub.iterable(factor):
             s1 = s2 = factor
         else:
-            s1, s2 = factor
+            s1, s2 = cast(Any, factor)
         mat = np.array(
             [
                 [s1, 0, 0],
@@ -1073,14 +1103,14 @@ class _HeatmapWarpMixin(object):
 
     def translate(
         self,
-        offset,
+        offset: float | Sequence[float],
         output_dims: Any | None = None,
         interpolation: str = 'linear',
-    ):
+    ) -> Heatmap:
         if not ub.iterable(offset):
             tx = ty = offset
         else:
-            tx, ty = offset
+            tx, ty = cast(Any, offset)
         mat = np.array(
             [
                 [1, 0, tx],
@@ -1101,12 +1131,19 @@ class _HeatmapAlgoMixin(object):
     Algorithmic operations on heatmaps
     """
 
+    if TYPE_CHECKING:
+        data: dict[str, Any]
+        meta: dict[str, Any]
+        class_probs: Any
+        classes: Any
+        tf_data_to_img: Any
+
     @classmethod
     def combine(
         cls,
         heatmaps: Sequence[Heatmap],
         root_index: int | None = None,
-        dtype=np.float32,
+        dtype: Any = np.float32,
     ) -> Heatmap:
         """
         Combine multiple heatmaps into a single heatmap.
@@ -1192,9 +1229,9 @@ class _HeatmapAlgoMixin(object):
         channel: int | Any,
         invert: bool = False,
         min_score: float = 0.01,
-        num_min: int = 10,
-        max_dims: Tuple[int, int] | None = None,
-        min_dims: Tuple[int, int] | None = None,
+        num_min: int | None = 10,
+        max_dims: float | Sequence[float] | ndarray | None = None,
+        min_dims: float | Sequence[float] | ndarray | None = None,
         dim_thresh_space: str = 'image',
     ) -> Any:
         """
@@ -1299,52 +1336,55 @@ class _HeatmapAlgoMixin(object):
             >>> dets2.draw(radius=1.0)
         """
         if isinstance(channel, int):
-            probs = self.class_probs[channel]  # type: ignore
+            probs = self.class_probs[channel]
         else:
             probs = channel
         if invert:
             probs = 1 - probs
 
+        max_dims_arr: ndarray | None = None
         if max_dims is not None:
-            max_dims = (  # type: ignore
-                max_dims if ub.iterable(max_dims) else (max_dims, max_dims)
-            )
-            max_dims = np.array(max_dims)  # type: ignore
-        elif min_dims is not None:
-            min_dims = (  # type: ignore
-                min_dims if ub.iterable(min_dims) else (min_dims, min_dims)
-            )
-            min_dims = np.array(min_dims)  # type: ignore
+            if ub.iterable(max_dims):
+                max_dims_arr = np.asarray(cast(Any, max_dims))
+            else:
+                max_dims_arr = np.asarray((max_dims, max_dims))
+
+        min_dims_arr: ndarray | None = None
+        if min_dims is not None:
+            if ub.iterable(min_dims):
+                min_dims_arr = np.asarray(cast(Any, min_dims))
+            else:
+                min_dims_arr = np.asarray((min_dims, min_dims))
 
         # Convert the dims to a native space if necessary
         if dim_thresh_space == 'image':
             # convert thresholds to native space
             # NOT SURE IF WE NEED TO INVERT XY HERE OR NOT
-            scale_dims = self.tf_data_to_img.scale[::-2]  # type: ignore
-            if max_dims is not None:
-                max_dims = max_dims / scale_dims
-            if min_dims is not None:
-                min_dims = min_dims / scale_dims
+            scale_dims = self.tf_data_to_img.scale[::-2]
+            if max_dims_arr is not None:
+                max_dims_arr = max_dims_arr / scale_dims
+            if min_dims_arr is not None:
+                min_dims_arr = min_dims_arr / scale_dims
         elif dim_thresh_space != 'native':
             raise KeyError(dim_thresh_space)
 
         dets = _prob_to_dets(
             probs,
-            diameter=self.data.get('diameter', None),  # type: ignore
-            offset=self.data.get('offset', None),  # type: ignore
-            class_probs=self.data.get('class_probs', None),  # type: ignore
-            keypoints=self.data.get('keypoints', None),  # type: ignore
+            diameter=self.data.get('diameter', None),
+            offset=self.data.get('offset', None),
+            class_probs=self.data.get('class_probs', None),
+            keypoints=self.data.get('keypoints', None),
             min_score=min_score,
             num_min=num_min,
-            max_dims=max_dims,
-            min_dims=min_dims,
+            max_dims=max_dims_arr,
+            min_dims=min_dims_arr,
         )
         if dets.data.get('keypoints', None) is not None:
-            kp_classes = self.meta['kp_classes']  # type: ignore
+            kp_classes = self.meta['kp_classes']
             dets.data['keypoints'].meta['classes'] = kp_classes
             dets.meta['kp_classes'] = kp_classes
 
-        dets.meta['classes'] = self.classes  # type: ignore
+        dets.meta['classes'] = self.classes
         return dets
 
 
@@ -1426,6 +1466,9 @@ class Heatmap(
         >>> self.draw()
     """
 
+    data: dict[str, Any]
+    meta: dict[str, Any]
+
     # Valid keys for the data dictionary
     __datakeys__: list[str] = [
         'class_probs',
@@ -1485,25 +1528,25 @@ class Heatmap(
         if meta is None:
             meta = {}
 
-        self.data = data
+        self.data = cast(dict[str, Any], data)
         self.meta = meta
 
     def __nice__(self):
         return '{} on img_dims={}'.format(self.shape, self.img_dims)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> Any:
         return self.class_probs[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.class_probs)
 
     @property
-    def shape(self):
+    def shape(self) -> Any:
         shape = None
         try:
             shape = self.class_probs.shape
         except Exception:
-            for key, value in self.data.items():  # type: ignore
+            for key, value in self.data.items():
                 try:
                     shape = value.shape
                 except AttributeError:
@@ -1511,31 +1554,31 @@ class Heatmap(
         return shape
 
     @property
-    def bounds(self):
+    def bounds(self) -> Any:
         return self.shape[-2:]
         # return self.class_probs.shape[1:]
 
     @property
-    def dims(self):
+    def dims(self) -> Any:
         """space-time dimensions of this heatmap"""
         return self.shape[-2:]
         # return self.class_probs.shape[1:]
 
-    def is_numpy(self):
+    def is_numpy(self) -> bool:
         return self._impl.is_numpy
 
-    def is_tensor(self):
+    def is_tensor(self) -> bool:
         return self._impl.is_tensor
 
     @property
-    def _impl(self):
+    def _impl(self) -> Any:
         """
         Returns the internal tensor/numpy ArrayAPI implementation
 
         Returns:
             kwarray.ArrayAPI
         """
-        return kwarray.ArrayAPI.coerce(self.data['class_probs'])  # type: ignore
+        return kwarray.ArrayAPI.coerce(self.data['class_probs'])
 
     # @property
     # def device(self):
@@ -1654,8 +1697,8 @@ class Heatmap(
         import skimage
 
         if img_dims is None:
-            scale = 1 + rng.rand(2) * 2  # type: ignore
-            translation = rng.rand(2) * np.array(dims[::-1]) / 2  # type: ignore
+            scale = 1 + rng.rand(2) * 2
+            translation = rng.rand(2) * np.array(dims[::-1]) / 2
             tf_data_to_img = skimage.transform.AffineTransform(
                 scale=scale, translation=translation
             )
@@ -1666,9 +1709,9 @@ class Heatmap(
             )
             img_dims = img_wh_dims[::-1]
         else:
-            img_dims = np.array(img_dims)  # type: ignore
+            img_dims_arr = np.asarray(img_dims)
             tf_data_to_img = skimage.transform.AffineTransform(
-                scale=(img_dims / dims)[::-1],  # type: ignore
+                scale=(img_dims_arr / np.asarray(dims))[::-1],
                 translation=(0, 0),
             )
 
@@ -1711,7 +1754,7 @@ class Heatmap(
 
         class_probs = self.data['class_probs']
 
-        noise = rng.randn(*class_probs.shape) * noise  # type: ignore
+        noise = rng.randn(*class_probs.shape) * noise
         class_probs += noise
         np.clip(class_probs, 0, None, out=class_probs)
         # class_probs = class_probs / class_probs.sum(axis=0)
@@ -1741,39 +1784,39 @@ class Heatmap(
     # --- Data Properties ---
 
     @property
-    def class_probs(self):
-        return self.data['class_probs']  # type: ignore
+    def class_probs(self) -> Any:
+        return self.data['class_probs']
 
     @property
-    def offset(self):
-        return self.data['offset']  # type: ignore
+    def offset(self) -> Any:
+        return self.data['offset']
 
     @property
-    def diameter(self):
-        return self.data['diameter']  # type: ignore
+    def diameter(self) -> Any:
+        return self.data['diameter']
 
     # --- Meta Properties ---
 
     @property
-    def img_dims(self):
+    def img_dims(self) -> Any:
         return self.meta.get('img_dims', None)
 
     @property
-    def tf_data_to_img(self):
+    def tf_data_to_img(self) -> Any:
         return self.meta.get('tf_data_to_img', None)
 
     @property
-    def classes(self):
+    def classes(self) -> Any:
         return self.meta.get('classes', None)
 
     # ---
 
-    def numpy(self):
+    def numpy(self) -> Heatmap:
         """
         Converts underlying data to numpy arrays
         """
         newdata = {}
-        for key, val in self.data.items():  # type: ignore
+        for key, val in self.data.items():
             if val is None:
                 newval = val
             else:
@@ -1782,12 +1825,12 @@ class Heatmap(
         newself = self.__class__(newdata, self.meta)
         return newself
 
-    def tensor(self, device=ub.NoParam):
+    def tensor(self, device: Any = ub.NoParam) -> Heatmap:
         """
         Converts underlying data to torch tensors
         """
         newdata = {}
-        for key, val in self.data.items():  # type: ignore
+        for key, val in self.data.items():
             if val is None:
                 newval = val
             else:
@@ -2043,7 +2086,9 @@ def _prob_to_dets(
     return dets
 
 
-def smooth_prob(prob, k: int = 3, inplace: bool = False, eps: float = 1e-9):
+def smooth_prob(
+    prob: ndarray, k: int = 3, inplace: bool = False, eps: float = 1e-9
+) -> ndarray:
     """
     Smooths the probability map, but preserves the magnitude of the peaks.
 
@@ -2063,8 +2108,12 @@ def smooth_prob(prob, k: int = 3, inplace: bool = False, eps: float = 1e-9):
         blur = cv2.GaussianBlur(prob, (k, k), sigma)
         # Shift and scale the intensities so the maximum and minimum
         # pixel value in the blurred image match the original image
-        minpos = np.unravel_index(blur.argmin(), blur.shape)
-        maxpos = np.unravel_index(blur.argmax(), blur.shape)
+        # NumPy's scalar argmin/argmax overload is not modeled consistently
+        # across supported type-checker / NumPy stub combinations.
+        min_flat = int(cast(Any, blur).argmin())
+        max_flat = int(cast(Any, blur).argmax())
+        minpos = np.unravel_index(min_flat, blur.shape)
+        maxpos = np.unravel_index(max_flat, blur.shape)
         shift = prob[minpos] - blur[minpos]
         scale = prob[maxpos] / np.maximum((blur[maxpos] + shift), eps)
         if inplace:
@@ -2075,7 +2124,7 @@ def smooth_prob(prob, k: int = 3, inplace: bool = False, eps: float = 1e-9):
     return blur
 
 
-def _remove_translation(tf):
+def _remove_translation(tf: Any) -> Any:
     """
     Removes the translation component of a transform
 
@@ -2094,8 +2143,7 @@ def _remove_translation(tf):
         )
     elif isinstance(tf, skimage.transform.EuclideanTransform):
         tf_notrans = skimage.transform.EuclideanTransform(
-            scale=tf.scale,
-            rotation=tf.rotation,  # type: ignore
+            rotation=tf.rotation,
         )
     else:
         raise TypeError(tf)

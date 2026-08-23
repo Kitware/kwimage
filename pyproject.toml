@@ -117,12 +117,12 @@ lint.ignore = [
 ignore_missing_imports = true
 
 [tool.ty]
-rules.unused-type-ignore-comment = "ignore"
 rules.unresolved-import = "ignore"
 src.include = [
   "kwimage",
 ]
 
+# Typing debt burn-down list. Remove entries as modules become ty-clean.
 [[tool.ty.overrides]]
 include = [
   "kwimage/algo/algo_nms.py",

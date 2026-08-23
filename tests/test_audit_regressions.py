@@ -323,3 +323,17 @@ def test_dense_detection_targets_order_by_box_area():
         exclude=['diameter', 'offset'],
     )
     assert target['cidx'][28, 21] == 2
+
+
+def test_remove_translation_euclidean_transform():
+    import skimage.transform
+
+    from kwimage.structs.heatmap import _remove_translation
+
+    transform = skimage.transform.EuclideanTransform(
+        rotation=0.37, translation=(11, -4)
+    )
+    result = _remove_translation(transform)
+    assert isinstance(result, skimage.transform.EuclideanTransform)
+    assert np.isclose(result.rotation, transform.rotation)
+    assert np.allclose(result.translation, (0, 0))

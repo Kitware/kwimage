@@ -19,7 +19,9 @@ if TYPE_CHECKING:
     from typing import Any, Sequence, Tuple
 
 
-def _coordinate_grid(dims, align_corners=False):
+def _coordinate_grid(
+    dims: Sequence[int], align_corners: bool = False
+) -> Any:
     """
     Creates a homogenous coordinate system.
 
@@ -589,7 +591,12 @@ def warp_tensor(
     return outputs
 
 
-def subpixel_align(dst, src, index, interp_axes: Any | None = None):
+def subpixel_align(
+    dst: Any,
+    src: Any,
+    index: Sequence[slice],
+    interp_axes: Sequence[int] | None = None,
+) -> tuple[Any, tuple[slice, ...]]:
     """
     Returns an aligned version of the source tensor and destination index.
 
@@ -600,7 +607,12 @@ def subpixel_align(dst, src, index, interp_axes: Any | None = None):
     """
     if interp_axes is None:
         # Assume spatial dimensions are trailing
-        interp_axes = len(dst.shape) + np.arange(-min(2, len(index)), 0)
+        interp_axes = tuple(
+            int(i)
+            for i in (
+                len(dst.shape) + np.arange(-min(2, len(index)), 0)
+            )
+        )
 
     raw_subpixel_starts = np.array(
         [0 if sl.start is None else sl.start for sl in index]
@@ -663,6 +675,7 @@ def subpixel_align(dst, src, index, interp_axes: Any | None = None):
     )
     # Align the source coordinates with the destination coordinates
     output_shape = [sl.stop - sl.start for sl in aligned_index]
+    assert interp_axes is not None
     translation_ = [translation[i] for i in interp_axes]
     aligned_src = subpixel_translate(
         src, translation_, output_shape=output_shape, interp_axes=interp_axes
@@ -675,7 +688,7 @@ def subpixel_set(
     src: Any,
     index: tuple[slice, ...],
     interp_axes: tuple[int, ...] | None = None,
-):
+) -> Any:
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -726,7 +739,7 @@ def subpixel_accum(
     src: Any,
     index: tuple[slice, ...],
     interp_axes: tuple[int, ...] | None = None,
-):
+) -> Any:
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -839,7 +852,7 @@ def subpixel_maximum(
     src: Any,
     index: tuple[slice, ...],
     interp_axes: tuple[int, ...] | None = None,
-):
+) -> Any:
     """
     Take the max of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -883,7 +896,7 @@ def subpixel_minimum(
     src: Any,
     index: tuple[slice, ...],
     interp_axes: tuple[int, ...] | None = None,
-):
+) -> Any:
     """
     Take the min of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -922,7 +935,7 @@ def subpixel_minimum(
     return dst
 
 
-def subpixel_slice(inputs: Any, index: tuple[slice, ...]):
+def subpixel_slice(inputs: Any, index: tuple[slice, ...]) -> Any:
     """
     Take a subpixel slice from a larger image.  The returned output is
     left-aligned with the requested slice.
@@ -1002,8 +1015,11 @@ def subpixel_slice(inputs: Any, index: tuple[slice, ...]):
 
 
 def subpixel_translate(
-    inputs: Any, shift: Any, interp_axes: Any = None, output_shape: Any = None
-):
+    inputs: Any,
+    shift: Any,
+    interp_axes: Any = None,
+    output_shape: Any = None,
+) -> Any:
     """
     Translates an image by a subpixel shift value using bilinear interpolation
 
@@ -1337,10 +1353,12 @@ def _rectify_slice(data_dims, low_dims, high_dims, pad_slice=None):
     if isinstance(pad_slice, int):
         pad_slice = [pad_slice] * len(data_dims)
     # Normalize to left/right pad value for each dim
-    pad_slice = [p if ub.iterable(p) else [p, p] for p in pad_slice]
+    normalized_pad: list[Any] = [
+        p if ub.iterable(p) else [p, p] for p in pad_slice
+    ]
 
     for D_img, d_low, d_high, d_pad in zip(
-        data_dims, low_dims, high_dims, pad_slice
+        data_dims, low_dims, high_dims, normalized_pad
     ):
         if d_low is None:
             d_low = 0
@@ -1349,8 +1367,8 @@ def _rectify_slice(data_dims, low_dims, high_dims, pad_slice=None):
         if d_low > d_high:
             raise ValueError('d_low > d_high: {} > {}'.format(d_low, d_high))
         # Determine where the bounds would be if the image size was inf
-        raw_low = d_low - d_pad[0]  # type: ignore
-        raw_high = d_high + d_pad[1]  # type: ignore
+        raw_low = d_low - d_pad[0]
+        raw_high = d_high + d_pad[1]
         # Clip the slice positions to the real part of the image
         sl_low = min(D_img, max(0, raw_low))
         sl_high = min(D_img, max(0, raw_high))
@@ -1462,7 +1480,7 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     return outputs
 
 
-def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide'):
+def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide') -> Any:
     """
     Warp ND points / coordinates using a transformation matrix.
 
@@ -1582,7 +1600,7 @@ def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide'):
     return new_pts
 
 
-def remove_homog(pts, mode: str = 'divide'):
+def remove_homog(pts: Any, mode: str = 'divide') -> Any:
     """
     Remove homogenous coordinate to a point array.
 
@@ -1612,7 +1630,7 @@ def remove_homog(pts, mode: str = 'divide'):
     return new_pts
 
 
-def add_homog(pts):
+def add_homog(pts: Any) -> Any:
     """
     Add a homogenous coordinate to a point array
 
@@ -1652,7 +1670,7 @@ def subpixel_getvalue(
     coord_axes: Sequence | None = None,
     interp: str = 'bilinear',
     bordermode: str = 'edge',
-):
+) -> Any:
     """
     Get values at subpixel locations
 
@@ -1744,7 +1762,7 @@ def subpixel_setvalue(
     coord_axes: Sequence | None = None,
     interp: str = 'bilinear',
     bordermode: str = 'edge',
-):
+) -> Any:
     """
     Set values at subpixel locations
 

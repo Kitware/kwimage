@@ -1204,7 +1204,7 @@ class _BoxPropertyMixins:
         return cx, cy
 
     @property
-    def center_x(self) -> Tuple[ndarray, ndarray]:
+    def center_x(self) -> ndarray | Tensor:
         """
         The center xy-coordinates
 
@@ -1221,7 +1221,7 @@ class _BoxPropertyMixins:
         return self.to_cxywh(copy=False).components[0]
 
     @property
-    def center_y(self) -> Tuple[ndarray, ndarray]:
+    def center_y(self) -> ndarray | Tensor:
         """
         The center xy-coordinates
 
@@ -3677,7 +3677,7 @@ class Boxes(
         new = Boxes(new_ltrb, format='ltrb', canonical=True)
         return new
 
-    def contains(self, other: kwimage.Points) -> ArrayLike:
+    def contains(self, other: kwimage.Points) -> ndarray | Tensor:
         """
         Determine of points are completely contained by these boxes
 

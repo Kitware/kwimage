@@ -25,14 +25,9 @@ if _t.TYPE_CHECKING:
     NDArray = npt.NDArray[Any]
     ArrayLike = npt.ArrayLike
 
-    try:  # pragma: no cover
-        import sympy as _sympy  # type: ignore
+    from sympy.matrices.matrixbase import MatrixBase
 
-        RationalMatrix = _sympy.Matrix  # type: ignore[attr-defined]
-    except Exception:  # pragma: no cover
-        RationalMatrix = object  # type: ignore[assignment]
-
-    MatrixData = NDArray | None | RationalMatrix
+    MatrixData = NDArray | None | MatrixBase
     DSize = tuple[int, int]
     XY = tuple[float, float] | tuple[int, int]
 

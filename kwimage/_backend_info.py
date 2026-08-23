@@ -2,6 +2,12 @@
 Helpers to query information about available backends
 """
 
+from __future__ import annotations
+
+from collections.abc import Generator
+from types import ModuleType
+from typing import NoReturn
+
 try:
     from functools import cache
 except ImportError:
@@ -9,7 +15,7 @@ except ImportError:
 
 
 @cache
-def _have_turbojpg():
+def _have_turbojpg() -> bool:
     """
     pip install PyTurboJPEG
 
@@ -25,7 +31,7 @@ def _have_turbojpg():
 
 
 @cache
-def _have_gdal():
+def _have_gdal() -> bool:
     try:
         from osgeo import gdal  # NOQA
     except Exception:
@@ -35,7 +41,7 @@ def _have_gdal():
 
 
 @cache
-def _have_cv2():
+def _have_cv2() -> bool:
     try:
         import cv2  # NOQA
     except Exception:
@@ -45,7 +51,7 @@ def _have_cv2():
 
 
 @cache
-def _default_backend():
+def _default_backend() -> str:
     """
     Define the default backend for simple cases.
     In kwimage < 0.11.0, this was always cv2, but now cv2 is optional, so we
@@ -57,7 +63,9 @@ def _default_backend():
         return 'skimage'
 
 
-def _iter_exception_chain(ex):
+def _iter_exception_chain(
+    ex: BaseException,
+) -> Generator[BaseException, None, None]:
     """
     Walk explicit / implicit exception chains.
 
@@ -65,13 +73,14 @@ def _iter_exception_chain(ex):
     raises a misleading higher-level ModuleNotFoundError.
     """
     seen = set()
-    while ex is not None and id(ex) not in seen:
-        yield ex
-        seen.add(id(ex))
-        ex = ex.__cause__ or ex.__context__
+    current: BaseException | None = ex
+    while current is not None and id(current) not in seen:
+        yield current
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
 
 
-def _find_static_tls_error(ex):
+def _find_static_tls_error(ex: BaseException) -> BaseException | None:
     for subex in _iter_exception_chain(ex):
         text = str(subex)
         if 'cannot allocate memory in static TLS block' in text:
@@ -79,7 +88,7 @@ def _find_static_tls_error(ex):
     return None
 
 
-def _import_osgeo_component(component_name):
+def _import_osgeo_component(component_name: str) -> ModuleType:
     """
     Import a GDAL / OSGeo component with support for both modern and legacy
     GDAL Python binding layouts.
@@ -99,7 +108,9 @@ def _import_osgeo_component(component_name):
     import sys
     import importlib
 
-    def _raise_static_tls_error(tls_ex, import_name):
+    def _raise_static_tls_error(
+        tls_ex: BaseException, import_name: str
+    ) -> NoReturn:
         suspects = [
             'torch',
             'tensorflow',
@@ -164,14 +175,14 @@ def _import_osgeo_component(component_name):
     raise ModuleNotFoundError('\n'.join(error_lines)) from errors[-1][1]
 
 
-def import_gdal():
+def import_gdal() -> ModuleType:
     """
     Import GDAL with support for both ``osgeo.gdal`` and legacy ``gdal``.
     """
     return _import_osgeo_component('gdal')
 
 
-def import_osr():
+def import_osr() -> ModuleType:
     """
     Import OSR with support for both ``osgeo.osr`` and legacy ``osr``.
     """
