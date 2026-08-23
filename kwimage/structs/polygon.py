@@ -1272,7 +1272,7 @@ class Polygon(
                     arc_size = tot_size / num
                     arcs = np.arange(num) * arc_size
                     res = scipy.optimize.root(
-                        lambda x: (scipy.special.ellipeinc(x, e2) - arcs),
+                        lambda x: scipy.special.ellipeinc(x, e2) - arcs,
                         angles,
                         # options={'maxiter': 5}
                     )

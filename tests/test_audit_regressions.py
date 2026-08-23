@@ -160,12 +160,8 @@ def test_numexpr1_alpha_blend_returns_result():
     rgb2 = np.ones((2, 3, 3), dtype=np.float32)
     alpha1 = np.full((2, 3), 0.25, dtype=np.float32)
     alpha2 = np.full((2, 3), 0.75, dtype=np.float32)
-    got_rgb, got_alpha = _alpha_blend_numexpr1(
-        rgb1, alpha1, rgb2, alpha2
-    )
-    want_rgb, want_alpha = _alpha_blend_numexpr2(
-        rgb1, alpha1, rgb2, alpha2
-    )
+    got_rgb, got_alpha = _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2)
+    want_rgb, want_alpha = _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2)
     assert np.allclose(got_rgb, want_rgb)
     assert np.allclose(got_alpha, want_alpha)
 
@@ -190,7 +186,9 @@ def test_make_orimask_default_magnitude():
 def test_polygon_fill_more_than_four_channels():
     import kwimage
 
-    polygon = kwimage.Polygon(exterior=np.array([[1, 1], [4, 1], [4, 4], [1, 4], [1, 1]]))
+    polygon = kwimage.Polygon(
+        exterior=np.array([[1, 1], [4, 1], [4, 4], [1, 4], [1, 1]])
+    )
     image = np.zeros((6, 6, 5), dtype=np.uint8)
     result = polygon.fill(image, value=(1, 2, 3, 4, 5))
     assert result[2, 2].tolist() == [1, 2, 3, 4, 5]
@@ -302,10 +300,13 @@ def test_dense_detection_targets_order_by_box_area():
     # Larger objects are rasterized first, so the smaller square must own the
     # overlap regardless of aspect ratio.
     boxes = kwimage.Boxes(
-        np.array([
-            [20, 5, 2, 50],
-            [18, 25, 6, 6],
-        ], dtype=float),
+        np.array(
+            [
+                [20, 5, 2, 50],
+                [18, 25, 6, 6],
+            ],
+            dtype=float,
+        ),
         'xywh',
     )
     detections = kwimage.Detections(

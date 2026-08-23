@@ -115,8 +115,8 @@ def _import_osgeo_component(component_name):
 
         suspect_text = (
             ', '.join(loaded_suspects)
-            if loaded_suspects else
-            'none of the usual suspects detected in sys.modules'
+            if loaded_suspects
+            else 'none of the usual suspects detected in sys.modules'
         )
 
         raise ImportError(

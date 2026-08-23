@@ -198,7 +198,7 @@ class Color(ub.NiceRepr):
         # FIXME: color01 is not a good name because the data wont be between 0
         # and 1 for non-rgb spaces. We should differentiate between rgb01 and
         # rgb255.
-        self.color01 = color01   # type: ignore
+        self.color01 = color01  # type: ignore
         self.space = space
 
     @classmethod

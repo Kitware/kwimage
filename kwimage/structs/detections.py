@@ -418,7 +418,8 @@ class _DetDrawMixin:
                             ]
                         else:
                             identifers = [
-                                'cx={}'.format(cx) for cx in self.class_idxs  # type: ignore
+                                'cx={}'.format(cx)
+                                for cx in self.class_idxs  # type: ignore
                             ]
                     elif 'cids' in self.data:  # type: ignore
                         if self.classes and hasattr(self.classes, 'id_to_node'):  # type: ignore
@@ -532,7 +533,8 @@ class _DetAlgoMixin:
             if 'diameter' not in daqkw:
                 if len(self.boxes) > 0:  # type: ignore
                     daqkw['diameter'] = max(
-                        self.boxes.width.max(), self.boxes.height.max()  # type: ignore
+                        self.boxes.width.max(),
+                        self.boxes.height.max(),  # type: ignore
                     )
                 else:
                     daqkw['diameter'] = 10  # hack

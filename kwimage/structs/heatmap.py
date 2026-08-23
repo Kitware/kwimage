@@ -262,7 +262,7 @@ class _HeatmapDrawMixin(object):
         import kwplot
 
         if channel is None:
-            if 'class_idx' in self.data:   # type: ignore
+            if 'class_idx' in self.data:  # type: ignore
                 channel = 'class_idx'
             elif 'class_probs' in self.data:  # type: ignore
                 channel = 'class_probs'
@@ -325,7 +325,7 @@ class _HeatmapDrawMixin(object):
                 import torch
 
                 chw = torch.Tensor(colormask.transpose(2, 0, 1))
-                colormask = self._warp_imgspace(    # type: ignore
+                colormask = self._warp_imgspace(  # type: ignore
                     chw, interpolation=interpolation
                 ).transpose(1, 2, 0)
             return colormask
@@ -2094,7 +2094,8 @@ def _remove_translation(tf):
         )
     elif isinstance(tf, skimage.transform.EuclideanTransform):
         tf_notrans = skimage.transform.EuclideanTransform(
-            scale=tf.scale, rotation=tf.rotation  # type: ignore
+            scale=tf.scale,
+            rotation=tf.rotation,  # type: ignore
         )
     else:
         raise TypeError(tf)

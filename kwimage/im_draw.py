@@ -420,16 +420,14 @@ def _cv2_put_text_compat(img, text, xy, kwargs):
     import cv2
 
     image_data = np.asarray(img)
-    needs_channel_fallback = (
-        image_data.ndim == 3 and image_data.shape[2] == 2
-    )
+    needs_channel_fallback = image_data.ndim == 3 and image_data.shape[2] == 2
     if not needs_channel_fallback:
         try:
             return cv2.putText(img, text, xy, **kwargs)
         except cv2.error as ex:
             is_uint8_depth_error = (
-                image_data.dtype != np.uint8 and
-                'img.depth() == CV_8U' in str(ex)
+                image_data.dtype != np.uint8
+                and 'img.depth() == CV_8U' in str(ex)
             )
             if not is_uint8_depth_error:
                 raise

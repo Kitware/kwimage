@@ -17,7 +17,7 @@ def test_draw_text_non_uint8_opencv5_fallback(monkeypatch):
     def uint8_only_put_text(img, *args, **kwargs):
         if np.asarray(img).dtype != np.uint8:
             raise cv2.error(
-                "OpenCV(5.0.0): (-215:Assertion failed) "
+                'OpenCV(5.0.0): (-215:Assertion failed) '
                 "img.depth() == CV_8U in function 'putText'"
             )
         return real_put_text(img, *args, **kwargs)
@@ -52,7 +52,7 @@ def test_draw_text_two_channel_opencv5_fallback(monkeypatch):
         image_data = np.asarray(img)
         if image_data.ndim == 3 and image_data.shape[2] not in {1, 3, 4}:
             raise cv2.error(
-                "OpenCV(5.0.0): (-215:Assertion failed) "
+                'OpenCV(5.0.0): (-215:Assertion failed) '
                 "nch == 1 || nch == 3 || nch == 4 in function 'putText'"
             )
         return real_put_text(img, *args, **kwargs)

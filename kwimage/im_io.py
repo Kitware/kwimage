@@ -1385,7 +1385,9 @@ def imwrite(
             else:
                 # TODO: generalize error handling and diagnostics for all backends
                 if not flag:
-                    msg, error_kind = _cv2_imwrite_failure_diagnostic(fpath, image)
+                    msg, error_kind = _cv2_imwrite_failure_diagnostic(
+                        fpath, image
+                    )
 
                     # Keep these as separate raise lines so tracebacks identify the class of
                     # failure. In the future these can become more specific exception classes.
@@ -1494,9 +1496,7 @@ def _cv2_imwrite_failure_diagnostic(fpath, image) -> tuple[str, str]:
 
     elif ndim is not None and ndim not in (2, 3):
         error_kind = 'shape'
-        detected.append(
-            'ndim={} is not an image; expected 2 or 3'.format(ndim)
-        )
+        detected.append('ndim={} is not an image; expected 2 or 3'.format(ndim))
 
     elif ndim == 3 and nchan not in (1, 3, 4):
         error_kind = 'shape'
@@ -1508,9 +1508,7 @@ def _cv2_imwrite_failure_diagnostic(fpath, image) -> tuple[str, str]:
 
     elif contiguous is False:
         error_kind = 'contiguousness'
-        detected.append(
-            'the array is not C-contiguous'
-        )
+        detected.append('the array is not C-contiguous')
 
     elif dtype is not None:
         if np.issubdtype(dtype, np.floating):
@@ -1525,7 +1523,9 @@ def _cv2_imwrite_failure_diagnostic(fpath, image) -> tuple[str, str]:
                 'dtype uint16 is unsupported by the {} writer'.format(ext)
             )
 
-    reason = 'detected: {}'.format('; '.join(detected)) if detected else 'unknown'
+    reason = (
+        'detected: {}'.format('; '.join(detected)) if detected else 'unknown'
+    )
 
     msg = (
         'kwimage failed to write with opencv backend. '
@@ -1548,10 +1548,12 @@ def _cv2_imwrite_failure_diagnostic(fpath, image) -> tuple[str, str]:
 
 
 def opencv_max_image_pixels() -> int:
-    return int(os.environ.get(
-        "OPENCV_IO_MAX_IMAGE_PIXELS",
-        OPENCV_DEFAULT_MAX_IMAGE_PIXELS,
-    ))
+    return int(
+        os.environ.get(
+            'OPENCV_IO_MAX_IMAGE_PIXELS',
+            OPENCV_DEFAULT_MAX_IMAGE_PIXELS,
+        )
+    )
 
 
 def load_image_shape(
@@ -1717,8 +1719,7 @@ def load_image_shape(
             msg_parts.append('Backend failures:')
             for candidate_backend, ex in candidate_errors:
                 msg_parts.append(
-                    f'  - {candidate_backend}: '
-                    f'{ex.__class__.__name__}: {ex}'
+                    f'  - {candidate_backend}: {ex.__class__.__name__}: {ex}'
                 )
             cause = candidate_errors[-1][1]
         else:

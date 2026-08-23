@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import Any, Sequence, MutableSequence
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 # from collections import abc
 # import abc
@@ -102,6 +102,7 @@ class _ExperimentalListProxy(Generic[T]):
 
     Requires that the inheriting class has a ``data`` attribute.
     """
+
     data: MutableSequence[T]
 
     def __getitem__(self, index):
@@ -164,7 +165,7 @@ class _ExperimentalListProxy(Generic[T]):
         """Return a reverse iterator over the sequence."""
         return self.data.__reversed__()
 
-    def index(self, value, start : int = 0, stop : int = sys.maxsize):
+    def index(self, value, start: int = 0, stop: int = sys.maxsize):
         """
         Return the index of the first occurrence of a value.
         Raise ValueError if the value is not present.
@@ -195,7 +196,9 @@ class ObjectList(Spatial, _ExperimentalListProxy):
 
     # __slots__ = ('data', 'meta',)
 
-    def __init__(self, data: MutableSequence[T], meta: Any | None = None) -> None:
+    def __init__(
+        self, data: MutableSequence[T], meta: Any | None = None
+    ) -> None:
         if meta is None:
             meta = {}
         self.data = data
