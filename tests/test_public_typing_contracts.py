@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import numpy as np
     from numbers import Number
-    from collections.abc import Iterator, Mapping, Sequence
+    from collections.abc import Generator, Iterator, Mapping, Sequence
     from matplotlib.patches import PathPatch
     from shapely.geometry import MultiPoint
     from shapely.geometry import MultiPolygon as ShapelyMultiPolygon
@@ -22,6 +22,16 @@ if TYPE_CHECKING:
 
     import kwimage
     from kwimage._typing import ArrayData, ImgAugKeypointsOnImage
+
+    from kwimage.structs.detections import (
+        CocoDetection,
+        DetectionArray,
+        DetectionClasses,
+        DetectionDType,
+        DetectionIndices,
+        DetectionKeypoints,
+        DetectionSegmentations,
+    )
     from kwimage.structs.mask import (
         CocoMaskRLE, MaskArea, MaskData,
     )
@@ -201,3 +211,38 @@ if TYPE_CHECKING:
     assert_type(
         segmentation_list.to_coco(), Iterator[SegmentationCoco | None]
     )
+
+    det_boxes = kwimage.Boxes(np.empty((3, 4)), 'xywh')
+    det_scores = np.empty(3, dtype=np.float32)
+    det_class_idxs = np.empty(3, dtype=np.int64)
+    dets = kwimage.Detections(
+        boxes=det_boxes,
+        scores=det_scores,
+        class_idxs=det_class_idxs,
+        classes=['a', 'b'],
+    )
+    assert_type(dets.boxes, kwimage.Boxes)
+    assert_type(dets.class_idxs, DetectionArray | None)
+    assert_type(dets.scores, DetectionArray | None)
+    assert_type(dets.probs, DetectionArray | None)
+    assert_type(dets.weights, DetectionArray | None)
+    assert_type(dets.classes, DetectionClasses | None)
+    assert_type(dets.keypoints, DetectionKeypoints | None)
+    assert_type(dets.segmentations, DetectionSegmentations | None)
+    assert_type(dets.copy(), kwimage.Detections)
+    assert_type(dets.warp(np.eye(3)), kwimage.Detections)
+    assert_type(dets.scale(2.0), kwimage.Detections)
+    assert_type(dets.translate((1.0, 2.0)), kwimage.Detections)
+    assert_type(dets.argsort(), DetectionArray)
+    assert_type(dets.non_max_supression(), DetectionIndices)
+    assert_type(dets.non_max_supress(), kwimage.Detections)
+    assert_type(dets.sort(), kwimage.Detections)
+    assert_type(dets.compress([True, False, True]), kwimage.Detections)
+    assert_type(dets.take([0, 2]), kwimage.Detections)
+    assert_type(dets[[0, 2]], kwimage.Detections)
+    assert_type(dets.numpy(), kwimage.Detections)
+    assert_type(dets.tensor(), kwimage.Detections)
+    assert_type(dets.device, torch.device | None)
+    assert_type(dets.dtype, DetectionDType)
+    assert_type(dets.to_coco(), Generator[CocoDetection, None, None])
+    assert_type(dets.rasterize((8, 8), (16, 16)), kwimage.Heatmap)

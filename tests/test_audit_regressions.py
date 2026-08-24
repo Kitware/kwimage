@@ -449,3 +449,32 @@ def test_polygon_coco_laziness_contract():
     poly_list = kwimage.PolygonList([poly, mpoly, None])
     coco_iter = poly_list.to_coco()
     assert iter(coco_iter) is coco_iter
+
+
+def test_detections_public_accessors_are_zero_copy():
+    """Typed convenience accessors must not normalize or copy storage."""
+    import kwimage
+
+    boxes = kwimage.Boxes(np.empty((2, 4), dtype=np.float32), 'xywh')
+    scores = np.array([0.25, 0.75], dtype=np.float32)
+    class_idxs = np.array([0, 1], dtype=np.int64)
+    keypoints = kwimage.PointsList([
+        kwimage.Points(xy=np.empty((0, 2), dtype=np.float32)),
+        kwimage.Points(xy=np.empty((0, 2), dtype=np.float32)),
+    ])
+    segmentations = kwimage.SegmentationList([None, None])
+    data = {
+        'boxes': boxes,
+        'scores': scores,
+        'class_idxs': class_idxs,
+        'keypoints': keypoints,
+        'segmentations': segmentations,
+    }
+    dets = kwimage.Detections(data=data, meta={'classes': ['a', 'b']})
+
+    assert dets.boxes is boxes
+    assert dets.scores is scores
+    assert dets.class_idxs is class_idxs
+    assert dets.keypoints is keypoints
+    assert dets.segmentations is segmentations
+    assert dets.classes is dets.meta['classes']

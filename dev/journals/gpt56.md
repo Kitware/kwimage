@@ -199,3 +199,50 @@ tests/` remains the authoritative checker run.
 - Kept the existing OpenCV contour algorithm and allocation behavior unchanged: the contour accumulator dictionary is now named `poly_lookup`, and the existing `list(...values())` result is assigned to a distinct `polys` local instead of changing one variable from `dict` to `list`.
 - This is a static-flow clarification only; it adds no copies, loops, coercions, validation, or runtime helper calls.
 - Validation here: Python 3.10 AST parse, `compileall`, and diff whitespace checks. The authoritative `ty check kwimage tests/` remains the maintainer's local run.
+
+## 2026-08-24 11:16:00 -0400
+
+Refined the already-unsuppressed `Detections` public API after the geometry
+primitives became strongly typed. This phase deliberately does not change the
+extensible `data`/`meta` storage model; arbitrary custom detection fields are a
+supported feature, so those dictionaries remain dynamic internally. Instead,
+the standard public access path is strengthened: scores/class indices/
+probabilities/weights expose the NumPy-or-Torch array union, NMS and argsort
+publish concrete index-array results, device/dtype are non-bare-`Any`, and new
+zero-copy `keypoints` / `segmentations` convenience properties expose the
+actual supported geometry-list unions. COCO export now publishes a typed
+mapping generator rather than `Generator[dict, ...]` with unparameterized
+values. The draw alpha annotations were also aligned with the already-supported
+per-detection sequence form.
+
+Static `assert_type` coverage now exercises the common downstream Detections
+surface: geometry transforms, sort/subset operations, NMS, backend conversion,
+device/dtype, COCO export, rasterization, and the standard data/meta
+properties. A runtime regression asserts that the new convenience accessors
+return the exact objects already stored in `data` / `meta`; they do not
+normalize, copy, or materialize values.
+
+Runtime efficiency remains a hard constraint. No NumPy/Torch/OpenCV operation,
+array/tensor conversion, copy, device transfer, loop, or comprehension was
+added. Formatting-only private code now caches already-existing property
+lookups in local variables and one previous runtime `typing.cast` call in the
+category-color path was replaced by an annotation-only dynamic view. The
+normal Detections compute paths are otherwise unchanged. Python 3.10 parsing,
+`compileall`, public annotation auditing, and diff whitespace checks are
+available here. The sandbox lacks `ty`, `ubelt`, and `kwarray`; pytest therefore
+cannot exercise the repository locally, so the maintainer's `ty check kwimage
+tests/` and focused pytest run remain authoritative.
+
+## 2026-08-24 11:23:00 -0400
+
+Follow-up after the maintainer's local `ty` run found one Detections override
+diagnostic: `ubelt.NiceRepr.__nice__` is stubbed as returning `str`, while the
+longstanding `Detections.__nice__` implementation returns the integer box count.
+Changing the body to allocate/return a string would alter runtime behavior solely
+to satisfy the checker. Keep that private representation hook typed as `Any`
+instead. This does not weaken the public Detections data/geometry contracts from
+the preceding phase and adds no runtime work.
+
+## 2026-08-24 11:25:00 -0400
+
+Corrected `Detections.__nice__` to follow the `ubelt.NiceRepr` contract directly. The hook now returns `str(self.num_boxes())` instead of preserving the historical integer return behind an `Any` annotation. This is an intentional repr-hook behavior correction requested by the maintainer; it has no effect on geometry/data-path performance.

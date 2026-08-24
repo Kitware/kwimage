@@ -42,13 +42,40 @@ from kwimage.structs import _generic
 from kwimage.structs import boxes as _boxes
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-    from typing import Any, Dict, List, Sequence, Tuple
+    from collections.abc import Generator, Mapping, Sequence
+    from types import EllipsisType
+    from typing import Any, Dict, List, Protocol, Tuple
 
     from numpy import ndarray
+    import torch
+    from torch import Tensor
 
     import kwimage
-    from kwimage._typing import TransformLike
+    from kwimage._typing import ArrayData, TransformLike
+    from kwimage.structs.mask import MaskList
+    from kwimage.structs.points import Points, PointsList
+    from kwimage.structs.polygon import PolygonList
+    from kwimage.structs.segmentation import SegmentationList
+
+    DetectionArray = ArrayData
+    DetectionIndices = DetectionArray | list[int]
+    DetectionFlags = Sequence[bool] | DetectionArray | EllipsisType
+    DetectionTakeIndices = Sequence[int] | DetectionArray
+    DetectionDType = np.dtype[Any] | torch.dtype | str | set[object]
+    CocoDetection = dict[str, object]
+
+    class CategoryTreeLike(Protocol):
+        cats: Mapping[Any, Mapping[str, Any]]
+        idx_to_node: Sequence[Any]
+        id_to_node: Mapping[Any, Any]
+
+        def __len__(self) -> int: ...
+        def __getitem__(self, index: int) -> Any: ...
+        def index(self, value: Any) -> int: ...
+
+    DetectionClasses = Sequence[Any] | CategoryTreeLike
+    DetectionKeypoints = Points | PointsList
+    DetectionSegmentations = SegmentationList | PolygonList | MaskList
 
 # try:
 #     import torch
@@ -74,7 +101,7 @@ class _DetDrawMixin:
     def draw(
         self,
         color: str = 'blue',
-        alpha: Any | None = None,
+        alpha: float | Sequence[float] | str | None = None,
         labels: bool = True,
         centers: bool = False,
         lw: int = 2,
@@ -143,7 +170,7 @@ class _DetDrawMixin:
         self,
         image: ndarray | None = None,
         color: str | Any | List[Any] = 'blue',
-        alpha: float | None = None,
+        alpha: float | Sequence[float] | None = None,
         labels: bool | str | List[str] = True,
         radius: float = 5,
         kpts: bool = True,
@@ -345,7 +372,7 @@ class _DetDrawMixin:
             import kwimage
 
             backup_color = 'blue'
-            class_idxs = self.class_idxs
+            class_idxs: Any = self.class_idxs
             if class_idxs is None:
                 color = backup_color
             else:
@@ -358,13 +385,14 @@ class _DetDrawMixin:
 
                 # Respect colors stored in classes if given
                 if hasattr(classes, 'idx_to_node'):
-                    classes = cast(Any, classes)
+                    classes_dyn: Any = classes
                     cname_to_color = {
                         cid: cat.get('color', None)
-                        for cid, cat in classes.cats.items()
+                        for cid, cat in classes_dyn.cats.items()
                     }
                     cidx_to_color = [
-                        cname_to_color[cname] for cname in classes.idx_to_node
+                        cname_to_color[cname]
+                        for cname in classes_dyn.idx_to_node
                     ]
                 else:
                     cidx_to_color = [None] * len(classes)
@@ -388,7 +416,8 @@ class _DetDrawMixin:
         default
         """
         if isinstance(alpha, str) and alpha in ['score', 'scores']:
-            alpha = np.sqrt(self.scores)
+            scores: Any = self.scores
+            alpha = np.sqrt(scores)
         elif ub.iterable(alpha):
             assert len(alpha) == self.num_boxes()
         else:
@@ -420,23 +449,25 @@ class _DetDrawMixin:
 
             if isinstance(labels, str):
                 if labels in ['class', 'class+score']:
+                    classes: Any = self.classes
+                    class_idxs: Any = self.class_idxs
                     if 'class_idxs' in self.data:
-                        if self.classes:
+                        if classes:
                             identifers = [
-                                'None' if cx is None else self.classes[cx]
-                                for cx in self.class_idxs
+                                'None' if cx is None else classes[cx]
+                                for cx in class_idxs
                             ]
                         else:
                             identifers = [
-                                'cx={}'.format(cx)
-                                for cx in self.class_idxs
+                                'cx={}'.format(cx) for cx in class_idxs
                             ]
                     elif 'cids' in self.data:
-                        if self.classes and hasattr(self.classes, 'id_to_node'):
+                        if classes and hasattr(classes, 'id_to_node'):
+                            classes_tree: Any = classes
                             identifers = [
                                 'None'
                                 if cid is None
-                                else self.classes.id_to_node[cid]
+                                else classes_tree.id_to_node[cid]
                                 for cid in self.data['cids']
                             ]
                         else:
@@ -451,14 +482,15 @@ class _DetDrawMixin:
                 if labels in ['class']:
                     labels = identifers
                 elif labels in ['score']:
+                    scores: Any = self.scores
                     labels = [
-                        '{:.4f}'.format(_fixsore(score))
-                        for score in self.scores
+                        '{:.4f}'.format(_fixsore(score)) for score in scores
                     ]
                 elif labels in ['class+score']:
+                    scores = self.scores
                     labels = [
                         '{} @ {:.4f}'.format(cid, _fixsore(score))
-                        for cid, score in zip(identifers, self.scores)
+                        for cid, score in zip(identifers, scores)
                     ]
                 else:
                     raise KeyError('unknown labels key {!r}'.format(labels))
@@ -486,7 +518,7 @@ class _DetAlgoMixin:
         impl: str = 'auto',
         daq: bool | Dict = False,
         device_id: Any | None = None,
-    ) -> Any:
+    ) -> DetectionIndices:
         """
         Find high scoring minimally overlapping detections
 
@@ -577,7 +609,7 @@ class _DetAlgoMixin:
         thresh: float = 0.0,
         perclass: bool = False,
         impl: str = 'auto',
-        daq: bool = False,
+        daq: bool | Dict = False,
     ) -> Detections:
         """
         Convinience method. Like `non_max_supression`, but returns to supressed
@@ -948,8 +980,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         self.data = cast(dict[str, Any], data)
         self.meta = meta
 
-    def __nice__(self):
-        return self.num_boxes()
+    def __nice__(self) -> str:
+        return str(self.num_boxes())
 
     def __len__(self) -> int:
         return self.num_boxes()
@@ -1286,7 +1318,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         style: str = 'orig',
         image_id: int | None = None,
         dset: Any | None = None,
-    ) -> Generator[dict, None, None]:
+    ) -> Generator[CocoDetection, None, None]:
         """
         Converts this set of detections into coco-like annotation dictionaries.
 
@@ -1397,29 +1429,39 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return self.data['boxes']
 
     @property
-    def class_idxs(self) -> Any:
+    def class_idxs(self) -> DetectionArray | None:
         return self.data['class_idxs']
 
     @property
-    def scores(self) -> Any:
+    def scores(self) -> DetectionArray | None:
         """typically only populated for predicted detections"""
         return self.data['scores']
 
     @property
-    def probs(self) -> Any:
+    def probs(self) -> DetectionArray | None:
         """typically only populated for predicted detections"""
         return self.data['probs']
 
     @property
-    def weights(self) -> Any:
+    def weights(self) -> DetectionArray | None:
         """typically only populated for groundtruth detections"""
         return self.data['weights']
 
     # --- Meta Properties ---
 
     @property
-    def classes(self) -> Any:
+    def classes(self) -> DetectionClasses | None:
         return self.meta.get('classes', None)
+
+    @property
+    def keypoints(self) -> DetectionKeypoints | None:
+        """Per-detection keypoints, when present."""
+        return self.data.get('keypoints', None)
+
+    @property
+    def segmentations(self) -> DetectionSegmentations | None:
+        """Per-detection segmentations, when present."""
+        return self.data.get('segmentations', None)
 
     def num_boxes(self) -> int:
         return len(self.boxes)
@@ -1581,7 +1623,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         new = cls(newdata, newmeta)
         return new
 
-    def argsort(self, reverse: bool = True) -> Any:
+    def argsort(self, reverse: bool = True) -> DetectionArray:
         """
         Sorts detection indices by descending (or ascending) scores
 
@@ -1589,7 +1631,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             ndarray[Shape['*'], Integer]: sorted indices
             torch.Tensor: sorted indices if using torch backends
         """
-        sortx = self.scores.argsort()
+        scores: Any = self.scores
+        sortx = scores.argsort()
         if reverse:
             torch = sys.modules.get('torch', None)
             if torch is not None and torch.is_tensor(sortx):
@@ -1598,7 +1641,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 sortx = sortx[::-1]
         return sortx
 
-    def sort(self, reverse: bool = True) -> kwimage.structs.Detections:
+    def sort(self, reverse: bool = True) -> Detections:
         """
         Sorts detections by descending (or ascending) scores
 
@@ -1608,7 +1651,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         sortx = self.argsort(reverse=reverse)
         return self.take(sortx)
 
-    def compress(self, flags: Any, axis: int = 0) -> Detections:
+    def compress(self, flags: DetectionFlags, axis: int = 0) -> Detections:
         """
         Returns a subset where corresponding locations are True.
 
@@ -1657,7 +1700,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         }
         return self.__class__(newdata, self.meta)
 
-    def take(self, indices: Any, axis: int = 0) -> Detections:
+    def take(self, indices: DetectionTakeIndices, axis: int = 0) -> Detections:
         """
         Returns a subset specified by indices
 
@@ -1715,7 +1758,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             return self.take(indices)
 
     @property
-    def device(self) -> Any:
+    def device(self) -> torch.device | None:
         """If the backend is torch returns the data device, otherwise None"""
         return self.boxes.device
 
@@ -1758,7 +1801,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         return newself
 
     @property
-    def dtype(self) -> Any:
+    def dtype(self) -> DetectionDType:
         dtypes = set()
         for key, val in self.data.items():
             if val is not None:
@@ -1812,14 +1855,14 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # --- Non-core methods ----
 
     @classmethod
-    def demo(Detections):
+    def demo(cls) -> tuple[Detections, dict[str, Any], Any]:
         import ndsampler
 
         sampler = ndsampler.CocoSampler.demo('photos')
         iminfo, anns = sampler.load_image_with_annots(1)
         input_dims = iminfo['imdata'].shape[0:2]
         kp_classes = sampler.dset.keypoint_categories()
-        self = Detections.from_coco_annots(
+        self = cls.from_coco_annots(
             anns,
             sampler.dset.dataset['categories'],
             sampler.catgraph,
@@ -1834,8 +1877,8 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     def random(
         cls,
         num: int = 10,
-        scale: float | tuple = 1.0,
-        classes: int | Sequence = 3,
+        scale: float | tuple[float, float] = 1.0,
+        classes: int | Sequence[Any] = 3,
         keypoints: bool | str = False,
         segmentations: bool = False,
         tensor: bool = False,
