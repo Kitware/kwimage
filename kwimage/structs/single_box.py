@@ -6,9 +6,20 @@ import numpy as np
 import ubelt as ub
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any
 
-    from kwimage.structs.boxes import Boxes
+    import torch
+    from numpy import ndarray
+    from shapely.geometry import Polygon as ShapelyPolygon
+    from torch import Tensor
+
+    from kwimage._typing import ArrayData
+    from kwimage.structs.boxes import BoxPointsLike, Boxes
+    from kwimage.structs.polygon import Polygon
+
+    BoxScalar = int | float | np.integer[Any] | np.floating[Any] | Tensor
+    BoxDType = np.dtype[Any] | torch.dtype
 
 
 try:
@@ -61,8 +72,9 @@ class Box:
         return self.boxes.format
 
     @property
-    def data(self) -> Any:
-        return self.boxes.data[0]
+    def data(self) -> ArrayData:
+        data: Any = self.boxes.data[0]
+        return data
 
     def __nice__(self) -> str:
         data_repr = repr(self.data.tolist())
@@ -120,7 +132,7 @@ class Box:
         return self
 
     @classmethod
-    def from_shapely(self, geom: Any) -> Box:
+    def from_shapely(self, geom: ShapelyPolygon) -> Box:
         import kwimage
 
         boxes: Any = kwimage.Boxes.from_shapely(geom)
@@ -284,7 +296,7 @@ class Box:
         new = self.__class__(new_boxes)
         return new
 
-    def contains(self, other: Any) -> Any:
+    def contains(self, other: BoxPointsLike) -> ArrayData:
         """
         Examples:
             >>> import kwimage
@@ -294,7 +306,7 @@ class Box:
             >>> flags = self.contains(np.array(self.center))
             >>> assert np.all(np.diag(flags))
         """
-        flags = self.boxes.contains(other)[0]
+        flags: Any = self.boxes.contains(other)[0]
         return flags
 
     def to_ltrb(self, *args: Any, **kwargs: Any) -> Box:
@@ -330,7 +342,7 @@ class Box:
     def astype(self, *args: Any, **kwargs: Any) -> Box:
         return self.__class__(self.boxes.astype(*args, **kwargs))
 
-    def corners(self, *args: Any, **kwargs: Any) -> Any:
+    def corners(self, *args: Any, **kwargs: Any) -> ndarray:
         """
         Example:
             >>> import kwimage
@@ -345,7 +357,7 @@ class Box:
         return self.boxes
 
     @property
-    def aspect_ratio(self) -> Any:
+    def aspect_ratio(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -354,7 +366,7 @@ class Box:
         return self.boxes.aspect_ratio.ravel()[0]
 
     @property
-    def center(self) -> tuple[Any, Any]:
+    def center(self) -> tuple[BoxScalar, BoxScalar]:
         """
         Example:
             >>> import kwimage
@@ -364,7 +376,7 @@ class Box:
         return xs.ravel()[0], ys.ravel()[0]
 
     @property
-    def center_x(self) -> Any:
+    def center_x(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -373,7 +385,7 @@ class Box:
         return self.boxes.center_x.ravel()[0]
 
     @property
-    def center_y(self) -> Any:
+    def center_y(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -382,7 +394,7 @@ class Box:
         return self.boxes.center_y.ravel()[0]
 
     @property
-    def width(self) -> Any:
+    def width(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -391,7 +403,7 @@ class Box:
         return self.boxes.width.ravel()[0]
 
     @property
-    def height(self) -> Any:
+    def height(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -400,7 +412,7 @@ class Box:
         return self.boxes.height.ravel()[0]
 
     @property
-    def tl_x(self) -> Any:
+    def tl_x(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -409,7 +421,7 @@ class Box:
         return self.boxes.tl_x.ravel()[0]
 
     @property
-    def tl_y(self) -> Any:
+    def tl_y(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -418,7 +430,7 @@ class Box:
         return self.boxes.tl_y.ravel()[0]
 
     @property
-    def br_x(self) -> Any:
+    def br_x(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -427,7 +439,7 @@ class Box:
         return self.boxes.br_x.ravel()[0]
 
     @property
-    def br_y(self) -> Any:
+    def br_y(self) -> BoxScalar:
         """
         Example:
             >>> import kwimage
@@ -436,11 +448,11 @@ class Box:
         return self.boxes.br_y.ravel()[0]
 
     @property
-    def dtype(self) -> Any:
+    def dtype(self) -> BoxDType:
         return self.boxes.dtype
 
     @property
-    def area(self) -> Any:
+    def area(self) -> BoxScalar:
         return self.boxes.area.ravel()[0]
 
     def to_slice(
@@ -454,7 +466,7 @@ class Box:
         """
         return self.boxes.to_slices(endpoint=endpoint)[0]
 
-    def to_shapely(self) -> Any:
+    def to_shapely(self) -> ShapelyPolygon:
         """
         Example:
             >>> import kwimage
@@ -462,15 +474,16 @@ class Box:
         """
         return self.boxes.to_shapely()[0]
 
-    def to_polygon(self) -> Any:
+    def to_polygon(self) -> Polygon:
         """
         Example:
             >>> import kwimage
             >>> kwimage.Box.random().to_polygon()
         """
-        return self.boxes.to_polygons()[0]
+        poly: Any = self.boxes.to_polygons()[0]
+        return poly
 
-    def to_coco(self) -> list[Any]:
+    def to_coco(self) -> list[float]:
         """
         Example:
             >>> import kwimage
@@ -480,14 +493,14 @@ class Box:
 
     def draw_on(
         self,
-        image: Any | None = None,
+        image: ndarray | None = None,
         color: str = 'blue',
-        alpha: Any | None = None,
+        alpha: float | Sequence[float] | None = None,
         label: str | None = None,
         copy: bool = False,
         thickness: int = 2,
         label_loc: str = 'top_left',
-    ) -> Any:
+    ) -> ndarray:
         """
         Draws a box directly on an image using OpenCV
 
@@ -518,15 +531,15 @@ class Box:
     def draw(
         self,
         color: str = 'blue',
-        alpha: Any | None = None,
-        label: Any | None = None,
+        alpha: float | None = None,
+        label: str | None = None,
         centers: bool = False,
         fill: bool = False,
         lw: int = 2,
         ax: Any | None = None,
         setlim: bool = False,
         **kwargs: Any,
-    ) -> Any:
+    ) -> None:
         """
         Draws a box directly on an image using OpenCV
 
@@ -552,7 +565,7 @@ class Box:
             labels = None
         else:
             labels = [label]
-        return self.boxes.draw(
+        self.boxes.draw(
             color=color,
             alpha=alpha,
             labels=labels,
@@ -563,6 +576,7 @@ class Box:
             setlim=setlim,
             **kwargs,
         )
+        return None
 
 
 def _transfer_docstrings() -> None:

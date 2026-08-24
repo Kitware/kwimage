@@ -1430,22 +1430,22 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     @property
     def class_idxs(self) -> DetectionArray | None:
-        return self.data['class_idxs']
+        return self.data.get('class_idxs', None)
 
     @property
     def scores(self) -> DetectionArray | None:
         """typically only populated for predicted detections"""
-        return self.data['scores']
+        return self.data.get('scores', None)
 
     @property
     def probs(self) -> DetectionArray | None:
         """typically only populated for predicted detections"""
-        return self.data['probs']
+        return self.data.get('probs', None)
 
     @property
     def weights(self) -> DetectionArray | None:
         """typically only populated for groundtruth detections"""
-        return self.data['weights']
+        return self.data.get('weights', None)
 
     # --- Meta Properties ---
 

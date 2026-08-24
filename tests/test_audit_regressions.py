@@ -478,3 +478,25 @@ def test_detections_public_accessors_are_zero_copy():
     assert dets.keypoints is keypoints
     assert dets.segmentations is segmentations
     assert dets.classes is dets.meta['classes']
+
+
+def test_detections_optional_data_properties_allow_missing_keys():
+    import kwimage
+
+    dets = kwimage.Detections(
+        boxes=kwimage.Boxes(np.empty((0, 4)), 'xywh')
+    )
+    assert dets.class_idxs is None
+    assert dets.scores is None
+    assert dets.probs is None
+    assert dets.weights is None
+
+
+def test_heatmap_optional_spatial_properties_allow_missing_keys():
+    import kwimage
+
+    heatmap = kwimage.Heatmap(
+        class_probs=np.zeros((2, 4, 4), dtype=np.float32)
+    )
+    assert heatmap.offset is None
+    assert heatmap.diameter is None

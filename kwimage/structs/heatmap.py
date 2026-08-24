@@ -93,9 +93,19 @@ import ubelt as ub
 from . import _generic
 
 if TYPE_CHECKING:
-    from typing import List, Sequence, Tuple
+    from typing import Sequence, Tuple
 
     from numpy import ndarray
+    from skimage.transform._geometric import _GeometricTransform
+    import torch
+
+    from kwimage._typing import ArrayData
+    from kwimage.structs.detections import DetectionClasses, Detections
+
+    HeatmapShape = tuple[int, ...] | torch.Size
+    HeatmapImageDims = Sequence[int] | ndarray
+    HeatmapSpatialData = ArrayData | Sequence[int | float] | float | int
+    HeatmapTransform = _GeometricTransform
 
 
 class _HeatmapDrawMixin(object):
@@ -789,7 +799,8 @@ class _HeatmapWarpMixin(object):
         assert np.all(self.img_dims == other.img_dims)
 
         img_to_self = np.linalg.inv(self.tf_data_to_img.params)
-        other_to_img = other.tf_data_to_img.params
+        other_tf_data_to_img: Any = other.tf_data_to_img
+        other_to_img = other_tf_data_to_img.params
         other_to_self = np.matmul(img_to_self, other_to_img)
 
         mat = other_to_self
@@ -1192,9 +1203,11 @@ class _HeatmapAlgoMixin(object):
 
         # If the root is not specified use the largest heatmap
         if root_index is None:
-            root_index = ub.argmax([np.prod(h.shape) for h in heatmaps])
+            heatmaps_dyn: Any = heatmaps
+            root_index = ub.argmax([np.prod(h.shape) for h in heatmaps_dyn])
         root = heatmaps[root_index]
         aligned_heatmaps = [root._align_other(h).numpy() for h in heatmaps]
+        aligned_heatmaps_dyn: Any = aligned_heatmaps
         aligned_root = aligned_heatmaps[root_index]
 
         # Use the appropriate mean for each type of data
@@ -1205,7 +1218,10 @@ class _HeatmapAlgoMixin(object):
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore', 'divide by zero')
                 tmp = np.array(
-                    [h.class_probs.astype(dtype) for h in aligned_heatmaps],
+                    [
+                        h.class_probs.astype(dtype)
+                        for h in aligned_heatmaps_dyn
+                    ],
                     dtype=dtype,
                 )
                 newdata['class_probs'] = _gmean(tmp, clobber=True)
@@ -1226,14 +1242,14 @@ class _HeatmapAlgoMixin(object):
 
     def detect(
         self,
-        channel: int | Any,
+        channel: int | ArrayData,
         invert: bool = False,
         min_score: float = 0.01,
         num_min: int | None = 10,
         max_dims: float | Sequence[float] | ndarray | None = None,
         min_dims: float | Sequence[float] | ndarray | None = None,
         dim_thresh_space: str = 'image',
-    ) -> Any:
+    ) -> Detections:
         """
         Lossy conversion from a Heatmap to a Detections object.
 
@@ -1490,7 +1506,7 @@ class Heatmap(
     __spatialkeys__: list[str] = ['offset', 'diameter', 'keypoints']
 
     def __init__(
-        self, data: Any | None = None, meta: Any | None = None, **kwargs
+        self, data: Any | None = None, meta: Any | None = None, **kwargs: Any
     ) -> None:
         # Standardize input format
         if kwargs:
@@ -1531,17 +1547,17 @@ class Heatmap(
         self.data = cast(dict[str, Any], data)
         self.meta = meta
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         return '{} on img_dims={}'.format(self.shape, self.img_dims)
 
-    def __getitem__(self, index: Any) -> Any:
+    def __getitem__(self, index: Any) -> ArrayData:
         return self.class_probs[index]
 
     def __len__(self) -> int:
         return len(self.class_probs)
 
     @property
-    def shape(self) -> Any:
+    def shape(self) -> HeatmapShape | None:
         shape = None
         try:
             shape = self.class_probs.shape
@@ -1554,14 +1570,16 @@ class Heatmap(
         return shape
 
     @property
-    def bounds(self) -> Any:
-        return self.shape[-2:]
+    def bounds(self) -> HeatmapShape:
+        shape: Any = self.shape
+        return shape[-2:]
         # return self.class_probs.shape[1:]
 
     @property
-    def dims(self) -> Any:
+    def dims(self) -> HeatmapShape:
         """space-time dimensions of this heatmap"""
-        return self.shape[-2:]
+        shape: Any = self.shape
+        return shape[-2:]
         # return self.class_probs.shape[1:]
 
     def is_numpy(self) -> bool:
@@ -1589,11 +1607,11 @@ class Heatmap(
     def random(
         cls,
         dims: Tuple[int, int] = (10, 10),
-        classes: int | List[str] | Any = 3,
+        classes: int | DetectionClasses = 3,
         diameter: bool = True,
         offset: bool = True,
         keypoints: bool = False,
-        img_dims: Tuple | None = None,
+        img_dims: HeatmapImageDims | None = None,
         dets: Any | None = None,
         nblips: int = 10,
         noise: float = 0.0,
@@ -1784,29 +1802,29 @@ class Heatmap(
     # --- Data Properties ---
 
     @property
-    def class_probs(self) -> Any:
+    def class_probs(self) -> ArrayData:
         return self.data['class_probs']
 
     @property
-    def offset(self) -> Any:
-        return self.data['offset']
+    def offset(self) -> HeatmapSpatialData | None:
+        return self.data.get('offset', None)
 
     @property
-    def diameter(self) -> Any:
-        return self.data['diameter']
+    def diameter(self) -> HeatmapSpatialData | None:
+        return self.data.get('diameter', None)
 
     # --- Meta Properties ---
 
     @property
-    def img_dims(self) -> Any:
+    def img_dims(self) -> HeatmapImageDims | None:
         return self.meta.get('img_dims', None)
 
     @property
-    def tf_data_to_img(self) -> Any:
+    def tf_data_to_img(self) -> HeatmapTransform | None:
         return self.meta.get('tf_data_to_img', None)
 
     @property
-    def classes(self) -> Any:
+    def classes(self) -> DetectionClasses | None:
         return self.meta.get('classes', None)
 
     # ---

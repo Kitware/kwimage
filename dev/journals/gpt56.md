@@ -246,3 +246,31 @@ the preceding phase and adds no runtime work.
 ## 2026-08-24 11:25:00 -0400
 
 Corrected `Detections.__nice__` to follow the `ubelt.NiceRepr` contract directly. The hook now returns `str(self.num_boxes())` instead of preserving the historical integer return behind an `Any` annotation. This is an intentional repr-hook behavior correction requested by the maintainer; it has no effect on geometry/data-path performance.
+
+## 2026-08-24 11:52:00 -0400
+
+Refined the public `Box` and `Heatmap` APIs and fixed the Detections draw corner-case regression reported by CI. `Box` now exposes concrete array/tensor data, scalar geometry, dtype, Shapely/Polygon/COCO conversion, containment, corners, and drawing return contracts instead of bare `Any`. `Heatmap` now exposes concrete array/tensor channel data, shape/dimension aliases, optional spatial maps, image dimensions, transform/classes metadata, and `detect()` as `Detections`; common transform/backend methods were already concrete and are now covered by static contracts.
+
+The Detections regression came from the typed convenience properties using direct dictionary indexing even though `class_idxs`, `scores`, `probs`, and `weights` are optional by contract. Those properties now use `dict.get(..., None)`, restoring the existing corner-case draw behavior when a field is absent and aligning runtime behavior with the `| None` annotations.
+
+Runtime efficiency remains unchanged in the geometry/image paths. This phase adds no NumPy/Torch/OpenCV coercions, copies, materialization, device transfers, loops, or comprehensions. `Box.draw()` now explicitly returns `None`, matching the existing `kwplot.draw_boxes` behavior. Static `assert_type` coverage was added for the Box and Heatmap public surfaces, plus a focused runtime regression for missing optional Detections fields. Python 3.10 parsing, `compileall`, public return-type auditing, and whitespace checks pass locally. The sandbox lacks `ubelt` / `kwarray`, so repository pytest cannot execute here; the maintainer's local `ty` and pytest runs remain authoritative.
+
+## 2026-08-24 14:20:00 -0400
+
+Follow-up to the Box/Heatmap public API pass after the maintainer's local `ty`
+run found three Heatmap body diagnostics. These are representation-correlation
+issues inside private alignment/combine code, not public API gaps. Keep the
+strong public `Heatmap` property types and expose only local annotation-only
+`Any` views where `ty` cannot infer runtime facts: the aligned transform exists
+on the path that dereferences `.params`, the root-selection shape is accepted
+by the existing NumPy product call, and `Heatmap.numpy()` guarantees NumPy
+channel data even though the non-generic `Heatmap` return type still advertises
+the broader NumPy-or-Torch union.
+
+No computation was changed. The same `np.linalg.inv`, `np.prod`, NumPy array
+construction, and `.astype(dtype)` calls execute on the same objects. The new
+locals are simple references to existing objects; there are no casts, copies,
+coercions, loops beyond the pre-existing comprehensions, validation branches,
+or device transfers. Python 3.10 parsing, `compileall`, and diff whitespace
+checks are available here; the maintainer's local `ty check kwimage tests/`
+remains the authoritative static validation.

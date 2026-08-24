@@ -39,10 +39,58 @@ if TYPE_CHECKING:
     from kwimage.structs.segmentation import (
         SegmentationBackend, SegmentationCoco,
     )
+    from kwimage.structs.single_box import BoxDType, BoxScalar
+    from kwimage.structs.heatmap import (
+        HeatmapImageDims, HeatmapShape, HeatmapSpatialData, HeatmapTransform,
+    )
     from kwimage.structs.polygon import (
         CocoPolygon, CocoPolygonDict, MultiPolygonGeoJSON, PolygonData,
         PolygonGeoJSON,
     )
+
+    box = kwimage.Box.coerce([0.0, 1.0, 2.0, 3.0], 'xywh')
+    assert_type(box.data, ArrayData)
+    assert_type(box.contains(np.empty((3, 2))), ArrayData)
+    assert_type(box.corners(), np.ndarray)
+    assert_type(box.aspect_ratio, BoxScalar)
+    assert_type(box.center, tuple[BoxScalar, BoxScalar])
+    assert_type(box.center_x, BoxScalar)
+    assert_type(box.center_y, BoxScalar)
+    assert_type(box.width, BoxScalar)
+    assert_type(box.height, BoxScalar)
+    assert_type(box.tl_x, BoxScalar)
+    assert_type(box.tl_y, BoxScalar)
+    assert_type(box.br_x, BoxScalar)
+    assert_type(box.br_y, BoxScalar)
+    assert_type(box.dtype, BoxDType)
+    assert_type(box.area, BoxScalar)
+    assert_type(box.to_shapely(), ShapelyPolygon)
+    assert_type(box.to_polygon(), kwimage.Polygon)
+    assert_type(box.to_coco(), list[float])
+    assert_type(box.draw_on(np.zeros((8, 8, 3), dtype=np.uint8)), np.ndarray)
+    assert_type(box.draw(), None)
+
+    heatmap = kwimage.Heatmap(
+        class_probs=np.empty((2, 8, 8), dtype=np.float32),
+        img_dims=(16, 16),
+        classes=['a', 'b'],
+    )
+    assert_type(heatmap.class_probs, ArrayData)
+    assert_type(heatmap[0], ArrayData)
+    assert_type(heatmap.shape, HeatmapShape | None)
+    assert_type(heatmap.bounds, HeatmapShape)
+    assert_type(heatmap.dims, HeatmapShape)
+    assert_type(heatmap.offset, HeatmapSpatialData | None)
+    assert_type(heatmap.diameter, HeatmapSpatialData | None)
+    assert_type(heatmap.img_dims, HeatmapImageDims | None)
+    assert_type(heatmap.tf_data_to_img, HeatmapTransform | None)
+    assert_type(heatmap.classes, DetectionClasses | None)
+    assert_type(heatmap.numpy(), kwimage.Heatmap)
+    assert_type(heatmap.tensor(), kwimage.Heatmap)
+    assert_type(heatmap.warp(np.eye(3)), kwimage.Heatmap)
+    assert_type(heatmap.scale(2.0), kwimage.Heatmap)
+    assert_type(heatmap.translate((1.0, 2.0)), kwimage.Heatmap)
+    assert_type(heatmap.detect(0), kwimage.Detections)
 
     coords = kwimage.Coords(np.empty((3, 2)))
     assert_type(coords.data, ArrayData)
