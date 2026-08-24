@@ -310,3 +310,22 @@ backend transfers, or Python-level replacement for vectorized work were added.
 Python 3.10 parsing and `compileall` pass here. The sandbox still lacks `ty`,
 `ubelt`, and `kwarray`, so the maintainer's local `ty check kwimage tests/` and
 pytest run remain authoritative.
+
+
+## 2026-08-24 15:25:00 -0400
+
+Follow-up to the functional-image unsuppression pass addresses the first local
+`im_cv2.py` diagnostics reported by the maintainer. The remaining failures are
+implementation-boundary correlations: OpenCV Scalar values, flexible crop
+centers, NumPy scalar border extents, `ubelt.invert_dict`'s non-unique-value
+overload, `numbers.Integral` / `numbers.Number` narrowing, and NumPy dtype
+coercion. Keep the public image signatures concrete and isolate those cases with
+local dynamic views rather than broadening root-facing returns.
+
+The existing image operations remain in place. The only numeric conversions are
+`int(...)` on the four NumPy scalar letterbox extents immediately before the
+existing `cv2.copyMakeBorder` call; this matches OpenCV's declared integer
+parameters and does not materialize image data. No arrays are copied or coerced
+for typing, and no loops, validation passes, backend transfers, or vectorized
+operations are replaced. `_auto_kernel_sigma` now returns separate typed result
+locals instead of reusing its union-typed input parameter names.

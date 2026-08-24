@@ -274,7 +274,7 @@ def _coerce_border_value(
     border_value: int | float | str | 'Iterable[int | float]' | None,
     default: int | float | str | 'Iterable[int | float]' = 0,
     image: NDArray | None = None,
-) -> object:
+) -> Any:
     """
     Handles cv2 border values
 
@@ -301,32 +301,37 @@ def _coerce_border_value(
     if borderValue is None:
         borderValue = default
 
+    # This helper is the boundary between kwimage's permissive border-value
+    # API and OpenCV's narrower Scalar stubs. All internal callers provide an
+    # image, but keep the historical optional private-helper signature.
+    image_dynamic: Any = image
     if isinstance(borderValue, str):
         from kwimage import im_color
 
-        borderValue = im_color.Color(borderValue).forimage(image)
+        borderValue = im_color.Color(borderValue).forimage(image_dynamic)
     elif not ub.iterable(borderValue):
         # convert scalar border value to a tuple to ensure the user always
         # fully defines the output. (and to have conciseness)
-        num_chan = im_core.num_channels(image)
+        num_chan = im_core.num_channels(image_dynamic)
         # More than 4 channels will start to wrap around, so this is fine.
         borderValue = (borderValue,) * min(4, num_chan)
 
-    if len(borderValue) > 4:
+    borderValue_dynamic: Any = borderValue
+    if len(borderValue_dynamic) > 4:
         # FIXME; opencv bug
         # https://github.com/opencv/opencv/issues/22283
         raise ValueError(
             'borderValue cannot have more than 4 components. '
             'OpenCV #22283 describes why'
         )
-    return borderValue
+    return borderValue_dynamic
 
 
 def _coerce_border_mode_value(
     border_mode: int | str | None,
     border_value: int | float | str | 'Iterable[int | float]' | None,
     image: NDArray,
-) -> tuple[int, object]:
+) -> tuple[int, Any]:
     """
     Common code for warp_affine and warp_persepctive
     """
@@ -546,12 +551,26 @@ def imcrop(
         cen_h = new_h // 2
 
     if interpolation == 'linear':
-        # OpenCV expects the center in (x, y) order.
-        new_img = cv2.getRectSubPix(img, dsize, (cen_w, cen_h))
+        # OpenCV expects the center in (x, y) order. The branch logic above
+        # establishes concrete values, but ty does not preserve that
+        # correlation through the flexible ``about`` / ``dsize`` inputs.
+        dsize_cv2: Any = dsize
+        center_cv2: Any = (cen_w, cen_h)
+        new_img = cv2.getRectSubPix(img, dsize_cv2, center_cv2)
     elif interpolation == 'nearest':
+        # This path rejects real-valued centers above, so the existing bounds
+        # arithmetic is integral even though ty cannot correlate the branches.
+        cen_w_nearest: Any = cen_w
+        cen_h_nearest: Any = cen_h
         # build a patch that may go outside the image bounds
-        ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
-        xmin, xmax = cen_h - new_h // 2, cen_h + (new_h - new_h // 2)
+        ymin, ymax = (
+            cen_w_nearest - new_w // 2,
+            cen_w_nearest + (new_w - new_w // 2),
+        )
+        xmin, xmax = (
+            cen_h_nearest - new_h // 2,
+            cen_h_nearest + (new_h - new_h // 2),
+        )
 
         # subtract out portions that leave the image bounds
         lft, ymin = -min(0, ymin), max(0, ymin)
@@ -560,6 +579,7 @@ def imcrop(
         bot, xmax = max(0, xmax - old_h), min(old_h, xmax)
 
         # slice the image using the corrected bounds and append the rest as a border
+        border_value_cv2: Any = border_value
         new_img = cv2.copyMakeBorder(
             img[xmin:xmax, ymin:ymax],
             top,
@@ -567,7 +587,7 @@ def imcrop(
             lft,
             rgt,
             borderType=cv2.BORDER_CONSTANT,
-            value=border_value,
+            value=border_value_cv2,
         )
     else:
         raise KeyError(interpolation)
@@ -635,8 +655,9 @@ _HAS_FLOAT128 = hasattr(np, 'float128')
 if _HAS_FLOAT128:
     DTYPE_KEY_TO_DTYPE[('f', 16)] = np.float128
 
-DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = ub.invert_dict(
-    DTYPE_KEY_TO_DTYPE
+_DTYPE_TO_DTYPE_KEY_DYNAMIC: Any = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
+DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = (
+    _DTYPE_TO_DTYPE_KEY_DYNAMIC
 )
 
 
@@ -1089,10 +1110,10 @@ def _cv2_imresize(
         borderValue = _coerce_border_value(border_value, image=embed_img)
         new_img = cv2.copyMakeBorder(
             embed_img,
-            top,
-            bot,
-            left,
-            right,
+            int(top),
+            int(bot),
+            int(left),
+            int(right),
             borderType=cv2.BORDER_CONSTANT,
             value=borderValue,
         )
@@ -1490,20 +1511,22 @@ def _auto_kernel_sigma(
         kernel = 3
 
     if kernel is not None:
-        if isinstance(kernel, numbers.Integral):
-            k_x = k_y = kernel
+        kernel_dynamic: Any = kernel
+        if isinstance(kernel_dynamic, numbers.Integral):
+            k_x = k_y = kernel_dynamic
         else:
-            k_x, k_y = kernel
+            k_x, k_y = kernel_dynamic
 
     if sigma is None:
         # https://github.com/egonSchiele/OpenCV/blob/09bab41/modules/imgproc/src/smooth.cpp#L344
         sigma_x = 0.3 * ((k_x - 1) * 0.5 - 1) + 0.8
         sigma_y = 0.3 * ((k_y - 1) * 0.5 - 1) + 0.8
     else:
-        if isinstance(sigma, numbers.Number):
-            sigma_x = sigma_y = sigma
+        sigma_dynamic: Any = sigma
+        if isinstance(sigma_dynamic, numbers.Number):
+            sigma_x = sigma_y = sigma_dynamic
         else:
-            sigma_x, sigma_y = sigma
+            sigma_x, sigma_y = sigma_dynamic
 
     if kernel is None:
         if autokernel_mode == 'zero':
@@ -1529,9 +1552,9 @@ def _auto_kernel_sigma(
             k_y = max(3, round(20 * sigma_y / 3 - 7 / 3)) | 1
         else:
             raise KeyError(autokernel_mode)
-    sigma = (sigma_x, sigma_y)
-    kernel = (k_x, k_y)
-    return kernel, sigma
+    sigma_pair: tuple[float, float] = (sigma_x, sigma_y)
+    kernel_pair: tuple[int, int] = (k_x, k_y)
+    return kernel_pair, sigma_pair
 
 
 def gaussian_blur(
@@ -2639,7 +2662,8 @@ def connected_components(
 
     if not isinstance(ltype, numbers.Integral):
         try:
-            dtype = np.dtype(ltype)
+            ltype_dtype: Any = ltype
+            dtype = np.dtype(ltype_dtype)
         except TypeError:
             raise TypeError('type(ltype) = {}'.format(type(ltype)))
         if dtype == np.dtype(np.int32):
