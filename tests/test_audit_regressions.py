@@ -420,3 +420,19 @@ def test_affine_fliprot_requires_canvas_when_needed():
     with pytest.raises(ValueError, match='canvas_dsize'):
         kwimage.Affine.fliprot(flip_axis=(0,))
     assert isinstance(kwimage.Affine.fliprot(), kwimage.Affine)
+
+
+def test_points_to_wkt_returns_text():
+    import kwimage
+
+    points = kwimage.Points(xy=np.array([[1.0, 2.0], [3.0, 4.0]]))
+    wkt = points.to_wkt()
+    assert isinstance(wkt, str)
+    assert wkt.startswith('MULTIPOINT')
+
+
+def test_points_dtype_delegates_to_coords():
+    import kwimage
+
+    points = kwimage.Points(xy=np.array([[1.0, 2.0]], dtype=np.float32))
+    assert points.dtype == np.dtype(np.float32)

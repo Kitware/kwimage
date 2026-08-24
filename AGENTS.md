@@ -1,7 +1,10 @@
 ## Python, Typing & Docs
 
-* Support Python >=3.8 at runtime, but deferred typing can support 3.14+.
-* Avoid typing code that adds runtime overhead as a guideline, but not a hard rule.
+* Support Python >=3.10 at runtime, matching ``project.requires-python`` and
+  the xcookie configuration.
+* Typing work must not slow hot paths merely to satisfy the checker. Preserve
+  vectorized NumPy/Torch operations and avoid extra copies, materialization, or
+  runtime validation when static narrowing or type-only structure is sufficient.
 * Prefer putting typing code in if `typing.TYPE_CHECKING` blocks.
 
 ## Linting & Style

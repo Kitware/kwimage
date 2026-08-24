@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numbers
 import sys
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeGuard, TypeVar, overload
 
 import kwarray
 import numpy as np
@@ -11,6 +11,8 @@ import ubelt as ub
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterable, Iterator
     from typing import Any, MutableSequence, Protocol, Sequence
+
+    from kwimage._typing import ArrayData
 
     class _DrawableObject(Protocol):
         def to_coco(self, style: str = 'orig') -> Any: ...
@@ -32,7 +34,7 @@ ObjectListT = TypeVar('ObjectListT', bound='ObjectList[Any]')
 #     ARRAY_TYPES = (np.ndarray, torch.Tensor)
 
 
-def isinstance_arraytypes(obj: object) -> bool:
+def isinstance_arraytypes(obj: object) -> TypeGuard[ArrayData]:
     """
     workaround so we dont need to import torch at the global level
     """
@@ -110,6 +112,12 @@ class _ExperimentalListProxy(Generic[T]):
     """
 
     data: MutableSequence[T]
+
+    @overload
+    def __getitem__(self, index: int) -> T: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> MutableSequence[T]: ...
 
     def __getitem__(self, index: Any) -> Any:
         """Retrieve an item by its index."""
