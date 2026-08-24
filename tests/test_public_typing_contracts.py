@@ -54,9 +54,37 @@ if TYPE_CHECKING:
     from kwimage.im_transform import ResizeInfo, WarpInfo
     from kwimage.algo.algo_nms import NMSIndex, NMSIndices
     from kwimage.im_draw import TextDrawInfo
+    from kwimage.im_runlen import RunLengthEncoding
+    from kwimage.im_stack import StackTransform
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
+
+    assert_type(kwimage.ensure_alpha_channel(image), np.ndarray)
+    assert_type(
+        kwimage.overlay_alpha_images(image, image), np.ndarray
+    )
+    assert_type(
+        kwimage.overlay_alpha_layers([image, image]), np.ndarray
+    )
+
+    assert_type(kwimage.stack_images([image, image]), np.ndarray)
+    assert_type(
+        kwimage.stack_images([image, image], return_info=True),
+        tuple[np.ndarray, list[StackTransform]],
+    )
+    assert_type(kwimage.stack_images_grid([image, image]), np.ndarray)
+    assert_type(
+        kwimage.stack_images_grid([image, image], return_info=True),
+        tuple[np.ndarray, list[StackTransform]],
+    )
+
+    encoded = kwimage.encode_run_length(binary, binary=True)
+    assert_type(encoded, RunLengthEncoding)
+    assert_type(kwimage.decode_run_length(**encoded), np.ndarray)
+    assert_type(
+        kwimage.rle_translate(encoded, (1, 2)), RunLengthEncoding
+    )
 
     assert_type(kwimage.imread('demo.png'), np.ndarray)
     assert_type(kwimage.imwrite('demo.png', image), str)

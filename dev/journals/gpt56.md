@@ -381,3 +381,48 @@ leak into public signatures.
 No runtime conversion, array materialization, copy, validation, or replacement
 of vectorized work was introduced. The `logical_or.reduce` operation itself is
 unchanged; only its receiver is viewed dynamically for the stub boundary.
+
+## 2026-08-24 16:52:00 -0400
+
+Moved `im_alphablend.py`, `im_stack.py`, and `im_runlen.py` out of the blanket
+`ty` override, reducing the remaining suppression list to five modules. Alpha
+blending now uses NumPy dtype contracts and a literal implementation selector.
+The stacking API now has literal-aware `return_info` overloads and a structural
+`StackTransform` contract for the affine-like transforms returned alongside the
+canvas. Run-length encoding now exposes a `RunLengthEncoding` `TypedDict`, so
+`decode_run_length(**encode_run_length(...))` has a concrete static contract,
+and `rle_translate` preserves that contract.
+
+The implementation-side dynamic boundaries are intentionally local. Grid
+stacking retains its historical ability to consume a general iterable when a
+chunk size is supplied while using a local dynamic view for the conditional
+`len()` call. RLE translation keeps its legacy dictionary/COCO representation
+mutation behind a local dynamic view, and the two NumPy multi-index calls use
+local views because their stubs do not model ndarray shape vectors. I chose a
+small structural `StackTransform` protocol instead of pretending the optional
+scikit-image class is always statically available; this keeps the useful
+`scale`, `translation`, and `params` surface visible to callers. The main risk
+is checker-specific narrowing in these newly unsuppressed bodies because `ty`
+is not available in the sandbox, so the maintainer's next local run may expose
+a focused cleanup batch rather than an API-design problem.
+
+No array materialization, copying, validation pass, or Python replacement for
+vectorized work was added. Loop/comprehension, `np.array`, `np.asarray`, and
+`.copy()` call counts are unchanged in all three modules relative to v26.
+Python 3.10 parsing, `compileall`, TOML parsing, and an `im_runlen` smoke test
+pass here. Next step is the local `ty check kwimage tests/`; after any cleanup,
+`im_filter.py` is the next major functional-image suppression.
+
+## 2026-08-24 16:58:00 -0400
+
+The first v27 local `ty` run exposed two `_round_dsize` diagnostics in
+`im_stack.py`. The runtime code intentionally accepts either a scalar scale or
+an unpackable two-component scale via the existing `try`/`except TypeError`
+path, while the public annotation remains `float | tuple[float, float]`.
+`ty` retained the tuple alternative when reasoning about the unpacked locals,
+so the arithmetic did not narrow to scalar values.
+
+Kept the runtime branch and arithmetic unchanged and introduced separate local
+`Any` implementation scalars for the unpacked `sx`/`sy` values. This is an
+annotation-only dynamic boundary; it adds no conversion, validation,
+materialization, copy, or extra iteration.

@@ -127,11 +127,8 @@ src.include = [
 include = [
   "kwimage/im_demodata.py",
   "kwimage/im_filter.py",
-  "kwimage/im_runlen.py",
-  "kwimage/im_stack.py",
   "kwimage/cli/crop_border.py",
   "kwimage/cli/stack_images.py",
-  "kwimage/im_alphablend.py",
   "kwimage/cli/__main__.py",
 ]
 rules.all = "ignore"
