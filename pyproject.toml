@@ -127,10 +127,8 @@ src.include = [
 include = [
   "kwimage/algo/algo_nms.py",
   "kwimage/im_demodata.py",
-  "kwimage/im_cv2.py",
   "kwimage/im_draw.py",
   "kwimage/im_io.py",
-  "kwimage/im_core.py",
   "kwimage/im_filter.py",
   "kwimage/im_runlen.py",
   "kwimage/im_stack.py",
@@ -138,7 +136,6 @@ include = [
   "kwimage/cli/stack_images.py",
   "kwimage/im_alphablend.py",
   "kwimage/cli/__main__.py",
-  "kwimage/im_transform.py",
 ]
 rules.all = "ignore"
 

@@ -274,3 +274,39 @@ coercions, loops beyond the pre-existing comprehensions, validation branches,
 or device transfers. Python 3.10 parsing, `compileall`, and diff whitespace
 checks are available here; the maintainer's local `ty check kwimage tests/`
 remains the authoritative static validation.
+
+## 2026-08-24 14:44:00 -0400
+
+Moved the next high-value functional-image API batch out of blanket `ty`
+suppression: `im_transform.py`, `im_core.py`, and `im_cv2.py`. The override list
+falls from 14 modules to 11. `util_warp.py` remains intentionally deferred until
+the other public image modules are finished.
+
+The root transform API now has concrete ndarray inputs/outputs and literal-aware
+`return_info` overloads for `warp_image`, `warp_affine`, `warp_projective`, and
+`imresize`. Warp and resize metadata have typed dictionary contracts, including
+the common resize scale/offset/dsize fields. `im_core` now uses NumPy dtype
+contracts instead of a bare `Any`, exposes typed padded-slice metadata, and
+publishes useful normalization result types. `im_cv2` keeps concrete ndarray
+contracts for crop/colorspace/adjust/blur/morphology and adds structured
+connected-component metadata, with `with_stats=False` distinguished from the
+default stats-bearing result.
+
+The OpenCV implementation layer is intentionally less ambitious than the public
+facade. Large private warp/resize helpers and dtype-dispatch tables are marked
+as dynamic boundaries where OpenCV's overloaded API and legacy backend control
+flow do not provide useful downstream type information. This keeps `Any`
+localized to private implementation machinery rather than weakening the
+root-facing kwimage contracts. Static `assert_type` coverage now exercises the
+three public API families, including literal return-info and connected-component
+metadata behavior.
+
+No image algorithm was rewritten for typing. Relative to the previous tree, the
+counts of loops/comprehensions, NumPy array/coercion calls, `.copy()` calls,
+OpenCV calls, and raises are unchanged in all three target modules. The only
+runtime-flow edits are local references/annotations used to expose existing
+correlations to the checker; no array materialization, copies, validation,
+backend transfers, or Python-level replacement for vectorized work were added.
+Python 3.10 parsing and `compileall` pass here. The sandbox still lacks `ty`,
+`ubelt`, and `kwarray`, so the maintainer's local `ty check kwimage tests/` and
+pytest run remain authoritative.

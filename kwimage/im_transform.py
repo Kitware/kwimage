@@ -3,22 +3,103 @@ Contains functions that used to belong to im_cv2, but have been generalized to
 accept different backends.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from kwimage._backend_info import _default_backend
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from typing import Any, Literal, TypedDict, TypeAlias, overload
+
+    import numpy as np
+
+    from kwimage.transform import Transform
+
+    ImageArray: TypeAlias = np.ndarray
+    WarpDSize: TypeAlias = tuple[int, int] | str | None
+    ResizeDSize: TypeAlias = tuple[int | None, int | None] | None
+    WarpTransformLike: TypeAlias = (
+        np.ndarray | Mapping[str, Any] | Transform
+    )
+    BorderValue: TypeAlias = int | float | str | Iterable[int | float] | None
+
+    class WarpInfo(TypedDict):
+        transform: Transform
+        dsize: tuple[int, int]
+        antialias_info: dict[str, Transform] | None
+
+    class _ResizeInfoRequired(TypedDict):
+        offset: int | np.ndarray
+        scale: np.ndarray
+        dsize: tuple[int, int]
+
+    class ResizeInfo(_ResizeInfoRequired, total=False):
+        embed_size: np.ndarray
+
+
+if TYPE_CHECKING:
+    @overload
+    def warp_image(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        return_info: Literal[False] = False,
+        backend: str = 'auto',
+    ) -> ImageArray: ...
+
+    @overload
+    def warp_image(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        *,
+        return_info: Literal[True],
+        backend: str = 'auto',
+    ) -> tuple[ImageArray, WarpInfo]: ...
+
+    @overload
+    def warp_image(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        return_info: bool = False,
+        backend: str = 'auto',
+    ) -> ImageArray | tuple[ImageArray, WarpInfo]: ...
 
 
 def warp_image(
-    image,
-    transform,
-    dsize=None,
-    antialias=False,
-    interpolation='linear',
-    border_mode=None,
-    border_value=0,
-    large_warp_dim=None,
-    origin_convention='center',
-    return_info=False,
-    backend='auto',
-):
+    image: ImageArray,
+    transform: WarpTransformLike,
+    dsize: WarpDSize = None,
+    antialias: bool = False,
+    interpolation: str | int = 'linear',
+    border_mode: str | int | None = None,
+    border_value: BorderValue = 0,
+    large_warp_dim: int | str | None = None,
+    origin_convention: str = 'center',
+    return_info: bool = False,
+    backend: str = 'auto',
+) -> ImageArray | tuple[ImageArray, WarpInfo]:
     """
     Applies an transformation to an image with optional antialiasing.
 
@@ -123,7 +204,7 @@ def warp_image(
     import kwimage
 
     transform = kwimage.Projective.coerce(transform)
-    kwargs = dict(
+    kwargs: Any = dict(
         dsize=dsize,
         antialias=antialias,
         interpolation=interpolation,
@@ -140,19 +221,67 @@ def warp_image(
         return kwimage.warp_projective(image, transform, **kwargs)
 
 
+if TYPE_CHECKING:
+    @overload
+    def warp_projective(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        return_info: Literal[False] = False,
+        backend: str = 'auto',
+    ) -> ImageArray: ...
+
+    @overload
+    def warp_projective(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        *,
+        return_info: Literal[True],
+        backend: str = 'auto',
+    ) -> tuple[ImageArray, WarpInfo]: ...
+
+    @overload
+    def warp_projective(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        return_info: bool = False,
+        backend: str = 'auto',
+    ) -> ImageArray | tuple[ImageArray, WarpInfo]: ...
+
+
 def warp_projective(
-    image,
-    transform,
-    dsize=None,
-    antialias=False,
-    interpolation='linear',
-    border_mode=None,
-    border_value=0,
-    large_warp_dim=None,
-    origin_convention='center',
-    return_info=False,
-    backend='auto',
-):
+    image: ImageArray,
+    transform: WarpTransformLike,
+    dsize: WarpDSize = None,
+    antialias: bool = False,
+    interpolation: str | int = 'linear',
+    border_mode: str | int | None = None,
+    border_value: BorderValue = 0,
+    large_warp_dim: int | str | None = None,
+    origin_convention: str = 'center',
+    return_info: bool = False,
+    backend: str = 'auto',
+) -> ImageArray | tuple[ImageArray, WarpInfo]:
     """
     Applies an projective transformation to an image with optional antialiasing.
 
@@ -262,19 +391,67 @@ def warp_projective(
         raise KeyError(f'no kwimage backend={backend} for warp_projective')
 
 
+if TYPE_CHECKING:
+    @overload
+    def warp_affine(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        return_info: Literal[False] = False,
+        backend: str = 'auto',
+    ) -> ImageArray: ...
+
+    @overload
+    def warp_affine(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        *,
+        return_info: Literal[True],
+        backend: str = 'auto',
+    ) -> tuple[ImageArray, WarpInfo]: ...
+
+    @overload
+    def warp_affine(
+        image: ImageArray,
+        transform: WarpTransformLike,
+        dsize: WarpDSize = None,
+        antialias: bool = False,
+        interpolation: str | int = 'linear',
+        border_mode: str | int | None = None,
+        border_value: BorderValue = 0,
+        large_warp_dim: int | str | None = None,
+        origin_convention: str = 'center',
+        return_info: bool = False,
+        backend: str = 'auto',
+    ) -> ImageArray | tuple[ImageArray, WarpInfo]: ...
+
+
 def warp_affine(
-    image,
-    transform,
-    dsize=None,
-    antialias=False,
-    interpolation='linear',
-    border_mode=None,
-    border_value=0,
-    large_warp_dim=None,
-    origin_convention='center',
-    return_info=False,
-    backend='auto',
-):
+    image: ImageArray,
+    transform: WarpTransformLike,
+    dsize: WarpDSize = None,
+    antialias: bool = False,
+    interpolation: str | int = 'linear',
+    border_mode: str | int | None = None,
+    border_value: BorderValue = 0,
+    large_warp_dim: int | str | None = None,
+    origin_convention: str = 'center',
+    return_info: bool = False,
+    backend: str = 'auto',
+) -> ImageArray | tuple[ImageArray, WarpInfo]:
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -631,20 +808,71 @@ def warp_affine(
         raise KeyError(f'no kwimage backend={backend} for warp_affine')
 
 
+if TYPE_CHECKING:
+    @overload
+    def imresize(
+        img: ImageArray,
+        scale: float | tuple[float, float] | None = None,
+        dsize: ResizeDSize = None,
+        max_dim: int | None = None,
+        min_dim: int | None = None,
+        interpolation: str | int | None = None,
+        grow_interpolation: str | int | None = None,
+        letterbox: bool = False,
+        return_info: Literal[False] = False,
+        antialias: bool = False,
+        border_value: BorderValue = 0,
+        backend: str = 'auto',
+    ) -> ImageArray: ...
+
+    @overload
+    def imresize(
+        img: ImageArray,
+        scale: float | tuple[float, float] | None = None,
+        dsize: ResizeDSize = None,
+        max_dim: int | None = None,
+        min_dim: int | None = None,
+        interpolation: str | int | None = None,
+        grow_interpolation: str | int | None = None,
+        letterbox: bool = False,
+        *,
+        return_info: Literal[True],
+        antialias: bool = False,
+        border_value: BorderValue = 0,
+        backend: str = 'auto',
+    ) -> tuple[ImageArray, ResizeInfo]: ...
+
+    @overload
+    def imresize(
+        img: ImageArray,
+        scale: float | tuple[float, float] | None = None,
+        dsize: ResizeDSize = None,
+        max_dim: int | None = None,
+        min_dim: int | None = None,
+        interpolation: str | int | None = None,
+        grow_interpolation: str | int | None = None,
+        letterbox: bool = False,
+        return_info: bool = False,
+        antialias: bool = False,
+        border_value: BorderValue = 0,
+        backend: str = 'auto',
+    ) -> ImageArray | tuple[ImageArray, ResizeInfo]: ...
+
+
 def imresize(
-    img,
-    scale=None,
-    dsize=None,
-    max_dim=None,
-    min_dim=None,
-    interpolation=None,
-    grow_interpolation=None,
-    letterbox=False,
-    return_info=False,
-    antialias=False,
-    border_value=0,
-    backend='auto',
-):
+    img: ImageArray,
+    scale: float | tuple[float, float] | None = None,
+    dsize: ResizeDSize = None,
+    max_dim: int | None = None,
+    min_dim: int | None = None,
+    interpolation: str | int | None = None,
+    grow_interpolation: str | int | None = None,
+    letterbox: bool = False,
+    return_info: bool = False,
+    antialias: bool = False,
+    border_value: BorderValue = 0,
+    backend: str = 'auto',
+) -> ImageArray | tuple[ImageArray, ResizeInfo]:
     """
     Resize an image via a scale factor, final size, or size and aspect ratio.
 
@@ -874,18 +1102,18 @@ def imresize(
 
 
 def _skimage_resize(
-    img,
-    scale=None,
-    dsize=None,
-    max_dim=None,
-    min_dim=None,
-    interpolation=None,
-    grow_interpolation=None,
-    letterbox=False,
-    return_info=False,
-    antialias=False,
-    border_value=0,
-):
+    img: Any,
+    scale: Any = None,
+    dsize: Any = None,
+    max_dim: Any = None,
+    min_dim: Any = None,
+    interpolation: Any = None,
+    grow_interpolation: Any = None,
+    letterbox: Any = False,
+    return_info: Any = False,
+    antialias: Any = False,
+    border_value: Any = 0,
+) -> Any:
     """
     Example:
         >>> import numpy as np
@@ -917,7 +1145,7 @@ def _skimage_resize(
     return new_img
 
 
-def _coerce_skimage_interpolation_order(interpolation):
+def _coerce_skimage_interpolation_order(interpolation: Any) -> int:
     """
     The order of interpolation. The order has to be in the range 0-5:
      - 0: Nearest-neighbor

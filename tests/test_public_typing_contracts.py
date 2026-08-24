@@ -47,6 +47,78 @@ if TYPE_CHECKING:
         CocoPolygon, CocoPolygonDict, MultiPolygonGeoJSON, PolygonData,
         PolygonGeoJSON,
     )
+    from kwimage.im_core import PaddedSliceInfo, RobustNormalizerInfo
+    from kwimage.im_cv2 import (
+        ConnectedComponentsInfo, ConnectedComponentsStatsInfo,
+    )
+    from kwimage.im_transform import ResizeInfo, WarpInfo
+
+    image = np.zeros((16, 20, 3), dtype=np.uint8)
+    binary = np.zeros((16, 20), dtype=np.uint8)
+
+    assert_type(kwimage.warp_image(image, np.eye(3)), np.ndarray)
+    assert_type(
+        kwimage.warp_image(image, np.eye(3), return_info=True),
+        tuple[np.ndarray, WarpInfo],
+    )
+    assert_type(kwimage.warp_affine(image, np.eye(3)), np.ndarray)
+    assert_type(
+        kwimage.warp_affine(image, np.eye(3), return_info=True),
+        tuple[np.ndarray, WarpInfo],
+    )
+    assert_type(kwimage.warp_projective(image, np.eye(3)), np.ndarray)
+    assert_type(
+        kwimage.warp_projective(image, np.eye(3), return_info=True),
+        tuple[np.ndarray, WarpInfo],
+    )
+    assert_type(kwimage.imresize(image, scale=0.5), np.ndarray)
+    assert_type(
+        kwimage.imresize(image, scale=0.5, return_info=True),
+        tuple[np.ndarray, ResizeInfo],
+    )
+
+    assert_type(kwimage.num_channels(image), int)
+    assert_type(kwimage.ensure_float01(image), np.ndarray)
+    assert_type(kwimage.ensure_uint255(image), np.ndarray)
+    assert_type(
+        kwimage.make_channels_comparable(image, image),
+        tuple[np.ndarray, np.ndarray],
+    )
+    assert_type(kwimage.atleast_3channels(binary), np.ndarray)
+    assert_type(kwimage.exactly_1channel(binary), np.ndarray)
+    assert_type(kwimage.padded_slice(binary, (slice(0, 4),)), np.ndarray)
+    assert_type(
+        kwimage.padded_slice(
+            binary, (slice(0, 4),), return_info=True
+        ),
+        tuple[np.ndarray, PaddedSliceInfo],
+    )
+    assert_type(
+        kwimage.find_robust_normalizers(binary), RobustNormalizerInfo
+    )
+    assert_type(kwimage.normalize_intensity(binary), np.ndarray)
+    assert_type(
+        kwimage.normalize_intensity(binary, return_info=True),
+        tuple[np.ndarray, RobustNormalizerInfo],
+    )
+    assert_type(kwimage.crop_border_by_color(image), np.ndarray)
+
+    assert_type(kwimage.imcrop(image, (8, 8)), np.ndarray)
+    assert_type(
+        kwimage.convert_colorspace(image, 'RGB', 'BGR'), np.ndarray
+    )
+    assert_type(kwimage.adjust(image), np.ndarray)
+    assert_type(kwimage.gaussian_patch((7, 7)), np.ndarray)
+    assert_type(kwimage.gaussian_blur(image), np.ndarray)
+    assert_type(kwimage.morphology(binary, 'dilate'), np.ndarray)
+    assert_type(
+        kwimage.connected_components(binary, with_stats=False),
+        tuple[np.ndarray, ConnectedComponentsInfo],
+    )
+    assert_type(
+        kwimage.connected_components(binary),
+        tuple[np.ndarray, ConnectedComponentsStatsInfo],
+    )
 
     box = kwimage.Box.coerce([0.0, 1.0, 2.0, 3.0], 'xywh')
     assert_type(box.data, ArrayData)

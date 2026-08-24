@@ -9,6 +9,18 @@ import typing as _t
 import numpy as np
 import ubelt as ub
 
+if _t.TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Any, Literal, TypedDict, overload
+
+    from numpy.typing import DTypeLike
+
+    class PaddedSliceInfo(TypedDict):
+        st_dims: list[tuple[int, int]]
+        st_offset: list[int]
+
+    RobustNormalizerInfo = dict[str, Any]
+
 
 def num_channels(img: np.ndarray) -> int:
     """
@@ -48,7 +60,7 @@ def num_channels(img: np.ndarray) -> int:
 
 
 def ensure_float01(
-    img: np.ndarray, dtype: _t.Any = np.float32, copy: bool = True
+    img: np.ndarray, dtype: DTypeLike = np.float32, copy: bool = True
 ) -> np.ndarray:
     """
     Ensure that an image is encoded using a float32 properly
@@ -351,13 +363,43 @@ def exactly_1channel(image: np.ndarray, ndim: int = 2) -> np.ndarray:
     return image
 
 
+if _t.TYPE_CHECKING:
+    @overload
+    def padded_slice(
+        data: np.ndarray,
+        in_slice: slice | tuple[slice, ...] | list[slice],
+        pad: int | Sequence[int | tuple[int, int]] | None = None,
+        padkw: dict[str, Any] | None = None,
+        return_info: Literal[False] = False,
+    ) -> np.ndarray: ...
+
+    @overload
+    def padded_slice(
+        data: np.ndarray,
+        in_slice: slice | tuple[slice, ...] | list[slice],
+        pad: int | Sequence[int | tuple[int, int]] | None = None,
+        padkw: dict[str, Any] | None = None,
+        *,
+        return_info: Literal[True],
+    ) -> tuple[np.ndarray, PaddedSliceInfo]: ...
+
+    @overload
+    def padded_slice(
+        data: np.ndarray,
+        in_slice: slice | tuple[slice, ...] | list[slice],
+        pad: int | Sequence[int | tuple[int, int]] | None = None,
+        padkw: dict[str, Any] | None = None,
+        return_info: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, PaddedSliceInfo]: ...
+
+
 def padded_slice(
-    data: _t.Any,
-    in_slice: slice | tuple[slice, ...],
-    pad: int | list[int | tuple[int, int]] | None = None,
-    padkw: dict[str, _t.Any] | None = None,
+    data: np.ndarray,
+    in_slice: slice | tuple[slice, ...] | list[slice],
+    pad: int | Sequence[int | tuple[int, int]] | None = None,
+    padkw: dict[str, Any] | None = None,
     return_info: bool = False,
-) -> np.ndarray | tuple[np.ndarray, dict[str, _t.Any]]:
+) -> np.ndarray | tuple[np.ndarray, PaddedSliceInfo]:
     """
     Allows slices with out-of-bound coordinates.  Any out of bounds coordinate
     will be sampled via padding.
@@ -427,9 +469,9 @@ def padded_slice(
 def _padded_slice_apply(
     data_clipped: np.ndarray,
     data_slice: tuple[slice, ...],
-    extra_padding: list[tuple[int, int]] | tuple[tuple[int, int], ...],
-    padkw: dict[str, _t.Any] | None = None,
-) -> tuple[np.ndarray, dict[str, _t.Any]]:
+    extra_padding: list[tuple[int, int]],
+    padkw: dict[str, Any] | None = None,
+) -> tuple[np.ndarray, PaddedSliceInfo]:
     """
     Applies requested padding to an extracted data slice.
     """
@@ -447,20 +489,24 @@ def _padded_slice_apply(
             extra_padding = extra_padding + ([(0, 0)] * trailing_dims)
         data_sliced = np.pad(data_clipped, extra_padding, **padkw)
 
+    data_slice_dynamic: Any = data_slice
     st_dims = [
         (sl.start - pad_[0], sl.stop + pad_[1])
-        for sl, pad_ in zip(data_slice, extra_padding)
+        for sl, pad_ in zip(data_slice_dynamic, extra_padding)
     ]
 
     # TODO: return a better transform back to the original space
-    transform = {'st_dims': st_dims, 'st_offset': [d[0] for d in st_dims]}
+    transform: PaddedSliceInfo = {
+        'st_dims': st_dims,
+        'st_offset': [d[0] for d in st_dims],
+    }
     return data_sliced, transform
 
 
 def _padded_slice_embed(
-    in_slice: tuple[slice, ...],
-    data_dims: tuple[int, ...] | list[int],
-    pad: int | list[int | tuple[int, int]] | None = None,
+    in_slice: Sequence[slice],
+    data_dims: Sequence[int],
+    pad: int | Sequence[int | tuple[int, int]] | None = None,
 ) -> tuple[tuple[slice, ...], list[tuple[int, int]]]:
     """
     Embeds a "padded-slice" inside known data dimension.
@@ -523,8 +569,9 @@ def _padded_slice_embed(
         data_slice = (slice(10, 40, None), slice(10, 40, None))
         extra_padding = [(0, 0), (0, 0)]
     """
-    low_dims = [sl.start for sl in in_slice]
-    high_dims = [sl.stop for sl in in_slice]
+    in_slice_dynamic: Any = in_slice
+    low_dims = [sl.start for sl in in_slice_dynamic]
+    high_dims = [sl.stop for sl in in_slice_dynamic]
 
     # Determine the real part of the image that can be sliced out
     data_slice_st = []
@@ -534,7 +581,11 @@ def _padded_slice_embed(
     if isinstance(pad, int):
         pad = [pad] * len(data_dims)
     # Normalize to left/right pad value for each dim
-    pad_slice = [p if ub.iterable(p) else [p, p] for p in pad]
+    pad_dynamic: Any = pad
+    pad_slice = [
+        p if ub.iterable(p) else [p, p]
+        for p in pad_dynamic
+    ]
 
     # Determine the real part of the image that can be sliced out
     for D_img, d_low, d_high, d_pad in zip(
@@ -595,8 +646,8 @@ def normalize(
 
 
 def find_robust_normalizers(
-    data: np.ndarray, params: str | dict[str, _t.Any] = 'auto'
-) -> _t.Any:
+    data: np.ndarray, params: str | dict[str, Any] = 'auto'
+) -> RobustNormalizerInfo:
     """
     Finds robust normalization statistics for a single observation
 
@@ -631,15 +682,51 @@ def find_robust_normalizers(
     return normalizer
 
 
+if _t.TYPE_CHECKING:
+    @overload
+    def normalize_intensity(
+        imdata: np.ndarray,
+        return_info: Literal[False] = False,
+        nodata: int | None = None,
+        axis: int | None = None,
+        dtype: DTypeLike = np.float32,
+        params: str | dict[str, Any] = 'auto',
+        mask: np.ndarray | None = None,
+    ) -> np.ndarray: ...
+
+    @overload
+    def normalize_intensity(
+        imdata: np.ndarray,
+        *,
+        return_info: Literal[True],
+        nodata: int | None = None,
+        axis: int | None = None,
+        dtype: DTypeLike = np.float32,
+        params: str | dict[str, Any] = 'auto',
+        mask: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, RobustNormalizerInfo]: ...
+
+    @overload
+    def normalize_intensity(
+        imdata: np.ndarray,
+        return_info: bool = False,
+        nodata: int | None = None,
+        axis: int | None = None,
+        dtype: DTypeLike = np.float32,
+        params: str | dict[str, Any] = 'auto',
+        mask: np.ndarray | None = None,
+    ) -> np.ndarray | tuple[np.ndarray, RobustNormalizerInfo]: ...
+
+
 def normalize_intensity(
     imdata: np.ndarray,
     return_info: bool = False,
     nodata: int | None = None,
     axis: int | None = None,
-    dtype: _t.Any = np.float32,
-    params: str | dict[str, _t.Any] = 'auto',
+    dtype: DTypeLike = np.float32,
+    params: str | dict[str, Any] = 'auto',
     mask: np.ndarray | None = None,
-) -> np.ndarray | tuple[np.ndarray, dict[str, _t.Any]]:
+) -> np.ndarray | tuple[np.ndarray, RobustNormalizerInfo]:
     """
     Normalize data intensities using heuristics to help put sensor data with
     extremely high or low contrast into a visible range.
