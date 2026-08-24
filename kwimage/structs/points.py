@@ -15,7 +15,7 @@ import ubelt as ub
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from typing import Any, List, Protocol, Tuple
 
     from matplotlib.axes import Axes
@@ -1371,3 +1371,8 @@ class PointsList(_generic.ObjectList[Points]):
         # TODO: when the data is homogenous we can use a more efficient
         # representation, otherwise we have to use heterogenous storage.
     """
+
+    if TYPE_CHECKING:
+        def to_coco(
+            self, style: str = 'orig'
+        ) -> Iterator[CocoKeypoints]: ...

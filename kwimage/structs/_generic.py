@@ -9,7 +9,7 @@ import numpy as np
 import ubelt as ub
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
     from typing import Any, MutableSequence, Protocol, Sequence
 
     from kwimage._typing import ArrayData
@@ -303,9 +303,7 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
         newdata = [None if item is None else func(item) for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def to_coco(
-        self: ObjectList[_DrawableObject], style: str = 'orig'
-    ) -> Generator[Any, None, None]:
+    def to_coco(self: Any, style: str = 'orig') -> Iterable[Any]:
         for item in self.data:
             if item is None:
                 yield None

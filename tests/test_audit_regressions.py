@@ -436,3 +436,16 @@ def test_points_dtype_delegates_to_coords():
 
     points = kwimage.Points(xy=np.array([[1.0, 2.0]], dtype=np.float32))
     assert points.dtype == np.dtype(np.float32)
+
+
+def test_polygon_coco_laziness_contract():
+    """Keep PolygonList COCO export lazy without changing MultiPolygon."""
+    import kwimage
+
+    poly = kwimage.Polygon.random(4, rng=0)
+    mpoly = kwimage.MultiPolygon([poly])
+    assert isinstance(mpoly.to_coco(), list)
+
+    poly_list = kwimage.PolygonList([poly, mpoly, None])
+    coco_iter = poly_list.to_coco()
+    assert iter(coco_iter) is coco_iter

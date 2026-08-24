@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import numbers
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import ubelt as ub
@@ -24,15 +24,52 @@ import ubelt as ub
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
     from numbers import Number
-    from typing import Any, Dict, List, Tuple
+    from typing import (
+        Any, Literal, Protocol, TypeVar, TypedDict, overload,
+    )
 
-    import matplotlib
-    import shapely
+    from matplotlib.axes import Axes
+    from matplotlib.patches import PathPatch
     from numpy import ndarray
+    from numpy.typing import ArrayLike, DTypeLike
+    from shapely.geometry import MultiPolygon as ShapelyMultiPolygon
+    from shapely.geometry import Polygon as ShapelyPolygon
+    from shapely.geometry.base import BaseGeometry
+    import torch
 
     import kwimage
     from kwimage._typing import TransformLike
+    from kwimage.im_color import Color
+
+    ColorLike = Color | str | Sequence[int | float]
+    class CocoPolygonDict(TypedDict):
+        exterior: list[list[int | float]]
+        interiors: list[list[list[int | float]]]
+
+    CocoPolygon = list[int | float] | CocoPolygonDict
+
+    class PolygonData(TypedDict):
+        exterior: kwimage.Coords
+        interiors: list[kwimage.Coords]
+
+    class PolygonGeoJSON(TypedDict):
+        type: Literal['Polygon']
+        coordinates: list[list[list[int | float]]]
+
+    class MultiPolygonGeoJSON(TypedDict):
+        type: Literal['MultiPolygon']
+        coordinates: list[list[list[list[int | float]]]]
+
+    class ImgAugMultiPolygon(Protocol):
+        polygons: Sequence[object]
+
+    _PolyArrayT = TypeVar('_PolyArrayT', bound='_PolyArrayBackend')
+    _PolyWarpT = TypeVar('_PolyWarpT', bound='_PolyWarpMixin')
+    _PolygonT = TypeVar('_PolygonT', bound='Polygon')
+    _MultiPolygonT = TypeVar('_MultiPolygonT', bound='MultiPolygon')
+    _PolygonListT = TypeVar('_PolygonListT', bound='PolygonList')
 
 
 class _PolyMixin:
@@ -40,7 +77,37 @@ class _PolyMixin:
     Methods that are the same between Polygon and MultiPolygon
     """
 
-    def to_relative_mask(self, offset=None, dims=None, return_offset=False):
+    if TYPE_CHECKING:
+        def to_boxes(self) -> kwimage.Boxes: ...
+        def translate(
+            self, offset: Any, output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> Polygon | MultiPolygon: ...
+        def to_mask(
+            self, dims: tuple[int, int] | None = None,
+            pixels_are: str = 'points', origin_convention: str = 'center',
+        ) -> kwimage.Mask: ...
+
+        @overload
+        def to_relative_mask(
+            self, offset: tuple[Number, Number] | None = None,
+            dims: tuple[int, int] | None = None,
+            return_offset: Literal[False] = False,
+        ) -> kwimage.Mask: ...
+
+        @overload
+        def to_relative_mask(
+            self, offset: tuple[Number, Number] | None = None,
+            dims: tuple[int, int] | None = None,
+            return_offset: Literal[True] = True,
+        ) -> tuple[kwimage.Mask, tuple[Number, Number]]: ...
+
+    def to_relative_mask(
+        self,
+        offset: tuple[Number, Number] | None = None,
+        dims: tuple[int, int] | None = None,
+        return_offset: bool = False,
+    ) -> kwimage.Mask | tuple[kwimage.Mask, tuple[Number, Number]]:
         """
         Returns a translated mask such the mask dimensions are minimal.
 
@@ -103,7 +170,9 @@ class _PolyMixin:
         """
         # x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
         # mask = self.translate((-x, -y)).to_mask(dims=(h, w))
-        x, y, w, h = self.to_boxes().quantize().to_xywh().data[0]
+        x, y, w, h = cast(
+            Any, self.to_boxes().quantize().to_xywh().data[0]
+        )
         if offset is None:
             offset = (x, y)
 
@@ -112,7 +181,7 @@ class _PolyMixin:
                 max(y - offset[1] + h, 0),
                 max(x - offset[0] + w, 0),
             )
-        translation = tuple(-p for p in offset)
+        translation = tuple(-cast(Any, p) for p in offset)
         mask = self.translate(translation).to_mask(dims=dims)
         if return_offset:
             offset = (x, y)
@@ -149,7 +218,14 @@ class _ShapelyMixin:
         >>>     self.oriented_bounding_box()
     """
 
-    def oriented_bounding_box(self):
+    if TYPE_CHECKING:
+        def to_shapely(
+            self, fix: bool = False
+        ) -> ShapelyPolygon | ShapelyMultiPolygon: ...
+
+    def oriented_bounding_box(
+        self,
+    ) -> tuple[tuple[float, float], tuple[float, float], float]:
         """
         An oriented bounding box format contains:
             center: which is the xy centroid of the box
@@ -177,8 +253,8 @@ class _ShapelyMixin:
         import cv2
 
         OrientedBBox = namedtuple('OrientedBBox', ('center', 'extent', 'theta'))
-        hull = self.convex_hull
-        cv2_xy = hull.exterior.data.astype(np.float32)
+        hull = cast('Polygon', self.convex_hull)
+        cv2_xy = cast(Any, hull.exterior.data).astype(np.float32)
         center, extent, angle = cv2.minAreaRect(cv2_xy)
 
         w, h = extent
@@ -198,18 +274,20 @@ class _ShapelyMixin:
         obox = OrientedBBox(center, extent, theta)
         return obox
 
-    def buffer(self, *args, **kwargs):
+    def buffer(self, *args: Any, **kwargs: Any) -> Polygon | MultiPolygon:
         a = self.to_shapely()
         r = a.buffer(*args, **kwargs)
         return _kwimage_from_shapely(r)
 
-    def simplify(self, tolerance, preserve_topology: bool = True):
+    def simplify(
+        self, tolerance: float, preserve_topology: bool = True
+    ) -> Polygon | MultiPolygon:
         a = self.to_shapely()
         r = a.simplify(tolerance, preserve_topology=preserve_topology)
         return _kwimage_from_shapely(r)
 
     @property
-    def __geo_interface__(self):
+    def __geo_interface__(self) -> dict[str, object]:
         """
         Geometry interface standardized in GeoInterface_.
 
@@ -225,7 +303,7 @@ class _ShapelyMixin:
             >>> # This allows kwimage Polygons to work with geopandas seemlessly
             >>> gpd.GeoDataFrame({'geometry': [x]})
         """
-        return self.to_shapely().__geo_interface__
+        return cast('dict[str, object]', self.to_shapely().__geo_interface__)
 
     # area
     # crosses
@@ -253,42 +331,48 @@ class _ShapelyMixin:
 
     # https://shapely.readthedocs.io/en/stable/manual.html#set-theoretic-methods
 
-    def union(self, other):
-        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
+    def union(self, other: Polygon | MultiPolygon) -> Polygon | MultiPolygon:
+        a, b = self.to_shapely(fix=True), other.to_shapely(fix=True)
         c = a.union(b)
         return _kwimage_from_shapely(c)
 
-    def intersection(self, other):
-        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
+    def intersection(
+        self, other: Polygon | MultiPolygon
+    ) -> Polygon | MultiPolygon:
+        a, b = self.to_shapely(fix=True), other.to_shapely(fix=True)
         c = a.intersection(b)
         return _kwimage_from_shapely(c)
 
-    def difference(self, other):
-        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
+    def difference(
+        self, other: Polygon | MultiPolygon
+    ) -> Polygon | MultiPolygon:
+        a, b = self.to_shapely(fix=True), other.to_shapely(fix=True)
         c = a.difference(b)
         return _kwimage_from_shapely(c)
 
-    def symmetric_difference(self, other):
-        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
+    def symmetric_difference(
+        self, other: Polygon | MultiPolygon
+    ) -> Polygon | MultiPolygon:
+        a, b = self.to_shapely(fix=True), other.to_shapely(fix=True)
         c = a.symmetric_difference(b)
         return _kwimage_from_shapely(c)
 
     # ----
 
-    def iooa(self, other):
+    def iooa(self, other: Polygon | MultiPolygon) -> float:
         """
         Intersection over other area
         """
-        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
+        a, b = self.to_shapely(fix=True), other.to_shapely(fix=True)
         isect = a.intersection(b)
         iooa = isect.area / b.area
         return iooa
 
-    def iou(self, other):
+    def iou(self, other: Polygon | MultiPolygon) -> float:
         """
         Intersection area over union area
         """
-        a, b = self.to_shapely(fix=1), other.to_shapely(fix=1)
+        a, b = self.to_shapely(fix=True), other.to_shapely(fix=True)
         isect = a.intersection(b)
         union = a.union(b)
         iou = isect.area / union.area
@@ -307,7 +391,7 @@ class _ShapelyMixin:
         return self.to_shapely().area
 
     @property
-    def convex_hull(self):
+    def convex_hull(self) -> Polygon | MultiPolygon:
         a = self.to_shapely()
         r = a.convex_hull
         return _kwimage_from_shapely(r)
@@ -335,7 +419,7 @@ class _ShapelyMixin:
         else:
             return True
 
-    def fix(self, drop_non_polygons=True):
+    def fix(self, drop_non_polygons: bool = True) -> Polygon | MultiPolygon:
         """
         Attempt to ensure validity
 
@@ -344,29 +428,32 @@ class _ShapelyMixin:
         """
         from shapely.validation import make_valid
 
-        a = self.to_shapely()
+        a: Any = self.to_shapely()
         if not a.is_valid:
             a = make_valid(a)
 
         if drop_non_polygons:
-            import shapely
+            from shapely.geometry import (
+                GeometryCollection, MultiPolygon as ShapelyMultiPolygonRuntime,
+                Polygon as ShapelyPolygonRuntime,
+            )
 
-            if isinstance(a, shapely.geometry.GeometryCollection):
+            if isinstance(a, GeometryCollection):
                 poly_parts = [
                     p
                     for p in a.geoms
                     if isinstance(
                         p,
                         (
-                            shapely.geometry.Polygon,
-                            shapely.geometry.MultiPolygon,
+                            ShapelyPolygonRuntime,
+                            ShapelyMultiPolygonRuntime,
                         ),
                     )
                 ]
                 if len(poly_parts) == 1:
                     a = poly_parts[0]
                 elif len(poly_parts) > 1:
-                    a = shapely.geometry.MultiPolygon(poly_parts)
+                    a = ShapelyMultiPolygonRuntime(poly_parts)
                 else:
                     raise Exception('null geometry')
         return _kwimage_from_shapely(a)
@@ -378,13 +465,28 @@ class _PolyArrayBackend:
     array representations of polygons.
     """
 
-    def is_numpy(self):
-        return self._impl.is_numpy
+    if TYPE_CHECKING:
+        data: PolygonData
+        meta: dict[str, Any]
+        _impl: Any
 
-    def is_tensor(self):
-        return self._impl.is_tensor
+    def _new_polygon(
+        self: _PolyArrayT, data: PolygonData,
+        meta: dict[str, Any] | None = None,
+    ) -> _PolyArrayT:
+        constructor = cast(Any, self.__class__)
+        return cast(
+            '_PolyArrayT',
+            constructor(data, self.meta if meta is None else meta),
+        )
 
-    def tensor(self, device=ub.NoParam):
+    def is_numpy(self) -> bool:
+        return cast(bool, self._impl.is_numpy)
+
+    def is_tensor(self) -> bool:
+        return cast(bool, self._impl.is_tensor)
+
+    def tensor(self: _PolyArrayT, device: Any = ub.NoParam) -> _PolyArrayT:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -396,7 +498,7 @@ class _PolyArrayBackend:
 
         if True:
             newdata = {}
-            for k, v in self.data.items():
+            for k, v in cast(Any, self.data).items():
                 if hasattr(v, 'tensor'):
                     v2 = v.tensor(device)
                 elif isinstance(v, list):
@@ -411,10 +513,10 @@ class _PolyArrayBackend:
                 else impl.tensor(v, device)
                 for k, v in self.data.items()
             }
-        new = self.__class__(newdata, self.meta)
+        new = self._new_polygon(cast('PolygonData', newdata), self.meta)
         return new
 
-    def numpy(self):
+    def numpy(self: _PolyArrayT) -> _PolyArrayT:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -425,7 +527,7 @@ class _PolyArrayBackend:
         impl = self._impl
         if True:
             newdata = {}
-            for k, v in self.data.items():
+            for k, v in cast(Any, self.data).items():
                 if hasattr(v, 'numpy'):
                     v2 = v.numpy()
                 elif isinstance(v, list):
@@ -439,7 +541,7 @@ class _PolyArrayBackend:
                 k: v.numpy() if hasattr(v, 'numpy') else impl.numpy(v)
                 for k, v in self.data.items()
             }
-        new = self.__class__(newdata, self.meta)
+        new = self._new_polygon(cast('PolygonData', newdata), self.meta)
         return new
 
 
@@ -449,7 +551,31 @@ class _PolyWarpMixin:
     their geometry.
     """
 
-    def _warp_imgaug(self, augmenter, input_dims, inplace: bool = False):
+    if TYPE_CHECKING:
+        data: PolygonData
+        meta: dict[str, Any]
+
+        @property
+        def exterior(self) -> kwimage.Coords: ...
+
+        def to_boxes(self) -> kwimage.Boxes: ...
+        def to_shapely(self, fix: bool = False) -> ShapelyPolygon: ...
+        def copy(self: _PolyWarpT) -> _PolyWarpT: ...
+
+    def _new_polygon(
+        self: _PolyWarpT, data: PolygonData,
+        meta: dict[str, Any] | None = None,
+    ) -> _PolyWarpT:
+        constructor = cast(Any, self.__class__)
+        return cast(
+            '_PolyWarpT',
+            constructor(data, self.meta if meta is None else meta),
+        )
+
+    def _warp_imgaug(
+        self: _PolyWarpT, augmenter: Any, input_dims: tuple[int, int],
+        inplace: bool = False,
+    ) -> _PolyWarpT:
         """
         Warps by applying an augmenter from the imgaug library
 
@@ -482,16 +608,20 @@ class _PolyWarpMixin:
         """
         import kwimage
 
-        new = self if inplace else self.__class__(self.data.copy())
+        new = self if inplace else self._new_polygon(self.data.copy())
 
         # current version of imgaug doesnt fully support polygons
         # coerce to and from points instead
-        dtype = self.data['exterior'].data.dtype
+        dtype: Any = self.data['exterior'].data.dtype
 
-        parts = [self.data['exterior']] + self.data.get('interiors', [])
-        parts = [p.data for p in parts]
-        cs = [0] + np.cumsum(np.array(list(map(len, parts)))).tolist()
-        flat_kps = np.concatenate(parts, axis=0)
+        coord_parts = [self.data['exterior']] + self.data.get(
+            'interiors', []
+        )
+        part_arrays = [p.data for p in coord_parts]
+        cs = [0] + np.cumsum(
+            np.array(list(map(len, part_arrays)))
+        ).tolist()
+        flat_kps = np.concatenate(cast(Any, part_arrays), axis=0)
 
         flat_coords = kwimage.Coords(flat_kps)
         flat_coords = flat_coords._warp_imgaug(
@@ -500,7 +630,7 @@ class _PolyWarpMixin:
         flat_parts = flat_coords.data
         new_parts = []
         for a, b in ub.iter_window(cs, 2):
-            new_part = np.array(flat_parts[a:b], dtype=dtype)
+            new_part = np.array(cast(Any, flat_parts[a:b]), dtype=dtype)
             new_parts.append(new_part)
 
         new_exterior = kwimage.Coords(new_parts[0])
@@ -509,7 +639,9 @@ class _PolyWarpMixin:
         new.data['interiors'] = new_interiors
         return new
 
-    def to_imgaug(self, shape):
+    def to_imgaug(
+        self, shape: tuple[int, int]
+    ) -> ImgAugMultiPolygon:
         import imgaug
 
         ia_exterior = imgaug.Polygon(self.data['exterior'])
@@ -520,12 +652,12 @@ class _PolyWarpMixin:
         return iamp
 
     def warp(
-        self,
+        self: _PolyWarpT,
         transform: TransformLike,
-        input_dims: Tuple | None = None,
-        output_dims: Tuple | None = None,
+        input_dims: tuple[int, int] | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
-    ):
+    ) -> _PolyWarpT:
         """
         Generalized coordinate transform.
 
@@ -563,7 +695,7 @@ class _PolyWarpMixin:
         from kwimage._typing import SKImageGeometricTransform
         from kwimage.transform import Transform
 
-        new = self if inplace else self.__class__(self.data.copy())
+        new = self if inplace else self._new_polygon(self.data.copy())
         # print('WARP new = {!r}'.format(new))
         if transform is None:
             return new
@@ -579,7 +711,11 @@ class _PolyWarpMixin:
                 # raise TypeError(type(transform))
             else:
                 if isinstance(transform, imgaug.augmenters.Augmenter):
-                    return new._warp_imgaug(transform, input_dims, inplace=True)
+                    return new._warp_imgaug(
+                        transform,
+                        cast('tuple[int, int]', input_dims),
+                        inplace=True,
+                    )
             # else:
             #     raise TypeError(type(transform))
         new.data['exterior'] = new.data['exterior'].warp(
@@ -592,12 +728,12 @@ class _PolyWarpMixin:
         return new
 
     def scale(
-        self,
-        factor: float | Tuple[float, float],
-        about: Tuple | None = None,
-        output_dims: Tuple | None = None,
+        self: _PolyWarpT,
+        factor: float | ArrayLike | torch.Tensor,
+        about: ArrayLike | torch.Tensor | str | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
-    ):
+    ) -> _PolyWarpT:
         """
         Scale a polygon by a factor
 
@@ -635,7 +771,7 @@ class _PolyWarpMixin:
             >>> self.draw(color='red', alpha=0.5)
             >>> new.draw(color='blue', alpha=0.5, setlim=True)
         """
-        new = self if inplace else self.__class__(self.data.copy())
+        new = self if inplace else self._new_polygon(self.data.copy())
         about = self._rectify_about(about)
         new.data['exterior'] = new.data['exterior'].scale(
             factor, about=about, output_dims=output_dims, inplace=inplace
@@ -649,8 +785,11 @@ class _PolyWarpMixin:
         return new
 
     def translate(
-        self, offset, output_dims: Tuple | None = None, inplace: bool = False
-    ):
+        self: _PolyWarpT,
+        offset: float | ArrayLike | torch.Tensor,
+        output_dims: tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> _PolyWarpT:
         """
         Shift the polygon up/down left/right
 
@@ -665,7 +804,7 @@ class _PolyWarpMixin:
             >>> self = Polygon.random(10, rng=0)
             >>> new = self.translate(10)
         """
-        new = self if inplace else self.__class__(self.data.copy())
+        new = self if inplace else self._new_polygon(self.data.copy())
         new.data['exterior'] = new.data['exterior'].translate(
             offset, output_dims, inplace
         )
@@ -676,12 +815,12 @@ class _PolyWarpMixin:
         return new
 
     def rotate(
-        self,
+        self: _PolyWarpT,
         theta: float,
-        about: Tuple | None | str = None,
-        output_dims: Tuple | None = None,
+        about: ArrayLike | torch.Tensor | str | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
-    ):
+    ) -> _PolyWarpT:
         """
         Rotate the polygon
 
@@ -708,7 +847,10 @@ class _PolyWarpMixin:
             >>> self.draw(color='red', alpha=0.5)
             >>> new.draw(color='blue', alpha=0.5)
         """
-        new = self if inplace else self.__class__(self.data.copy())
+        constructor = cast(Any, self.__class__)
+        new = self if inplace else cast(
+            '_PolyWarpT', constructor(self.data.copy())
+        )
         about = self._rectify_about(about)
         new.data['exterior'] = new.data['exterior'].rotate(
             theta, about, output_dims, inplace
@@ -719,7 +861,9 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def _rectify_about(self, about):
+    def _rectify_about(
+        self, about: ArrayLike | torch.Tensor | str | None
+    ) -> ArrayLike | torch.Tensor | None:
         """
         Ensures that about returns a specified point. Allows for special keys
         like center to be used.
@@ -837,9 +981,11 @@ class _PolyWarpMixin:
 
                     qualifier = parts.get('qualifier', 'poly')
                     if qualifier == 'bounds':
-                        points = self.to_boxes().to_polygons()[0].exterior.data
+                        points = cast(
+                            Any, self.to_boxes().to_polygons()[0].exterior.data
+                        )
                     elif qualifier == 'poly':
-                        points = self.exterior.data
+                        points = cast(Any, self.exterior.data)
                     else:
                         raise KeyError(
                             'Unknown qualifier={} in about={}'.format(
@@ -894,7 +1040,9 @@ class _PolyWarpMixin:
                 about_ = about if ub.iterable(about) else [about] * 2
         return about_
 
-    def round(self, decimals: int = 0, inplace: bool = False) -> Polygon:
+    def round(
+        self: _PolyWarpT, decimals: int = 0, inplace: bool = False
+    ) -> _PolyWarpT:
         """
         Rounds data to the specified decimal place.
         This may make the polygon invalid.
@@ -932,7 +1080,9 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def astype(self, dtype, inplace: bool = False) -> Polygon:
+    def astype(
+        self: _PolyWarpT, dtype: DTypeLike, inplace: bool = False
+    ) -> _PolyWarpT:
         """
         Changes the data type
 
@@ -960,7 +1110,9 @@ class _PolyWarpMixin:
         ]
         return new
 
-    def swap_axes(self, inplace: bool = False) -> Polygon:
+    def swap_axes(
+        self: _PolyWarpT, inplace: bool = False
+    ) -> _PolyWarpT:
         """
         Swap the x and y coordinate axes
 
@@ -1083,14 +1235,16 @@ class Polygon(
 
     __datakeys__: list[str] = ['exterior', 'interiors']
     __metakeys__: list[str] = ['classes']
+    data: PolygonData
+    meta: dict[str, Any]
 
     def __init__(
         self,
-        data: Any | None = None,
-        meta: Any | None = None,
+        data: PolygonData | Polygon | dict[str, Any] | None = None,
+        meta: dict[str, Any] | None = None,
         datakeys: list[str] | None = None,
         metakeys: list[str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if kwargs:
             if data or meta:
@@ -1134,13 +1288,14 @@ class Polygon(
         elif isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
             # if data is explicitly specified
-            meta = data.meta
-            data = data.data
+            other = cast('Polygon', data)
+            meta = other.meta
+            data = other.data
         if meta is None:
             meta = {}
 
         # TODO: Add format option where format can be dict, or shapley
-        self.data = data
+        self.data = cast('PolygonData', data)
         self.meta = meta
 
     @property
@@ -1155,7 +1310,7 @@ class Polygon(
         return self.data['exterior']
 
     @property
-    def interiors(self) -> List[kwimage.Coords]:
+    def interiors(self) -> list[kwimage.Coords]:
         """
         Returns:
             List[kwimage.Coords]
@@ -1165,7 +1320,7 @@ class Polygon(
         # [d.coords for d in z.interiors]
         return self.data['interiors']
 
-    def remove_holes(self):
+    def remove_holes(self) -> MultiPolygon:
         """
         Removes holes from this polygon
         """
@@ -1187,11 +1342,11 @@ class Polygon(
 
     @classmethod
     def circle(
-        cls,
+        cls: type[_PolygonT],
         xy: tuple[float, float] = (0.0, 0.0),
-        r: float | Number | Tuple[Number, Number] = 1.0,
+        r: float | Number | tuple[Number, Number] = 1.0,
         resolution: int = 64,
-    ) -> Polygon:
+    ) -> _PolygonT:
         """
         Create a circular or elliptical polygon.
 
@@ -1234,19 +1389,25 @@ class Polygon(
             >>> plt.gca().set_aspect('equal')
         """
         tau = 2 * np.pi
+        radius = cast(float, r)
+        a = 0.0
+        b = 0.0
 
         if ub.iterable(r):
-            a, b = r
+            a_, b_ = cast('Sequence[Number]', r)
+            a = cast(float, a_)
+            b = cast(float, b_)
             is_circle = a == b
             if is_circle:
-                r = a
+                radius = a
         else:
             is_circle = True
+            radius = cast(float, r)
 
         if is_circle:
             theta = np.linspace(0, tau, resolution + 1)
-            y_offset = np.sin(theta) * r
-            x_offset = np.cos(theta) * r
+            y_offset = np.sin(theta) * radius
+            x_offset = np.cos(theta) * radius
         else:
             # If we have an ellipse (i.e. different radius in each direction),
             # then the problem gets a lot harder, but we can do it! WE JUST
@@ -1296,7 +1457,10 @@ class Polygon(
         return self
 
     @classmethod
-    def regular(cls, num, xy=(0, 0), r: int = 1):
+    def regular(
+        cls: type[_PolygonT], num: int,
+        xy: tuple[float, float] = (0, 0), r: float = 1,
+    ) -> _PolygonT:
         """
         Make a regular polygon with ``num`` sides.
 
@@ -1321,7 +1485,9 @@ class Polygon(
         return cls.circle(xy=xy, r=r, resolution=num)
 
     @classmethod
-    def star(cls, xy=(0, 0), r: int = 1):
+    def star(
+        cls, xy: tuple[float, float] = (0, 0), r: float = 1
+    ) -> Polygon:
         """
         Make a star polygon
 
@@ -1360,13 +1526,13 @@ class Polygon(
 
     @classmethod
     def random(
-        cls,
+        cls: type[_PolygonT],
         n: int = 6,
         n_holes: int = 0,
         convex: bool = True,
         tight: bool = False,
         rng: Any | None = None,
-    ) -> Polygon:
+    ) -> _PolygonT:
         """
         Args:
             n (int): number of points in the polygon (must be 3 or more)
@@ -1507,14 +1673,13 @@ class Polygon(
         interiors = []
         if n_holes:
             try:
-                import shapely
-                from shapely.geometry import Point
+                from shapely.geometry import Point, Polygon as ShapelyPolygonRuntime
             except Exception:
                 print('FAILED TO IMPORT SHAPELY')
                 raise
-            polygon = shapely.geometry.Polygon(shell=exterior)
+            polygon = ShapelyPolygonRuntime(shell=exterior)
             for _ in range(n_holes):
-                polygon = shapely.geometry.Polygon(
+                polygon = ShapelyPolygonRuntime(
                     shell=exterior, holes=interiors
                 )
                 in_pts = generate_random(4, polygon, rng)
@@ -1536,9 +1701,9 @@ class Polygon(
 
     def to_mask(
         self,
-        dims: Tuple | None = None,
+        dims: tuple[int, int] | None = None,
         pixels_are: str = 'points',
-        origin_convention='center',
+        origin_convention: str = 'center',
     ) -> kwimage.Mask:
         """
         Convert this polygon to a mask
@@ -1576,7 +1741,9 @@ class Polygon(
         import kwimage
 
         if dims is None:
-            _, _, x2, y2 = self.to_boxes().to_ltrb().data[0]
+            _, _, x2, y2 = cast(
+                Any, self.to_boxes().to_ltrb().data[0]
+            )
             dims = (int(math.ceil(y2)), int(math.ceil(x2)))
             # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
@@ -1590,7 +1757,9 @@ class Polygon(
         mask = kwimage.Mask(c_mask, 'c_mask')
         return mask
 
-    def _to_cv_countours(self, origin_convention='center'):
+    def _to_cv_countours(
+        self, origin_convention: str = 'center'
+    ) -> list[ndarray]:
         """
         OpenCV polygon representation, which is a list of integer points.
         Holes are implicitly represented. When another polygon is drawn over an
@@ -1602,9 +1771,11 @@ class Polygon(
                 dimension is always 1, and the trailing dimension represents
                 x and y coordinates respectively.
         """
-        data: Any = self.data
+        data = self.data
         coords = [data['exterior']] + data['interiors']
-        cv_contour_ = [np.expand_dims(c.data, axis=1) for c in coords]
+        cv_contour_ = [
+            np.expand_dims(cast(Any, c.data), axis=1) for c in coords
+        ]
         WORKAROUND_OPENCV_5473 = 1
         if WORKAROUND_OPENCV_5473:
             max_coord = (1 << 16) // 2
@@ -1624,7 +1795,7 @@ class Polygon(
         return cv_contours
 
     @classmethod
-    def coerce(Polygon, data: object) -> kwimage.Polygon:
+    def coerce(cls, data: object) -> Polygon:
         """
         Routes the input to the proper constructor
 
@@ -1677,8 +1848,8 @@ class Polygon(
 
     @classmethod
     def from_shapely(
-        Polygon, geom: shapely.geometry.polygon.Polygon
-    ) -> kwimage.Polygon:
+        cls: type[_PolygonT], geom: ShapelyPolygon
+    ) -> _PolygonT:
         """
         Convert a shapely polygon to a kwimage.Polygon
 
@@ -1693,11 +1864,10 @@ class Polygon(
         else:
             exterior = np.array(geom.exterior.coords.xy).T
         interiors = [np.array(g.coords.xy).T for g in geom.interiors]
-        self = Polygon(exterior=exterior, interiors=interiors)
-        return self
+        return cls(exterior=exterior, interiors=interiors)
 
     @classmethod
-    def from_wkt(Polygon, data: str) -> kwimage.Polygon:
+    def from_wkt(cls: type[_PolygonT], data: str) -> _PolygonT:
         """
         Convert a WKT string to a kwimage.Polygon
 
@@ -1716,11 +1886,13 @@ class Polygon(
         from shapely import wkt
 
         geom = wkt.loads(data)
-        self = Polygon.from_shapely(geom)
-        return self
+        geom = cast('ShapelyPolygon', geom)
+        return cls.from_shapely(geom)
 
     @classmethod
-    def from_geojson(Polygon, data_geojson: dict) -> Polygon:
+    def from_geojson(
+        cls: type[_PolygonT], data_geojson: dict[str, Any]
+    ) -> _PolygonT:
         """
         Convert a geojson polygon to a kwimage.Polygon
 
@@ -1787,10 +1959,9 @@ class Polygon(
             interiors = [np.array(h) for h in coords[1:]]
         else:
             raise Exception('Unknown geojson format')
-        self = Polygon(exterior=exterior, interiors=interiors)
-        return self
+        return cls(exterior=exterior, interiors=interiors)
 
-    def to_shapely(self, fix: bool = False) -> shapely.geometry.polygon.Polygon:
+    def to_shapely(self, fix: bool = False) -> ShapelyPolygon:
         """
         Args:
             fix (bool):
@@ -1819,12 +1990,12 @@ class Polygon(
         import shapely
         import shapely.geometry
 
-        shell_data = self.data['exterior'].data
+        shell_data = cast(Any, self.data['exterior'].data)
         if shell_data.size == 0:
             # Empty polygon
             geom = shapely.geometry.Polygon()
         else:
-            holes = [c.data for c in self.data['interiors']]
+            holes = cast(Any, [c.data for c in self.data['interiors']])
             try:
                 # Shapely requires 4 coordinates for a line-ring
                 geom = shapely.geometry.Polygon(shell=shell_data, holes=holes)
@@ -1848,9 +2019,9 @@ class Polygon(
         if fix:
             if not geom.is_valid:
                 geom = geom.buffer(0)
-        return geom
+        return cast('ShapelyPolygon', geom)
 
-    def to_geojson(self) -> Dict[str, object]:
+    def to_geojson(self) -> PolygonGeoJSON:
         """
         Converts polygon to a geojson structure
 
@@ -1870,7 +2041,7 @@ class Polygon(
             'type': 'Polygon',
             'coordinates': coords,
         }
-        return geojson
+        return cast('PolygonGeoJSON', geojson)
 
     def to_wkt(self) -> str:
         """
@@ -1892,8 +2063,10 @@ class Polygon(
 
     @classmethod
     def from_coco(
-        cls, data: List[Number] | Dict, dims: None | Tuple[int, ...] = None
-    ) -> Polygon:
+        cls: type[_PolygonT],
+        data: list[Any] | dict[str, Any],
+        dims: tuple[int, ...] | None = None,
+    ) -> _PolygonT:
         """
         Accepts either new-style or old-style coco polygons
 
@@ -1926,7 +2099,21 @@ class Polygon(
     def _to_coco(self, style='orig'):
         return self.to_coco(style=style)
 
-    def to_coco(self, style: str = 'orig') -> List | Dict:
+    if TYPE_CHECKING:
+        @overload
+        def to_coco(
+            self, style: Literal['orig'] = 'orig'
+        ) -> list[int | float]: ...
+
+        @overload
+        def to_coco(
+            self, style: Literal['new']
+        ) -> CocoPolygonDict: ...
+
+        @overload
+        def to_coco(self, style: str) -> CocoPolygon: ...
+
+    def to_coco(self, style: str = 'orig') -> CocoPolygon:
         """
         Args:
             style(str): can be "orig" or "new"
@@ -1938,13 +2125,15 @@ class Polygon(
         if style == 'orig':
             if interiors:
                 raise ValueError('Original coco does not support holes')
-            return self.data['exterior'].data.ravel().tolist()
+            return cast(
+                'CocoPolygon', self.data['exterior'].data.ravel().tolist()
+            )
         elif style == 'new':
             _new = {
                 'exterior': self.data['exterior'].data.tolist(),
                 'interiors': [item.data.tolist() for item in interiors],
             }
-            return _new
+            return cast('CocoPolygonDict', _new)
         else:
             raise KeyError(style)
 
@@ -1974,7 +2163,7 @@ class Polygon(
         return self.bounding_box()
 
     @property
-    def centroid(self) -> Tuple[Number, Number]:
+    def centroid(self) -> tuple[float, float]:
         """
         Returns:
             Tuple[Number, Number]
@@ -2002,7 +2191,7 @@ class Polygon(
         )
         import kwimage
 
-        xys = self.data['exterior'].data
+        xys = cast(Any, self.data['exterior'].data)
         lt = xys.min(axis=0)
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
@@ -2033,7 +2222,7 @@ class Polygon(
         )
         import kwimage
 
-        xys = self.data['exterior'].data
+        xys = cast(Any, self.data['exterior'].data)
         lt = xys.min(axis=0)
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])[None, :]
@@ -2064,7 +2253,7 @@ class Polygon(
         """
         import kwimage
 
-        xys = self.data['exterior'].data
+        xys = cast(Any, self.data['exterior'].data)
         lt = xys.min(axis=0)
         rb = xys.max(axis=0)
         ltrb = np.hstack([lt, rb])
@@ -2087,21 +2276,29 @@ class Polygon(
             kwimage.Polygon
         """
         new = self.box().to_polygons()[0]
-        return new
+        return cast('Polygon', new)
 
-    def copy(self) -> Polygon:
+    def copy(self: _PolygonT) -> _PolygonT:
         """
         Returns:
             Polygon: a copy
         """
-        self2 = self.__class__(self.data.copy(), self.meta.copy())
+        constructor = cast(Any, self.__class__)
+        self2 = cast(
+            '_PolygonT', constructor(self.data.copy(), self.meta.copy())
+        )
         self2.data['exterior'] = self2.data['exterior'].copy()
         self2.data['interiors'] = [x.copy() for x in self2.data['interiors']]
         return self2
 
     def clip(
-        self, x_min, y_min, x_max, y_max, inplace: bool = False
-    ) -> Polygon:
+        self: _PolygonT,
+        x_min: float | int | None,
+        y_min: float | int | None,
+        x_max: float | int | None,
+        y_max: float | int | None,
+        inplace: bool = False,
+    ) -> _PolygonT:
         """
         Clip polygon to specified boundaries.
 
@@ -2130,9 +2327,9 @@ class Polygon(
     def fill(
         self,
         image: ndarray,
-        value: int | Tuple[int] = 1,
+        value: int | float | Sequence[int | float] = 1,
         pixels_are: str = 'points',
-        origin_convention='center',
+        origin_convention: str = 'center',
         assert_inplace: bool = False,
     ) -> ndarray:
         """
@@ -2318,7 +2515,7 @@ class Polygon(
                         channel_value = (
                             value
                             if isinstance(value, numbers.Number)
-                            else value[bx]
+                            else cast('Sequence[int | float]', value)[bx]
                         )
                         cv2.fillPoly(
                             tmp,
@@ -2339,17 +2536,17 @@ class Polygon(
 
     def draw_on(
         self,
-        image: ndarray = None,
-        color: str | tuple = 'blue',
+        image: ndarray | None = None,
+        color: ColorLike = 'blue',
         fill: bool = True,
         border: bool = False,
         alpha: float = 1.0,
-        edgecolor: str | tuple | None = None,
-        facecolor: str | tuple | None = None,
-        pixels_are='points',
-        origin_convention='center',
+        edgecolor: ColorLike | None = None,
+        facecolor: ColorLike | None = None,
+        pixels_are: str = 'points',
+        origin_convention: str = 'center',
         copy: bool = False,
-    ) -> np.ndarray:
+    ) -> ndarray:
         """
         Rasterizes a polygon on an image. See `draw` for a vectorized
         matplotlib version.
@@ -2545,7 +2742,7 @@ class Polygon(
             bounds = self.box().scale(1.1).quantize()
             w = bounds.br_x + 2 + 1
             h = bounds.br_y + 2 + 1
-            image = np.zeros((h, w, 3), dtype=np.float32)
+            image = np.zeros(cast(Any, (h, w, 3)), dtype=np.float32)
 
         is_empty = len(self.data['exterior']) == 0
         if is_empty:
@@ -2580,10 +2777,9 @@ class Polygon(
 
         cv_contours = self._to_cv_countours(origin_convention=origin_convention)
 
-        if alpha == 1.0:
-            alpha = None
+        draw_alpha: float | None = None if alpha == 1.0 else alpha
 
-        if alpha is None:
+        if draw_alpha is None:
             # image = kwimage.ensure_uint255(image)
             image = kwimage.atleast_3channels(image, copy=copy)
         else:
@@ -2594,7 +2790,7 @@ class Polygon(
 
         image = _cv2_imputation(image)
 
-        color = kwimage.Color.coerce(color, alpha=alpha).forimage(image)
+        color = kwimage.Color.coerce(color, alpha=draw_alpha).forimage(image)
         # print('--- B')
         # print('image.dtype = {!r}'.format(image.dtype))
         # print('image.max() = {!r}'.format(image.max()))
@@ -2606,21 +2802,25 @@ class Polygon(
         elif facecolor is True:
             facecolor = color
         else:
-            facecolor = kwimage.Color.coerce(facecolor, alpha=alpha).forimage(
-                image
-            )
+            facecolor = kwimage.Color.coerce(
+                facecolor, alpha=draw_alpha
+            ).forimage(image)
 
         # TODO: consolidate logic
         # _generic._handle_color_args_for(
         #     color, alpha, border, fill, edgecolor, facecolor, image)
 
         if fill:
-            if alpha is None or alpha == 1.0:
+            if draw_alpha is None:
                 # Modification happens inplace
                 # NOTE: This takes a very long time if contours have
                 # large coordinates (even if the image is small)
                 image = cv2.fillPoly(
-                    image, cv_contours, facecolor, line_type, shift=0
+                    image,
+                    cv_contours,
+                    cast(Any, facecolor),
+                    line_type,
+                    shift=0,
                 )
             else:
                 # FIXME: This is very slow when there are a lot of polygons to
@@ -2632,7 +2832,11 @@ class Polygon(
                 orig = image.copy()
                 mask = np.zeros_like(orig)
                 mask = cv2.fillPoly(
-                    mask, cv_contours, facecolor, line_type, shift=0
+                    mask,
+                    cv_contours,
+                    cast(Any, facecolor),
+                    line_type,
+                    shift=0,
                 )
                 # TODO: could use add weighted
                 image = kwimage.overlay_alpha_images(mask, orig)
@@ -2649,14 +2853,14 @@ class Polygon(
         elif edgecolor is True:
             edgecolor = color
         else:
-            edgecolor = kwimage.Color.coerce(edgecolor, alpha=alpha).forimage(
-                image
-            )
+            edgecolor = kwimage.Color.coerce(
+                edgecolor, alpha=draw_alpha
+            ).forimage(image)
 
         if edgecolor:
             thickness = 4
             contour_idx = -1
-            if alpha is None or alpha == 1.0:
+            if draw_alpha is None:
                 # Modification happens inplace
                 image = cv2.drawContours(
                     image,
@@ -2690,19 +2894,19 @@ class Polygon(
 
     def draw(
         self,
-        color: str | Tuple = 'blue',
-        ax: Any | None = None,
+        color: ColorLike = 'blue',
+        ax: Axes | None = None,
         alpha: float = 1.0,
         radius: int = 1,
         setlim: bool | str = False,
         border: bool | None = None,
-        linewidth: bool | None = None,
-        edgecolor: None | Any = None,
-        facecolor: None | Any = None,
+        linewidth: float | None = None,
+        edgecolor: ColorLike | None = None,
+        facecolor: ColorLike | None = None,
         fill: bool = True,
-        vertex: float = False,
-        vertexcolor: Any | None = None,
-    ) -> matplotlib.patches.PathPatch | None:
+        vertex: float | bool = False,
+        vertexcolor: ColorLike | None = None,
+    ) -> PathPatch | None:
         r"""
         Draws polygon in a matplotlib axes. See `draw_on` for in-memory image
         modification.
@@ -2802,9 +3006,8 @@ class Polygon(
             >>> fig.subplots_adjust(wspace=0.5, hspace=0.3, bottom=0.001, top=0.97)
             >>> kwplot.show_if_requested()
         """
-        import matplotlib as mpl
         from matplotlib import pyplot as plt
-        from matplotlib.patches import Path
+        from matplotlib.patches import Path, PathPatch
 
         import kwimage
 
@@ -2888,7 +3091,7 @@ class Polygon(
             kw['linewidth'] = 0
         kw['facecolor'] = facecolor
 
-        patch = mpl.patches.PathPatch(path, alpha=alpha, fill=fill, **kw)
+        patch = PathPatch(path, alpha=alpha, fill=fill, **kw)
         ax.add_patch(patch)
 
         if vertex:
@@ -2934,7 +3137,9 @@ class Polygon(
                 interior.data = interior.data[::-1]
         return new
 
-    def interpolate(self, other, alpha):
+    def interpolate(
+        self, other: Polygon, alpha: float | Sequence[float] | ndarray
+    ) -> Polygon | list[Polygon]:
         ub.schedule_deprecation(
             modname='kwimage',
             migration='use morph instead',
@@ -2947,9 +3152,18 @@ class Polygon(
         )
         return self.morph(other, alpha)
 
+    if TYPE_CHECKING:
+        @overload
+        def morph(self, other: Polygon, alpha: float) -> Polygon: ...
+
+        @overload
+        def morph(
+            self, other: Polygon, alpha: Sequence[float] | ndarray
+        ) -> list[Polygon]: ...
+
     def morph(
-        self, other: kwimage.Polygon, alpha: float | List[float]
-    ) -> Polygon | List[Polygon]:
+        self, other: Polygon, alpha: float | Sequence[float] | ndarray
+    ) -> Polygon | list[Polygon]:
         """
         Perform polygon-to-polygon morphing.
 
@@ -3074,10 +3288,12 @@ class Polygon(
         # aligned_coords2 = np.roll(coords2, -idx2, axis=0)
 
         was_iterable = ub.iterable(alpha)
-        if not was_iterable:
-            alpha = [alpha]
+        if was_iterable:
+            alpha_values = cast('Sequence[float] | ndarray', alpha)
+        else:
+            alpha_values = [cast(float, alpha)]
 
-        alpha2 = np.array(alpha).ravel()[:, None, None]
+        alpha2 = np.array(alpha_values).ravel()[:, None, None]
         alpha1 = 1 - alpha2
 
         interpolated_coords = (coords1[None, :] * alpha1) + (
@@ -3089,7 +3305,7 @@ class Polygon(
         return result
 
 
-class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
+class MultiPolygon(_generic.ObjectList[Polygon], _ShapelyMixin, _PolyMixin):
     """
     Data structure for storing multiple polygons (typically related to the same
     underlying but potentitally disjoing object)
@@ -3098,14 +3314,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         data (List[Polygon])
     """
 
+    if TYPE_CHECKING:
+        def draw(self, **kwargs: Any) -> list[PathPatch | None]: ...
+
     @classmethod
     def random(
-        self,
+        cls: type[_MultiPolygonT],
         n: int = 3,
         n_holes: int = 0,
         rng: Any | None = None,
         tight: bool = False,
-    ) -> MultiPolygon:
+    ) -> _MultiPolygonT:
         """
         Create a random MultiPolygon
 
@@ -3119,10 +3338,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             Polygon.random(rng=rng, n_holes=n_holes, tight=tight)
             for _ in range(n)
         ]
-        self = MultiPolygon(data)
-        return self
+        return cls(data)
 
-    def remove_holes(self):
+    def remove_holes(self) -> MultiPolygon:
         """
         Removes holes from this multipolygon
         """
@@ -3138,9 +3356,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     def fill(
         self,
         image: ndarray,
-        value: int | Tuple[int, ...] = 1,
+        value: int | tuple[int, ...] = 1,
         pixels_are: str = 'points',
-        origin_convention='center',
+        origin_convention: str = 'center',
         assert_inplace: bool = False,
     ) -> ndarray:
         """
@@ -3209,7 +3427,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             )
         return image_
 
-    def to_multi_polygon(self) -> MultiPolygon:
+    def to_multi_polygon(self: _MultiPolygonT) -> _MultiPolygonT:
         """
         Returns:
             MultiPolygon
@@ -3253,7 +3471,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         lt = np.array([np.inf, np.inf])
         rb = np.array([-np.inf, -np.inf])
         for data in self.data:
-            xys = data.data['exterior'].data
+            xys = cast(Any, data.data['exterior'].data)
             lt = np.minimum(lt, xys.min(axis=0))
             rb = np.maximum(rb, xys.max(axis=0))
         ltrb = np.hstack([lt, rb])
@@ -3284,7 +3502,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         lt = np.array([np.inf, np.inf])
         rb = np.array([-np.inf, -np.inf])
         for data in self.data:
-            xys = data.data['exterior'].data
+            xys = cast(Any, data.data['exterior'].data)
             lt = np.minimum(lt, xys.min(axis=0))
             rb = np.maximum(rb, xys.max(axis=0))
         ltrb = np.hstack([lt, rb])[None, :]
@@ -3312,7 +3530,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         lt = np.array([np.inf, np.inf])
         rb = np.array([-np.inf, -np.inf])
         for data in self.data:
-            xys = data.data['exterior'].data
+            xys = cast(Any, data.data['exterior'].data)
             lt = np.minimum(lt, xys.min(axis=0))
             rb = np.maximum(rb, xys.max(axis=0))
         ltrb = np.hstack([lt, rb])[None, :]
@@ -3321,9 +3539,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
 
     def to_mask(
         self,
-        dims: Any | None = None,
+        dims: tuple[int, int] | None = None,
         pixels_are: str = 'points',
-        origin_convention='center',
+        origin_convention: str = 'center',
     ) -> kwimage.Mask:
         """
         Returns a mask object indication regions occupied by this multipolygon
@@ -3361,7 +3579,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         import kwimage
 
         if dims is None:
-            _, _, x2, y2 = self.box().to_ltrb().data
+            _, _, x2, y2 = cast(Any, self.box().to_ltrb().data)
             dims = (int(math.ceil(y2)), int(math.ceil(x2)))
             # raise ValueError('Must specify output raster dimensions')
         c_mask = np.zeros(dims, dtype=np.uint8)
@@ -3377,7 +3595,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         return mask
 
     @classmethod
-    def coerce(cls, data, dims: Any | None = None) -> None | MultiPolygon:
+    def coerce(
+        cls, data: object, dims: tuple[int, int] | None = None
+    ) -> MultiPolygon | None:
         """
         Attempts to construct a MultiPolygon instance from the input data
 
@@ -3409,12 +3629,12 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         from kwimage.structs.segmentation import _coerce_coco_segmentation
 
-        self = _coerce_coco_segmentation(data, dims=dims)
-        if self is not None:
-            self = self.to_multi_polygon()
-        return self
+        result: Any = _coerce_coco_segmentation(data, dims=dims)
+        if result is not None:
+            result = result.to_multi_polygon()
+        return cast('MultiPolygon | None', result)
 
-    def to_shapely(self, fix: bool = False) -> shapely.geometry.MultiPolygon:
+    def to_shapely(self, fix: bool = False) -> ShapelyMultiPolygon:
         """
         Args:
             fix (bool):
@@ -3436,17 +3656,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         import shapely.geometry
 
         polys = [p.to_shapely() for p in self.data]
-        geom = shapely.geometry.MultiPolygon(polys)
+        geom: Any = shapely.geometry.MultiPolygon(polys)
         if fix:
             if not geom.is_valid:
                 geom = geom.buffer(0)
-        return geom
+        return cast('ShapelyMultiPolygon', geom)
 
     @classmethod
     def from_shapely(
-        MultiPolygon,
-        geom: shapely.geometry.MultiPolygon | shapely.geometry.Polygon,
-    ) -> MultiPolygon:
+        cls: type[_MultiPolygonT],
+        geom: ShapelyMultiPolygon | ShapelyPolygon,
+    ) -> _MultiPolygonT:
         """
         Convert a shapely polygon or multipolygon to a kwimage.MultiPolygon
 
@@ -3464,14 +3684,17 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             >>> kwimage.MultiPolygon.from_shapely(sh_multi_poly)
         """
         if geom.geom_type == 'Polygon':
-            polys = [Polygon.from_shapely(geom)]
+            poly_geom = cast('ShapelyPolygon', geom)
+            polys = [Polygon.from_shapely(poly_geom)]
         else:
-            polys = [Polygon.from_shapely(g) for g in geom.geoms]
-        self = MultiPolygon(polys)
-        return self
+            multi_geom = cast('ShapelyMultiPolygon', geom)
+            polys = [Polygon.from_shapely(g) for g in multi_geom.geoms]
+        return cls(polys)
 
     @classmethod
-    def from_geojson(MultiPolygon, data_geojson: Dict) -> MultiPolygon:
+    def from_geojson(
+        cls: type[_MultiPolygonT], data_geojson: dict[str, Any]
+    ) -> _MultiPolygonT:
         """
         Convert a geojson polygon or multipolygon to a kwimage.MultiPolygon
 
@@ -3494,10 +3717,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
                 Polygon.from_geojson({'type': 'Polygon', 'coordinates': coords})
                 for coords in data_geojson['coordinates']
             ]
-        self = MultiPolygon(polys)
-        return self
+        return cls(polys)
 
-    def to_geojson(self) -> Dict:
+    def to_geojson(self) -> MultiPolygonGeoJSON:
         """
         Converts polygon to a geojson structure
 
@@ -3509,14 +3731,14 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             'type': 'MultiPolygon',
             'coordinates': coords,
         }
-        return data_geojson
+        return cast('MultiPolygonGeoJSON', data_geojson)
 
     @classmethod
     def from_coco(
-        cls,
-        data: List[List[Number] | Dict],
-        dims: None | Tuple[int, ...] = None,
-    ) -> MultiPolygon:
+        cls: type[_MultiPolygonT],
+        data: list[list[Any] | dict[str, Any]],
+        dims: tuple[int, ...] | None = None,
+    ) -> _MultiPolygonT:
         """
         Accepts either new-style or old-style coco multi-polygons
 
@@ -3541,7 +3763,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     def _to_coco(self, style='orig'):
         return self.to_coco(style=style)
 
-    def to_coco(self, style: str = 'orig'):
+    def to_coco(
+        self, style: str = 'orig'
+    ) -> list[CocoPolygon]:
         """
         Args:
             style(str): can be "orig" or "new"
@@ -3553,7 +3777,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         return [item.to_coco(style=style) for item in self.data]
 
-    def swap_axes(self, inplace: bool = False) -> MultiPolygon:
+    def swap_axes(
+        self: _MultiPolygonT, inplace: bool = False
+    ) -> _MultiPolygonT:
         """
         Swap x and y axis
 
@@ -3565,7 +3791,9 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
         """
         return self.apply(lambda item: item.swap_axes(inplace=inplace))
 
-    def draw_on(self, image=None, **kwargs):
+    def draw_on(
+        self, image: ndarray | None = None, **kwargs: Any
+    ) -> ndarray:
         Polygon.draw_on.__doc__
 
         if image is None:
@@ -3574,7 +3802,7 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
             bounds = self.box().scale(1.1).quantize()
             w = bounds.br_x + 2 + 1
             h = bounds.br_y + 2 + 1
-            image = np.zeros((h, w, 3), dtype=np.float32)
+            image = np.zeros(cast(Any, (h, w, 3)), dtype=np.float32)
 
         for item in self.data:
             if item is not None:
@@ -3607,14 +3835,21 @@ class MultiPolygon(_generic.ObjectList, _ShapelyMixin, _PolyMixin):
     #     return image
 
 
-class PolygonList(_generic.ObjectList):
+class PolygonList(_generic.ObjectList[Polygon | MultiPolygon | None]):
     """
     Stores and allows manipluation of multiple polygons, usually within the
     same image.
     """
 
+    if TYPE_CHECKING:
+        def to_coco(
+            self, style: str = 'orig'
+        ) -> Iterator[CocoPolygon | list[CocoPolygon] | None]: ...
+
     @classmethod
-    def random(cls, length=10, rng=None):
+    def random(
+        cls: type[_PolygonListT], length: int = 10, rng: Any | None = None
+    ) -> _PolygonListT:
         """
         A random list of Polygons and MultiPolygons.
 
@@ -3671,9 +3906,9 @@ class PolygonList(_generic.ObjectList):
 
     def to_mask_list(
         self,
-        dims: Any | None = None,
+        dims: tuple[int, int] | None = None,
         pixels_are: str = 'points',
-        origin_convention='center',
+        origin_convention: str = 'center',
     ) -> kwimage.MaskList:
         """
         Converts all items to masks
@@ -3697,14 +3932,14 @@ class PolygonList(_generic.ObjectList):
         )
         return new
 
-    def to_polygon_list(self) -> PolygonList:
+    def to_polygon_list(self: _PolygonListT) -> _PolygonListT:
         """
         Returns:
             PolygonList
         """
         return self
 
-    def to_boxes(self):
+    def to_boxes(self) -> kwimage.Boxes:
         """
         Returns axis aligned bounding boxes for each item in this list
 
@@ -3719,7 +3954,7 @@ class PolygonList(_generic.ObjectList):
         """
         import kwimage
 
-        boxes_list = [p.box() for p in self.data]
+        boxes_list = [cast(Any, p).box() for p in self.data]
         boxes = kwimage.Boxes.concatenate(boxes_list)
         return boxes
 
@@ -3740,14 +3975,22 @@ class PolygonList(_generic.ObjectList):
         )
         return new
 
-    def swap_axes(self, inplace: bool = False) -> PolygonList:
+    def swap_axes(
+        self: _PolygonListT, inplace: bool = False
+    ) -> _PolygonListT:
         """
         Returns:
             PolygonList
         """
-        return self.apply(lambda item: item.swap_axes(inplace=inplace))
+        return self.apply(
+            lambda item: cast(
+                'Polygon | MultiPolygon', item
+            ).swap_axes(inplace=inplace)
+        )
 
-    def to_geojson(self, as_collection: bool = False) -> List[Dict] | Dict:
+    def to_geojson(
+        self, as_collection: bool = False
+    ) -> list[PolygonGeoJSON | MultiPolygonGeoJSON] | dict[str, object]:
         """
         Converts a list of polygons/multipolygons to a geojson structure
 
@@ -3771,7 +4014,7 @@ class PolygonList(_generic.ObjectList):
             >>> print('geojson = {}'.format(ub.urepr(geojson, nl=-2, precision=1)))
             >>> print('items = {}'.format(ub.urepr(items, nl=-2, precision=1)))
         """
-        items = [poly.to_geojson() for poly in self.data]
+        items = [cast(Any, poly).to_geojson() for poly in self.data]
         if as_collection:
             geojson = {
                 'type': 'FeatureCollection',
@@ -3787,9 +4030,9 @@ class PolygonList(_generic.ObjectList):
     def fill(
         self,
         image: ndarray,
-        value: int | Tuple[int, ...] = 1,
+        value: int | tuple[int, ...] = 1,
         pixels_are: str = 'points',
-        origin_convention='center',
+        origin_convention: str = 'center',
         assert_inplace: bool = False,
     ) -> ndarray:
         """
@@ -3831,7 +4074,9 @@ class PolygonList(_generic.ObjectList):
             )
         return image
 
-    def draw(self, **kwargs):
+    def draw(
+        self, **kwargs: Any
+    ) -> list[PathPatch | None | list[PathPatch | None]]:
         """
         Generic draw method for a PolygonList.
         See :func:`kwimage.Polygon.draw`.
@@ -3848,17 +4093,21 @@ class PolygonList(_generic.ObjectList):
             >>> kwplot.show_if_requested()
         """
         setlim = kwargs.pop('setlim', False)
-        result = super().draw(**kwargs)
+        result = cast(Any, super()).draw(**kwargs)
         if setlim:
             import kwplot
 
             ax = kwplot.plt.gca()
             _boxes = self.to_boxes()
-            xmin, ymin, xmax, ymax = _boxes.box().to_ltrb().data[0]
+            xmin, ymin, xmax, ymax = cast(
+                Any, _boxes.box().to_ltrb().data[0]
+            )
             _generic._setlim(xmin, ymin, xmax, ymax, setlim=setlim, ax=ax)
-        return result
+        return cast(
+            'list[PathPatch | None | list[PathPatch | None]]', result
+        )
 
-    def draw_on(self, *args, **kw):
+    def draw_on(self, *args: Any, **kw: Any) -> ndarray:
         """
         Ignore:
             >>> # Test that we can draw a lot of polygons quickly by default
@@ -3888,20 +4137,20 @@ class PolygonList(_generic.ObjectList):
         """
         Polygon.draw_on.__doc__
         # ^ docstring
-        return super().draw_on(*args, **kw)
+        return cast('ndarray', cast(Any, super()).draw_on(*args, **kw))
 
-    def unary_union(self):
+    def unary_union(self) -> Polygon | MultiPolygon:
         from shapely.ops import unary_union
 
         from kwimage.structs.polygon import _kwimage_from_shapely
 
-        polys_sh = [p.to_shapely() for p in self]
+        polys_sh = [cast(Any, p).to_shapely() for p in self]
         union_sh = unary_union(polys_sh)
         new = _kwimage_from_shapely(union_sh)
         return new
 
 
-def _kwimage_from_shapely(geom):
+def _kwimage_from_shapely(geom: BaseGeometry) -> Polygon | MultiPolygon:
     """
     Args:
         geom (shapely.geometry.base.BaseGeometry)
@@ -3912,14 +4161,16 @@ def _kwimage_from_shapely(geom):
     import kwimage
 
     if geom.geom_type == 'Polygon':
-        return kwimage.Polygon.from_shapely(geom)
+        return kwimage.Polygon.from_shapely(cast('ShapelyPolygon', geom))
     elif geom.geom_type == 'MultiPolygon':
-        return kwimage.MultiPolygon.from_shapely(geom)
+        return kwimage.MultiPolygon.from_shapely(
+            cast('ShapelyMultiPolygon', geom)
+        )
     else:
         raise TypeError(geom.geom_type)
 
 
-def _is_clockwise(verts):
+def _is_clockwise(verts: ndarray) -> bool:
     """
     Test if points are in clockwise order [SO1165647]_.
 
@@ -3939,10 +4190,10 @@ def _is_clockwise(verts):
     is_clockwise = ((x2 - x1) * (y2 + y1)).sum() > 0
     # cross_product = np.cross(verts[:-1], verts[1:])
     # is_clockwise = cross_product.sum() > 0
-    return is_clockwise
+    return cast(bool, is_clockwise)
 
 
-def _order_vertices(verts):
+def _order_vertices(verts: ndarray) -> ndarray:
     """
     Reorder vertices to be clockwise [SO1709283]_.
 

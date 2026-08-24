@@ -88,3 +88,50 @@ The only new runtime branch is an explicit `input_dims is None` error on the opt
 ## 2026-08-23 22:41:00 -0400
 
 Followed up on the public-API-first Coords/Points typing pass after the local `ty` run reduced the remaining diagnostics to three. The fixes are deliberately runtime-neutral in geometry paths: `Coords.scale` now uses a type-only cast to expose the already-established array/tensor value to the checker, and `Points.from_coco` uses a type-only protocol view when category IDs require `id_to_idx`. Restored the pre-existing `numbers` import that had been dropped during import cleanup; this returns the draw path to its prior behavior rather than adding new runtime machinery. No vectorized operation was replaced, no new array/tensor copy or materialization was introduced, and no runtime validation was added. The focused regression suite was already green in the user's environment; local validation here is limited to syntax/compile and diff checks because the sandbox lacks the full kwimage dependency environment.
+
+## 2026-08-23 23:02:00 -0400
+
+Continued the public-API-first typing burn-down with `Polygon`, `MultiPolygon`, and `PolygonList`. `kwimage/structs/polygon.py` is removed from the blanket `ty` override, reducing the ignored-module list from 17 to 16. The main public contracts now expose typed polygon ring storage (`PolygonData`), concrete geometry-preserving transform results, concrete Shapely/GeoJSON/COCO conversions, generic `MultiPolygon` / `PolygonList` indexing, and literal-sensitive COCO serialization overloads instead of broad return `Any` types. Static `assert_type` coverage was extended for the common downstream expressions so a future return to `Any` is visible to `ty`.
+
+Runtime efficiency was reviewed explicitly. No vectorized NumPy/Torch operation was replaced with Python iteration, and no checker-driven array/tensor conversion or copy was added. An intermediate draft accidentally made inherited `PolygonList.to_coco()` eager; that change was removed and the existing iterator semantics are preserved with a type-only declaration. Likewise, the ImgAug warp branch uses a static cast for its required dimensions instead of new runtime validation. Existing NumPy/Shapely/OpenCV operations remain structurally the same; local casts isolate backend/stub limitations without changing values.
+
+The source passes `compileall`, Python 3.10 grammar parsing, TOML parsing, public annotation audits, and `git diff --check`. The sandbox still cannot run `ty` or the normal runtime suite because the checker and core dependencies are unavailable, so the user's local `ty check kwimage tests/` remains the authoritative diagnostic pass. I also changed potentially ambiguous Shapely/Matplotlib submodule accesses to explicit imports to avoid the same `possibly-missing-submodule` diagnostics seen in earlier phases.
+
+## 2026-08-24 05:33:17 -0400
+
+Followed up on the first unsuppressed Polygon/MultiPolygon `ty` run. The host checker reported 16 errors plus two redundant-cast warnings, all in the newly exposed polygon surface; the focused regression suite still passed. I kept `polygon.py` out of the override rather than retreating to suppression.
+
+The fixes preserve runtime structure. Mixin construction and backend/stub ambiguities are expressed with local `typing.cast` views, which are runtime no-ops. The polygon fill/draw paths retain their existing OpenCV calls, NumPy allocation behavior, and per-channel fallback; no vectorized operation was replaced and no checker-driven array conversion was added. `draw_on` now uses a separate optional local for its historical `alpha == 1.0 -> None` sentinel instead of assigning `None` back into the public `float` parameter. `morph` likewise uses a separate local sequence instead of mutating the public scalar-or-sequence parameter.
+
+One reported error exposed a real inheritance typing mismatch: `ObjectList.to_coco()` is a generator while `MultiPolygon.to_coco()` has historically returned a list. The base contract now says `Iterable[Any]`, which truthfully admits both existing runtime behaviors without making either eager or lazy path change. `PolygonList` keeps its narrower iterator contract. A focused regression locks this in so future typing work cannot accidentally materialize `PolygonList.to_coco()`. Remaining uncertainty is limited to the unavailable `ty` executable in this sandbox; syntax, diff, and local structural audits are the available validation before the user's next host run.
+
+## 2026-08-24 09:37:00 -0400
+
+The host `ty` run after the polygon cleanup reduced the phase to one diagnostic: `MultiPolygon.to_coco` was still considered an invalid override of `ObjectList.to_coco`. The problem was the base method's explicit `self: ObjectList[_DrawableObject]` annotation. Because `ObjectList` is invariant in its element type, `ObjectList[Polygon]` does not become `ObjectList[_DrawableObject]` merely because `Polygon` satisfies the protocol. The base drawable methods now use a bound type variable (`DrawableObjectT`) so each concrete `ObjectList[T]` keeps its own element type while requiring the drawable protocol. This is annotation-only and does not change generator/list behavior, iteration, allocation, or dispatch at runtime.
+
+## 2026-08-24 09:49:00 -0400
+
+The host `ty` run still reported the same single `MultiPolygon.to_coco` override diagnostic after the bound-element self type change. The remaining conflict is caused by placing any concrete `ObjectList[...]` constraint on the base method's `self` parameter: mutable `ObjectList` is invariant, while subclasses intentionally specialize the element type and may also specialize the concrete iterable return.
+
+`ObjectList.to_coco` now types only its public call/return contract and leaves `self` dynamic (`self: Any`). This keeps the base method callable on heterogeneous object lists while allowing subclasses such as `MultiPolygon` to publish precise COCO overloads. The generator body is byte-for-byte equivalent in behavior: it still iterates `self.data`, yields `None` for missing entries, and otherwise delegates directly to each item's `to_coco`. No casts, helper calls, branches, copies, materialization, or per-element overhead were added to satisfy the checker. The prior bound type variable is removed because it no longer serves a typing purpose.
+
+
+## 2026-08-24 10:35:00 -0400
+
+The host `ty` run still reported one `invalid-method-override` diagnostic for
+`MultiPolygon.to_coco`. The base and implementation signatures are ordinarily
+compatible, but the concrete method also carried type-only overloads. Current
+`ty` has a known false-positive class around overloaded overrides, so this pass
+removes only those `MultiPolygon` overload declarations rather than further
+weakening or restructuring `ObjectList`. `MultiPolygon.to_coco` now publishes
+`list[CocoPolygon]`, which remains a useful non-`Any` public contract: each
+element is either the legacy flat coordinate list or the new-style polygon
+dictionary. Runtime code is unchanged.
+
+To keep concrete list APIs strong, `PointsList.to_coco` now has a type-only
+`Iterator[CocoKeypoints]` declaration, matching the inherited lazy runtime
+implementation. `PolygonList` already had the analogous type-only iterator
+contract. The public typing contract test was updated to lock in these concrete
+list types. All changes in this follow-up are under `TYPE_CHECKING` or annotation
+syntax; no iteration, allocation, array/tensor conversion, copy, validation, or
+dispatch behavior is added at runtime.
