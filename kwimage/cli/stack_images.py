@@ -7,7 +7,7 @@ import scriptconfig as scfg
 import ubelt as ub
 
 if TYPE_CHECKING:
-    pass
+    from typing import Any
 
 
 class StackImagesCLI(scfg.DataConfig):
@@ -59,7 +59,11 @@ class StackImagesCLI(scfg.DataConfig):
     )
 
     @classmethod
-    def main(StackImagesCLI, cmdline=1, **kwargs):
+    def main(
+        StackImagesCLI: type[StackImagesCLI],
+        cmdline: Any = 1,
+        **kwargs: Any,
+    ) -> None:
         """
         Example:
             >>> # xdoctest: +SKIP
@@ -69,11 +73,11 @@ class StackImagesCLI(scfg.DataConfig):
             >>> )
             >>> main(cmdline=cmdline, **kwargs)
         """
-        config = StackImagesCLI.cli(cmdline=cmdline, data=kwargs)
+        config: Any = StackImagesCLI.cli(cmdline=cmdline, data=kwargs)
         import kwimage
 
         print('config = ' + ub.urepr(dict(config), nl=1))
-        fpaths = config['input_fpaths']
+        fpaths: Any = config['input_fpaths']
 
         try:
             import kwutil

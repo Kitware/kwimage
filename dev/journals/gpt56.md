@@ -426,3 +426,84 @@ Kept the runtime branch and arithmetic unchanged and introduced separate local
 `Any` implementation scalars for the unpacked `sx`/`sy` values. This is an
 annotation-only dynamic boundary; it adds no conversion, validation,
 materialization, copy, or extra iteration.
+
+## 2026-08-24 17:15:00 -0400
+
+The v29 phase removes the final five blanket `ty` suppressions in one reviewable
+push: `im_filter.py`, `im_demodata.py`, and the three small CLI modules. The
+root-exported Fourier helpers now expose ndarray results, literal Fourier
+backends, iterable channel selection, and two-value clip bounds. Demo-image
+helpers now expose ndarray image results, resize-compatible dsize values, a
+truthful path-like-or-string cache path, and a typed checkerboard surface that
+includes scalar, sequence, named-color, and NumPy color values. Static contract
+tests cover the root-facing filter and demo APIs.
+
+The large demo-image manifest remains a local `dict[str, Any]` boundary because
+its heterogeneous metadata is implementation data rather than a caller-facing
+API. Checkerboard's legacy scalar-or-pair normalization similarly uses local
+dynamic implementation variables so the checker does not force validation or
+materialization into the runtime path. The ScriptConfig modal/CLI plumbing is
+annotated at its dynamic configuration boundaries instead of trying to impose a
+closed schema on framework-generated config objects.
+
+No vectorized NumPy/OpenCV operation was replaced, and no array conversion,
+copy, validation pass, or iterable materialization was added for typing. This
+phase intentionally stops before the later `util_warp` public-API audit.
+
+## 2026-08-24 17:20:00 -0400
+
+The first v29 local `ty` run exposed 17 cleanup diagnostics in the newly
+unsuppressed `im_filter.py` and `im_demodata.py`. The public contracts remain
+in place. Builtin numeric scalar types are now explicit alongside
+`numbers.Number` for Fourier masks and checkerboard values because `ty` does
+not currently accept builtin integer defaults or the integer zero mask through
+`Number` alone.
+
+The remaining fixes are local static boundaries. The demo hash-maintenance
+`grabkw` dictionary is explicitly dynamic, the mirror download helper reflects
+`ub.grabdata`'s path-like return, and the cache-stamp dependency dictionary is
+passed through a local dynamic view because the installed ubelt stub only
+accepts string dependencies. Checkerboard keeps the existing scalar-or-pair
+normalization and declares the resolved height/width/count locals as integers;
+fresh dynamic views are used only at destructuring points where `ty` retains
+legacy union alternatives. The two private Timerit benchmarks annotate the
+Timerit instance as dynamic because the installed Timerit iterator stub does
+not model its runtime iterator protocol correctly.
+
+No array conversion, copy, validation pass, or replacement of vectorized work
+was added. The checkerboard normalization branches and arithmetic remain the
+same runtime operations.
+
+
+## 2026-08-24 17:27:00 -0400
+
+The v30 local `ty` run left two checkerboard diagnostics at the second
+`square_shape` pair destructuring. `ty` retained a possible nested-list type
+for the dynamic implementation variable even after the scalar-or-pair
+normalization. The unpack now targets local `Any` implementation scalars
+first, then assigns those values to the resolved integer locals. This keeps
+the same iterable unpacking behavior and adds no coercion, validation, array
+materialization, copy, or loop.
+
+
+## 2026-08-24 17:33:00 -0400
+
+The v31 local `ty` run still retained `Any | list[Any]` on the second
+checkerboard `square_shape` unpack, even after unpacking through temporary
+implementation variables. Rather than adding casts, runtime validation, or
+changing iterable semantics, the private resolved `h`/`w` implementation
+locals are now `Any`. The helper still publishes
+`tuple[int, int, int, int]`, and the existing normalization arithmetic and
+return behavior are unchanged.
+
+
+## 2026-08-24 17:40:00 -0400
+
+The v32 local `ty` run showed that making the resolved checkerboard `h`/`w`
+locals dynamic only moved the broad iterable union into the arithmetic and
+return type. The first normalization branch already had a working pattern:
+a fresh explicitly annotated `Any` alias breaks the checker correlation before
+pair unpacking. The second branch now uses its own fresh alias instead of
+reusing the first branch's local, and `h`/`w` are restored to `int`. This is
+an annotation-only narrowing fix: no cast call, validation, coercion, copy,
+materialization, or control-flow change is added.

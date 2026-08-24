@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import numpy as np
     from numbers import Number
+    from os import PathLike
     from collections.abc import Generator, Iterator, Mapping, Sequence
     from matplotlib.patches import PathPatch
     from shapely.geometry import MultiPoint
@@ -59,6 +60,25 @@ if TYPE_CHECKING:
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
+
+    float_image = image.astype(np.float32) / 255.0
+    fourier_mask_data = np.ones((16, 20), dtype=np.float32)
+    assert_type(
+        kwimage.fourier_mask(float_image, fourier_mask_data), np.ndarray
+    )
+    assert_type(kwimage.fourier_mask(float_image, 0), np.ndarray)
+    assert_type(
+        kwimage.radial_fourier_mask(float_image, radius=3), np.ndarray
+    )
+
+    assert_type(kwimage.checkerboard(dsize=(8, 8)), np.ndarray)
+    assert_type(
+        kwimage.grab_test_image('checkerboard', dsize=(8, None)),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.grab_test_image_fpath('astro'), str | PathLike[str]
+    )
 
     assert_type(kwimage.ensure_alpha_channel(image), np.ndarray)
     assert_type(

@@ -122,16 +122,7 @@ src.include = [
   "kwimage",
 ]
 
-# Typing debt burn-down list. Remove entries as modules become ty-clean.
-[[tool.ty.overrides]]
-include = [
-  "kwimage/im_demodata.py",
-  "kwimage/im_filter.py",
-  "kwimage/cli/crop_border.py",
-  "kwimage/cli/stack_images.py",
-  "kwimage/cli/__main__.py",
-]
-rules.all = "ignore"
+# Typing debt burn-down list is currently empty.
 
 [tool.pytest]
 ini_options.addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py --ignore-glob=dev --ignore-glob=docs"

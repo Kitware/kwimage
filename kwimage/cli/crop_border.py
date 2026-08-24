@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
+from typing import Any
+
 import scriptconfig as scfg
 import ubelt as ub
 
@@ -26,7 +30,7 @@ class CropBorderCLI(scfg.DataConfig):
     )
 
     @classmethod
-    def main(cls, argv=1, **kwargs):
+    def main(cls, argv: Any = 1, **kwargs: Any) -> None:
         """
         Example:
             >>> # xdoctest: +SKIP
@@ -43,7 +47,7 @@ class CropBorderCLI(scfg.DataConfig):
         import kwimage
         from kwimage.im_core import crop_border_by_color
 
-        config = cls.cli(argv=argv, data=kwargs, strict=True)
+        config: Any = cls.cli(argv=argv, data=kwargs, strict=True)
         rich.print('config = ' + escape(ub.urepr(config, nl=1)))
 
         src_fpath = ub.Path(config.src)

@@ -6,7 +6,9 @@ import cv2
 import numpy as np
 
 if TYPE_CHECKING:
-    from typing import Any
+    from collections.abc import Iterable
+    from numbers import Number
+    from typing import Any, Literal
 
     from numpy import ndarray
 
@@ -14,9 +16,9 @@ if TYPE_CHECKING:
 def radial_fourier_mask(
     img_hwc: ndarray,
     radius: int = 11,
-    axis: Any | None = None,
-    clip: Any | None = None,
-):
+    axis: Iterable[int] | None = None,
+    clip: tuple[float, float] | None = None,
+) -> ndarray:
     """
     In [1] they use a radius of 11.0 on CIFAR-10.
 
@@ -113,11 +115,11 @@ def radial_fourier_mask(
 
 def fourier_mask(
     img_hwc: ndarray,
-    mask: ndarray,
-    axis: Any | None = None,
-    clip: Any | None = None,
-    backend: str = 'cv2',
-):
+    mask: ndarray | Number | int | float | complex,
+    axis: Iterable[int] | None = None,
+    clip: tuple[float, float] | None = None,
+    backend: Literal['cv2', 'numpy'] = 'cv2',
+) -> ndarray:
     """
     Applies a mask to the fourier spectrum of an image
 
@@ -238,27 +240,27 @@ def fourier_mask(
     return out_hwc
 
 
-def _np_fourier(s):
+def _np_fourier(s: ndarray) -> ndarray:
     return np.fft.fftshift(np.fft.fft2(s))
 
 
-def _np_inv_fourier(f):
+def _np_inv_fourier(f: ndarray) -> ndarray:
     # use real because LAB has negative components
     return np.real(np.fft.ifft2(np.fft.ifftshift(f)))
 
 
-def _cv2_fourier(s):
+def _cv2_fourier(s: ndarray) -> ndarray:
     return np.fft.fftshift(
         cv2.dft(s.astype(np.float32), flags=cv2.DFT_COMPLEX_OUTPUT)
     )
 
 
-def _cv2_inv_fourier(f):
+def _cv2_inv_fourier(f: ndarray) -> ndarray:
     # Real part will be in first element of the last dim
     return cv2.idft(np.fft.ifftshift(f), flags=cv2.DFT_SCALE)[..., 0]
 
 
-def _benchmark():
+def _benchmark() -> None:
     """
     References:
         https://docs.opencv.org/4.x/de/dbc/tutorial_py_fourier_transform.html
@@ -316,7 +318,7 @@ def _benchmark():
 
     import timerit
 
-    ti = timerit.Timerit(100, bestof=10, verbose=2)
+    ti: Any = timerit.Timerit(100, bestof=10, verbose=2)
     for timer in ti.reset('np fft'):
         with timer:
             fs_np = _np_fourier(s)
@@ -334,12 +336,12 @@ def _benchmark():
             _cv2_inv_fourier(fs_cv2)
 
 
-def _benchmark2():
+def _benchmark2() -> None:
     import timerit
 
     import kwimage
 
-    ti = timerit.Timerit(100, bestof=10, verbose=3)
+    ti: Any = timerit.Timerit(100, bestof=10, verbose=3)
     img_hwc = kwimage.grab_test_image(space='gray')
     mask = np.random.rand(*img_hwc.shape[0:2])
     out_hwc = fourier_mask(img_hwc, mask)

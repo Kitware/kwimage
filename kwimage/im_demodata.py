@@ -9,13 +9,22 @@ from typing import TYPE_CHECKING
 import ubelt as ub
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
     from numbers import Number
-    from typing import Tuple
+    from os import PathLike
+    from typing import Any, Literal, TypeAlias
 
     from numpy import ndarray
+    from numpy.typing import DTypeLike
+
+    from kwimage.im_transform import ResizeDSize
+
+    CheckerScalar: TypeAlias = Number | int | float | complex
+    CheckerValue: TypeAlias = CheckerScalar | str | Sequence[CheckerScalar] | ndarray
+    CheckerShapeArg: TypeAlias = int | Sequence[int] | Literal['auto']
 
 
-_TEST_IMAGES = {
+_TEST_IMAGES: dict[str, Any] = {
     'airport': {
         'fname': 'airport.jpg',
         'url': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Beijing_Capital_International_Airport_on_18_February_2018_-_SkySat_%281%29.jpg',
@@ -248,7 +257,7 @@ _TEST_IMAGES = {
 }
 
 
-def _update_hashes():
+def _update_hashes() -> None:
     """
     for dev use to update hashes of the demo images
 
@@ -265,7 +274,7 @@ def _update_hashes():
     for key in TEST_IMAGES.keys():
         item = TEST_IMAGES[key]
 
-        grabkw = {
+        grabkw: dict[str, Any] = {
             'appname': 'kwimage/demodata',
         }
         # item['sha512'] = 'not correct'
@@ -365,7 +374,7 @@ def _update_hashes():
 def grab_test_image(
     key: str = 'astro',
     space: str = 'rgb',
-    dsize: Tuple[int, int] | None = None,
+    dsize: ResizeDSize = None,
     interpolation: str = 'linear',
 ) -> ndarray:
     """
@@ -435,7 +444,11 @@ def grab_test_image(
 #         ub.download(item['url'])
 
 
-def _grabdata_with_mirrors(url, mirror_urls, grabkw):
+def _grabdata_with_mirrors(
+    url: str,
+    mirror_urls: Iterable[str],
+    grabkw: Mapping[str, Any],
+) -> str | PathLike[str]:
     fpath = None
     verbose = 1
     try:
@@ -460,10 +473,10 @@ def _grabdata_with_mirrors(url, mirror_urls, grabkw):
 
 def grab_test_image_fpath(
     key: str = 'astro',
-    dsize: None | Tuple[int, int] = None,
-    overviews: None | int = None,
-    allow_fallback=True,
-) -> str:
+    dsize: ResizeDSize = None,
+    overviews: int | None = None,
+    allow_fallback: bool = True,
+) -> str | PathLike[str]:
     """
     Ensures that the test image exists (this might use the network) and returns
     the cached filepath to the requested image.
@@ -591,7 +604,7 @@ def grab_test_image_fpath(
         else:
             raise
 
-    augment_params = {
+    augment_params: dict[str, Any] = {
         'dsize': dsize,
         'overviews': overviews,
     }
@@ -615,10 +628,11 @@ def grab_test_image_fpath(
         fpath_aug = ub.Path(ub.augpath(fpath, suffix=stem_suffix, ext=ext))
 
         # stamp = ub.CacheStamp.sidecar_for(fpath_aug, depends=[dsize])
+        depends_impl: Any = augment_params
         stamp = ub.CacheStamp(
             fpath_aug.name + '.stamp',
             dpath=fpath_aug.parent,
-            depends=augment_params,
+            depends=depends_impl,
             ext='.json',
         )
         if stamp.expired():
@@ -629,7 +643,7 @@ def grab_test_image_fpath(
             if 'dsize' in augment_params:
                 imdata = kwimage.imresize(imdata, dsize=augment_params['dsize'])
 
-            writekw = {}
+            writekw: dict[str, Any] = {}
             if 'overviews' in augment_params:
                 writekw['overviews'] = augment_params['overviews']
                 writekw['backend'] = 'gdal'
@@ -642,19 +656,23 @@ def grab_test_image_fpath(
 
 
 # Provide a programatic mechanism to let users test what keys are available.
-grab_test_image.keys = lambda: _TEST_IMAGES.keys()
-grab_test_image_fpath.keys = lambda: _TEST_IMAGES.keys()
+# Function attributes are a legacy public convenience and are intentionally
+# attached through local dynamic views.
+grab_test_image_impl: Any = grab_test_image
+grab_test_image_fpath_impl: Any = grab_test_image_fpath
+grab_test_image_impl.keys = lambda: _TEST_IMAGES.keys()
+grab_test_image_fpath_impl.keys = lambda: _TEST_IMAGES.keys()
 
 
 def checkerboard(
-    num_squares: int | str = 'auto',
-    square_shape: int | Tuple[int, int] | str = 'auto',
-    dsize: Tuple[int, int] = (512, 512),
-    dtype: type = float,
-    on_value: Number | int = 1,
-    off_value: Number | int = 0,
-    bayer_value=None,
-):
+    num_squares: CheckerShapeArg = 'auto',
+    square_shape: CheckerShapeArg = 'auto',
+    dsize: tuple[int, int] = (512, 512),
+    dtype: DTypeLike = float,
+    on_value: CheckerValue = 1,
+    off_value: CheckerValue = 0,
+    bayer_value: CheckerValue | None = None,
+) -> ndarray:
     """
     Creates a checkerboard image, mainly for use in testing.
 
@@ -837,15 +855,27 @@ def checkerboard(
     return img
 
 
-def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w, want_h):
-    if num_squares == 'auto' and square_shape == 'auto':
-        num_squares = 8
+def _resolve_checkerboard_shape_args(
+    square_shape: CheckerShapeArg,
+    num_squares: CheckerShapeArg,
+    want_w: int,
+    want_h: int,
+) -> tuple[int, int, int, int]:
+    square_shape_impl: Any = square_shape
+    num_squares_impl: Any = num_squares
+    h: int
+    w: int
+    num_h: int
+    num_w: int
+    if num_squares_impl == 'auto' and square_shape_impl == 'auto':
+        num_squares_impl = 8
 
     # Resolve the pixel width and height of each square.
-    if square_shape != 'auto':
-        if not ub.iterable(square_shape):
-            square_shape = [square_shape, square_shape]
-        h, w = square_shape
+    if square_shape_impl != 'auto':
+        if not ub.iterable(square_shape_impl):
+            square_shape_impl = [square_shape_impl, square_shape_impl]
+        square_shape_pair: Any = square_shape_impl
+        h, w = square_shape_pair
         gen_h = _next_multiple_of(want_h, h * 2)
         gen_w = _next_multiple_of(want_w, w * 2)
     else:
@@ -855,42 +885,48 @@ def _resolve_checkerboard_shape_args(square_shape, num_squares, want_w, want_h):
         gen_w = _next_multiple_of(want_w, mulitple_w)
 
     # Resolve the number of squares in each row and column.
-    if num_squares == 'auto':
-        assert square_shape != 'auto'
-        if not ub.iterable(square_shape):
-            square_shape = [square_shape, square_shape]
-        h, w = square_shape
+    if num_squares_impl == 'auto':
+        assert square_shape_impl != 'auto'
+        if not ub.iterable(square_shape_impl):
+            square_shape_impl = [square_shape_impl, square_shape_impl]
+        square_shape_pair2: Any = square_shape_impl
+        h, w = square_shape_pair2
         num_w = max(gen_w // w, 1)
         num_h = max(gen_h // h, 1)
-        num_squares = num_h, num_w
-    elif square_shape == 'auto':
-        assert num_squares != 'auto'
-        if not ub.iterable(num_squares):
-            num_squares = [num_squares, num_squares]
-        num_h, num_w = num_squares
+        num_squares_impl = num_h, num_w
+    elif square_shape_impl == 'auto':
+        assert num_squares_impl != 'auto'
+        if not ub.iterable(num_squares_impl):
+            num_squares_impl = [num_squares_impl, num_squares_impl]
+        num_squares_pair: Any = num_squares_impl
+        num_h, num_w = num_squares_pair
         w = max(gen_w // num_w, 1)
         h = max(gen_h // num_h, 1)
-        square_shape = (h, w)
+        square_shape_impl = (h, w)
     else:
-        if not ub.iterable(num_squares):
-            num_squares = [num_squares, num_squares]
-        if not ub.iterable(square_shape):
-            square_shape = [square_shape, square_shape]
+        if not ub.iterable(num_squares_impl):
+            num_squares_impl = [num_squares_impl, num_squares_impl]
+        if not ub.iterable(square_shape_impl):
+            square_shape_impl = [square_shape_impl, square_shape_impl]
 
-    num_h, num_w = num_squares
+    final_num_squares: Any = num_squares_impl
+    num_h, num_w = final_num_squares
 
     return h, w, num_h, num_w
 
 
-def _resolve_checkerboard_color_arg(value, dtype):
+def _resolve_checkerboard_color_arg(
+    value: CheckerValue, dtype: DTypeLike
+) -> Any:
     import kwimage
 
     if isinstance(value, str):
-        value = kwimage.Color(value).forimage(dtype)
+        color_impl: Any = kwimage.Color(value)
+        value = color_impl.forimage(dtype)
     return value
 
 
-def _next_power_of_two(x):
+def _next_power_of_two(x: int) -> int:
     """
     References:
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
@@ -902,7 +938,7 @@ def _next_power_of_two(x):
     return 2 ** (x - 1).bit_length()
 
 
-def _next_multiple_of_two(x):
+def _next_multiple_of_two(x: int) -> int:
     """
     References:
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
@@ -914,7 +950,7 @@ def _next_multiple_of_two(x):
     return x + (x % 2)
 
 
-def _next_multiple_of(x, m):
+def _next_multiple_of(x: int, m: int) -> int:
     """
     References:
         https://stackoverflow.com/questions/14267555/find-the-smallest-power-of-2-greater-than-or-equal-to-n-in-python
