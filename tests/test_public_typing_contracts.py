@@ -52,9 +52,73 @@ if TYPE_CHECKING:
         ConnectedComponentsInfo, ConnectedComponentsStatsInfo,
     )
     from kwimage.im_transform import ResizeInfo, WarpInfo
+    from kwimage.algo.algo_nms import NMSIndex, NMSIndices
+    from kwimage.im_draw import TextDrawInfo
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
+
+    assert_type(kwimage.imread('demo.png'), np.ndarray)
+    assert_type(kwimage.imwrite('demo.png', image), str)
+    assert_type(
+        kwimage.load_image_shape('demo.png'), tuple[int, int, int]
+    )
+    assert_type(
+        kwimage.load_image_shape('demo.png', include_channels=False),
+        tuple[int, int],
+    )
+
+    nms_ltrb = np.zeros((3, 4), dtype=np.float32)
+    nms_scores = np.zeros(3, dtype=np.float32)
+    assert_type(kwimage.available_nms_impls(), list[str])
+    assert_type(
+        kwimage.non_max_supression(nms_ltrb, nms_scores, 0.5),
+        NMSIndices,
+    )
+    assert_type(
+        kwimage.daq_spatial_nms(
+            nms_ltrb, nms_scores, diameter=10, thresh=0.5
+        ),
+        list[NMSIndex],
+    )
+
+    assert_type(kwimage.draw_text_on_image(image, 'text'), np.ndarray)
+    assert_type(
+        kwimage.draw_text_on_image(image, 'text', return_info=True),
+        tuple[np.ndarray, TextDrawInfo],
+    )
+    assert_type(
+        kwimage.draw_clf_on_image(image, ['class']), np.ndarray
+    )
+    assert_type(
+        kwimage.draw_boxes_on_image(
+            image, np.empty((0, 4)), box_format='xywh'
+        ),
+        np.ndarray,
+    )
+    draw_pts = np.empty((0, 2), dtype=np.float32)
+    assert_type(
+        kwimage.draw_line_segments_on_image(image, draw_pts, draw_pts),
+        np.ndarray,
+    )
+    draw_field = np.zeros((16, 20), dtype=np.float32)
+    assert_type(kwimage.make_heatmask(draw_field), np.ndarray)
+    assert_type(kwimage.make_orimask(draw_field), np.ndarray)
+    assert_type(
+        kwimage.make_vector_field(draw_field, draw_field, alpha=False),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.draw_vector_field(
+            image, draw_field, draw_field, alpha=False
+        ),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.draw_header_text(image, 'header'), np.ndarray
+    )
+    assert_type(kwimage.fill_nans_with_checkers(draw_field), np.ndarray)
+    assert_type(kwimage.nodata_checkerboard(draw_field), np.ndarray)
 
     assert_type(kwimage.warp_image(image, np.eye(3)), np.ndarray)
     assert_type(

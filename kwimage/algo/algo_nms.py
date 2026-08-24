@@ -13,9 +13,18 @@ import numpy as np
 import ubelt as ub
 
 if TYPE_CHECKING:
-    from typing import Tuple
+    from collections.abc import Callable, Collection, Sequence
+    from typing import Literal, Tuple, TypeAlias
 
     from numpy import ndarray
+    from numpy.typing import NDArray
+
+    from kwimage._typing import ArrayData
+
+    NMSIndex: TypeAlias = int | np.integer[Any]
+    NMSList: TypeAlias = list[int] | list[np.integer[Any]]
+    NMSIndices: TypeAlias = NDArray[np.integer[Any]] | NMSList
+    NMSImpl: TypeAlias = str | Sequence[str]
 
 
 def daq_spatial_nms(
@@ -26,9 +35,9 @@ def daq_spatial_nms(
     max_depth: int = 6,
     stop_size: int = 2048,
     recsize: int = 2048,
-    impl: str = 'auto',
-    device_id: Any | None = None,
-):
+    impl: NMSImpl = 'auto',
+    device_id: int | None = None,
+) -> list[NMSIndex]:
     """
     Divide and conquer speedup non-max-supression algorithm for when bboxes
     have a known max size
@@ -122,7 +131,8 @@ def daq_spatial_nms(
                 impl=impl,
                 device_id=device_id,
             )
-            rk = set(nr_arr[rectified_keep])
+            rectified_keep_impl: Any = rectified_keep
+            rk = set(nr_arr[rectified_keep_impl])
             keep = sorted((bk - nr) | rk)
         return keep
 
@@ -205,10 +215,11 @@ def daq_spatial_nms(
                 needs_rectify = set()
         return both_keep, needs_rectify
 
-    if not ub.iterable(diameter):
-        diameter_wh = [diameter, diameter]
+    diameter_impl: Any = diameter
+    if not ub.iterable(diameter_impl):
+        diameter_wh = [diameter_impl, diameter_impl]
     else:
-        diameter_wh = diameter[::-1]
+        diameter_wh = diameter_impl[::-1]
 
     depth = 0
     dim = 0
@@ -219,16 +230,17 @@ def daq_spatial_nms(
     return keep
 
 
-_impls = None
+_impls: Any = None
 
 
 class _NMS_Impls:
     # TODO: could make this prettier
     def __init__(self) -> None:
-        self._funcs = None
+        self._funcs: dict[str, Callable[..., Any]] | None = None
+        self._valid: frozenset[str] = frozenset()
 
-    def _lazy_init(self):
-        _funcs = {}
+    def _lazy_init(self) -> None:
+        _funcs: dict[str, Callable[..., Any]] = {}
         from kwimage import _internal
 
         try:
@@ -245,7 +257,8 @@ class _NMS_Impls:
             from packaging.version import parse as LooseVersion
         except ImportError:
             from distutils.version import LooseVersion
-        recent_numpy = LooseVersion(np.__version__) >= LooseVersion('1.20.0')
+        loose_version: Any = LooseVersion
+        recent_numpy = loose_version(np.__version__) >= loose_version('1.20.0')
 
         if torch is not None and recent_numpy:
             _funcs['torch'] = torch_nms.torch_nms
@@ -296,13 +309,13 @@ class _NMS_Impls:
                     'optional gpu_nms is not available: {}'.format(str(ex))
                 )
         self._funcs = _funcs
-        self._valid = frozenset(_impls._funcs.keys())
+        self._valid = frozenset(_funcs.keys())
 
 
 _impls = _NMS_Impls()
 
 
-def available_nms_impls():
+def available_nms_impls() -> list[str]:
     """
     List available values for the `impl` kwarg of `non_max_supression`
 
@@ -317,11 +330,16 @@ def available_nms_impls():
     """
     if not _impls._funcs:
         _impls._lazy_init()
-    return list(_impls._funcs.keys())
+    funcs: Any = _impls._funcs
+    return list(funcs.keys())
 
 
 # @ub.memoize
-def _heuristic_auto_nms_impl(code, num, valid=None):
+def _heuristic_auto_nms_impl(
+    code: Literal['tensor0', 'tensor', 'ndarray'],
+    num: int,
+    valid: Collection[str] | None = None,
+) -> str:
     """
     Defined with help from ``~/code/kwimage/dev/bench/bench_nms.py``
 
@@ -417,14 +435,14 @@ def _heuristic_auto_nms_impl(code, num, valid=None):
 
 
 def non_max_supression(
-    ltrb: ndarray,
-    scores: ndarray,
+    ltrb: ArrayData,
+    scores: ArrayData,
     thresh: float,
     bias: float = 0.0,
-    classes: ndarray | None = None,
-    impl: str = 'auto',
+    classes: ArrayData | None = None,
+    impl: NMSImpl = 'auto',
     device_id: int | None = None,
-):
+) -> NMSIndices:
     """
     Non-Maximum Suppression - remove redundant bounding boxes
 
@@ -571,120 +589,145 @@ def non_max_supression(
         >>> print('solutions = {}'.format(ub.urepr(solutions, nl=1)))
         >>> assert ub.allsame(solutions.values())
     """
-    if impl == 'cpu':
+    ltrb_impl: Any = ltrb
+    scores_impl: Any = scores
+    classes_impl: Any = classes
+    impl_choice: Any = impl
+
+    if impl_choice == 'cpu':
         warnings.warn(
             'impl="cpu" is deprecated use impl="cython_cpu" instead',
             DeprecationWarning,
         )
-        impl = 'cython_cpu'
-    elif impl == 'gpu':
+        impl_choice = 'cython_cpu'
+    elif impl_choice == 'gpu':
         warnings.warn(
             'impl="gpu" is deprecated use impl="cython_gpu" instead',
             DeprecationWarning,
         )
-        impl = 'cython_gpu'
-    elif impl == 'py':
+        impl_choice = 'cython_gpu'
+    elif impl_choice == 'py':
         warnings.warn(
             'impl="py" is deprecated use impl="numpy" instead',
             DeprecationWarning,
         )
-        impl = 'numpy'
+        impl_choice = 'numpy'
 
     if not _impls._funcs:
         _impls._lazy_init()
+    impl_funcs: Any = _impls._funcs
 
-    torch = sys.modules.get('torch', None)
+    torch: Any = sys.modules.get('torch', None)
 
-    if ltrb.shape[0] == 0:
+    if ltrb_impl.shape[0] == 0:
         return []
 
-    if impl == 'auto':
-        is_tensor = torch is not None and torch.is_tensor(ltrb)
-        num = len(ltrb)
+    if impl_choice == 'auto':
+        is_tensor = torch is not None and torch.is_tensor(ltrb_impl)
+        num = len(ltrb_impl)
         if is_tensor:
-            if ltrb.device.type == 'cuda':
+            if ltrb_impl.device.type == 'cuda':
                 code = 'tensor0'
             else:
                 code = 'tensor'
         else:
             code = 'ndarray'
         valid = _impls._valid
-        impl = _heuristic_auto_nms_impl(code, num, valid)
+        impl_choice = _heuristic_auto_nms_impl(code, num, valid)
         # print('impl._valid = {!r}'.format(_impls._valid))
         # print('impl = {!r}'.format(impl))
 
-    elif ub.iterable(impl):
+    elif ub.iterable(impl_choice):
         # if impl is iterable, it is a preference order
         found = False
-        for item in impl:
-            if item in _impls._funcs:
-                impl = item
+        for item in impl_choice:
+            if item in impl_funcs:
+                impl_choice = item
                 found = True
                 break
         if not found:
-            raise KeyError('Unknown impls={}'.format(impl))
+            raise KeyError('Unknown impls={}'.format(impl_choice))
 
-    if classes is not None:
+    if classes_impl is not None:
         keep = []
-        for idxs in ub.group_items(range(len(classes)), classes).values():
+        for idxs in ub.group_items(
+            range(len(classes_impl)), classes_impl
+        ).values():
             # cls_ltrb = ltrb.take(idxs, axis=0)
             # cls_scores = scores.take(idxs, axis=0)
-            cls_ltrb = ltrb[idxs]
-            cls_scores = scores[idxs]
+            cls_ltrb = ltrb_impl[idxs]
+            cls_scores = scores_impl[idxs]
             cls_keep = non_max_supression(
-                cls_ltrb, cls_scores, thresh=thresh, bias=bias, impl=impl
+                cls_ltrb,
+                cls_scores,
+                thresh=thresh,
+                bias=bias,
+                impl=impl_choice,
             )
-            keep.extend(list(ub.take(idxs, cls_keep)))
+            cls_keep_impl: Any = cls_keep
+            keep.extend(list(ub.take(idxs, cls_keep_impl)))
         return keep
     else:
-        if impl == 'numpy':
-            api = kwarray.ArrayAPI.coerce(ltrb)
-            ltrb = api.numpy(ltrb)
-            scores = api.numpy(scores)
-            func = _impls._funcs['numpy']
-            keep = func(ltrb, scores, thresh, bias=float(bias))
-        elif impl == 'torch' or impl == 'torchvision':
-            api = kwarray.ArrayAPI.coerce(ltrb)
-            ltrb = api.tensor(ltrb).float()
-            scores = api.tensor(scores).float()
+        if impl_choice == 'numpy':
+            api = kwarray.ArrayAPI.coerce(ltrb_impl)
+            ltrb_impl = api.numpy(ltrb_impl)
+            scores_impl = api.numpy(scores_impl)
+            func = impl_funcs['numpy']
+            keep = func(
+                ltrb_impl, scores_impl, thresh, bias=float(bias)
+            )
+        elif impl_choice == 'torch' or impl_choice == 'torchvision':
+            api = kwarray.ArrayAPI.coerce(ltrb_impl)
+            ltrb_impl = api.tensor(ltrb_impl).float()
+            scores_impl = api.tensor(scores_impl).float()
             # Default output of torch impl is a mask
-            if impl == 'torchvision':
+            if impl_choice == 'torchvision':
                 # if bias != 1:
                 #     warnings.warn('torchvision only supports bias==1')
-                func = _impls._funcs['torchvision']
+                func = impl_funcs['torchvision']
                 # Torchvision returns indices
-                keep = func(ltrb, scores, iou_threshold=thresh)
+                keep = func(ltrb_impl, scores_impl, iou_threshold=thresh)
             else:
-                func = _impls._funcs['torch']
-                flags = func(ltrb, scores, thresh=thresh, bias=float(bias))
+                func = impl_funcs['torch']
+                flags = func(
+                    ltrb_impl,
+                    scores_impl,
+                    thresh=thresh,
+                    bias=float(bias),
+                )
                 keep = torch.nonzero(flags).view(-1)
 
             # Ensure than input type is the same as output type
             keep = api.numpy(keep)
         else:
             # TODO: it would be nice to be able to pass torch tensors here
-            nms = _impls._funcs[impl]
-            ltrb = kwarray.ArrayAPI.numpy(ltrb)
-            scores = kwarray.ArrayAPI.numpy(scores)
-            ltrb = ltrb.astype(np.float32)
-            scores = scores.astype(np.float32)
-            if impl == 'cython_gpu':
+            nms = impl_funcs[impl_choice]
+            ltrb_impl = kwarray.ArrayAPI.numpy(ltrb_impl)
+            scores_impl = kwarray.ArrayAPI.numpy(scores_impl)
+            ltrb_impl = ltrb_impl.astype(np.float32)
+            scores_impl = scores_impl.astype(np.float32)
+            if impl_choice == 'cython_gpu':
                 # TODO: if the data is already on a torch GPU can we just
                 # use it?
                 # HACK: we should parameterize which device is used
                 if device_id is None:
                     device_id = torch.cuda.current_device()
                 keep = nms(
-                    ltrb,
-                    scores,
+                    ltrb_impl,
+                    scores_impl,
                     float(thresh),
                     bias=float(bias),
                     device_id=device_id,
                 )
-            elif impl == 'cython_cpu':
-                keep = nms(ltrb, scores, float(thresh), bias=float(bias))
+            elif impl_choice == 'cython_cpu':
+                keep = nms(
+                    ltrb_impl,
+                    scores_impl,
+                    float(thresh),
+                    bias=float(bias),
+                )
             else:
-                raise KeyError(impl)
+                raise KeyError(impl_choice)
         return keep
 
 

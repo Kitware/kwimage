@@ -28,8 +28,7 @@ from kwimage._backend_info import import_gdal
 OPENCV_DEFAULT_MAX_IMAGE_PIXELS = 1 << 30
 
 if _t.TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Literal, TypeAlias, overload
+    from typing import Any, Literal, TypeAlias, overload
     # from numpy.typing import NDArray
 
     PathLike: TypeAlias = str | os.PathLike[str]
@@ -45,23 +44,6 @@ if _t.TYPE_CHECKING:
         'svg',
     ]
     ColorSpace: TypeAlias = str | None
-
-    @overload
-    def load_image_shape(
-        fpath: PathLike,
-        backend: BackendName | Sequence[BackendName] = 'auto',
-        *,
-        include_channels: Literal[True] = True,
-    ) -> tuple[int, int, int]: ...
-
-    @overload
-    def load_image_shape(
-        fpath: PathLike,
-        backend: BackendName | Sequence[BackendName] = 'auto',
-        *,
-        include_channels: Literal[False],
-    ) -> tuple[int, int]: ...
-
 
 __all__ = [
     'imread',
@@ -130,7 +112,7 @@ def imread(
     fpath: os.PathLike[str] | str,
     space: str | None = 'auto',
     backend: str = 'auto',
-    **kw,
+    **kw: Any,
 ) -> np.ndarray:
     r"""
     Reads image data in a specified format using some backend implementation.
@@ -616,6 +598,8 @@ def _imread_pil(fpath: str) -> tuple[np.ndarray, str | None, str | None]:
 
     pil_img = Image.open(fpath)
     image = np.array(pil_img)
+    src_space: str | None = None
+    auto_dst_space: str | None = None
     if pil_img.mode == 'RGB':
         src_space = 'rgb'
         auto_dst_space = 'rgb'
@@ -693,7 +677,7 @@ def _imread_gdal(
     ignore_color_table: bool = False,
     nodata_method: str | None = None,
     band_indices: list[int] | None = None,
-    nodata=None,
+    nodata: Any = None,
 ) -> tuple[np.ndarray, str | None, str | None]:
     """
     gdal imread backend
@@ -885,14 +869,14 @@ def _imread_gdal(
 
 
 def _gdal_read(
-    gdal_dset,
+    gdal_dset: Any,
     overview: int | str | None,
-    nodata=None,
+    nodata: Any = None,
     ignore_color_table: bool | None = None,
     band_indices: list[int] | range | None = None,
     gdalkw: dict[str, int] | None = None,
     nodata_method: str | None = None,
-    nodata_value=None,
+    nodata_value: Any = None,
 ) -> tuple[np.ndarray, int]:
     """
     Backend for reading data from an open gdal dataset
@@ -901,6 +885,8 @@ def _gdal_read(
     if nodata is not None:
         # backwards compat
         nodata_method = nodata
+
+    gdalkw_impl: Any = gdalkw
 
     # TODO:
     # - [ ] Handle SubDatasets (e.g. ones produced by scikit-image)
@@ -962,18 +948,18 @@ def _gdal_read(
 
         color_table = None if ignore_color_table else band.GetColorTable()
         if color_table is None:
-            buf = band.ReadAsArray(**gdalkw)
+            buf = band.ReadAsArray(**gdalkw_impl)
             if buf is None:
                 # Sometimes this works if you try again. I don't know why.
                 # It spits out annoying messages, not sure how to supress.
                 # TODO: need MWE and an issue describing this workaround.
-                buf = band.ReadAsArray(**gdalkw)
+                buf = band.ReadAsArray(**gdalkw_impl)
                 if buf is None:
                     raise IOError('GDal was unable to read this band')
             image = np.array(buf)
         else:
             # The buffer is an index into the color table
-            buf = band.ReadAsArray(**gdalkw)
+            buf = band.ReadAsArray(**gdalkw_impl)
 
             gdal_dtype = color_table.GetPaletteInterpretation()
             dtype = _gdal_to_numpy_dtype(gdal_dtype)
@@ -1003,8 +989,8 @@ def _gdal_read(
                 mask = np.tile(mask[:, :, None], (1, 1, table_chans))
     else:
         band0 = bands[0]
-        xsize = gdalkw.get('win_xsize', band0.XSize)
-        ysize = gdalkw.get('win_ysize', band0.YSize)
+        xsize = gdalkw_impl.get('win_xsize', band0.XSize)
+        ysize = gdalkw_impl.get('win_ysize', band0.YSize)
         gdal_dtype = band0.DataType
         dtype = _gdal_to_numpy_dtype(gdal_dtype)
         shape = (ysize, xsize, num_channels)
@@ -1015,7 +1001,7 @@ def _gdal_read(
         for idx, band in enumerate(bands):
             # load with less memory by specifing buf_obj
             buf = image[:, :, idx]
-            ret = band.ReadAsArray(buf_obj=buf, **gdalkw)
+            ret = band.ReadAsArray(buf_obj=buf, **gdalkw_impl)
             # ret = buf = band.ReadAsArray(**gdalkw)
             if ret is None:
                 raise IOError(
@@ -1051,7 +1037,7 @@ def imwrite(
     image: np.ndarray,
     space: str | None = 'auto',
     backend: str = 'auto',
-    **kwargs,
+    **kwargs: Any,
 ) -> str:
     """
     Writes image data to disk.
@@ -1362,8 +1348,12 @@ def imwrite(
                 raise AssertionError('impossible state')
         from kwimage import im_cv2
 
+        src_space_impl: Any = src_space
         image = im_cv2.convert_colorspace(
-            image, src_space=src_space, dst_space=dst_space, implicit=False
+            image,
+            src_space=src_space_impl,
+            dst_space=dst_space,
+            implicit=False,
         )
 
     try:
@@ -1442,7 +1432,9 @@ def imwrite(
     return fpath
 
 
-def _cv2_imwrite_failure_diagnostic(fpath, image) -> tuple[str, str]:
+def _cv2_imwrite_failure_diagnostic(
+    fpath: str, image: np.ndarray
+) -> tuple[str, str]:
     """
     Build a diagnostic message for cases where cv2.imwrite returns False
     without raising cv2.error.
@@ -1554,6 +1546,29 @@ def opencv_max_image_pixels() -> int:
             OPENCV_DEFAULT_MAX_IMAGE_PIXELS,
         )
     )
+
+
+if _t.TYPE_CHECKING:
+    @overload
+    def load_image_shape(
+        fpath: PathLike,
+        backend: str | list[str] = 'auto',
+        include_channels: Literal[True] = True,
+    ) -> tuple[int, int, int]: ...
+
+    @overload
+    def load_image_shape(
+        fpath: PathLike,
+        backend: str | list[str] = 'auto',
+        include_channels: Literal[False] = False,
+    ) -> tuple[int, int]: ...
+
+    @overload
+    def load_image_shape(
+        fpath: PathLike,
+        backend: str | list[str] = 'auto',
+        include_channels: bool = True,
+    ) -> tuple[int, int] | tuple[int, int, int]: ...
 
 
 def load_image_shape(
@@ -1813,18 +1828,18 @@ def __inspect_optional_overhead():
 def _imwrite_cloud_optimized_geotiff(
     fpath: os.PathLike[str] | str,
     data: np.ndarray,
-    compress='auto',
-    blocksize=256,
-    overviews=None,
-    overview_resample='NEAREST',
-    interleave='PIXEL',
-    options=None,
-    nodata=None,
-    nodata_value=None,
-    metadata=None,
-    crs=None,
-    transform=None,
-):
+    compress: str = 'auto',
+    blocksize: int | None = 256,
+    overviews: str | int | list[int] | None = None,
+    overview_resample: str = 'NEAREST',
+    interleave: str = 'PIXEL',
+    options: list[str] | None = None,
+    nodata: Any = None,
+    nodata_value: Any = None,
+    metadata: dict[str, Any] | None = None,
+    crs: str | None = None,
+    transform: Any = None,
+) -> os.PathLike[str] | str:
     """
     Writes data as a cloud-optimized geotiff using gdal
 
@@ -2173,7 +2188,7 @@ def _imwrite_cloud_optimized_geotiff(
     return fpath
 
 
-def _numpy_to_gdal_dtype(numpy_dtype) -> int:
+def _numpy_to_gdal_dtype(numpy_dtype: Any) -> int:
     """
     maps numpy dtypes to gdal dtypes
     """
@@ -2206,7 +2221,7 @@ def _numpy_to_gdal_dtype(numpy_dtype) -> int:
     return eType
 
 
-def _gdal_to_numpy_dtype(gdal_dtype) -> type:
+def _gdal_to_numpy_dtype(gdal_dtype: int) -> type[np.generic]:
     """
     maps gdal dtypes to numpy dtypes
 
@@ -2225,9 +2240,10 @@ def _gdal_to_numpy_dtype(gdal_dtype) -> type:
     """
     gdal = import_gdal()
 
+    np_impl: Any = np
     try:
         # For numpy < 2.0
-        complex_ = np.complex_
+        complex_ = np_impl.complex_
     except AttributeError:
         # For numpy >= 2.0
         complex_ = np.complex128
@@ -2249,7 +2265,9 @@ def _gdal_to_numpy_dtype(gdal_dtype) -> type:
 
 
 def _gdal_auto_compress(
-    src_fpath: str | None = None, data: np.ndarray | None = None, data_set=None
+    src_fpath: str | None = None,
+    data: np.ndarray | None = None,
+    data_set: Any = None,
 ) -> str:
     """
     Heuristic for automatically choosing gdal compression type
@@ -2318,7 +2336,7 @@ def _gdal_auto_compress(
     return compress
 
 
-def _dtype_equality(dtype1, dtype2) -> bool:
+def _dtype_equality(dtype1: Any, dtype2: Any) -> bool:
     """
     Check for numpy dtype equality
 
@@ -2373,7 +2391,7 @@ def _imread_svg(fpath: str) -> tuple[np.ndarray, str, str]:
     return imdata, src_space, auto_dst_space
 
 
-def _imread_exif(fpath: os.PathLike[str] | str) -> dict:
+def _imread_exif(fpath: os.PathLike[str] | str) -> dict[str, Any]:
     """
     Read EXIF data into a dictionary. API is experimental.
 
@@ -2442,7 +2460,7 @@ def _imread_exif(fpath: os.PathLike[str] | str) -> dict:
     return exif_dict
 
 
-def _rekey_exif_dict(raw_exif: dict) -> dict:
+def _rekey_exif_dict(raw_exif: dict[Any, Any]) -> dict[str, Any]:
     import piexif
 
     mappers = {}

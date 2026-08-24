@@ -329,3 +329,55 @@ parameters and does not materialize image data. No arrays are copied or coerced
 for typing, and no loops, validation passes, backend transfers, or vectorized
 operations are replaced. `_auto_kernel_sigma` now returns separate typed result
 locals instead of reusing its union-typed input parameter names.
+
+## 2026-08-24 15:35:00 -0400
+
+Started the next public image API phase across `im_io.py`,
+`algo/algo_nms.py`, and `im_draw.py`. The root image I/O functions now have
+static contract coverage including literal-aware `load_image_shape` results.
+NMS advertises NumPy/Torch-compatible input data and a concrete index-result
+union while its backend representation switching is isolated behind local
+dynamic views. Drawing helpers now publish ndarray results consistently,
+`draw_text_on_image` distinguishes `return_info=True`, and the vector/color
+surfaces reflect the input forms the implementations already accept.
+
+The implementation changes are annotation and local-reference oriented. No
+NumPy/Torch vectorized operation was replaced with a Python loop, and no array
+copy/coercion/materialization was added for typing. Optional GDAL/OpenCV/Pillow
+backend details remain private dynamic boundaries where appropriate. The three
+modules are removed from the blanket `ty` override so the maintainer's local
+`ty check kwimage tests/` can expose any remaining stub-specific body
+correlations for a focused cleanup pass.
+
+## 2026-08-24 16:27:00 -0400
+
+Follow-up to the `im_io.py` / `algo_nms.py` / `im_draw.py` unsuppression pass
+addresses the 33 checker diagnostics reported from the maintainer's v24 tree.
+The fixes preserve the public contracts and isolate stub/runtime mismatches with
+local implementation views: NumPy-vs-Python NMS indices, the version-parser
+fallback, Pillow point/bbox typing, text-canvas representation changes,
+`ubelt.udict` key selection, NumPy masked-array reduction, optional GDAL keyword
+state, and the NumPy 1.x `complex_` compatibility attribute.
+
+No array materialization, copying, validation pass, or Python replacement for a
+vectorized operation was added. The AST counts for loops/comprehensions,
+`np.array`, `np.asarray`, and `.copy()` calls are unchanged in all three target
+modules relative to v24. `_imwrite_cloud_optimized_geotiff` now advertises the
+path-like-or-string value it already returns instead of promising a string.
+Python 3.10 parsing and `compileall` pass in the sandbox; local `ty` remains the
+authoritative checker because the sandbox cannot fetch or run it.
+
+
+## 2026-08-24 16:38:00 -0400
+
+The v25 local checker run reduced the `im_io.py` / NMS / drawing phase to three
+implementation-only diagnostics. `NMSIndices` now models Python-int lists and
+NumPy-integer lists as separate invariant list alternatives instead of
+`list[int | np.integer]`; this matches the actual backend families without
+weakening the public result contract. The text-border dictionary and NumPy
+`logical_or.reduce` call use local dynamic views so checker limitations do not
+leak into public signatures.
+
+No runtime conversion, array materialization, copy, validation, or replacement
+of vectorized work was introduced. The `logical_or.reduce` operation itself is
+unchanged; only its receiver is viewed dynamically for the stub boundary.

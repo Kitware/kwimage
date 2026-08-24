@@ -125,10 +125,7 @@ src.include = [
 # Typing debt burn-down list. Remove entries as modules become ty-clean.
 [[tool.ty.overrides]]
 include = [
-  "kwimage/algo/algo_nms.py",
   "kwimage/im_demodata.py",
-  "kwimage/im_draw.py",
-  "kwimage/im_io.py",
   "kwimage/im_filter.py",
   "kwimage/im_runlen.py",
   "kwimage/im_stack.py",
