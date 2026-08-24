@@ -16,12 +16,17 @@ import numpy as np
 import ubelt as ub
 
 if TYPE_CHECKING:
-    from typing import Any, Sequence, Tuple
+    from typing import Any, Sequence, Tuple, overload
+
+    from numpy import ndarray
+    from torch import Tensor
+
+    from kwimage._typing import ArrayData
 
 
 def _coordinate_grid(
     dims: Sequence[int], align_corners: bool = False
-) -> Any:
+) -> Tensor:
     """
     Creates a homogenous coordinate system.
 
@@ -105,7 +110,7 @@ def warp_tensor(
     ishomog: bool | None = None,
     align_corners: bool = False,
     new_mode: bool = False,
-) -> Any:
+) -> Tensor:
     r"""
     A pytorch implementation of warp affine that works similarly to
     :func:`cv2.warpAffine` and :func:`cv2.warpPerspective`.
@@ -591,12 +596,37 @@ def warp_tensor(
     return outputs
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_align(
+        dst: ndarray,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> tuple[ndarray, tuple[slice, ...]]: ...
+
+    @overload
+    def subpixel_align(
+        dst: Tensor,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> tuple[Tensor, tuple[slice, ...]]: ...
+
+    @overload
+    def subpixel_align(
+        dst: ArrayData,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> tuple[ArrayData, tuple[slice, ...]]: ...
+
 def subpixel_align(
     dst: Any,
     src: Any,
     index: Sequence[slice],
     interp_axes: Sequence[int] | None = None,
-) -> tuple[Any, tuple[slice, ...]]:
+) -> tuple[ArrayData, tuple[slice, ...]]:
     """
     Returns an aligned version of the source tensor and destination index.
 
@@ -683,12 +713,37 @@ def subpixel_align(
     return aligned_src, aligned_index
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_set(
+        dst: ndarray,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_set(
+        dst: Tensor,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_set(
+        dst: ArrayData,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ArrayData: ...
+
 def subpixel_set(
     dst: Any,
     src: Any,
-    index: tuple[slice, ...],
-    interp_axes: tuple[int, ...] | None = None,
-) -> Any:
+    index: Sequence[slice],
+    interp_axes: Sequence[int] | None = None,
+) -> ArrayData:
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -734,12 +789,37 @@ def subpixel_set(
     return dst
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_accum(
+        dst: ndarray,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_accum(
+        dst: Tensor,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_accum(
+        dst: ArrayData,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ArrayData: ...
+
 def subpixel_accum(
     dst: Any,
     src: Any,
-    index: tuple[slice, ...],
-    interp_axes: tuple[int, ...] | None = None,
-) -> Any:
+    index: Sequence[slice],
+    interp_axes: Sequence[int] | None = None,
+) -> ArrayData:
     """
     Add the source values array into the destination array at a particular
     subpixel index.
@@ -847,12 +927,37 @@ def subpixel_accum(
     return dst
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_maximum(
+        dst: ndarray,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_maximum(
+        dst: Tensor,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_maximum(
+        dst: ArrayData,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ArrayData: ...
+
 def subpixel_maximum(
     dst: Any,
     src: Any,
-    index: tuple[slice, ...],
-    interp_axes: tuple[int, ...] | None = None,
-) -> Any:
+    index: Sequence[slice],
+    interp_axes: Sequence[int] | None = None,
+) -> ArrayData:
     """
     Take the max of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -891,12 +996,37 @@ def subpixel_maximum(
     return dst
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_minimum(
+        dst: ndarray,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_minimum(
+        dst: Tensor,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_minimum(
+        dst: ArrayData,
+        src: Any,
+        index: Sequence[slice],
+        interp_axes: Sequence[int] | None = None,
+    ) -> ArrayData: ...
+
 def subpixel_minimum(
     dst: Any,
     src: Any,
-    index: tuple[slice, ...],
-    interp_axes: tuple[int, ...] | None = None,
-) -> Any:
+    index: Sequence[slice],
+    interp_axes: Sequence[int] | None = None,
+) -> ArrayData:
     """
     Take the min of the source values array into and the destination array at a
     particular subpixel index. Modifies the destination array.
@@ -935,7 +1065,23 @@ def subpixel_minimum(
     return dst
 
 
-def subpixel_slice(inputs: Any, index: tuple[slice, ...]) -> Any:
+if TYPE_CHECKING:
+    @overload
+    def subpixel_slice(
+        inputs: ndarray, index: Sequence[slice]
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_slice(
+        inputs: Tensor, index: Sequence[slice]
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_slice(
+        inputs: ArrayData, index: Sequence[slice]
+    ) -> ArrayData: ...
+
+def subpixel_slice(inputs: Any, index: Sequence[slice]) -> ArrayData:
     """
     Take a subpixel slice from a larger image.  The returned output is
     left-aligned with the requested slice.
@@ -1014,12 +1160,37 @@ def subpixel_slice(inputs: Any, index: tuple[slice, ...]) -> Any:
     return outputs
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_translate(
+        inputs: ndarray,
+        shift: Any,
+        interp_axes: Any = None,
+        output_shape: Any = None,
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_translate(
+        inputs: Tensor,
+        shift: Any,
+        interp_axes: Any = None,
+        output_shape: Any = None,
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_translate(
+        inputs: ArrayData,
+        shift: Any,
+        interp_axes: Any = None,
+        output_shape: Any = None,
+    ) -> ArrayData: ...
+
 def subpixel_translate(
     inputs: Any,
     shift: Any,
     interp_axes: Any = None,
     output_shape: Any = None,
-) -> Any:
+) -> ArrayData:
     """
     Translates an image by a subpixel shift value using bilinear interpolation
 
@@ -1480,7 +1651,23 @@ def _warp_tensor_cv2(inputs, mat, output_dims, mode='linear', ishomog=None):
     return outputs
 
 
-def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide') -> Any:
+if TYPE_CHECKING:
+    @overload
+    def warp_points(
+        matrix: ndarray, pts: ndarray, homog_mode: str = 'divide'
+    ) -> ndarray: ...
+
+    @overload
+    def warp_points(
+        matrix: Tensor, pts: Tensor, homog_mode: str = 'divide'
+    ) -> Tensor: ...
+
+    @overload
+    def warp_points(
+        matrix: ArrayData, pts: ArrayData, homog_mode: str = 'divide'
+    ) -> ArrayData: ...
+
+def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide') -> ArrayData:
     """
     Warp ND points / coordinates using a transformation matrix.
 
@@ -1600,7 +1787,17 @@ def warp_points(matrix: Any, pts: Any, homog_mode: str = 'divide') -> Any:
     return new_pts
 
 
-def remove_homog(pts: Any, mode: str = 'divide') -> Any:
+if TYPE_CHECKING:
+    @overload
+    def remove_homog(pts: ndarray, mode: str = 'divide') -> ndarray: ...
+
+    @overload
+    def remove_homog(pts: Tensor, mode: str = 'divide') -> Tensor: ...
+
+    @overload
+    def remove_homog(pts: ArrayData, mode: str = 'divide') -> ArrayData: ...
+
+def remove_homog(pts: Any, mode: str = 'divide') -> ArrayData:
     """
     Remove homogenous coordinate to a point array.
 
@@ -1630,7 +1827,17 @@ def remove_homog(pts: Any, mode: str = 'divide') -> Any:
     return new_pts
 
 
-def add_homog(pts: Any) -> Any:
+if TYPE_CHECKING:
+    @overload
+    def add_homog(pts: ndarray) -> ndarray: ...
+
+    @overload
+    def add_homog(pts: Tensor) -> Tensor: ...
+
+    @overload
+    def add_homog(pts: ArrayData) -> ArrayData: ...
+
+def add_homog(pts: Any) -> ArrayData:
     """
     Add a homogenous coordinate to a point array
 
@@ -1664,13 +1871,41 @@ def add_homog(pts: Any) -> Any:
     return new_pts
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_getvalue(
+        img: ndarray,
+        pts: Any,
+        coord_axes: Sequence[int] | None = None,
+        interp: str = 'bilinear',
+        bordermode: str = 'edge',
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_getvalue(
+        img: Tensor,
+        pts: Any,
+        coord_axes: Sequence[int] | None = None,
+        interp: str = 'bilinear',
+        bordermode: str = 'edge',
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_getvalue(
+        img: ArrayData,
+        pts: Any,
+        coord_axes: Sequence[int] | None = None,
+        interp: str = 'bilinear',
+        bordermode: str = 'edge',
+    ) -> ArrayData: ...
+
 def subpixel_getvalue(
     img: Any,
     pts: Any,
-    coord_axes: Sequence | None = None,
+    coord_axes: Sequence[int] | None = None,
     interp: str = 'bilinear',
     bordermode: str = 'edge',
-) -> Any:
+) -> ArrayData:
     """
     Get values at subpixel locations
 
@@ -1755,14 +1990,45 @@ def subpixel_getvalue(
     return subpxl_vals
 
 
+if TYPE_CHECKING:
+    @overload
+    def subpixel_setvalue(
+        img: ndarray,
+        pts: Any,
+        value: Any,
+        coord_axes: Sequence[int] | None = None,
+        interp: str = 'bilinear',
+        bordermode: str = 'edge',
+    ) -> ndarray: ...
+
+    @overload
+    def subpixel_setvalue(
+        img: Tensor,
+        pts: Any,
+        value: Any,
+        coord_axes: Sequence[int] | None = None,
+        interp: str = 'bilinear',
+        bordermode: str = 'edge',
+    ) -> Tensor: ...
+
+    @overload
+    def subpixel_setvalue(
+        img: ArrayData,
+        pts: Any,
+        value: Any,
+        coord_axes: Sequence[int] | None = None,
+        interp: str = 'bilinear',
+        bordermode: str = 'edge',
+    ) -> ArrayData: ...
+
 def subpixel_setvalue(
     img: Any,
     pts: Any,
     value: Any,
-    coord_axes: Sequence | None = None,
+    coord_axes: Sequence[int] | None = None,
     interp: str = 'bilinear',
     bordermode: str = 'edge',
-) -> Any:
+) -> ArrayData:
     """
     Set values at subpixel locations
 

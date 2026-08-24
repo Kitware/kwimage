@@ -507,3 +507,12 @@ pair unpacking. The second branch now uses its own fresh alias instead of
 reusing the first branch's local, and `h`/`w` are restored to `int`. This is
 an annotation-only narrowing fix: no cast call, validation, coercion, copy,
 materialization, or control-flow change is added.
+
+
+## 2026-08-24: v34 util_warp public typing
+
+- Audited the deferred `util_warp` root API after the blanket suppression burn-down.
+- Added backend-preserving NumPy/Torch overloads for the subpixel helpers, `warp_points`, `add_homog`, and `remove_homog`.
+- `warp_tensor` and `_coordinate_grid` now expose their actual Torch return type.
+- Broadened subpixel slice/index annotations from tuple-only to `Sequence[slice]`, matching existing list-based examples without changing runtime behavior.
+- Kept dynamic kwarray backend dispatch inside implementation bodies; no array conversion, copy, materialization, or loop was added for typing.

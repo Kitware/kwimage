@@ -106,6 +106,82 @@ if TYPE_CHECKING:
         kwimage.rle_translate(encoded, (1, 2)), RunLengthEncoding
     )
 
+    warp_pts_np = np.zeros((3, 2), dtype=np.float32)
+    warp_mat_np = np.eye(3, dtype=np.float32)
+    assert_type(kwimage.warp_points(warp_mat_np, warp_pts_np), np.ndarray)
+    assert_type(kwimage.add_homog(warp_pts_np), np.ndarray)
+    assert_type(
+        kwimage.remove_homog(np.zeros((3, 3), dtype=np.float32)),
+        np.ndarray,
+    )
+
+    subpixel_np = np.zeros((5, 5), dtype=np.float32)
+    subpixel_src_np = np.ones((2, 2), dtype=np.float32)
+    subpixel_index = (slice(1, 3), slice(1, 3))
+    assert_type(
+        kwimage.subpixel_align(subpixel_np, subpixel_src_np, subpixel_index),
+        tuple[np.ndarray, tuple[slice, ...]],
+    )
+    assert_type(
+        kwimage.subpixel_set(subpixel_np, subpixel_src_np, subpixel_index),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.subpixel_accum(subpixel_np, subpixel_src_np, subpixel_index),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.subpixel_maximum(
+            subpixel_np, subpixel_src_np, subpixel_index
+        ),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.subpixel_minimum(
+            subpixel_np, subpixel_src_np, subpixel_index
+        ),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.subpixel_slice(subpixel_np, subpixel_index), np.ndarray
+    )
+    assert_type(
+        kwimage.subpixel_translate(subpixel_np, (0.5, -0.25)), np.ndarray
+    )
+    sample_pts_np = np.array([[1.0, 1.0]], dtype=np.float32)
+    assert_type(
+        kwimage.subpixel_getvalue(subpixel_np, sample_pts_np), np.ndarray
+    )
+    assert_type(
+        kwimage.subpixel_setvalue(subpixel_np, sample_pts_np, 0.0),
+        np.ndarray,
+    )
+
+    warp_pts_torch = torch.zeros((3, 2), dtype=torch.float32)
+    warp_mat_torch = torch.eye(3, dtype=torch.float32)
+    assert_type(
+        kwimage.warp_points(warp_mat_torch, warp_pts_torch), torch.Tensor
+    )
+    assert_type(kwimage.add_homog(warp_pts_torch), torch.Tensor)
+    assert_type(
+        kwimage.remove_homog(torch.zeros((3, 3))), torch.Tensor
+    )
+    subpixel_torch = torch.zeros((5, 5), dtype=torch.float32)
+    subpixel_src_torch = torch.ones((2, 2), dtype=torch.float32)
+    assert_type(
+        kwimage.subpixel_translate(subpixel_torch, (0.5, -0.25)),
+        torch.Tensor,
+    )
+    assert_type(
+        kwimage.subpixel_slice(subpixel_torch, subpixel_index), torch.Tensor
+    )
+    assert_type(
+        kwimage.warp_tensor(
+            subpixel_torch[None, None], warp_mat_torch, (5, 5)
+        ),
+        torch.Tensor,
+    )
+
     assert_type(kwimage.imread('demo.png'), np.ndarray)
     assert_type(kwimage.imwrite('demo.png', image), str)
     assert_type(
