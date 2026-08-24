@@ -11,18 +11,24 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import numpy as np
     from numbers import Number
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping, Sequence
     from matplotlib.patches import PathPatch
     from shapely.geometry import MultiPoint
     from shapely.geometry import MultiPolygon as ShapelyMultiPolygon
     from shapely.geometry import Polygon as ShapelyPolygon
     import torch
-    from typing import cast
+    from typing import Any, cast
     from typing_extensions import assert_type
 
     import kwimage
     from kwimage._typing import ArrayData, ImgAugKeypointsOnImage
+    from kwimage.structs.mask import (
+        CocoMaskRLE, MaskArea, MaskData,
+    )
     from kwimage.structs.points import CocoKeypoints
+    from kwimage.structs.segmentation import (
+        SegmentationBackend, SegmentationCoco,
+    )
     from kwimage.structs.polygon import (
         CocoPolygon, CocoPolygonDict, MultiPolygonGeoJSON, PolygonData,
         PolygonGeoJSON,
@@ -131,4 +137,67 @@ if TYPE_CHECKING:
     assert_type(
         polygon_list.to_coco(),
         Iterator[CocoPolygon | list[CocoPolygon] | None],
+    )
+
+    mask = kwimage.Mask(np.zeros((8, 8), dtype=np.uint8), 'c_mask')
+    assert_type(mask.data, MaskData)
+    assert_type(mask.dtype, np.dtype[Any] | torch.dtype)
+    assert_type(mask.shape, Sequence[int] | None)
+    assert_type(mask.area, MaskArea)
+    assert_type(mask.copy(), kwimage.Mask)
+    assert_type(mask.to_c_mask(), kwimage.Mask)
+    assert_type(mask.to_fortran_mask(), kwimage.Mask)
+    assert_type(mask.to_array_rle(), kwimage.Mask)
+    assert_type(mask.to_bytes_rle(), kwimage.Mask)
+    assert_type(mask.numpy(), kwimage.Mask)
+    assert_type(mask.tensor(), kwimage.Mask)
+    assert_type(mask.scale(2.0), kwimage.Mask)
+    assert_type(mask.translate((1.0, 2.0)), kwimage.Mask)
+    assert_type(mask.warp(np.eye(3)), kwimage.Mask)
+    assert_type(mask.get_patch(), ArrayData)
+    assert_type(mask.get_xywh(), np.ndarray)
+    assert_type(mask.box(), kwimage.Box)
+    assert_type(mask.to_boxes(), kwimage.Boxes)
+    assert_type(mask.to_multi_polygon(), kwimage.MultiPolygon)
+    assert_type(mask.get_convex_hull(), np.ndarray)
+    assert_type(mask.iou(mask), float | np.floating[Any])
+    assert_type(mask.to_coco(), CocoMaskRLE)
+
+    mask_list = kwimage.MaskList([mask, None])
+    assert_type(mask_list[0], kwimage.Mask | None)
+    assert_type(mask_list.to_mask_list(), kwimage.MaskList)
+    assert_type(mask_list.to_polygon_list(), kwimage.PolygonList)
+    assert_type(mask_list.to_segmentation_list(), kwimage.SegmentationList)
+    assert_type(mask_list.numpy(), kwimage.MaskList)
+    assert_type(mask_list.tensor(), kwimage.MaskList)
+    assert_type(mask_list.to_coco(), Iterator[CocoMaskRLE | None])
+
+    segmentation = kwimage.Segmentation(mask, 'mask')
+    assert_type(segmentation.data, SegmentationBackend)
+    assert_type(segmentation.to_mask(), kwimage.Mask)
+    assert_type(segmentation.to_multi_polygon(), kwimage.MultiPolygon)
+    assert_type(segmentation.box(), kwimage.Box)
+    assert_type(segmentation.area, Number | torch.Tensor)
+    assert_type(segmentation.meta, Mapping[str, Any])
+    assert_type(segmentation.warp(np.eye(3)), SegmentationBackend)
+    assert_type(segmentation.scale(2.0), SegmentationBackend)
+    assert_type(segmentation.translate((1.0, 2.0)), SegmentationBackend)
+    assert_type(segmentation.numpy(), SegmentationBackend)
+    assert_type(segmentation.tensor(), SegmentationBackend)
+    assert_type(segmentation.to_coco(), SegmentationCoco)
+    assert_type(kwimage.Segmentation.coerce(mask), kwimage.Segmentation)
+
+    segmentation_list = kwimage.SegmentationList([segmentation, None])
+    assert_type(
+        segmentation_list[0], kwimage.Segmentation | None
+    )
+    assert_type(
+        segmentation_list.to_segmentation_list(), kwimage.SegmentationList
+    )
+    assert_type(segmentation_list.to_mask_list(), kwimage.MaskList)
+    assert_type(segmentation_list.to_polygon_list(), kwimage.PolygonList)
+    assert_type(segmentation_list.numpy(), kwimage.SegmentationList)
+    assert_type(segmentation_list.tensor(), kwimage.SegmentationList)
+    assert_type(
+        segmentation_list.to_coco(), Iterator[SegmentationCoco | None]
     )

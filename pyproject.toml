@@ -129,8 +129,6 @@ include = [
   "kwimage/im_demodata.py",
   "kwimage/im_cv2.py",
   "kwimage/im_draw.py",
-  "kwimage/structs/mask.py",
-  "kwimage/structs/segmentation.py",
   "kwimage/im_io.py",
   "kwimage/im_core.py",
   "kwimage/im_filter.py",

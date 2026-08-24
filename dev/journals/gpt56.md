@@ -135,3 +135,67 @@ contract. The public typing contract test was updated to lock in these concrete
 list types. All changes in this follow-up are under `TYPE_CHECKING` or annotation
 syntax; no iteration, allocation, array/tensor conversion, copy, validation, or
 dispatch behavior is added at runtime.
+
+## 2026-08-24 10:42:00 -0400
+
+Continued the public-API-first typing burn-down with `Mask`, `MaskList`,
+`Segmentation`, and `SegmentationList`. Both `kwimage/structs/mask.py` and
+`kwimage/structs/segmentation.py` are removed from the blanket `ty` override,
+reducing the remaining ignored-module list from 16 to 14. The public mask
+surface now exposes a structured `MaskData` union (dense NumPy/Torch data or
+RLE dictionaries), typed COCO RLE output, concrete geometry conversions,
+backend-preserving mask operations, and `Mask | None` element types for
+`MaskList`. Segmentation similarly exposes its actual backend union
+(`Mask | Polygon | MultiPolygon`), concrete conversions to `Mask`,
+`MultiPolygon`, and `Box`, typed COCO output, and concrete list element types.
+Static `assert_type` coverage was extended around those downstream-facing
+contracts.
+
+This pass deliberately does not make `Mask` generic over its format. Doing so
+could make `to_c_mask().data` statically narrow all the way to a dense array,
+but it would be a substantially larger public API design change. Instead,
+format-dispatch internals use local dynamic views where a checker cannot infer
+the correlation between `format` and `data`, while the public attribute remains
+a meaningful representation union rather than `Any`.
+
+Runtime efficiency remains a hard constraint. No vectorized NumPy/OpenCV/Torch
+operation is replaced by Python iteration, and no checker-driven array copy,
+materialization, device transfer, or format conversion is added. The new local
+annotations and dynamic views do not transform values. Existing conversion and
+warp behavior is preserved, including the current `Segmentation` wrapper
+semantics where transform/numpy/tensor delegation returns the underlying
+backend rather than a new wrapper. Validation available in this environment is
+Python 3.10 grammar parsing, `compileall`, TOML parsing, public annotation
+audits, diff/whitespace checks, and overlay reproduction; the user's local
+`ty check kwimage tests/` remains the authoritative checker run.
+
+## 2026-08-24 11:15:00 -0400
+
+Followed up on the first unsuppressed Mask/Segmentation `ty` run. The host
+checker reported 12 diagnostics, all in `mask.py`, while the focused runtime
+regression suite remained green. The failures were static correlation issues:
+mixin `Self` inference on methods that only exist as part of `Mask`, optional
+shape flow in `translate`, NumPy ufunc stub acceptance for list inputs, and the
+private OpenCV contour accumulator's intentionally staged `None -> ndarray`
+construction.
+
+The cleanup keeps the public API strong while leaving runtime algorithms
+unchanged. The affected mixin methods use a dynamic annotation only for their
+hidden `self` parameter; their public return type remains `Mask`. The NumPy
+union/intersection paths still invoke the same `np.bitwise_or.reduce` and
+`np.bitwise_and.reduce` operations, but view the ufunc objects dynamically for
+stub compatibility. Translation uses the same resolved output-dimension value
+through a local dynamic view, and the private contour dictionary is marked
+dynamic rather than normalized or copied for the checker.
+
+No array/tensor conversion, copy, device transfer, format conversion, loop,
+comprehension, assertion, or validation was added by this follow-up. Python
+3.10 parsing and `compileall` pass locally; the user's host `ty check kwimage
+tests/` remains the authoritative checker run.
+
+## 2026-08-24 11:13:00 -0400
+
+- Finished the v14/v15 Mask typing cleanup after the local `ty` run exposed three contour-helper diagnostics.
+- Kept the existing OpenCV contour algorithm and allocation behavior unchanged: the contour accumulator dictionary is now named `poly_lookup`, and the existing `list(...values())` result is assigned to a distinct `polys` local instead of changing one variable from `dict` to `list`.
+- This is a static-flow clarification only; it adds no copies, loops, coercions, validation, or runtime helper calls.
+- Validation here: Python 3.10 AST parse, `compileall`, and diff whitespace checks. The authoritative `ty check kwimage tests/` remains the maintainer's local run.
