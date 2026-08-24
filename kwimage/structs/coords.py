@@ -7,7 +7,7 @@ metadata on top of coordinate data.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import kwarray
 import numpy as np
@@ -16,13 +16,21 @@ import ubelt as ub
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from typing import Any, List, Sequence, Tuple
+    from collections.abc import Sequence
+    from typing import Any, Tuple
 
-    import matplotlib as mpl
+    from matplotlib.axes import Axes
+    import matplotlib.collections
     from numpy import ndarray
-    from numpy.typing import ArrayLike
+    from numpy.typing import ArrayLike, DTypeLike
+    import torch
+    from shapely.geometry import MultiPoint
 
-    from kwimage._typing import TransformLike
+    from kwimage._typing import (
+        ArrayData, ImgAugKeypointsOnImage, TransformLike)
+    from kwimage.im_color import Color
+
+    ColorLike = Color | str | Sequence[int | float]
 
 try:
     from packaging.version import parse as LooseVersion
@@ -33,12 +41,12 @@ except ImportError:
 try:
     import imgaug
 
-    _HAS_IMGAUG_FLIP_BUG = LooseVersion(imgaug.__version__) <= LooseVersion(
-        '0.2.9'
-    ) and not hasattr(imgaug.augmenters.size, '_crop_and_pad_kpsoi')
-    _HAS_IMGAUG_XY_ARRAY = LooseVersion(imgaug.__version__) >= LooseVersion(
-        '0.2.9'
+    _imgaug_version: Any = LooseVersion(imgaug.__version__)
+    _imgaug_029: Any = LooseVersion('0.2.9')
+    _HAS_IMGAUG_FLIP_BUG = _imgaug_version <= _imgaug_029 and not hasattr(
+        imgaug.augmenters.size, '_crop_and_pad_kpsoi'
     )
+    _HAS_IMGAUG_XY_ARRAY = _imgaug_version >= _imgaug_029
 except ImportError:
     imgaug = None
     _HAS_IMGAUG_FLIP_BUG = None
@@ -120,8 +128,14 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     # __slots__ = ('data', 'meta',)  # turn on when no longer developing
 
+    if TYPE_CHECKING:
+        data: ArrayData
+        meta: dict[str, Any]
+
     def __init__(
-        self, data: Any | None = None, meta: Any | None = None
+        self,
+        data: ArrayData | Coords | None = None,
+        meta: dict[str, Any] | None = None,
     ) -> None:
         if isinstance(data, self.__class__):
             # Avoid runtime checks and assume the user is doing the right thing
@@ -130,13 +144,15 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data = data.data
         if meta is None:
             meta = {}
-        self.data = data
+        # ``None`` is retained in the constructor for backwards compatibility,
+        # but all operational Coords instances carry an ndarray or Tensor.
+        self.data = cast('ArrayData', data)
         self.meta = meta
 
-    def __array__(self):
+    def __array__(self) -> np.ndarray:
         return np.asarray(self.data)
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         data_repr = repr(self.data)
         if '\n' in data_repr:
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
@@ -144,22 +160,22 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     __repr__ = ub.NiceRepr.__str__
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
     @property
-    def dtype(self):
+    def dtype(self) -> np.dtype[Any] | torch.dtype:
         return self.data.dtype
 
     @property
-    def dim(self):
+    def dim(self) -> int:
         return self.data.shape[-1]
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, ...] | torch.Size:
         return self.data.shape
 
-    def copy(self):
+    def copy(self) -> Coords:
         newdata = self._impl.copy(self.data)
         newmeta = self.meta.copy()
         new = self.__class__(newdata, newmeta)
@@ -167,17 +183,17 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     @classmethod
     def random(
-        Coords,
+        cls,
         num: int = 1,
         dim: int = 2,
         rng: Any | None = None,
-        meta: Any | None = None,
-    ):
+        meta: dict[str, Any] | None = None,
+    ) -> Coords:
         """
         Makes random coordinates; typically for testing purposes
         """
         rng = kwarray.ensure_rng(rng)
-        self = Coords(data=rng.rand(num, dim), meta=meta)
+        self = cls(data=rng.rand(num, dim), meta=meta)
         return self
 
     def is_numpy(self) -> bool:
@@ -256,7 +272,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.take(new.data, indices, axis=axis)
         return new
 
-    def astype(self, dtype, inplace: bool = False) -> Coords:
+    def astype(
+        self, dtype: DTypeLike | torch.dtype, inplace: bool = False
+    ) -> Coords:
         """
         Changes the data type
 
@@ -291,7 +309,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = self._impl.round(new.data, decimals=decimals)
         return new
 
-    def view(self, *shape) -> Coords:
+    def view(self, *shape: int | tuple[int, ...]) -> Coords:
         """
         Passthrough method to view or reshape
 
@@ -344,24 +362,24 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return new
 
     @property
-    def device(self):
+    def device(self) -> torch.device | None:
         """
         If the backend is torch returns the data device, otherwise None
         """
-        try:
-            return self.data.device
-        except AttributeError:
+        if isinstance(self.data, np.ndarray):
             return None
+        tensor_data = cast('torch.Tensor', self.data)
+        return tensor_data.device
 
     # @ub.memoize_property
     @property
-    def _impl(self):
+    def _impl(self) -> Any:
         """
         Returns the internal tensor/numpy ArrayAPI implementation
         """
         return kwarray.ArrayAPI.coerce(self.data)
 
-    def tensor(self, device=ub.NoParam) -> Coords:
+    def tensor(self, device: Any = ub.NoParam) -> Coords:
         """
         Converts numpy to tensors. Does not change memory if possible.
 
@@ -402,7 +420,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return new
 
     def reorder_axes(
-        self, new_order: Tuple[int], inplace: bool = False
+        self, new_order: tuple[int, ...], inplace: bool = False
     ) -> Coords:
         """
         Change the ordering of the coordinate axes.
@@ -459,13 +477,15 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             # --- Method 1 - Slicing ---
             # This will use slicing tricks to avoid a copy operation, but the
             # data.flags will be modified and contiguous-ness is not preserved
-            new.data = new.data[..., new_order]
+            data: Any = new.data
+            new.data = data[..., new_order]
 
         if False:
             # --- Method 2 - Overwrite ---
             # This will cause a copy operation, but the data.flags will remain
             # the same, i.e. contiguous arrays will remain contiguous.
-            new.data[..., :] = new.data[..., new_order]
+            data = new.data
+            data[..., :] = data[..., new_order]
 
         if False:
             # Benchmark different methods, using slicing tricks seems
@@ -499,8 +519,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     def warp(
         self,
         transform: TransformLike,
-        input_dims: Tuple | None = None,
-        output_dims: Tuple | None = None,
+        input_dims: tuple[int, int] | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Coords:
         """
@@ -590,6 +610,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             ### Try to accept imgaug tranforms ###
             if imgaug is not None:
                 if isinstance(transform, imgaug.augmenters.Augmenter):
+                    if input_dims is None:
+                        raise ValueError(
+                            'input_dims is required for imgaug transforms'
+                        )
                     return new._warp_imgaug(transform, input_dims, inplace=True)
 
             ### Try to accept GDAL tranforms ###
@@ -608,7 +632,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                         if z != 0:
                             raise AssertionError('z = {}'.format(z))
                         new_pts.append((x, y))
-                    new.data = np.array(new_pts, dtype=new.data.dtype)
+                    new_data: Any = new.data
+                    new.data = np.array(new_pts, dtype=new_data.dtype)
                     return new
 
             ### Try to accept generic callable transforms ###
@@ -622,7 +647,12 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             new.data = kwimage.warp_points(matrix, new.data)
         return new
 
-    def _warp_imgaug(self, augmenter, input_dims, inplace=False):
+    def _warp_imgaug(
+        self,
+        augmenter: Any,
+        input_dims: tuple[int, int],
+        inplace: bool = False,
+    ) -> Coords:
         """
         Warps by applying an augmenter from the imgaug library
 
@@ -697,7 +727,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         # print('kpoi = {!r}'.format(kpoi))
         new_kpoi = augmenter.augment_keypoints(kpoi)
         # print('new_kpoi = {!r}'.format(new_kpoi))
-        dtype = new.data.dtype
+        new_data: Any = new.data
+        dtype = new_data.dtype
         if hasattr(new_kpoi, 'to_xy_array'):
             # imgaug.__version__ >= 0.2.9
             xy = new_kpoi.to_xy_array().astype(dtype)
@@ -708,7 +739,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         new.data = xy
         return new
 
-    def to_imgaug(self, input_dims) -> Any:
+    def to_imgaug(
+        self, input_dims: tuple[int, int]
+    ) -> ImgAugKeypointsOnImage:
         """
         Translate to an imgaug object
 
@@ -732,7 +765,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             h, w = input_dims
             input_dims = (int(h + 1.0), int(w + 1.0))
 
-        input_dims = tuple(map(int, input_dims))
+        input_dims = (int(input_dims[0]), int(input_dims[1]))
         if _HAS_IMGAUG_XY_ARRAY:
             if hasattr(imgaug, 'Keypoints'):
                 # make use of new proposal when/if it lands
@@ -747,7 +780,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             kpoi = imgaug.KeypointsOnImage(kps, shape=input_dims)
         return kpoi
 
-    def to_wkt(self):
+    def to_wkt(self) -> str:
         """
         Convert coordinates to well known text.
 
@@ -761,7 +794,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         """
         return self.to_shapely().wkt
 
-    def to_shapely(self):
+    def to_shapely(self) -> MultiPoint:
         """
         Convert coordinates to shapely.
 
@@ -774,13 +807,15 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> geom = self.to_shapely()
             >>> print(f'geom={geom}')
         """
-        import shapely
+        from shapely.geometry import MultiPoint as ShapelyMultiPoint
 
-        geom = shapely.geometry.multipoint.MultiPoint(self.data)
+        geom = ShapelyMultiPoint(cast(Any, self.data))
         return geom
 
     @classmethod
-    def from_shapely(Coords, geom):
+    def from_shapely(
+        cls, geom: MultiPoint
+    ) -> Coords:
         """
         Create a Coords object from shapely.
 
@@ -799,11 +834,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> assert np.isclose(self.data, new.data).all()
         """
         xy = np.array([point.xy for point in geom.geoms])[:, :, 0]
-        self = Coords(xy)
+        self = cls(xy)
         return self
 
     @classmethod
-    def from_imgaug(cls, kpoi):
+    def from_imgaug(cls, kpoi: ImgAugKeypointsOnImage) -> Coords:
         if _HAS_IMGAUG_XY_ARRAY:
             xy = kpoi.to_xy_array()
         else:
@@ -813,9 +848,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def scale(
         self,
-        factor: float | Tuple[float, float],
-        about: Tuple | None = None,
-        output_dims: Tuple | None = None,
+        factor: float | ArrayLike | torch.Tensor,
+        about: ArrayLike | torch.Tensor | str | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Coords:
         """
@@ -856,6 +891,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         #     data = new.data = impl.copy(data)
         if impl.numel(data) > 0:
             dim = self.dim
+            factor_: Any
             if not ub.iterable(factor):
                 factor_ = impl.asarray([factor] * dim)
             elif isinstance(factor, (list, tuple)):
@@ -867,9 +903,11 @@ class Coords(_generic.Spatial, ub.NiceRepr):
                 self._impl.dtype_kind(data) != 'f'
                 and self._impl.dtype_kind(factor_) == 'f'
             ):
-                data: Any = self._impl.astype(data, factor_.dtype)
+                factor_arr: Any = factor_
+                data: Any = self._impl.astype(data, factor_arr.dtype)
 
-            assert factor_.shape == (dim,)
+            factor_arr = cast('ArrayData', factor_)
+            assert factor_arr.shape == (dim,)
 
             if about is None:
                 data *= factor_
@@ -883,8 +921,8 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def translate(
         self,
-        offset: float | Tuple[float, float],
-        output_dims: Tuple | None = None,
+        offset: float | ArrayLike | torch.Tensor,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Coords:
         """
@@ -917,22 +955,24 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             data = new.data = impl.copy(data)
         if impl.numel(data) > 0:
             dim = self.dim
+            offset_: Any
             if not ub.iterable(offset):
                 offset_ = impl.asarray([offset] * dim)
             elif isinstance(offset, (list, tuple)):
                 offset_ = np.array(offset)
             else:
                 offset_ = offset
-            assert offset_.shape == (dim,)
-            offset_ = impl.astype(offset_, data.dtype)
+            offset_arr: Any = offset_
+            assert offset_arr.shape == (dim,)
+            offset_ = impl.astype(offset_arr, data.dtype)
             data += offset_
         return new
 
     def rotate(
         self,
         theta: float,
-        about: Tuple | None = None,
-        output_dims: Tuple | None = None,
+        about: ArrayLike | torch.Tensor | str | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Coords:
         """
@@ -992,7 +1032,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         if self.dim != 2:
             raise NotImplementedError('only 2D rotations for now')
 
-        dtype = self.dtype
+        dtype: Any = self.dtype
         if isinstance(about, str):
             raise NotImplementedError(about)
 
@@ -1057,7 +1097,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             )
         return self.warp(rot_, output_dims=output_dims, inplace=inplace)
 
-    def _rectify_about(self, about):
+    def _rectify_about(
+        self, about: ArrayLike | torch.Tensor | str | None
+    ) -> Any:
         """
         Ensures that about returns a specified point. Allows for special keys
         like center to be used.
@@ -1080,9 +1122,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def fill(
         self,
-        image,
-        value,
-        coord_axes: Tuple | None = None,
+        image: ndarray,
+        value: Any,
+        coord_axes: Sequence[int] | None = None,
         interp: str = 'bilinear',
     ) -> ndarray:
         """
@@ -1105,7 +1147,10 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         return image
 
     def soft_fill(
-        self, image, coord_axes: Tuple | None = None, radius: int = 5
+        self,
+        image: ndarray,
+        coord_axes: Sequence[int] | None = None,
+        radius: float = 5,
     ) -> ndarray:
         """
         Used for drawing keypoint truth in heatmaps
@@ -1159,6 +1204,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         if radius <= 0:
             raise ValueError('radius must be positive')
 
+        if coord_axes is None:
+            coord_axes = tuple(range(self.dim))
+
         # OH! How I HATE the squeeze function!
         SCIPY_STILL_USING_SQUEEZE_FUNC = True
 
@@ -1166,13 +1214,15 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
         image_ndims = len(image.shape)
 
-        for pt in self.data:
+        data: Any = self.data
+        for pt in data:
             # Find a grid of coordinates on the image to fill for this point
             low = np.floor(pt - radius).astype(int)
             high = np.ceil(pt + radius).astype(int)
-            grid = np.dstack(
-                np.mgrid[tuple(slice(s, t) for s, t in zip(low, high))]
-            )
+            grid_parts: Any = np.mgrid[
+                tuple(slice(s, t) for s, t in zip(low, high))
+            ]
+            grid = np.dstack(grid_parts)
 
             # Flatten the grid into a list of coordinates to be filled
             rows_of_coords = grid.reshape(-1, grid.shape[-1])
@@ -1248,9 +1298,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def draw_on(
         self,
-        image: Any | None = None,
+        image: ndarray | None = None,
         fill_value: int = 1,
-        coord_axes: Tuple = [1, 0],
+        coord_axes: Sequence[int] = [1, 0],
         interp: str = 'bilinear',
     ) -> ndarray:
         """
@@ -1303,13 +1353,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
 
     def draw(
         self,
-        color: str = 'blue',
-        ax: Any | None = None,
-        alpha: Any | None = None,
-        coord_axes: Tuple = [1, 0],
-        radius: int = 1,
-        setlim: bool = False,
-    ) -> List[mpl.collections.PatchCollection]:
+        color: ColorLike = 'blue',
+        ax: Axes | None = None,
+        alpha: float | Sequence[float] | None = None,
+        coord_axes: Sequence[int] = [1, 0],
+        radius: float = 1,
+        setlim: bool | str = False,
+    ) -> list[matplotlib.collections.PatchCollection]:
         """
         Draw these coordinates via matplotlib
 
@@ -1340,8 +1390,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
             >>> plt.gca().set_ylim(0, 1)
             >>> plt.gca().set_aspect('equal')
         """
-        import matplotlib as mpl
         from matplotlib import pyplot as plt
+        from matplotlib.collections import PatchCollection
+        from matplotlib.patches import Circle
 
         import kwimage
 
@@ -1352,13 +1403,18 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         if self.dim != 2:
             raise NotImplementedError('need 2d for mpl')
 
-        # More grouped patches == more efficient runtime
-        if alpha is None:
-            alpha = [1.0] * len(data)
-        elif not ub.iterable(alpha):
-            alpha = [alpha] * len(data)
+        # Preserve the original scalar/iterable runtime behavior here.
+        alpha_: Any = alpha
+        if alpha_ is None:
+            draw_alpha = [1.0] * len(data)
+        elif not ub.iterable(alpha_):
+            draw_alpha = [alpha_] * len(data)
+        else:
+            draw_alpha = list(alpha_)
 
-        ptcolors = [kwimage.Color(color, alpha=a).as01('rgba') for a in alpha]
+        ptcolors = [
+            kwimage.Color(color, alpha=a).as01('rgba') for a in draw_alpha
+        ]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
         default_centerkw = {'radius': radius, 'fill': True}
@@ -1367,16 +1423,16 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         for pcolor, idxs in color_groups.items():
             yx_list = [row[coord_axes] for row in data[idxs]]
             patches = [
-                mpl.patches.Circle((x, y), ec=None, fc=pcolor, **centerkw)
+                Circle((x, y), ec=None, fc=pcolor, **centerkw)
                 for y, x in yx_list
             ]
-            col = mpl.collections.PatchCollection(patches, match_original=True)
+            col = PatchCollection(patches, match_original=True)
             collections.append(col)
             ax.add_collection(col)
 
         if setlim:
-            x1, y1 = self.data.min(axis=0) - radius
-            x2, y2 = self.data.max(axis=0) + radius
+            x1, y1 = data.min(axis=0) - radius
+            x2, y2 = data.max(axis=0) + radius
 
             if setlim == 'grow':
                 # only allow growth

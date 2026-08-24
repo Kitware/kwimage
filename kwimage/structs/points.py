@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numbers
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast, overload
 
 import kwarray
 import numpy as np
@@ -15,15 +15,49 @@ import ubelt as ub
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from typing import Any, List, Tuple
+    from collections.abc import Sequence
+    from typing import Any, List, Protocol, Tuple
 
+    from matplotlib.axes import Axes
+    import matplotlib.collections
     from numpy import ndarray
+    from numpy.typing import ArrayLike
+    import torch
+    from shapely.geometry import MultiPoint
 
-    from kwimage._typing import TransformLike
+    from kwimage._typing import (
+        ArrayData, ImgAugKeypointsOnImage, TransformLike)
+    from kwimage.im_color import Color
+
+    CocoKeypointDict = dict[str, Any]
+    CocoKeypoints = (
+        list[float]
+        | list[CocoKeypointDict]
+        | dict[str, list[Any]]
+    )
+    ColorLike = Color | str | Sequence[int | float]
+
+    class _CategoryTreeLike(Protocol):
+        id_to_idx: dict[Any, int]
 
 
 class _PointsWarpMixin:
-    def _warp_imgaug(self, augmenter, input_dims, inplace: bool = False):
+    if TYPE_CHECKING:
+        data: dict[str, Any]
+        meta: dict[str, Any]
+
+    def _new_points(
+        self, data: dict[str, Any], meta: dict[str, Any]
+    ) -> Points:
+        constructor = cast(Any, self.__class__)
+        return constructor(data, meta)
+
+    def _warp_imgaug(
+        self,
+        augmenter: Any,
+        input_dims: tuple[int, int],
+        inplace: bool = False,
+    ) -> Points:
         """
         Warps by applying an augmenter from the imgaug library
 
@@ -55,7 +89,10 @@ class _PointsWarpMixin:
             >>> self.draw(color='red', alpha=.4, radius=0.1)
             >>> new.draw(color='blue', alpha=.4, radius=0.1)
         """
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new = cast(
+            'Points',
+            self if inplace else self._new_points(self.data.copy(), self.meta),
+        )
         new.data['xy'] = new.data['xy']._warp_imgaug(
             augmenter, input_dims, inplace=inplace
         )
@@ -65,7 +102,9 @@ class _PointsWarpMixin:
             self.meta.pop('tf_data_to_img')
         return new
 
-    def to_imgaug(self, input_dims):
+    def to_imgaug(
+        self, input_dims: tuple[int, int]
+    ) -> ImgAugKeypointsOnImage:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:imgaug)
@@ -77,28 +116,26 @@ class _PointsWarpMixin:
         return self.data['xy'].to_imgaug(input_dims)
 
     @classmethod
-    def from_imgaug(cls: Any, kpoi):
+    def from_imgaug(
+        cls: Any, kpoi: ImgAugKeypointsOnImage
+    ) -> Points:
         import kwimage
 
         data = kwimage.Coords.from_imgaug(kpoi)
-        self = cls(data)
+        self = cls({'xy': data})
         return self
 
     @property
-    def dtype(self):
-        try:
-            return self.data.dtype
-        except Exception:
-            print('kwimage.mask: no dtype for ' + str(type(self.data)))
-            raise
+    def dtype(self) -> np.dtype[Any] | torch.dtype:
+        return self.data['xy'].dtype
 
     def warp(
         self,
         transform: TransformLike,
-        input_dims: Tuple | None = None,
-        output_dims: Tuple | None = None,
+        input_dims: tuple[int, int] | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
-    ):
+    ) -> Points:
         """
         Generalized coordinate transform.
 
@@ -133,7 +170,10 @@ class _PointsWarpMixin:
         import kwimage
         from kwimage._typing import SKImageGeometricTransform
 
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new = cast(
+            'Points',
+            self if inplace else self._new_points(self.data.copy(), self.meta),
+        )
         if transform is None:
             return new
 
@@ -148,6 +188,10 @@ class _PointsWarpMixin:
                 # raise TypeError(type(transform))
             else:
                 if isinstance(transform, imgaug.augmenters.Augmenter):
+                    if input_dims is None:
+                        raise ValueError(
+                            'input_dims is required for imgaug transforms'
+                        )
                     return new._warp_imgaug(transform, input_dims, inplace=True)
             # else:
             #     raise TypeError(type(transform))
@@ -157,7 +201,7 @@ class _PointsWarpMixin:
         if 'tf_data_to_img' in new.meta:
             # if we are maintaining a transform to img space, we need to update it
             new.meta = new.meta.copy()
-            tf = transform
+            tf: Any = transform
             if isinstance(tf, np.ndarray):
                 tf = skimage.transform.AffineTransform(matrix=transform)
             elif callable(tf):
@@ -171,10 +215,10 @@ class _PointsWarpMixin:
 
     def scale(
         self,
-        factor: float | Tuple[float, float],
-        output_dims: Tuple | None = None,
+        factor: float | ArrayLike | torch.Tensor,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
-    ):
+    ) -> Points:
         """
         Scale a points by a factor
 
@@ -191,21 +235,27 @@ class _PointsWarpMixin:
         """
         import skimage
 
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new = cast(
+            'Points',
+            self if inplace else self._new_points(self.data.copy(), self.meta),
+        )
         new.data['xy'] = new.data['xy'].scale(
             factor, output_dims=output_dims, inplace=inplace
         )
         if 'tf_data_to_img' in new.meta:
             # if we are maintaining a transform to img space, we need to update it
             new.meta = new.meta.copy()
-            tf = skimage.transform.AffineTransform(scale=factor)
+            tf = skimage.transform.AffineTransform(scale=cast(Any, factor))
             inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
             new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
 
     def translate(
-        self, offset, output_dims: Tuple | None = None, inplace: bool = False
-    ):
+        self,
+        offset: float | ArrayLike | torch.Tensor,
+        output_dims: tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Points:
         """
         Shift the points
 
@@ -223,12 +273,17 @@ class _PointsWarpMixin:
         """
         import skimage
 
-        new = self if inplace else self.__class__(self.data.copy(), self.meta)
+        new = cast(
+            'Points',
+            self if inplace else self._new_points(self.data.copy(), self.meta),
+        )
         new.data['xy'] = new.data['xy'].translate(offset, output_dims, inplace)
         if 'tf_data_to_img' in new.meta:
             # if we are maintaining a transform to img space, we need to update it
             new.meta = new.meta.copy()
-            tf = skimage.transform.AffineTransform(translation=offset)
+            tf = skimage.transform.AffineTransform(
+                translation=cast(Any, offset)
+            )
             inv_tf = skimage.transform.AffineTransform(matrix=tf._inv_matrix)
             new.meta['tf_data_to_img'] = inv_tf + new.meta['tf_data_to_img']
         return new
@@ -260,13 +315,17 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     # Pre-registered keys for the meta dictionary
     __metakeys__: list[str] = ['classes']
 
+    if TYPE_CHECKING:
+        data: dict[str, Any]
+        meta: dict[str, Any]
+
     def __init__(
         self,
-        data: Any | None = None,
-        meta: Any | None = None,
+        data: dict[str, Any] | Points | None = None,
+        meta: dict[str, Any] | None = None,
         datakeys: list[str] | None = None,
         metakeys: list[str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if kwargs:
             if data or meta:
@@ -299,10 +358,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             data = data.data
         if meta is None:
             meta = {}
-        self.data = data
+        self.data = cast(dict[str, Any], data)
         self.meta = meta
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         data_repr = repr(self.xy)
         if '\n' in data_repr:
             data_repr = ub.indent('\n' + data_repr.lstrip('\n'), '    ')
@@ -310,24 +369,24 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     __repr__ = ub.NiceRepr.__str__
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data['xy'])
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, ...] | torch.Size:
         return self.data['xy'].shape
 
     @property
-    def xy(self):
-        return self.data['xy'].data
+    def xy(self) -> ArrayData:
+        return cast('ArrayData', self.data['xy'].data)
 
     @classmethod
     def random(
-        Points,
+        cls,
         num: int | tuple[int, ...] = 1,
         classes: Any | None = None,
         rng: Any | None = None,
-    ):
+    ) -> Points:
         """
         Makes random points; typically for testing purposes
 
@@ -342,7 +401,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             shape = num + (2,)
         else:
             shape = (num, 2)
-        self = Points(xy=rng.rand(*shape))
+        self = cls(xy=rng.rand(*shape))
         self.data['visible'] = np.full(len(self), fill_value=2)
         if classes is not None:
             class_idxs = (rng.rand(len(self)) * len(classes)).astype(int)
@@ -350,17 +409,17 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             self.meta['classes'] = classes
         return self
 
-    def is_numpy(self):
+    def is_numpy(self) -> bool:
         return self.data['xy'].is_numpy()
 
-    def is_tensor(self):
+    def is_tensor(self) -> bool:
         return self.data['xy'].is_tensor()
 
     @ub.memoize_property
-    def _impl(self):
+    def _impl(self) -> Any:
         return self.data['xy']._impl
 
-    def tensor(self, device=ub.NoParam):
+    def tensor(self, device: Any = ub.NoParam) -> Points:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -378,7 +437,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = self.__class__(newdata, self.meta)
         return new
 
-    def round(self, inplace: bool = False):
+    def round(self, inplace: bool = False) -> Points:
         """
         Rounds data to the nearest integer
 
@@ -394,7 +453,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new.data['xy'] = self.data['xy'].round()
         return new
 
-    def numpy(self):
+    def numpy(self) -> Points:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:torch)
@@ -412,11 +471,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     def draw_on(
         self,
-        image: ndarray | None = None,
-        color: str | Any | List[Any] = 'white',
-        radius: None | int = None,
+        image: ndarray | tuple[int, int] | None = None,
+        color: ColorLike | list[ColorLike] = 'white',
+        radius: float | None = None,
         copy: bool = False,
-    ):
+    ) -> ndarray:
         """
 
         Args:
@@ -537,7 +596,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         import kwimage
 
         if image is None:
-            maxx, maxy = self.xy.max(axis=0)
+            xy: Any = self.xy
+            maxx, maxy = xy.max(axis=0)
             maxx = int(np.ceil(maxx) + 1)
             maxy = int(np.ceil(maxy) + 1)
             image = np.zeros((maxy, maxx, 3), dtype=np.float32)
@@ -636,13 +696,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
     def draw(
         self,
-        color: str = 'blue',
-        ax: Any | None = None,
-        alpha: Any | None = None,
-        radius: int = 1,
-        setlim: bool = False,
-        **kwargs,
-    ):
+        color: ColorLike = 'blue',
+        ax: Axes | None = None,
+        alpha: float | Sequence[float] | None = None,
+        radius: float = 1,
+        setlim: bool | str = False,
+        **kwargs: Any,
+    ) -> list[matplotlib.collections.PatchCollection]:
         """
         TODO: can use kwplot.draw_points
 
@@ -658,8 +718,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = Points.random(10, classes=['a', 'b', 'c'])
             >>> self.draw(radius=0.01, color='classes')
         """
-        import matplotlib as mpl
         from matplotlib import pyplot as plt
+        from matplotlib.collections import PatchCollection
+        from matplotlib.patches import Circle
 
         import kwimage
 
@@ -668,14 +729,17 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         xy = self.data['xy'].data.reshape(-1, 2)
         # kwplot.draw_points(color=color, class_idxs)
 
-        # More grouped patches == more efficient runtime
-        if alpha is None:
-            alpha = [1.0] * len(xy)
-        elif not ub.iterable(alpha):
-            alpha = [alpha] * len(xy)
+        # Preserve the original scalar/iterable runtime behavior here.
+        alpha_: Any = alpha
+        if alpha_ is None:
+            draw_alpha = [1.0] * len(xy)
+        elif not ub.iterable(alpha_):
+            draw_alpha = [alpha_] * len(xy)
+        else:
+            draw_alpha = list(alpha_)
 
         if color == 'distinct':
-            colors = kwimage.Color.distinct(len(alpha))
+            colors = kwimage.Color.distinct(len(draw_alpha))
         elif color == 'classes':
             # TODO: read colors from categories if they exist
             try:
@@ -688,15 +752,15 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             _keys, _vals = kwarray.group_indices(class_idxs)
             colors = list(ub.take(cls_colors, class_idxs))
         else:
-            colors = [color] * len(alpha)
+            colors = [color] * len(draw_alpha)
 
         ptcolors = [
             kwimage.Color(c, alpha=a).as01('rgba')
-            for c, a in zip(colors, alpha)
+            for c, a in zip(colors, draw_alpha)
         ]
         color_groups = ub.group_items(range(len(ptcolors)), ptcolors)
 
-        circlekw = {
+        circlekw: dict[str, Any] = {
             'radius': radius,
             'fill': True,
             'ec': None,
@@ -718,10 +782,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             print(f'circlekw={circlekw}')
             print(f'pcolor={pcolor}')
             patches = [
-                mpl.patches.Circle((x, y), fc=pcolor, **circlekw)
+                Circle((x, y), fc=pcolor, **circlekw)
                 for x, y in xy[idxs]
             ]
-            col = mpl.collections.PatchCollection(patches, match_original=True)
+            col = PatchCollection(patches, match_original=True)
             collections.append(col)
             ax.add_collection(col)
 
@@ -734,7 +798,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
         return collections
 
-    def compress(self, flags, axis: int = 0, inplace: bool = False):
+    def compress(
+        self, flags: ArrayLike, axis: int = 0, inplace: bool = False
+    ) -> Points:
         """
         Filters items based on a boolean criterion
 
@@ -759,7 +825,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                 raise
         return new
 
-    def take(self, indices, axis: int = 0, inplace: bool = False):
+    def take(
+        self, indices: ArrayLike, axis: int = 0, inplace: bool = False
+    ) -> Points:
         """
         Takes a subset of items at specific indices
 
@@ -781,7 +849,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return new
 
     @classmethod
-    def concatenate(cls, points, axis: int = 0):
+    def concatenate(
+        cls, points: Sequence[Points], axis: int = 0
+    ) -> Points:
         if len(points) == 0:
             raise ValueError('need at least one box to concatenate')
         if axis != 0:
@@ -794,7 +864,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def to_coco(self, style: str = 'orig') -> list[Any] | dict[str, Any]:
+    def to_coco(self, style: str = 'orig') -> CocoKeypoints:
         """
         Converts to an mscoco-like representation
 
@@ -831,7 +901,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             raise NotImplementedError('dim > 2, dense case todo')
 
-    def _to_coco(self, style='orig'):
+    def _to_coco(self, style: str = 'orig') -> CocoKeypoints:
         """
         See to_coco
         """
@@ -899,7 +969,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             raise KeyError(style)
 
-    def to_wkt(self):
+    def to_wkt(self) -> str:
         """
         Convert points to well known text. Loses any metadata information.
 
@@ -911,13 +981,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             >>> self = kwimage.Points.random(3, rng=0)
             >>> self.to_wkt()
         """
-        import shapely
+        from shapely.geometry import MultiPoint as ShapelyMultiPoint
 
         xy = self.data['xy'].data
-        geom = shapely.geometry.multipoint.MultiPoint(xy)
-        return geom
+        geom = ShapelyMultiPoint(xy)
+        return geom.wkt
 
-    def to_shapely(self):
+    def to_shapely(self) -> MultiPoint:
         """
         Convert points to shapely. Loses any metadata information.
 
@@ -934,7 +1004,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         return geom
 
     @classmethod
-    def from_shapely(Points, geom):
+    def from_shapely(cls, geom: MultiPoint) -> Points:
         """
         Create a Points object from shapely.
 
@@ -956,11 +1026,15 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
         data: Any = {}
         data['xy'] = kwimage.Coords.from_shapely(geom)
-        self = Points(data)
+        self = cls(data)
         return self
 
     @classmethod
-    def coerce(cls, data, classes: Any | None = None):
+    def coerce(
+        cls,
+        data: Points | ArrayData | list[Any] | dict[str, Any],
+        classes: Any | None = None,
+    ) -> Points:
         """
         Attempt to coerce data into a Points object
 
@@ -987,18 +1061,43 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             raise TypeError(type(data))
 
     @classmethod
-    def _from_coco(cls, coco_kpts, class_idxs=None, classes=None):
+    def _from_coco(
+        cls,
+        coco_kpts: list[Any] | dict[str, Any] | None,
+        class_idxs: list[int] | None = None,
+        classes: Any | None = None,
+    ) -> Points | None:
         # backwards compatibility
         return cls.from_coco(coco_kpts, class_idxs=class_idxs, classes=classes)
 
     @classmethod
+    @overload
     def from_coco(
         cls,
-        coco_kpts: list | dict,
-        class_idxs: list | None = None,
+        coco_kpts: None,
+        class_idxs: list[int] | None = None,
         classes: Any | None = None,
         warn: bool = False,
-    ):
+    ) -> None: ...
+
+    @classmethod
+    @overload
+    def from_coco(
+        cls,
+        coco_kpts: list[Any] | dict[str, Any],
+        class_idxs: list[int] | None = None,
+        classes: Any | None = None,
+        warn: bool = False,
+    ) -> Points: ...
+
+    @classmethod
+    def from_coco(
+        cls,
+        coco_kpts: list[Any] | dict[str, Any] | None,
+        class_idxs: list[int] | None = None,
+        classes: Any | None = None,
+        warn: bool = False,
+    ) -> Points | None:
         """
         Args:
             coco_kpts (list | dict): either the original list keypoint encoding
@@ -1074,12 +1173,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         if coco_kpts is None:
             return None
 
+        class_idxs_data: Any = class_idxs
+
         if isinstance(coco_kpts, dict) and 'x' in coco_kpts:
             # new style (v2) which is column based and uses less memory
             xs = coco_kpts['x']
             ys = coco_kpts['y']
-            class_idxs = None
-            visible = None
+            class_idxs_data = None
+            visible: Any = None
             if len(xs) != len(ys):
                 raise ValueError(
                     'new-v2 column-style coco keypoints must have '
@@ -1095,11 +1196,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             keypoint_category_id = coco_kpts.get('keypoint_category_id', None)
             if keypoint_category_id is not None:
                 if classes is None:
-                    class_idxs = None
+                    class_idxs_data = None
                     # raise Exception('classes should be specified for new-style-v2')
                 else:
                     try:
-                        class_idxs = [
+                        class_idxs_data = [
                             classes.id_to_idx[cid]
                             for cid in keypoint_category_id
                         ]
@@ -1108,27 +1209,31 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                             'classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id'
                         )
                     else:
-                        class_idxs = np.array(class_idxs)
+                        class_idxs_data = np.array(class_idxs_data)
 
             xs = np.array(xs)
             ys = np.array(ys)
             xy = np.stack([xs, ys], axis=1)
             self = cls(
-                xy=xy, visible=visible, class_idxs=class_idxs, classes=classes
+                xy=xy,
+                visible=visible,
+                class_idxs=class_idxs_data,
+                classes=classes,
             )
 
         elif len(coco_kpts) and isinstance(ub.peek(coco_kpts), dict):
             # new style (v1)
-            xy = []
-            visible = []
-            cidx_list = []
+            coco_dicts = cast(list[dict[str, Any]], coco_kpts)
+            xy_list: list[Any] = []
+            visible_list: list[Any] = []
+            cidx_values: list[Any] = []
 
-            if class_idxs is not None:
+            if class_idxs_data is not None:
                 if warn:
                     warnings.warn(
                         'class_idxs should not be specified for new-style'
                     )
-                class_idxs = None
+                class_idxs_data = None
 
             drop_cidx = False
 
@@ -1145,7 +1250,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     kpdict.get(
                         'keypoint_category', kpdict.get('category', None)
                     )
-                    for kpdict in coco_kpts
+                    for kpdict in coco_dicts
                 ]
                 if all(inferred_classes):
                     if warn:
@@ -1155,12 +1260,14 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         )
                     classes = sorted(set(inferred_classes))
 
-            for kpdict in coco_kpts:
+            for kpdict in coco_dicts:
                 if classes is not None:
+                    cidx: Any = None
                     if 'keypoint_category_id' in kpdict:
                         cid = kpdict['keypoint_category_id']
+                        classes_tree = cast('_CategoryTreeLike', classes)
                         try:
-                            cidx = classes.id_to_idx[cid]
+                            cidx = classes_tree.id_to_idx[cid]
                         except AttributeError:
                             raise TypeError(
                                 'classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id'
@@ -1180,8 +1287,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                                 'Keypoints got category_id, but we would prefer keypoint_category_id'
                             )
                         cid = kpdict['category_id']
+                        classes_tree = cast('_CategoryTreeLike', classes)
                         try:
-                            cidx = classes.id_to_idx[cid]
+                            cidx = classes_tree.id_to_idx[cid]
                         except AttributeError:
                             raise TypeError(
                                 'classes needs to be a kwcoco.CategoryTree to parse keypoint_category_id'
@@ -1196,7 +1304,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                         cidx = classes.index(cname)
                     # else:
                     #     raise Exception('Keypoint category was not specified')
-                    cidx_list.append(cidx)
+                    cidx_values.append(cidx)
+                    if cidx is None:
+                        drop_cidx = True
                 else:
                     if (
                         'keypoint_category_id' in kpdict
@@ -1204,54 +1314,56 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     ):
                         # warnings.warn('classes should be specified for new-style')
                         # raise Exception('classes should be specified for new-style')
-                        cidx_list.append(None)
+                        cidx_values.append(None)
                         drop_cidx = True
 
-                xy.append(kpdict['xy'])
-                visible.append(kpdict.get('visible', 2))
+                xy_list.append(kpdict['xy'])
+                visible_list.append(kpdict.get('visible', 2))
 
-            if cidx_list:
-                assert len(cidx_list) == len(xy), 'missing category indices'
+            cidx_data: Any
+            if not cidx_values or drop_cidx:
+                cidx_data = None
             else:
-                cidx_list = None
+                assert len(cidx_values) == len(
+                    xy_list
+                ), 'missing category indices'
+                cidx_data = np.array(cidx_values)
 
-            if drop_cidx:
-                cidx_list = None
-            else:
-                cidx_list = np.array(cidx_list)
-
-            xy = np.array(xy)
-            visible = np.array(visible)
+            xy = np.array(xy_list)
+            visible = np.array(visible_list)
             self = cls(
-                xy=xy, visible=visible, class_idxs=cidx_list, classes=classes
+                xy=xy, visible=visible, class_idxs=cidx_data, classes=classes
             )
         else:
             # original style
             kp = np.array(coco_kpts).reshape(-1, 3)
             xy = kp[:, 0:2]
             visible = kp[:, 2]
-            if class_idxs is not None:
-                if len(class_idxs) == 0:
+            if class_idxs_data is not None:
+                if len(class_idxs_data) == 0:
                     if len(kp) > 0:
                         if warn:
                             warnings.warn(
                                 'Creating keypoints with unknown class information'
                             )
                         # raise Exception('Creating keypoints with unknown class information')
-                        class_idxs = [-1] * len(xy)
+                        class_idxs_data = [-1] * len(xy)
                     else:
-                        class_idxs = []
+                        class_idxs_data = []
                 else:
-                    assert len(class_idxs) == len(xy), '{} {}'.format(
-                        len(class_idxs), len(xy)
+                    assert len(class_idxs_data) == len(xy), '{} {}'.format(
+                        len(class_idxs_data), len(xy)
                     )
             self = cls(
-                xy=xy, visible=visible, class_idxs=class_idxs, classes=classes
+                xy=xy,
+                visible=visible,
+                class_idxs=class_idxs_data,
+                classes=classes,
             )
         return self
 
 
-class PointsList(_generic.ObjectList):
+class PointsList(_generic.ObjectList[Points]):
     """
     Stores a list of Points, each item usually corresponds to a different object.
 

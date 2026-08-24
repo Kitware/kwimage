@@ -54,3 +54,37 @@ I am confident it addresses the exact four reported diagnostics without changing
 box drawing semantics. The remaining uncertainty is checker verification because
 `ty` is not installed in this sandbox; the host run remains authoritative. I
 validated syntax, whitespace, and the affected draw path locally.
+
+## 2026-08-23 22:14:00 -0400
+
+The user asked that the next typing phase prioritize useful public contracts rather than merely replacing missing annotations with `Any`. This pass targets `Coords` and `Points` as the next foundational geometry layer. Both are removed from the blanket `ty` override, reducing that list from 19 to 17 modules, but the acceptance criterion is stronger: downstream callers should see array-or-Tensor geometry data, concrete `Coords`/`Points` transformation results, typed Shapely conversions, typed indexing for `PointsList`, and structured COCO conversion results instead of broad `Any` returns.
+
+I added a shared `ArrayData = ndarray | Tensor` typing alias and made `Coords.data` plus `Points.xy` expose it. Public geometry methods now have complete parameter/return annotations, while dynamic backend dispatch remains isolated behind local `Any` casts where NumPy/Torch correlation cannot be expressed directly. `_generic.isinstance_arraytypes` is now a `TypeGuard`, and integer indexing through generic `ObjectList[T]` returns `T`, which makes `PointsList[0]` statically be `Points`. A static contract test module uses `assert_type` under `TYPE_CHECKING` so a future change from a useful type back to `Any` is detectable even if ordinary assignment compatibility would hide it.
+
+The typing audit exposed two runtime/API inconsistencies in `Points`: `to_wkt()` documented a string but returned a Shapely object, and `from_imgaug()` passed a `Coords` instance to the generic `Points(data=...)` path instead of constructing the `{'xy': ...}` data mapping. Both are corrected and the WKT behavior has a focused regression. The v1 COCO parser also had unstable local types and an uninitialized category-index path; it now keeps list-building locals separate from normalized arrays and drops category indices when a category is missing rather than constructing an object array or relying on an unbound local.
+
+The repository metadata says `requires-python = ">=3.10"` and xcookie also declares 3.10, while `AGENTS.md` still said 3.8. I updated the agent guide to 3.10 so future typing work does not optimize for an unsupported language floor. Validation available here includes `compileall`, Python-3.10 grammar parsing via `ast.parse(feature_version=(3, 10))`, TOML parsing, public-annotation audits, and `git diff --check`. The sandbox still cannot execute `ty` because the package is not cached and network resolution is unavailable; the user's local `ty check kwimage tests/` remains the authoritative checker pass.
+
+A final public-API audit found two remaining quality gaps before packaging. The
+ImgAug conversion methods still returned bare `Any`, and the shared
+`TransformLike` alias included the runtime `SKImageGeometricTransform` symbol,
+which is intentionally typed as `Any` for version-compatible `isinstance`
+checks. Type-only protocols now describe ImgAug keypoint containers and
+augmenters without making ImgAug a required runtime dependency, while
+`TransformLike` uses the actual scikit-image geometric base type for static
+checking. The audited `Coords`/`Points` public surface now has no bare `Any`
+return annotations. The same audit also exposed a real `Points.dtype` bug: it
+read `dtype` from the data dictionary instead of the contained `Coords`; it now
+delegates to `self.data['xy'].dtype` and has a regression test.
+
+## 2026-08-23 22:37:00 -0400
+
+The user explicitly asked that the typing overhaul not make runtime code less efficient. This is now a first-class constraint for the remaining passes: preserve vectorized NumPy/Torch operations and existing zero-/low-copy behavior, and prefer type-only protocols, annotations, narrowing, or localized dynamic views over Python loops, extra materialization, or checker-driven runtime validation.
+
+The user's v6 `ty` run exposed 19 diagnostics in the newly unsuppressed `Coords` and `Points` modules while the focused regression suite remained green. This cleanup addresses those diagnostics without changing the computational structure. In particular, the alpha normalization in `Coords.draw` and `Points.draw` is restored to the original `ub.iterable` scalar/sequence behavior rather than retaining the `numbers.Number` rewrite from the first typing pass. The NumPy/Torch arithmetic remains vectorized; the `scale`, `translate`, and soft-fill paths only gain static `Any` views around values whose backend-correlated types `ty` cannot express. No new array copies, array materialization, or per-element Python loops are introduced by this follow-up.
+
+The only new runtime branch is an explicit `input_dims is None` error on the optional imgaug warp path, where imgaug already requires image dimensions. This avoids passing `None` into an API that cannot use it and is outside the normal NumPy/Torch transform path. The two-element imgaug dimension coercion now uses direct indexing instead of `tuple(map(...))`, which is at least as cheap and gives the checker a fixed-length tuple. Remaining fixes are import-time version-typing aliases, dictionary typing for matplotlib kwargs, and local dynamic views for optional CategoryTree metadata.
+
+## 2026-08-23 22:41:00 -0400
+
+Followed up on the public-API-first Coords/Points typing pass after the local `ty` run reduced the remaining diagnostics to three. The fixes are deliberately runtime-neutral in geometry paths: `Coords.scale` now uses a type-only cast to expose the already-established array/tensor value to the checker, and `Points.from_coco` uses a type-only protocol view when category IDs require `id_to_idx`. Restored the pre-existing `numbers` import that had been dropped during import cleanup; this returns the draw path to its prior behavior rather than adding new runtime machinery. No vectorized operation was replaced, no new array/tensor copy or materialization was introduced, and no runtime validation was added. The focused regression suite was already green in the user's environment; local validation here is limited to syntax/compile and diff checks because the sandbox lacks the full kwimage dependency environment.
