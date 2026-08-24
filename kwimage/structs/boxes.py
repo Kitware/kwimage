@@ -97,15 +97,20 @@ if TYPE_CHECKING:
     import shapely
     import torch
     from numpy import ndarray
-    from numpy.typing import ArrayLike
+    from numpy.typing import ArrayLike, DTypeLike
     from torch import Tensor
 
-    from kwimage._typing import TransformLike
+    from kwimage._typing import ImgAugBoundingBoxesOnImage, TransformLike
+    from kwimage.im_color import Color
     from kwimage.structs.points import Points
     from kwimage.structs.polygon import PolygonList
 
     BoxArray = ndarray | Tensor
+    BoxDType = np.dtype[Any] | torch.dtype
+    BoxDTypeLike = DTypeLike | torch.dtype
+    BoxIndices = Sequence[int | np.integer[Any]] | ndarray | Tensor
     BoxPointsLike = Points | ndarray | Tensor
+    ColorLike = Color | str | Sequence[int | float]
 
 
 __all__ = ['Boxes']
@@ -610,7 +615,9 @@ class _BoxConversionMixins:
             _yyxx = self.to_ltrb(copy)._to_yyxx(copy)
         return Boxes(_yyxx, BoxFormat._YYXX, check=False)
 
-    def to_imgaug(self, shape: Sequence[int] | None) -> Any:
+    def to_imgaug(
+        self, shape: Sequence[int] | None
+    ) -> ImgAugBoundingBoxesOnImage:
         """
         Args:
             shape (tuple): shape of image that boxes belong to
@@ -755,7 +762,7 @@ class _BoxConversionMixins:
         return self
 
     @classmethod
-    def from_imgaug(cls, bboi: Any) -> Boxes:
+    def from_imgaug(cls, bboi: ImgAugBoundingBoxesOnImage) -> Boxes:
         """
         Args:
             bboi (ia.BoundingBoxesOnImage):
@@ -1116,8 +1123,9 @@ class _BoxPropertyMixins:
         return self.data[..., idx : idx + 1]
 
     @property
-    def dtype(self) -> Any:
-        return self.data.dtype
+    def dtype(self) -> BoxDType:
+        dtype_impl: Any = self.data.dtype
+        return dtype_impl
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -1288,7 +1296,9 @@ class _BoxTransformMixins:
         _impl: Any
 
         def to_cxywh(self, copy: bool = True) -> Boxes: ...
-        def to_imgaug(self, shape: Sequence[int] | None) -> Any: ...
+        def to_imgaug(
+            self, shape: Sequence[int] | None
+        ) -> ImgAugBoundingBoxesOnImage: ...
         def to_ltrb(self, copy: bool = True) -> Boxes: ...
         def to_xywh(self, copy: bool = True) -> Boxes: ...
 
@@ -2196,7 +2206,7 @@ class _BoxDrawMixins:
 
     def draw(
         self,
-        color: str | Any | List[Any] = 'blue',
+        color: ColorLike | Sequence[ColorLike] = 'blue',
         alpha: float | List[float] | None = None,
         labels: List[str] | None = None,
         centers: bool = False,
@@ -2205,7 +2215,7 @@ class _BoxDrawMixins:
         ax: Axes | None = None,
         setlim: bool = False,
         **kwargs: Any,
-    ) -> Any:
+    ) -> None:
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
@@ -2289,13 +2299,13 @@ class _BoxDrawMixins:
     def draw_on(
         self,
         image: ndarray | None = None,
-        color: Any = 'blue',
+        color: ColorLike | Sequence[ColorLike] = 'blue',
         alpha: float | Sequence[float] | None = None,
         labels: Sequence[str] | None = None,
         copy: bool = False,
         thickness: int = 2,
-        edgecolor: Any = None,
-        facecolor: Any = None,
+        edgecolor: ColorLike | Sequence[ColorLike] | bool | None = None,
+        facecolor: ColorLike | None = None,
         fill: bool = False,
         border: bool = True,
         label_loc: str = 'top_left',
@@ -3104,7 +3114,9 @@ class Boxes(
             new = self.__class__(newdata, self.format, canonical=True)
         return new
 
-    def take(self, idxs: Any, axis: int = 0, inplace: bool = False) -> Boxes:
+    def take(
+        self, idxs: BoxIndices, axis: int = 0, inplace: bool = False
+    ) -> Boxes:
         """
         Takes a subset of items at specific indices
 
@@ -3176,13 +3188,14 @@ class Boxes(
         return _impl
 
     @property
-    def device(self) -> Any | None:
+    def device(self) -> torch.device | None:
         """
         If the backend is torch returns the data device, otherwise None
         """
-        return getattr(self.data, 'device', None)
+        device_impl: Any = getattr(self.data, 'device', None)
+        return device_impl
 
-    def astype(self, dtype: Any) -> Boxes:
+    def astype(self, dtype: BoxDTypeLike) -> Boxes:
         """
         Changes the type of the internal array used to represent the boxes
 

@@ -36,6 +36,15 @@ if TYPE_CHECKING:
 
         def to_xy_array(self) -> ndarray: ...
 
+    class ImgAugBoundingBox(Protocol):
+        x1: float
+        y1: float
+        x2: float
+        y2: float
+
+    class ImgAugBoundingBoxesOnImage(Protocol):
+        bounding_boxes: Sequence[ImgAugBoundingBox]
+
     class ImgAugAugmenter(Protocol):
         def augment_keypoints(
             self, keypoints: ImgAugKeypointsOnImage

@@ -17,19 +17,56 @@ from kwimage import _internal
 
 if _t.TYPE_CHECKING:
     from numbers import Number
-    from typing import Any
+    from typing import Any, Literal, TypeAlias, TypedDict
 
     import numpy.typing as npt
+    from affine import Affine as ExternalAffine
+    from sympy.core.expr import Expr as SympyExpr
 
     # Type aliases (type-checker only; zero runtime typing overhead)
     NDArray = npt.NDArray[Any]
-    ArrayLike = npt.ArrayLike
 
     from sympy.matrices.matrixbase import MatrixBase
 
     MatrixData = NDArray | None | MatrixBase
     DSize = tuple[int, int]
     XY = tuple[float, float] | tuple[int, int]
+
+    TransformScalar: TypeAlias = (
+        int | float | complex | np.generic | SympyExpr
+    )
+    TransformPair: TypeAlias = tuple[TransformScalar, TransformScalar]
+    TransformComponent: TypeAlias = (
+        TransformScalar | _t.Sequence[TransformScalar] | NDArray
+    )
+
+    class _TransformDecompositionRequired(TypedDict):
+        offset: TransformPair
+        scale: TransformPair
+        shearx: TransformScalar
+        theta: TransformScalar
+
+    class TransformDecomposition(
+        _TransformDecompositionRequired, total=False
+    ):
+        uv: TransformPair
+
+    AffineDecomposition: TypeAlias = TransformDecomposition
+    ProjectiveDecomposition: TypeAlias = TransformDecomposition
+
+    class AffineRandomParams(TypedDict):
+        scale: TransformPair
+        offset: TransformPair
+        theta: TransformScalar
+        shearx: TransformScalar
+        about: TransformPair
+
+    class AffineConcise(TypedDict, total=False):
+        type: Literal['affine']
+        offset: TransformScalar | TransformPair
+        scale: TransformScalar | TransformPair
+        theta: TransformScalar
+        shearx: TransformScalar
 
     class AffineLike(_t.Protocol):
         a: float
@@ -124,7 +161,7 @@ class Matrix(Transform):
         return self
 
     def __array__(
-        self, dtype: Any = None, copy: bool | None = None
+        self, dtype: npt.DTypeLike | None = None, copy: bool | None = None
     ) -> np.ndarray:
         """
         Allow this object to be passed to np.asarray. See [NumpyDispatch]_ for
@@ -255,7 +292,7 @@ class Matrix(Transform):
         else:
             return self.__class__(self.matrix.T)
 
-    def det(self) -> Any:
+    def det(self) -> TransformScalar:
         """
         Compute the determinant of the underlying matrix
 
@@ -265,9 +302,12 @@ class Matrix(Transform):
         if self.matrix is None:
             return 1.0
         matrix = self.matrix
+        det_impl: Any
         if isinstance(matrix, np.ndarray):
-            return np.linalg.det(matrix)
-        return matrix.det()
+            det_impl = np.linalg.det(matrix)
+        else:
+            det_impl = matrix.det()
+        return det_impl
 
     @classmethod
     def eye(
@@ -932,7 +972,7 @@ class Projective(Linear):
         self = cls(aff_matrix @ proj_part)
         return self
 
-    def decompose(self) -> dict[str, Any]:
+    def decompose(self) -> ProjectiveDecomposition:
         r"""
         Based on the analysis done in [ME1319680]_.
 
@@ -1233,7 +1273,7 @@ class Affine(Projective):
         else:
             return {'type': 'affine', 'matrix': self.matrix.tolist()}
 
-    def concise(self) -> dict[str, Any]:
+    def concise(self) -> AffineConcise:
         """
         Return a concise coercable dictionary representation of this matrix
 
@@ -1272,7 +1312,7 @@ class Affine(Projective):
                 'type': 'affine',
             }
         """
-        params: dict[str, Any] = dict(self.decompose())
+        params: Any = dict(self.decompose())
         params['type'] = 'affine'
         tx: Number
         ty: Number
@@ -1457,7 +1497,7 @@ class Affine(Projective):
         ecc = np.sqrt(ell1 * ell1 - ell2 * ell2) / ell1
         return float(ecc)
 
-    def to_affine(self) -> Any:
+    def to_affine(self) -> ExternalAffine:
         """
         Convert to an affine module
 
@@ -1641,7 +1681,7 @@ class Affine(Projective):
     @classmethod
     def random_params(
         cls, rng: object = None, **kw: Any
-    ) -> dict[str, Any]:
+    ) -> AffineRandomParams:
         """
         Args:
             rng : random number generator
@@ -1725,7 +1765,7 @@ class Affine(Projective):
         # theta_dist = distributions.Constant(0)
 
         # todo better parametarization
-        params = dict(
+        params: Any = dict(
             scale=(xscale_dist.sample(), yscale_dist.sample()),
             offset=(xoffset_dist.sample(), yoffset_dist.sample()),
             theta=theta_dist.sample(),
@@ -1734,7 +1774,7 @@ class Affine(Projective):
         )
         return params
 
-    def decompose(self) -> dict[str, Any]:
+    def decompose(self) -> AffineDecomposition:
         r"""
         Decompose the affine matrix into its individual scale, translation,
         rotation, and skew parameters.
@@ -1883,7 +1923,7 @@ class Affine(Projective):
         shearx = msy / sy
         tx, ty = a13, a23
 
-        params = {
+        params: Any = {
             'offset': (tx, ty),
             'scale': (sx, sy),
             'shearx': shearx,
@@ -1891,7 +1931,7 @@ class Affine(Projective):
         }
         return params
 
-    def _decompose_scale(self) -> tuple[Any, Any]:
+    def _decompose_scale(self) -> TransformPair:
         """
         Scale only decomposition. Experimental method that is faster than
         decompose when only scale is needed.
@@ -1915,12 +1955,12 @@ class Affine(Projective):
     @classmethod
     def affine(
         cls,
-        scale: Any = None,
-        offset: Any = None,
-        theta: float | None = None,
-        shear: Any = None,
-        about: Any = None,
-        shearx: float | None = None,
+        scale: TransformComponent | None = None,
+        offset: TransformComponent | None = None,
+        theta: TransformScalar | None = None,
+        shear: TransformScalar | None = None,
+        about: TransformComponent | None = None,
+        shearx: TransformScalar | None = None,
         array_cls: Any = None,
         math_mod: Any = None,
         **kwargs: Any,
@@ -2061,6 +2101,7 @@ class Affine(Projective):
 
         if math_mod is None:
             math_mod = math
+        math_mod_impl: Any = math_mod
 
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
@@ -2071,8 +2112,8 @@ class Affine(Projective):
         tx, ty = _ensure_iterable2(offset_)
         x0, y0 = _ensure_iterable2(about_)
 
-        cos_theta = math_mod.cos(theta_)
-        sin_theta = math_mod.sin(theta_)
+        cos_theta = math_mod_impl.cos(theta_)
+        sin_theta = math_mod_impl.sin(theta_)
 
         sx_cos_theta = sx * cos_theta
         sx_sin_theta = sx * sin_theta

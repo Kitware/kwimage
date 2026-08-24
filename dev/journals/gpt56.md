@@ -516,3 +516,20 @@ materialization, or control-flow change is added.
 - `warp_tensor` and `_coordinate_grid` now expose their actual Torch return type.
 - Broadened subpixel slice/index annotations from tuple-only to `Sequence[slice]`, matching existing list-based examples without changing runtime behavior.
 - Kept dynamic kwarray backend dispatch inside implementation bodies; no array conversion, copy, materialization, or loop was added for typing.
+
+
+## 2026-08-24: v35 narrow remaining public Any returns
+
+- Began the post-burn-down `Any` audit with the highest-value public transform and Boxes surfaces.
+- Added structured `TypedDict` contracts for affine/projective decomposition, affine random parameters, and concise affine serialization.
+- `Matrix.det` now exposes the numeric-or-symbolic scalar result instead of `Any`, and `Affine.to_affine` exposes the concrete external `affine.Affine` type.
+- `Boxes.dtype`, `Boxes.device`, and `Boxes.to_imgaug` now expose backend-aware dtype/device types and a structural imgaug bounding-box protocol.
+- Kept dynamic implementation internals dynamic; this phase changes annotations and static contracts only, with no numerical, allocation, validation, or iteration changes.
+
+
+## 2026-08-24: v36 narrow transform/Boxes cleanup
+
+- The v35 local `ty` run exposed three checker correlations from the new public contracts.
+- `Boxes.draw_on(edgecolor=...)` now reflects the existing runtime support for either one color or a per-box color sequence; the historical `True` sentinel remains accepted.
+- `Affine.affine` keeps the narrowed numeric/symbolic parameter contracts, while the polymorphic `math_mod` backend is viewed dynamically only at the private `sin`/`cos` call boundary. This avoids weakening `theta` merely because builtin `math` and symbolic math backends have incompatible static signatures.
+- No numerical operations, array materialization, copies, validation, or iteration behavior changed.

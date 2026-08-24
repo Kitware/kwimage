@@ -21,8 +21,11 @@ if TYPE_CHECKING:
     from typing import Any, cast
     from typing_extensions import assert_type
 
+    import affine
     import kwimage
-    from kwimage._typing import ArrayData, ImgAugKeypointsOnImage
+    from kwimage._typing import (
+        ArrayData, ImgAugBoundingBoxesOnImage, ImgAugKeypointsOnImage,
+    )
 
     from kwimage.structs.detections import (
         CocoDetection,
@@ -57,6 +60,33 @@ if TYPE_CHECKING:
     from kwimage.im_draw import TextDrawInfo
     from kwimage.im_runlen import RunLengthEncoding
     from kwimage.im_stack import StackTransform
+    from kwimage.transform import (
+        AffineConcise, AffineDecomposition, AffineRandomParams,
+        ProjectiveDecomposition, TransformScalar,
+    )
+
+
+    matrix = kwimage.Matrix.eye(3)
+    assert_type(matrix.det(), TransformScalar)
+
+    affine_tf = kwimage.Affine(None)
+    assert_type(affine_tf.det(), TransformScalar)
+    assert_type(affine_tf.decompose(), AffineDecomposition)
+    assert_type(affine_tf.concise(), AffineConcise)
+    assert_type(kwimage.Affine.random_params(rng=0), AffineRandomParams)
+    assert_type(affine_tf.to_affine(), affine.Affine)
+
+    projective_tf = kwimage.Projective(None)
+    assert_type(projective_tf.decompose(), ProjectiveDecomposition)
+
+    boxes = kwimage.Boxes(np.zeros((2, 4), dtype=np.float32), 'ltrb')
+    assert_type(boxes.dtype, np.dtype[Any] | torch.dtype)
+    assert_type(boxes.device, torch.device | None)
+    assert_type(boxes.to_imgaug((16, 20)), ImgAugBoundingBoxesOnImage)
+    assert_type(kwimage.Boxes.from_imgaug(boxes.to_imgaug((16, 20))), kwimage.Boxes)
+    assert_type(boxes.astype('float32'), kwimage.Boxes)
+    assert_type(boxes.take([0]), kwimage.Boxes)
+    assert_type(boxes.draw(), None)
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
