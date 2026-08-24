@@ -126,8 +126,6 @@ src.include = [
 [[tool.ty.overrides]]
 include = [
   "kwimage/algo/algo_nms.py",
-  "kwimage/transform.py",
-  "kwimage/structs/boxes.py",
   "kwimage/im_demodata.py",
   "kwimage/im_cv2.py",
   "kwimage/im_draw.py",

@@ -58,7 +58,7 @@ class Box:
 
     @property
     def format(self) -> str:
-        return cast(str, self.boxes.format)
+        return self.boxes.format
 
     @property
     def data(self) -> Any:

@@ -337,3 +337,86 @@ def test_remove_translation_euclidean_transform():
     assert isinstance(result, skimage.transform.EuclideanTransform)
     assert np.isclose(result.rotation, transform.rotation)
     assert np.allclose(result.translation, (0, 0))
+
+
+def test_boxes_union_hull_invalid_integer_numpy_uses_float_nan():
+    import kwimage
+
+    # Invalid negative extents are represented as NaN by union_hull. Integer
+    # NumPy data must be promoted with ndarray.astype, not Tensor.to.
+    data = np.array([[10, 0, 0, 1]], dtype=np.int64)
+    boxes = kwimage.Boxes(data, 'ltrb')
+    result = boxes.union_hull(boxes)
+    assert result.data.dtype.kind == 'f'
+    assert np.isnan(result.data).all()
+
+
+def test_affine_identity_helpers_use_materialized_matrix():
+    import kwimage
+
+    transform = kwimage.Affine(None)
+    array = np.asarray(transform, dtype=np.float32)
+    assert array.dtype == np.float32
+    assert np.array_equal(array, np.eye(3, dtype=np.float32))
+    assert transform.eccentricity() == 0.0
+    assert transform.to_shapely() == (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+
+
+def test_transform_classmethods_preserve_subclasses():
+    import kwimage
+
+    class DerivedProjective(kwimage.Projective):
+        pass
+
+    class DerivedAffine(kwimage.Affine):
+        pass
+
+    projective = DerivedProjective.projective()
+    affine = DerivedAffine.fit(np.empty((0, 2)), np.empty((0, 2)))
+    assert isinstance(projective, DerivedProjective)
+    assert isinstance(affine, DerivedAffine)
+
+
+def test_boxes_mixin_classmethods_preserve_subclass():
+    """Construction helpers defined on mixins should construct ``cls``."""
+    import kwimage
+
+    class MyBoxes(kwimage.Boxes):
+        pass
+
+    box = MyBoxes.from_slice((slice(1, 3), slice(2, 5)))
+    assert isinstance(box, MyBoxes)
+    assert box.format == 'ltrb'
+
+    coerced = MyBoxes.coerce([[1, 2, 3, 4]], format='xywh')
+    assert isinstance(coerced, MyBoxes)
+
+
+def test_boxes_ensure_nonnegative_extent_backends():
+    """Boolean-mask repair should stay within the selected array backend."""
+    import numpy as np
+    import kwimage
+
+    data = np.array([[3, 5, -2, -4]], dtype=np.float32)
+    fixed = kwimage.Boxes(data, 'xywh')._ensure_nonnegative_extent()
+    assert np.all(fixed.data == [[1, 1, 2, 4]])
+
+    try:
+        import torch
+    except ImportError:
+        return
+    tensor = torch.tensor([[3.0, 5.0, -2.0, -4.0]])
+    fixed_t = kwimage.Boxes(tensor, 'xywh')._ensure_nonnegative_extent()
+    assert torch.equal(fixed_t.data, torch.tensor([[1.0, 1.0, 2.0, 4.0]]))
+
+
+def test_affine_fliprot_requires_canvas_when_needed():
+    """Flip/rotation helpers should reject missing canvas dimensions clearly."""
+    import pytest
+    import kwimage
+
+    with pytest.raises(ValueError, match='canvas_dsize'):
+        kwimage.Affine.fliprot(rot_k=1)
+    with pytest.raises(ValueError, match='canvas_dsize'):
+        kwimage.Affine.fliprot(flip_axis=(0,))
+    assert isinstance(kwimage.Affine.fliprot(), kwimage.Affine)

@@ -129,10 +129,10 @@ class _DetDrawMixin:
 
         if setlim:
             x1, y1, x2, y2 = self.boxes.to_ltrb().components
-            xmax = x2.max()
-            xmin = x1.min()
-            ymax = y2.max()
-            ymin = y1.min()
+            xmax = float(x2.max().item())
+            xmin = float(x1.min().item())
+            ymax = float(y2.max().item())
+            ymin = float(y1.min().item())
             import matplotlib.pyplot as plt
 
             ax = plt.gca()
@@ -294,8 +294,8 @@ class _DetDrawMixin:
             # If image is not given, use the boxes to allocate enough
             # room to draw
             bounds = self.boxes.scale(1.5).bounding_box().quantize()
-            w = bounds.width.item()
-            h = bounds.height.item()
+            w = int(bounds.width.item())
+            h = int(bounds.height.item())
             w = h = max(w, h)
             image = np.zeros((h, w, 3), dtype=np.float32)
 
