@@ -40,13 +40,19 @@ if TYPE_CHECKING:
     import torch
 
     import kwimage
-    from kwimage._typing import TorchDeviceLike, TransformLike
+    from kwimage._typing import RNGInput, TorchDeviceLike, TransformLike
     from kwimage.im_color import Color
 
     ColorLike = Color | str | Sequence[int | float]
+    CocoPolygonStyle = Literal['orig', 'new']
+    PolygonPoint = list[int | float]
+    PolygonRing = list[PolygonPoint]
+    PolygonCoordinates = list[PolygonRing]
+    MultiPolygonCoordinates = list[PolygonCoordinates]
+
     class CocoPolygonDict(TypedDict):
-        exterior: list[list[int | float]]
-        interiors: list[list[list[int | float]]]
+        exterior: PolygonRing
+        interiors: list[PolygonRing]
 
     CocoPolygon = list[int | float] | CocoPolygonDict
 
@@ -56,11 +62,11 @@ if TYPE_CHECKING:
 
     class PolygonGeoJSON(TypedDict):
         type: Literal['Polygon']
-        coordinates: list[list[list[int | float]]]
+        coordinates: PolygonCoordinates
 
     class MultiPolygonGeoJSON(TypedDict):
         type: Literal['MultiPolygon']
-        coordinates: list[list[list[list[int | float]]]]
+        coordinates: MultiPolygonCoordinates
 
     class ImgAugMultiPolygon(Protocol):
         polygons: Sequence[object]
@@ -80,7 +86,9 @@ class _PolyMixin:
     if TYPE_CHECKING:
         def to_boxes(self) -> kwimage.Boxes: ...
         def translate(
-            self, offset: Any, output_dims: tuple[int, int] | None = None,
+            self,
+            offset: float | ArrayLike | torch.Tensor,
+            output_dims: tuple[int, int] | None = None,
             inplace: bool = False,
         ) -> Polygon | MultiPolygon: ...
         def to_mask(
@@ -1540,7 +1548,7 @@ class Polygon(
         n_holes: int = 0,
         convex: bool = True,
         tight: bool = False,
-        rng: Any | None = None,
+        rng: RNGInput = None,
     ) -> _PolygonT:
         """
         Args:
@@ -1840,7 +1848,8 @@ class Polygon(
             return Polygon.from_wkt(data)
         if isinstance(data, dict):
             if 'coordinates' in data:
-                return Polygon.from_geojson(data)
+                geojson_data: Any = data
+                return Polygon.from_geojson(geojson_data)
             if 'exterior' in data:
                 return Polygon(data)
 
@@ -1900,7 +1909,7 @@ class Polygon(
 
     @classmethod
     def from_geojson(
-        cls: type[_PolygonT], data_geojson: dict[str, Any]
+        cls: type[_PolygonT], data_geojson: PolygonGeoJSON
     ) -> _PolygonT:
         """
         Convert a geojson polygon to a kwimage.Polygon
@@ -2073,7 +2082,7 @@ class Polygon(
     @classmethod
     def from_coco(
         cls: type[_PolygonT],
-        data: list[Any] | dict[str, Any],
+        data: CocoPolygon,
         dims: tuple[int, ...] | None = None,
     ) -> _PolygonT:
         """
@@ -2120,9 +2129,9 @@ class Polygon(
         ) -> CocoPolygonDict: ...
 
         @overload
-        def to_coco(self, style: str) -> CocoPolygon: ...
+        def to_coco(self, style: CocoPolygonStyle) -> CocoPolygon: ...
 
-    def to_coco(self, style: str = 'orig') -> CocoPolygon:
+    def to_coco(self, style: CocoPolygonStyle = 'orig') -> CocoPolygon:
         """
         Args:
             style(str): can be "orig" or "new"
@@ -3331,7 +3340,7 @@ class MultiPolygon(_generic.ObjectList[Polygon], _ShapelyMixin, _PolyMixin):
         cls: type[_MultiPolygonT],
         n: int = 3,
         n_holes: int = 0,
-        rng: Any | None = None,
+        rng: RNGInput = None,
         tight: bool = False,
     ) -> _MultiPolygonT:
         """
@@ -3702,7 +3711,8 @@ class MultiPolygon(_generic.ObjectList[Polygon], _ShapelyMixin, _PolyMixin):
 
     @classmethod
     def from_geojson(
-        cls: type[_MultiPolygonT], data_geojson: dict[str, Any]
+        cls: type[_MultiPolygonT],
+        data_geojson: PolygonGeoJSON | MultiPolygonGeoJSON,
     ) -> _MultiPolygonT:
         """
         Convert a geojson polygon or multipolygon to a kwimage.MultiPolygon
@@ -3745,7 +3755,7 @@ class MultiPolygon(_generic.ObjectList[Polygon], _ShapelyMixin, _PolyMixin):
     @classmethod
     def from_coco(
         cls: type[_MultiPolygonT],
-        data: list[list[Any] | dict[str, Any]],
+        data: list[CocoPolygon],
         dims: tuple[int, ...] | None = None,
     ) -> _MultiPolygonT:
         """
@@ -3784,7 +3794,8 @@ class MultiPolygon(_generic.ObjectList[Polygon], _ShapelyMixin, _PolyMixin):
             >>> self = MultiPolygon.random(1, rng=0)
             >>> self.to_coco()
         """
-        return [item.to_coco(style=style) for item in self.data]
+        style_impl: Any = style
+        return [item.to_coco(style=style_impl) for item in self.data]
 
     def swap_axes(
         self: _MultiPolygonT, inplace: bool = False
@@ -3857,7 +3868,7 @@ class PolygonList(_generic.ObjectList[Polygon | MultiPolygon | None]):
 
     @classmethod
     def random(
-        cls: type[_PolygonListT], length: int = 10, rng: Any | None = None
+        cls: type[_PolygonListT], length: int = 10, rng: RNGInput = None
     ) -> _PolygonListT:
         """
         A random list of Polygons and MultiPolygons.

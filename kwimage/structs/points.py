@@ -26,7 +26,9 @@ if TYPE_CHECKING:
     from shapely.geometry import MultiPoint
 
     from kwimage._typing import (
-        ArrayData, ImgAugKeypointsOnImage, TorchDeviceLike, TransformLike)
+        ArrayData, ImgAugKeypointsOnImage, RNGInput, TorchDeviceLike,
+        TransformLike,
+    )
     from kwimage.im_color import Color
 
     class CocoKeypointDict(TypedDict, total=False):
@@ -407,7 +409,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         cls,
         num: int | tuple[int, ...] = 1,
         classes: PointClasses | None = None,
-        rng: Any | None = None,
+        rng: RNGInput = None,
     ) -> Points:
         """
         Makes random points; typically for testing purposes

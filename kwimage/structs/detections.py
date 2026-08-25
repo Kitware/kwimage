@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     import kwimage
-    from kwimage._typing import ArrayData, TorchDeviceLike, TransformLike
+    from kwimage._typing import ArrayData, RNGInput, TorchDeviceLike, TransformLike
     from kwimage.im_color import Color
     from kwimage.structs.mask import MaskList
     from kwimage.structs.points import Points, PointsList
@@ -519,7 +519,9 @@ class _DetAlgoMixin:
         class_idxs: Any
 
         def __len__(self) -> int: ...
-        def take(self, indices: Any, axis: int = 0) -> Detections: ...
+        def take(
+            self, indices: DetectionTakeIndices, axis: int = 0
+        ) -> Detections: ...
 
     def non_max_supression(
         self,
@@ -1899,7 +1901,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         keypoints: bool | str = False,
         segmentations: bool = False,
         tensor: bool = False,
-        rng: Any | None = None,
+        rng: RNGInput = None,
     ) -> Detections:
         """
         Creates dummy data, suitable for use in tests and benchmarks

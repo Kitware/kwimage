@@ -8,7 +8,7 @@ import ubelt as ub
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from numbers import Number
-    from typing import Any
+    from typing import Any, Literal
 
     from matplotlib.axes import Axes
     import torch
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from shapely.geometry import Polygon as ShapelyPolygon
     from torch import Tensor
 
-    from kwimage._typing import ArrayData, TransformLike
+    from kwimage._typing import ArrayData, RNGInput, TransformLike
     from kwimage.structs.boxes import (
         BoxDTypeLike, BoxPointsLike, Boxes, ColorLike)
     from kwimage.structs.polygon import Polygon
@@ -101,16 +101,32 @@ class Box:
         nice = self.__nice__()
         return '<{0}({1})>'.format(classname, nice)
 
-    @classmethod
-    def random(self, **kwargs: Any) -> Box:
-        import kwimage
+    if TYPE_CHECKING:
+        @classmethod
+        def random(
+            cls,
+            *,
+            num: Literal[1] = 1,
+            scale: float | tuple[float, float] = 1.0,
+            format: str = 'xywh',
+            anchors: ndarray | None = None,
+            anchor_std: float = 1.0 / 6,
+            tensor: bool = False,
+            rng: RNGInput = None,
+        ) -> Box: ...
+    else:
+        @classmethod
+        def random(cls, **kwargs: Any) -> Box:
+            import kwimage
 
-        if kwargs.get('num', 1) != 1:
-            raise ValueError('Cannot specify num for Box. Use Boxes instead.')
-        kwargs['num'] = 1
-        boxes: Any = kwimage.Boxes.random(**kwargs)
-        self = Box(boxes, _check=False)
-        return self
+            if kwargs.get('num', 1) != 1:
+                raise ValueError(
+                    'Cannot specify num for Box. Use Boxes instead.'
+                )
+            kwargs['num'] = 1
+            boxes: Any = kwimage.Boxes.random(**kwargs)
+            self = Box(boxes, _check=False)
+            return self
 
     @classmethod
     def from_slice(
@@ -161,7 +177,7 @@ class Box:
         return self
 
     @classmethod
-    def from_data(self, data: Any, format: str) -> Box:
+    def from_data(self, data: ArrayLike, format: str) -> Box:
         import kwimage
 
         boxes: Any = kwimage.Boxes([data], format)

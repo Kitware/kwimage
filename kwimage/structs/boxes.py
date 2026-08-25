@@ -101,7 +101,8 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     from kwimage._typing import (
-        ImgAugBoundingBoxesOnImage, TorchDeviceLike, TransformLike)
+        ImgAugBoundingBoxesOnImage, RNGInput, TorchDeviceLike, TransformLike,
+    )
     from kwimage.im_color import Color
     from kwimage.structs.points import Points
     from kwimage.structs.polygon import PolygonList
@@ -584,17 +585,20 @@ class _BoxConversionMixins:
         ltrb = _cat([x1, y1, x2, y2])
         return Boxes(ltrb, BoxFormat.LTRB, check=False)
 
-    def to_tlbr(self, **kwargs: Any) -> Boxes:
-        ub.schedule_deprecation(
-            'kwimage',
-            'Boxes.to_tlbr',
-            'method',
-            migration='Use Boxes.to_ltrb instead.',
-            deprecate='0.9.8',
-            error='0.11.0',
-            remove='0.12.0',
-        )
-        return self.to_ltrb(**kwargs)
+    if TYPE_CHECKING:
+        def to_tlbr(self, copy: bool = True) -> Boxes: ...
+    else:
+        def to_tlbr(self, **kwargs: Any) -> Boxes:
+            ub.schedule_deprecation(
+                'kwimage',
+                'Boxes.to_tlbr',
+                'method',
+                migration='Use Boxes.to_ltrb instead.',
+                deprecate='0.9.8',
+                error='0.11.0',
+                remove='0.12.0',
+            )
+            return self.to_ltrb(**kwargs)
 
     @_register_convertor(BoxFormat._RCHW)
     def _to_rchw(self, copy: bool = True) -> Boxes:
@@ -2935,7 +2939,7 @@ class Boxes(
         anchors: ndarray | None = None,
         anchor_std: float = 1.0 / 6,
         tensor: bool = False,
-        rng: Any | None = None,
+        rng: RNGInput = None,
     ) -> Boxes:
         """
         Makes random boxes; typically for testing purposes

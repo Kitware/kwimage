@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from typing import Any, Iterable, List, Literal, Sequence, Tuple, TypeAlias
 
     from numpy import ndarray
+    from kwimage._typing import RNGInput
 
     ColorTuple: TypeAlias = tuple[float, ...]
     ByteColorTuple: TypeAlias = tuple[int, ...]
@@ -613,7 +614,7 @@ class Color(ub.NiceRepr):
         Color,
         pool: Literal['named', 'rgb-uniform'] = 'named',
         with_alpha: int = 0,
-        rng: Any | None = None,
+        rng: RNGInput = None,
     ) -> Color:
         """
         Returns:

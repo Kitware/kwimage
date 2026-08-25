@@ -565,3 +565,28 @@ No numerical operations, array materialization, copies, loops, or comprehensions
 - Kept the new structured `Points.from_coco` overloads while isolating the legacy ambiguous `Points.coerce` list/dict dispatch behind a local dynamic view.
 - Narrowed `id_to_idx` access to the structural category-tree protocol only in the code paths that require category IDs; ordinary sequence class containers remain supported for name-based lookup.
 - No runtime conversion, validation, copying, or iteration changes were introduced.
+
+## v41 representation Any narrowing
+
+Narrowed stable representation contracts for Mask, Polygon/MultiPolygon, and Segmentation. Added literal mask formats/methods, structured COCO/GeoJSON polygon inputs, literal COCO polygon styles, and an explicit segmentation raw-data union. Dynamic format inspection remains behind a local implementation Any boundary.
+
+Also centralized the documented random-input contract as RNGInput and applied it across root geometry/demo random constructors. This narrows caller-facing rng Any without changing ensure_rng behavior.
+
+## v42 staged public Any narrowing
+
+Built directly on the verified repository snapshot plus the unapplied v41
+representation/RNG overlay. Narrowed the remaining `Box.random` forwarding
+surface to the documented `Boxes.random` arguments, typed `Box.from_data` as
+an array-like payload, made deprecated `Boxes.to_tlbr` expose the real `copy`
+argument, and aligned private mixin/type-checking declarations for polygon
+translation, detection indexing, mask conversion self types, and mask drawing
+axes with their concrete implementations. This is intentionally a staged
+follow-up rather than another repo-wide speculative Any pass.
+
+
+## 2026-08-25: v43 mask representation cleanup
+
+- Followed up the v41/v42 Mask representation narrowing after local `ty` exposed format-constant and representation-correlation diagnostics.
+- `MaskFormat` constants now have literal types during static checking while preserving the existing runtime registration/alias construction unchanged.
+- Kept backend-produced RLE dictionaries and dense NumPy/Torch conversion steps behind local implementation `Any` views where runtime format/backend checks provide the real correlation but `ty` cannot infer it.
+- The public `MaskData` representation union and `MaskFormatName` literal contract remain narrowed; no array conversion, copy, validation, or control-flow behavior was added for typing.

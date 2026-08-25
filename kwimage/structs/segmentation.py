@@ -24,13 +24,14 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     import kwimage
-    from kwimage._typing import TorchDeviceLike
+    from kwimage._typing import RNGInput, TorchDeviceLike
     from kwimage.structs.mask import CocoMaskRLE
-    from kwimage.structs.polygon import CocoPolygon
+    from kwimage.structs.polygon import CocoPolygon, CocoPolygonStyle
 
     SegmentationBackend = kwimage.Mask | kwimage.Polygon | kwimage.MultiPolygon
     SegmentationFormat = Literal['mask', 'polygon', 'multipolygon']
     SegmentationCoco = CocoMaskRLE | CocoPolygon | list[CocoPolygon]
+    SegmentationCocoStyle = CocoPolygonStyle
 
 
 class _WrapperObject(ub.NiceRepr):
@@ -63,7 +64,9 @@ class _WrapperObject(ub.NiceRepr):
             inplace: bool = False,
         ) -> SegmentationBackend: ...
 
-        def to_coco(self, style: str = 'orig') -> SegmentationCoco: ...
+        def to_coco(
+            self, style: SegmentationCocoStyle = 'orig'
+        ) -> SegmentationCoco: ...
         def numpy(self) -> SegmentationBackend: ...
 
         @overload
@@ -127,7 +130,7 @@ class Segmentation(_WrapperObject):
         self.format = format
 
     @classmethod
-    def random(cls, rng: Any | None = None) -> Segmentation:
+    def random(cls, rng: RNGInput = None) -> Segmentation:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)

@@ -18,13 +18,14 @@ if TYPE_CHECKING:
     from shapely.geometry import MultiPolygon as ShapelyMultiPolygon
     from shapely.geometry import Polygon as ShapelyPolygon
     import torch
-    from typing import Any, cast
+    from typing import Any, Literal, cast
     from typing_extensions import assert_type
 
     import affine
     import kwimage
     from kwimage._typing import (
         ArrayData, ImgAugBoundingBoxesOnImage, ImgAugKeypointsOnImage,
+        RNGInput,
     )
 
     from kwimage.structs.detections import (
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
         DetectionSegmentations,
     )
     from kwimage.structs.mask import (
-        CocoMaskRLE, MaskArea, MaskData,
+        CocoMaskRLE, MaskArea, MaskData, MaskFormat, MaskFormatName,
     )
     from kwimage.structs.points import (
         CocoKeypointColumns, CocoKeypointDict, CocoKeypoints, PointClasses,
@@ -50,8 +51,8 @@ if TYPE_CHECKING:
         HeatmapImageDims, HeatmapShape, HeatmapSpatialData, HeatmapTransform,
     )
     from kwimage.structs.polygon import (
-        CocoPolygon, CocoPolygonDict, MultiPolygonGeoJSON, PolygonData,
-        PolygonGeoJSON,
+        CocoPolygon, CocoPolygonDict, CocoPolygonStyle, MultiPolygonGeoJSON,
+        PolygonData, PolygonGeoJSON,
     )
     from kwimage.im_core import PaddedSliceInfo, RobustNormalizerInfo
     from kwimage.im_cv2 import (
@@ -82,6 +83,19 @@ if TYPE_CHECKING:
         kwimage.Color.random(pool='rgb-uniform', rng=0), kwimage.Color
     )
 
+    rng_input: RNGInput = 0
+    assert_type(kwimage.Color.random(rng=rng_input), kwimage.Color)
+    assert_type(kwimage.Boxes.random(rng=rng_input), kwimage.Boxes)
+    assert_type(kwimage.Coords.random(rng=rng_input), kwimage.Coords)
+    assert_type(kwimage.Points.random(rng=rng_input), kwimage.Points)
+    assert_type(kwimage.Polygon.random(rng=rng_input), kwimage.Polygon)
+    assert_type(kwimage.MultiPolygon.random(rng=rng_input), kwimage.MultiPolygon)
+    assert_type(kwimage.PolygonList.random(rng=rng_input), kwimage.PolygonList)
+    assert_type(kwimage.Mask.random(rng=rng_input), kwimage.Mask)
+    assert_type(kwimage.Segmentation.random(rng=rng_input), kwimage.Segmentation)
+    assert_type(kwimage.Heatmap.random(rng=rng_input), kwimage.Heatmap)
+    assert_type(kwimage.Detections.random(rng=rng_input), kwimage.Detections)
+
     matrix = kwimage.Matrix.eye(3)
     assert_type(matrix.det(), TransformScalar)
 
@@ -104,6 +118,16 @@ if TYPE_CHECKING:
     assert_type(boxes.take([0]), kwimage.Boxes)
     assert_type(boxes.draw(), None)
     assert_type(boxes.tensor('cpu'), kwimage.Boxes)
+    assert_type(boxes.to_tlbr(copy=False), kwimage.Boxes)
+    assert_type(kwimage.Box.random(rng=rng_input), kwimage.Box)
+    assert_type(
+        kwimage.Box.random(num=1, scale=(10.0, 20.0), format='ltrb'),
+        kwimage.Box,
+    )
+    assert_type(
+        kwimage.Box.from_data([0.0, 1.0, 2.0, 3.0], 'xywh'),
+        kwimage.Box,
+    )
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
@@ -506,6 +530,13 @@ if TYPE_CHECKING:
         poly.convex_hull, kwimage.Polygon | kwimage.MultiPolygon
     )
 
+    polygon_coco: CocoPolygon = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0]
+    assert_type(kwimage.Polygon.from_coco(polygon_coco), kwimage.Polygon)
+    polygon_geojson: PolygonGeoJSON = poly.to_geojson()
+    assert_type(kwimage.Polygon.from_geojson(polygon_geojson), kwimage.Polygon)
+    polygon_style: CocoPolygonStyle = 'new'
+    assert_type(poly.to_coco(style=polygon_style), CocoPolygon)
+
     mpoly = kwimage.MultiPolygon([poly])
     assert_type(mpoly[0], kwimage.Polygon)
     assert_type(mpoly.scale(2.0), kwimage.MultiPolygon)
@@ -520,6 +551,17 @@ if TYPE_CHECKING:
     assert_type(mpoly.to_coco(), list[CocoPolygon])
     assert_type(mpoly.to_coco(style='new'), list[CocoPolygon])
     assert_type(mpoly.draw(), list[PathPatch | None])
+
+    multi_geojson: MultiPolygonGeoJSON = mpoly.to_geojson()
+    assert_type(
+        kwimage.MultiPolygon.from_geojson(multi_geojson), kwimage.MultiPolygon
+    )
+    assert_type(
+        kwimage.MultiPolygon.from_geojson(polygon_geojson), kwimage.MultiPolygon
+    )
+    assert_type(
+        kwimage.MultiPolygon.from_coco([polygon_coco]), kwimage.MultiPolygon
+    )
 
     polygon_items: list[kwimage.Polygon | kwimage.MultiPolygon | None] = [
         poly, mpoly, None
@@ -564,6 +606,16 @@ if TYPE_CHECKING:
     assert_type(mask.get_convex_hull(), np.ndarray)
     assert_type(mask.iou(mask), float | np.floating[Any])
     assert_type(mask.to_coco(), CocoMaskRLE)
+
+    assert_type(MaskFormat.BYTES_RLE, Literal['bytes_rle'])
+    assert_type(MaskFormat.ARRAY_RLE, Literal['array_rle'])
+    assert_type(MaskFormat.C_MASK, Literal['c_mask'])
+    assert_type(MaskFormat.F_MASK, Literal['f_mask'])
+
+    mask_format: MaskFormatName = 'array_rle'
+    assert_type(mask.toformat(mask_format), kwimage.Mask)
+    assert_type(kwimage.Mask.from_mask(binary, method='naive'), kwimage.Mask)
+    assert_type(mask.warp(np.eye(3), output_dims='same'), kwimage.Mask)
 
     mask_list = kwimage.MaskList([mask, None])
     assert_type(mask_list[0], kwimage.Mask | None)

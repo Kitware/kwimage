@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from typing import Any, Callable
 
     from numpy import ndarray
+    from numpy.random import RandomState
     from numpy.typing import ArrayLike
     import torch
     from torch import Tensor
@@ -27,6 +28,7 @@ if SKImageGeometricTransform is None:
 
 if TYPE_CHECKING:
     ArrayData = ndarray | Tensor
+    RNGInput = int | RandomState | None
     TorchDeviceLike = str | int | torch.device | None
 
     class ImgAugKeypoint(Protocol):

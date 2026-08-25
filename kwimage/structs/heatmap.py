@@ -99,7 +99,7 @@ if TYPE_CHECKING:
     from skimage.transform._geometric import _GeometricTransform
     import torch
 
-    from kwimage._typing import ArrayData, TorchDeviceLike
+    from kwimage._typing import ArrayData, RNGInput, TorchDeviceLike
     from kwimage.structs.detections import DetectionClasses, Detections
 
     HeatmapShape = tuple[int, ...] | torch.Size
@@ -1616,7 +1616,7 @@ class Heatmap(
         nblips: int = 10,
         noise: float = 0.0,
         smooth_k: int = 3,
-        rng: Any | None = None,
+        rng: RNGInput = None,
         ensure_background: bool = True,
     ) -> Heatmap:
         """

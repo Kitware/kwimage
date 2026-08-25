@@ -49,8 +49,9 @@ from . import _generic
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
     from numbers import Number
-    from typing import TypedDict, overload
+    from typing import Literal, TypedDict, overload
 
+    from matplotlib.axes import Axes
     from numpy import ndarray
     from numpy.random import RandomState
     import torch
@@ -80,6 +81,9 @@ if TYPE_CHECKING:
     MaskData = ArrayData | MaskRLEData | None
     CocoMaskRLE = CocoBytesRLE | CocoArrayRLE
     MaskArea = Number | Tensor
+    MaskFormatName = Literal['bytes_rle', 'array_rle', 'c_mask', 'f_mask']
+    MaskFromMaskMethod = Literal['faster', 'naive']
+    MaskWarpOutputDims = Sequence[int] | ndarray | Literal['same'] | None
 
 
 class _Mask_Backends:
@@ -166,10 +170,16 @@ class MaskFormat:
         cannonical.append(k)
         return k
 
-    BYTES_RLE: str = _register('bytes_rle')  # cython compressed RLE
-    ARRAY_RLE: str = _register('array_rle')  # numpy uncompreesed RLE
-    C_MASK: str = _register('c_mask')  # row-major raw binary mask
-    F_MASK: str = _register('f_mask')  # column-major raw binary mask
+    if TYPE_CHECKING:
+        BYTES_RLE: Literal['bytes_rle']
+        ARRAY_RLE: Literal['array_rle']
+        C_MASK: Literal['c_mask']
+        F_MASK: Literal['f_mask']
+    else:
+        BYTES_RLE = _register('bytes_rle')  # cython compressed RLE
+        ARRAY_RLE = _register('array_rle')  # numpy uncompreesed RLE
+        C_MASK = _register('c_mask')  # row-major raw binary mask
+        F_MASK = _register('f_mask')  # column-major raw binary mask
 
     aliases: dict[str, str] = {}
     for key in cannonical:
@@ -178,8 +188,8 @@ class MaskFormat:
 
 class _MaskConversionMixin(object):
     if TYPE_CHECKING:
-        data: Any
-        format: str | None
+        data: MaskData
+        format: MaskFormatName | None
         def copy(self) -> Mask: ...
 
     """
@@ -200,7 +210,7 @@ class _MaskConversionMixin(object):
 
         return _reg
 
-    def toformat(self, format: str, copy: bool = False) -> Mask:
+    def toformat(self, format: MaskFormatName, copy: bool = False) -> Mask:
         """
         Changes the internal representation using one of the registered
         convertor functions.
@@ -328,7 +338,7 @@ class _MaskConversionMixin(object):
             from kwimage.im_runlen import _rle_bytes_to_array
 
             arr_counts = _rle_bytes_to_array(self.data['counts'])
-            encoded = {
+            encoded: Any = {
                 'size': self.data['size'],
                 'binary': self.data.get('binary', True),
                 'counts': arr_counts,
@@ -458,7 +468,8 @@ class _MaskConversionMixin(object):
             else:
                 torch_mod = torch
             if torch_mod is not None and torch_mod.is_tensor(data):
-                data = data.data.cpu().numpy()
+                data_impl: Any = data
+                data = data_impl.data.cpu().numpy()
         constructor: Any = self.__class__
         newself = constructor(data, self.format)
         return newself
@@ -488,7 +499,8 @@ class _MaskConversionMixin(object):
             if torch_mod is not None and not torch_mod.is_tensor(data):
                 data = torch_mod.from_numpy(data)
             if device is not ub.NoParam:
-                data = data.to(device)
+                data_impl: Any = data
+                data = data_impl.to(device)
         constructor: Any = self.__class__
         newself = constructor(data, self.format)
         return newself
@@ -550,7 +562,7 @@ class _MaskConstructorMixin(object):
         mask: ndarray,
         offset: tuple[int, int] | None = None,
         shape: tuple[int, int] | None = None,
-        method: str = 'faster',
+        method: MaskFromMaskMethod = 'faster',
     ) -> Mask:
         """
         Creates an RLE encoded mask from a raw binary mask.
@@ -615,11 +627,11 @@ class _MaskConstructorMixin(object):
 
 class _MaskTransformMixin(object):
     if TYPE_CHECKING:
-        data: Any
-        format: str | None
+        data: MaskData
+        format: MaskFormatName | None
         shape: Sequence[int] | None
         def to_c_mask(self, copy: bool = False) -> Mask: ...
-        def toformat(self, format: str, copy: bool = False) -> Mask: ...
+        def toformat(self, format: MaskFormatName, copy: bool = False) -> Mask: ...
         def to_array_rle(self, copy: bool = False) -> Mask: ...
 
     """
@@ -680,7 +692,7 @@ class _MaskTransformMixin(object):
         self: Any,
         transform: ndarray | kwimage.Affine | None,
         input_dims: tuple[int, int] | None = None,
-        output_dims: tuple[int, int] | str | None = None,
+        output_dims: MaskWarpOutputDims = None,
         inplace: bool = False,
     ) -> Mask:
         """
@@ -1052,7 +1064,7 @@ class _MaskDrawMixin(object):
         self,
         color: str | tuple = 'blue',
         alpha: float = 0.5,
-        ax: Any | None = None,
+        ax: Axes | None = None,
         show_border: bool = False,
         border_thick: int = 1,
         border_color: str = 'black',
@@ -1143,10 +1155,10 @@ class Mask(
     """
 
     data: MaskData
-    format: str | None
+    format: MaskFormatName | None
 
     def __init__(
-        self, data: Any | None = None, format: str | None = None
+        self, data: MaskData = None, format: MaskFormatName | None = None
     ) -> None:
         self.data = data
         self.format = format

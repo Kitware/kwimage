@@ -27,7 +27,9 @@ if TYPE_CHECKING:
     from shapely.geometry import MultiPoint
 
     from kwimage._typing import (
-        ArrayData, ImgAugKeypointsOnImage, TorchDeviceLike, TransformLike)
+        ArrayData, ImgAugKeypointsOnImage, RNGInput, TorchDeviceLike,
+        TransformLike,
+    )
     from kwimage.im_color import Color
 
     ColorLike = Color | str | Sequence[int | float]
@@ -186,7 +188,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         cls,
         num: int = 1,
         dim: int = 2,
-        rng: Any | None = None,
+        rng: RNGInput = None,
         meta: dict[str, Any] | None = None,
     ) -> Coords:
         """
