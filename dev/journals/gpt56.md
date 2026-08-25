@@ -676,3 +676,18 @@ The primary risk is checker-specific overload behavior, especially NumPy scalar 
 
 - Propagated the existing `CoordsFillInterp` literal contract from `Coords.fill` to `Coords.draw_on`, which forwards the value unchanged.
 - This fixes the single v51 `ty` diagnostic without widening `Coords.fill` or changing runtime behavior.
+
+## 2026-08-25: v53 kwconf CLI migration and CLI Any narrowing
+
+- Replaced the remaining production `scriptconfig` CLI classes and modal dispatcher with `kwconf.Config` / `kwconf.ModalCLI`.
+- Added typed kwconf fields for stack-image inputs, axis/padding/output, and crop-border source/destination paths; required positional inputs are now declared as required at the CLI boundary instead of failing later in image code.
+- Replaced the dynamic root CLI module/config discovery with a declarative modal containing the two supported kwimage commands. This removes the root CLI's broad `Any` plumbing while preserving the existing command names.
+- Migrated the development usage-count helper to kwconf as well, using typed fields and CSV parsing for its historical comma-separated `extra_modnames` form.
+- Added `kwconf>=0.11.1` as a runtime dependency and removed the stale scriptconfig intersphinx entry. Backend/image algorithms are untouched.
+- Did not hand-edit `uv.lock`: the sandbox cannot resolve the existing multi-Python dependency set offline, and `scriptconfig` remains a legitimate transitive dependency of the locked `kwplot`. Refresh the lock with the repository lock workflow after applying this overlay.
+
+## 2026-08-25 — v54 kwconf argv cleanup
+
+- Narrowed the two kwconf CLI `main(argv=...)` entry points to the exact `kwconf.Config.load` argv domain: `bool | Sequence[str] | str`.
+- Removed the unsupported `None` alternative rather than adding a runtime normalization branch.
+- Runtime CLI behavior is unchanged.

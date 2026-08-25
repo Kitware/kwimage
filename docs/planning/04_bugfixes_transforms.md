@@ -107,7 +107,7 @@ RuntimeWarning (crashes under `-W error`).
 `input_fpaths` default to None with no required check.
 - Failure: `python -m kwimage.cli crop_border` → TypeError from
   `ub.Path(None)`.
-- Fix: mark positional args required in scriptconfig or validate with a clean
+- Fix: mark positional args required in kwconf or validate with a clean
   usage error. Add CLI smoke tests (invoke `main` with tmp files; assert
   non-zero/clean error on missing args).
 

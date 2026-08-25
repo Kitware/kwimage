@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
 
-import scriptconfig as scfg
+import kwconf
 import ubelt as ub
 
 
-class CropBorderCLI(scfg.DataConfig):
+class CropBorderCLI(kwconf.Config):
     """
     Crop uniform borders from an image.
 
@@ -17,8 +17,12 @@ class CropBorderCLI(scfg.DataConfig):
     """
 
     __command__ = 'crop_border'
-    src = scfg.Value(None, position=1, help='Path to the input image.')
-    dst = scfg.Value(
+    src: str = kwconf.Value(
+        required=True,
+        position=1,
+        help='Path to the input image.',
+    )
+    dst: str | None = kwconf.Value(
         None,
         position=2,
         help=ub.paragraph(
@@ -30,16 +34,16 @@ class CropBorderCLI(scfg.DataConfig):
     )
 
     @classmethod
-    def main(cls, argv: Any = 1, **kwargs: Any) -> None:
+    def main(
+        cls: type[CropBorderCLI],
+        argv: bool | Sequence[str] | str = True,
+        **kwargs: object,
+    ) -> None:
         """
         Example:
             >>> # xdoctest: +SKIP
-            >>> from kwimage.cli.crop_border import *  # NOQA
-            >>> argv = 0
-            >>> kwargs = dict()
-            >>> cls = CropBorderCLI
-            >>> config = cls(**kwargs)
-            >>> cls.main(argv=argv, **config)
+            >>> from kwimage.cli.crop_border import CropBorderCLI
+            >>> CropBorderCLI.main(argv=False, src='input.png')
         """
         import rich
         from rich.markup import escape
@@ -47,7 +51,8 @@ class CropBorderCLI(scfg.DataConfig):
         import kwimage
         from kwimage.im_core import crop_border_by_color
 
-        config: Any = cls.cli(argv=argv, data=kwargs, strict=True)
+        config = cls()
+        config.load(data=kwargs, argv=argv, strict=True)
         rich.print('config = ' + escape(ub.urepr(config, nl=1)))
 
         src_fpath = ub.Path(config.src)
@@ -64,7 +69,6 @@ __cli__ = CropBorderCLI
 
 if __name__ == '__main__':
     """
-
     CommandLine:
         python ~/code/kwimage/kwimage/cli/crop_border.py
         python -m kwimage.cli.crop_border

@@ -1,21 +1,26 @@
-import scriptconfig as scfg
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import kwconf
 
 
-class UsageConfig(scfg.Config):
-    default = {
-        'modname': None,
-        'print_packages': False,
-        'remove_zeros': True,
-        # 'hardcoded_ubelt_hack': True,
-        'extra_modnames': [],
-    }
+class UsageConfig(kwconf.Config):
+    modname: str = kwconf.Value(required=True)
+    print_packages: bool = kwconf.Flag(False)
+    remove_zeros: bool = kwconf.Flag(True)
+    extra_modnames: list[str] = kwconf.Value(
+        default_factory=list,
+        parser='csv',
+    )
 
 
-def count_usage(cmdline=True, **kw):
-    config = UsageConfig(default=kw, cmdline=cmdline)
-
-    modname = config['modname']
-    assert modname is not None
+def count_usage(
+    cmdline: bool | Sequence[str] | str = True,
+    **kw: object,
+):
+    config = UsageConfig()
+    config.load(data=kw, argv=cmdline, strict=True)
 
     import glob
     from os.path import join
@@ -28,7 +33,7 @@ def count_usage(cmdline=True, **kw):
         'kwimage',
         'kwplot',
         'kwcoco',
-    ] + config['extra_modnames']
+    ] + config.extra_modnames
 
     all_fpaths = []
     for name in names:
@@ -42,9 +47,7 @@ def count_usage(cmdline=True, **kw):
 
     import re
 
-    import ubelt as ub
-
-    module = ub.import_module_from_name(modname)
+    module = ub.import_module_from_name(config.modname)
 
     package_name = module.__name__
     package_allvar = module.__all__
@@ -55,9 +58,7 @@ def count_usage(cmdline=True, **kw):
 
     pkg_to_hist = ub.ddict(lambda: ub.ddict(int))
     for name, fpath in ub.ProgIter(all_fpaths):
-        # print('fpath = {!r}'.format(fpath))
         text = ub.readfrom(fpath, verbose=0)
-        # text = open(fpath, 'r').read()
         for match in pat.finditer(text):
             attr = match.groupdict()['attr']
             if attr in package_allvar:
@@ -78,24 +79,13 @@ def count_usage(cmdline=True, **kw):
 
     usage = ub.odict(sorted(usage.items(), key=lambda t: t[1])[::-1])
 
-    if config['print_packages']:
+    if config.print_packages:
         print(ub.urepr(pkg_to_hist, nl=2))
 
-    if config['remove_zeros']:
+    if config.remove_zeros:
         for k, v in list(usage.items()):
             if v == 0:
                 usage.pop(k)
-
-    # if config['hardcoded_ubelt_hack']:
-    #     for k in list(usage):
-    #         if k.startswith('util_'):
-    #             usage.pop(k)
-    #         if k.startswith('_util_'):
-    #             usage.pop(k)
-    #         # ub._util_deprecated
-    #         from ubelt import _util_deprecated
-    #         if k in dir(_util_deprecated):
-    #             usage.pop(k)
 
     print(ub.urepr(usage, nl=1))
     return config, usage
@@ -105,8 +95,7 @@ if __name__ == '__main__':
     """
     CommandLine:
         python ~/code/kwimage/dev/count_usage_freq.py --help
-        python ~/code/kwimage/dev/count_usage_freq.py --modname=kwarray --extra_modnames=bioharn,
+        python ~/code/kwimage/dev/count_usage_freq.py --modname=kwarray --extra_modnames=bioharn
         python ~/code/kwimage/dev/count_usage_freq.py --modname=kwimage --extra_modnames=bioharn,watch
-
     """
     count_usage()

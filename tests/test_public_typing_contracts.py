@@ -886,3 +886,17 @@ if TYPE_CHECKING:
         ),
         None,
     )
+
+if TYPE_CHECKING:
+    from kwimage.cli.crop_border import CropBorderCLI
+    from kwimage.cli.stack_images import StackImagesCLI
+
+    stack_cli = StackImagesCLI(input_fpaths=['a.png', 'b.png'])
+    assert_type(stack_cli.input_fpaths, list[str])
+    assert_type(stack_cli.axis, Literal['grid'] | int)
+    assert_type(stack_cli.pad, int | None)
+    assert_type(stack_cli.out, str | None)
+
+    crop_cli = CropBorderCLI(src='input.png')
+    assert_type(crop_cli.src, str)
+    assert_type(crop_cli.dst, str | None)
