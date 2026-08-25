@@ -590,3 +590,18 @@ follow-up rather than another repo-wide speculative Any pass.
 - `MaskFormat` constants now have literal types during static checking while preserving the existing runtime registration/alias construction unchanged.
 - Kept backend-produced RLE dictionaries and dense NumPy/Torch conversion steps behind local implementation `Any` views where runtime format/backend checks provide the real correlation but `ty` cannot infer it.
 - The public `MaskData` representation union and `MaskFormatName` literal contract remain narrowed; no array conversion, copy, validation, or control-flow behavior was added for typing.
+
+
+## 2026-08-25: v44 heatmap visualization and null-policy narrowing
+
+- Narrowed caller-facing Heatmap visualization arguments: stacked-draw image/class selectors, draw image-space selector, and keypoint selection.
+- Aligned the Heatmap draw mixin's static declarations with the concrete `upscale`/`warp` return contracts instead of publishing bare `Any`.
+- `Heatmap.combine(dtype=...)` now accepts `numpy.typing.DTypeLike` rather than `Any`.
+- Narrowed `SegmentationList.coerce(none_policy=...)` and the shared null-policy helper to the three implemented policy literals.
+- Added static contracts for the narrowed Heatmap and segmentation-list surfaces. No numerical, allocation, iteration, or copy behavior changed.
+
+## v45 Heatmap selector cleanup
+
+- Corrected `Heatmap.upscale(channel=...)` to use integer class-channel selectors.
+- Narrowed `Heatmap.draw_on(kpts=...)` to the sized sequence forms its implementation supports, with `True` as the all-keypoints sentinel.
+- Kept keypoint selector normalization behind a local implementation-only `Any` view so runtime behavior is unchanged while `ty` does not retain the public union through mutation.

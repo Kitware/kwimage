@@ -258,7 +258,9 @@ class SegmentationList(_generic.ObjectList[Segmentation | None]):
 
     @classmethod
     def coerce(
-        cls, data: list[Any] | _generic.ObjectList[Any] | None, none_policy: str = 'raise'
+        cls,
+        data: list[Any] | _generic.ObjectList[Any] | None,
+        none_policy: Literal['return-None', 'return-nan', 'raise'] = 'raise',
     ) -> SegmentationList | None | float:
         """
         Interpret data as a list of Segmentations
@@ -283,7 +285,9 @@ class SegmentationList(_generic.ObjectList[Segmentation | None]):
 
 
 def _handle_null_policy(
-    policy: str, ex_type: type[Exception] = TypeError, ex_msg: str = 'cannot accept null input'
+    policy: Literal['return-None', 'return-nan', 'raise'],
+    ex_type: type[Exception] = TypeError,
+    ex_msg: str = 'cannot accept null input',
 ) -> None | float:
     """
     For handling a nan or None policy.

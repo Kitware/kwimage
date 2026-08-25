@@ -436,6 +436,15 @@ if TYPE_CHECKING:
     assert_type(heatmap.warp(np.eye(3)), kwimage.Heatmap)
     assert_type(heatmap.scale(2.0), kwimage.Heatmap)
     assert_type(heatmap.translate((1.0, 2.0)), kwimage.Heatmap)
+    assert_type(heatmap.colorize(0), np.ndarray)
+    assert_type(heatmap.draw_stacked(top=1, chosen_cxs=[0]), np.ndarray)
+    assert_type(heatmap.draw_on(kpts=[0]), np.ndarray)
+    assert_type(heatmap.draw_on(kpts=True), np.ndarray)
+    assert_type(heatmap.upscale(0), np.ndarray)
+    assert_type(heatmap.draw(imgspace=False), None)
+    assert_type(
+        kwimage.Heatmap.combine([heatmap], dtype=np.float32), kwimage.Heatmap
+    )
     assert_type(heatmap.detect(0), kwimage.Detections)
 
     coords = kwimage.Coords(np.empty((3, 2)))
@@ -657,6 +666,10 @@ if TYPE_CHECKING:
     assert_type(segmentation_list.tensor('cpu'), kwimage.SegmentationList)
     assert_type(
         segmentation_list.to_coco(), Iterator[SegmentationCoco | None]
+    )
+    assert_type(
+        kwimage.SegmentationList.coerce(None, none_policy='return-None'),
+        kwimage.SegmentationList | None | float,
     )
 
     det_boxes = kwimage.Boxes(np.empty((3, 4)), 'xywh')

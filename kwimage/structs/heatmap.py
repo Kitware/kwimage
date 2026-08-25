@@ -93,9 +93,11 @@ import ubelt as ub
 from . import _generic
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from typing import Literal, overload, Sequence, Tuple
 
     from numpy import ndarray
+    from numpy.typing import DTypeLike
     from skimage.transform._geometric import _GeometricTransform
     import torch
 
@@ -106,6 +108,13 @@ if TYPE_CHECKING:
     HeatmapImageDims = Sequence[int] | ndarray
     HeatmapSpatialData = ArrayData | Sequence[int | float] | float | int
     HeatmapTransform = _GeometricTransform
+    HeatmapChannelSelector = int | np.integer[Any]
+    HeatmapKeypointSelector = (
+        Literal[True]
+        | HeatmapChannelSelector
+        | Sequence[HeatmapChannelSelector]
+        | None
+    )
 
 
 class _HeatmapDrawMixin(object):
@@ -125,9 +134,25 @@ class _HeatmapDrawMixin(object):
         shape: Any
         bounds: Any
 
-        def _warp_imgspace(self, *args: Any, **kwargs: Any) -> Any: ...
-        def upscale(self, *args: Any, **kwargs: Any) -> Any: ...
-        def warp(self, *args: Any, **kwargs: Any) -> Any: ...
+        def _warp_imgspace(
+            self, chw: Any, interpolation: str = 'linear'
+        ) -> ndarray: ...
+        def upscale(
+            self,
+            channel: HeatmapChannelSelector | None = None,
+            interpolation: str = 'linear',
+        ) -> ndarray: ...
+        def warp(
+            self,
+            mat: Any | None = None,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: tuple[int, int] | None = None,
+            interpolation: str = 'linear',
+            modify_spatial_coords: bool = True,
+            int_interpolation: str = 'nearest',
+            mat_is_xy: bool = True,
+            version: Literal['old', 'new'] | None = None,
+        ) -> Heatmap: ...
 
     def _colorize_class_idx(self) -> ndarray:
         """
@@ -432,11 +457,11 @@ class _HeatmapDrawMixin(object):
 
     def draw_stacked(
         self,
-        image: Any | None = None,
+        image: ndarray | None = None,
         dsize: tuple[int, int] = (224, 224),
-        ignore_class_idxs: Any = {},
-        top: Any | None = None,
-        chosen_cxs: Any | None = None,
+        ignore_class_idxs: Iterable[int | np.integer[Any]] = {},
+        top: int | None = None,
+        chosen_cxs: Iterable[int | np.integer[Any]] | None = None,
     ) -> ndarray:
         """
         Draws per-class probabilities and stacks them into a single image
@@ -515,8 +540,8 @@ class _HeatmapDrawMixin(object):
     def draw(
         self,
         channel: int | str | None = None,
-        image: Any | None = None,
-        imgspace: Any | None = None,
+        image: ndarray | None = None,
+        imgspace: bool | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -550,7 +575,7 @@ class _HeatmapDrawMixin(object):
         with_alpha: float = 1.0,
         interpolation: str = 'linear',
         vecs: bool = False,
-        kpts: Any | None = None,
+        kpts: HeatmapKeypointSelector = None,
         imgspace: bool | None = None,
     ) -> ndarray:
         """
@@ -673,16 +698,17 @@ class _HeatmapDrawMixin(object):
         vec_colors = kwimage.Color.distinct(2)
         vec_alpha = 0.5
 
-        if kpts is not None:
+        kpts_impl: Any = kpts
+        if kpts_impl is not None:
             # TODO: make a nicer keypoint offset vector visuliazation
-            if kpts is True:
+            if kpts_impl is True:
                 if self.data.get('keypoints', None) is not None:
                     keypoints = self.data['keypoints']
-                    kpts = list(range(len(keypoints.shape[1])))
-            if not ub.iterable(kpts):
-                kpts = [kpts]
+                    kpts_impl = list(range(len(keypoints.shape[1])))
+            if not ub.iterable(kpts_impl):
+                kpts_impl = [kpts_impl]
             E = int(bool(vecs))
-            vec_colors = kwimage.Color.distinct(len(kpts) + E)
+            vec_colors = kwimage.Color.distinct(len(kpts_impl) + E)
 
         if vecs:
             if self.data.get('offset', None) is not None:
@@ -706,13 +732,13 @@ class _HeatmapDrawMixin(object):
                 vecalign = vecalign.transpose(1, 2, 0)
                 layers.append(vecalign)
 
-        if kpts is not None:
+        if kpts_impl is not None:
             import torch
 
             # TODO: make a nicer keypoint offset vector visuliazation
             if self.data.get('keypoints', None) is not None:
                 keypoints = self.data['keypoints']
-                for i, k in enumerate(kpts):
+                for i, k in enumerate(kpts_impl):
                     # color = (np.array(vec_colors[k]) * 255).astype(np.uint8)
                     color = vec_colors[i + E]
 
@@ -852,14 +878,17 @@ class _HeatmapWarpMixin(object):
         return aligned
 
     def upscale(
-        self, channel: ndarray | None = None, interpolation: str = 'linear'
+        self,
+        channel: HeatmapChannelSelector | None = None,
+        interpolation: str = 'linear',
     ) -> ndarray:
         """
         Warp the heatmap with the image dimensions
 
         Args:
-            channel (ndarray | None):
-                if None, use class probs, else chw data.
+            channel (int | None):
+                if None, use all class probabilities, otherwise select one
+                class channel.
 
         TODO:
             - [ ] Needs refactor
@@ -1154,7 +1183,7 @@ class _HeatmapAlgoMixin(object):
         cls,
         heatmaps: Sequence[Heatmap],
         root_index: int | None = None,
-        dtype: Any = np.float32,
+        dtype: DTypeLike = np.float32,
     ) -> Heatmap:
         """
         Combine multiple heatmaps into a single heatmap.
