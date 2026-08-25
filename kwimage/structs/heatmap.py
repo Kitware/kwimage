@@ -96,12 +96,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Literal, overload, Sequence, Tuple
 
+    from matplotlib.colors import Colormap
     from numpy import ndarray
-    from numpy.typing import DTypeLike
+    from numpy.typing import ArrayLike, DTypeLike
     from skimage.transform._geometric import _GeometricTransform
     import torch
 
     from kwimage._typing import ArrayData, RNGInput, TorchDeviceLike
+    from kwimage.transform import Affine
     from kwimage.structs.detections import DetectionClasses, Detections
 
     HeatmapShape = tuple[int, ...] | torch.Size
@@ -109,6 +111,12 @@ if TYPE_CHECKING:
     HeatmapSpatialData = ArrayData | Sequence[int | float] | float | int
     HeatmapTransform = _GeometricTransform
     HeatmapChannelSelector = int | np.integer[Any]
+    HeatmapVisualChannel = HeatmapChannelSelector | str
+    HeatmapInterpolation = Literal['linear', 'bilinear', 'nearest']
+    HeatmapColorMap = str | Colormap
+    HeatmapWarpMatrix = (
+        ArrayLike | torch.Tensor | _GeometricTransform | Affine | None
+    )
     HeatmapKeypointSelector = (
         Literal[True]
         | HeatmapChannelSelector
@@ -135,21 +143,22 @@ class _HeatmapDrawMixin(object):
         bounds: Any
 
         def _warp_imgspace(
-            self, chw: Any, interpolation: str = 'linear'
+            self, chw: torch.Tensor,
+            interpolation: HeatmapInterpolation = 'linear',
         ) -> ndarray: ...
         def upscale(
             self,
             channel: HeatmapChannelSelector | None = None,
-            interpolation: str = 'linear',
+            interpolation: HeatmapInterpolation = 'linear',
         ) -> ndarray: ...
         def warp(
             self,
-            mat: Any | None = None,
+            mat: HeatmapWarpMatrix = None,
             input_dims: tuple[int, int] | None = None,
             output_dims: tuple[int, int] | None = None,
-            interpolation: str = 'linear',
+            interpolation: HeatmapInterpolation = 'linear',
             modify_spatial_coords: bool = True,
-            int_interpolation: str = 'nearest',
+            int_interpolation: HeatmapInterpolation = 'nearest',
             mat_is_xy: bool = True,
             version: Literal['old', 'new'] | None = None,
         ) -> Heatmap: ...
@@ -230,12 +239,12 @@ class _HeatmapDrawMixin(object):
 
     def colorize(
         self,
-        channel: int | str | None = None,
+        channel: HeatmapVisualChannel | None = None,
         invert: bool = False,
         with_alpha: float = 1.0,
-        interpolation: str = 'linear',
+        interpolation: HeatmapInterpolation = 'linear',
         imgspace: bool = False,
-        cmap: Any | None = None,
+        cmap: HeatmapColorMap | None = None,
     ) -> ndarray:
         """
         Creates a colorized version of a heatmap channel suitable for
@@ -539,10 +548,14 @@ class _HeatmapDrawMixin(object):
 
     def draw(
         self,
-        channel: int | str | None = None,
+        channel: HeatmapVisualChannel | None = None,
         image: ndarray | None = None,
         imgspace: bool | None = None,
-        **kwargs: Any,
+        invert: bool = False,
+        with_alpha: float = 1.0,
+        interpolation: HeatmapInterpolation = 'linear',
+        vecs: bool = False,
+        kpts: HeatmapKeypointSelector = None,
     ) -> None:
         """
         Accepts same args as draw_on, but uses maplotlib
@@ -563,17 +576,24 @@ class _HeatmapDrawMixin(object):
             shape = tuple(dims) + (4,)
             image = np.zeros(shape, dtype=np.float32)
         image = self.draw_on(
-            image, channel=channel, imgspace=imgspace, **kwargs
+            image,
+            channel=channel,
+            invert=invert,
+            with_alpha=with_alpha,
+            interpolation=interpolation,
+            vecs=vecs,
+            kpts=kpts,
+            imgspace=imgspace,
         )
         kwplot.imshow(image)
 
     def draw_on(
         self,
         image: ndarray | None = None,
-        channel: int | str | None = None,
+        channel: HeatmapVisualChannel | None = None,
         invert: bool = False,
         with_alpha: float = 1.0,
-        interpolation: str = 'linear',
+        interpolation: HeatmapInterpolation = 'linear',
         vecs: bool = False,
         kpts: HeatmapKeypointSelector = None,
         imgspace: bool | None = None,
@@ -854,7 +874,8 @@ class _HeatmapWarpMixin(object):
         return aligned
 
     def _warp_imgspace(
-        self, chw: Any, interpolation: str = 'linear'
+        self, chw: torch.Tensor,
+        interpolation: HeatmapInterpolation = 'linear',
     ) -> ndarray:
         import kwimage
 
@@ -880,7 +901,7 @@ class _HeatmapWarpMixin(object):
     def upscale(
         self,
         channel: HeatmapChannelSelector | None = None,
-        interpolation: str = 'linear',
+        interpolation: HeatmapInterpolation = 'linear',
     ) -> ndarray:
         """
         Warp the heatmap with the image dimensions
@@ -911,12 +932,12 @@ class _HeatmapWarpMixin(object):
 
     def warp(
         self,
-        mat: Any | None = None,
+        mat: HeatmapWarpMatrix = None,
         input_dims: tuple[int, int] | None = None,
         output_dims: tuple[int, int] | None = None,
-        interpolation: str = 'linear',
+        interpolation: HeatmapInterpolation = 'linear',
         modify_spatial_coords: bool = True,
-        int_interpolation: str = 'nearest',
+        int_interpolation: HeatmapInterpolation = 'nearest',
         mat_is_xy: bool = True,
         version: Literal['old', 'new'] | None = None,
     ) -> Heatmap:
@@ -985,13 +1006,14 @@ class _HeatmapWarpMixin(object):
 
         import kwimage
 
-        if mat is None:
-            mat = self.tf_data_to_img.params
+        mat_impl: Any = mat
+        if mat_impl is None:
+            mat_impl = self.tf_data_to_img.params
 
-        if isinstance(mat, skimage.transform.AffineTransform):
-            mat = mat.params
-        elif isinstance(mat, kwimage.Affine):
-            mat = mat.matrix
+        if isinstance(mat_impl, skimage.transform.AffineTransform):
+            mat_impl = mat_impl.params
+        elif isinstance(mat_impl, kwimage.Affine):
+            mat_impl = mat_impl.matrix
 
         newdata = {}
         newmeta = self.meta.copy()
@@ -1015,16 +1037,16 @@ class _HeatmapWarpMixin(object):
         # Change if matrix is in X/Y or Y/X coords.
         if version == 'new':
             if not mat_is_xy:
-                mat = mat[[1, 0, 2], :][:, [1, 0, 2]]
+                mat_impl = mat_impl[[1, 0, 2], :][:, [1, 0, 2]]
         elif version == 'old':
             if mat_is_xy:
-                mat = mat[[1, 0, 2], :][:, [1, 0, 2]]
+                mat_impl = mat_impl[[1, 0, 2], :][:, [1, 0, 2]]
         else:
             raise KeyError(version)
 
-        mat = impl.asarray(mat)
+        mat_impl = impl.asarray(mat_impl)
 
-        mat_np = impl.numpy(mat)
+        mat_np = impl.numpy(mat_impl)
         tf = skimage.transform.AffineTransform(matrix=mat_np)
         # hack: need to get a version of the matrix without any translation
         tf_notrans = _remove_translation(tf)
@@ -1096,14 +1118,14 @@ class _HeatmapWarpMixin(object):
                         warnings.warn('Using non-nearest int interpolation')
                     new_v = kwimage.warp_tensor(
                         v[None, :].float(),
-                        mat,
+                        mat_impl,
                         output_dims=output_dims,
                         mode=int_interpolation,
                     )[0]
                 else:
                     new_v = kwimage.warp_tensor(
                         v[None, :].float(),
-                        mat,
+                        mat_impl,
                         output_dims=output_dims,
                         mode=interpolation,
                     )[0]
@@ -1118,7 +1140,7 @@ class _HeatmapWarpMixin(object):
         self,
         factor: float | Sequence[float],
         output_dims: tuple[int, int] | None = None,
-        interpolation: str = 'linear',
+        interpolation: HeatmapInterpolation = 'linear',
     ) -> Heatmap:
         """
         Scale the heatmap
@@ -1145,7 +1167,7 @@ class _HeatmapWarpMixin(object):
         self,
         offset: float | Sequence[float],
         output_dims: tuple[int, int] | None = None,
-        interpolation: str = 'linear',
+        interpolation: HeatmapInterpolation = 'linear',
     ) -> Heatmap:
         if not ub.iterable(offset):
             tx = ty = offset

@@ -17,7 +17,7 @@ from kwimage.structs import _generic
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Any, Tuple, overload
+    from typing import Any, Literal, Tuple, overload
 
     from matplotlib.axes import Axes
     import matplotlib.collections
@@ -33,6 +33,11 @@ if TYPE_CHECKING:
     from kwimage.im_color import Color
 
     ColorLike = Color | str | Sequence[int | float]
+    CoordsFillScalar = int | float | np.integer[Any] | np.floating[Any]
+    CoordsFillValue = (
+        CoordsFillScalar | Sequence[CoordsFillScalar] | ndarray
+    )
+    CoordsFillInterp = Literal['bilinear', 'nearest']
 
 try:
     from packaging.version import parse as LooseVersion
@@ -1132,9 +1137,9 @@ class Coords(_generic.Spatial, ub.NiceRepr):
     def fill(
         self,
         image: ndarray,
-        value: Any,
+        value: CoordsFillValue,
         coord_axes: Sequence[int] | None = None,
-        interp: str = 'bilinear',
+        interp: CoordsFillInterp = 'bilinear',
     ) -> ndarray:
         """
         Sets sub-coordinate locations in a grid to a particular value
@@ -1310,7 +1315,7 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         image: ndarray | None = None,
         fill_value: int = 1,
         coord_axes: Sequence[int] = [1, 0],
-        interp: str = 'bilinear',
+        interp: CoordsFillInterp = 'bilinear',
     ) -> ndarray:
         """
         Note:

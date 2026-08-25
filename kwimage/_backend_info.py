@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from types import ModuleType
-from typing import NoReturn
+from typing import Literal, NoReturn
 
 try:
     from functools import cache
@@ -51,7 +51,7 @@ def _have_cv2() -> bool:
 
 
 @cache
-def _default_backend() -> str:
+def _default_backend() -> Literal['cv2', 'skimage']:
     """
     Define the default backend for simple cases.
     In kwimage < 0.11.0, this was always cv2, but now cv2 is optional, so we

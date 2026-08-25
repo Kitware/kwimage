@@ -661,3 +661,18 @@ The primary risk is checker-specific overload behavior, especially NumPy scalar 
 
 - Fixed the single v49 `ty` follow-up in `warp_tensor`: `np.prod(prefix_dims[:-1])` produces a NumPy integer scalar, while Torch stubs require builtin `int | SymInt` for `Tensor.view`.
 - Kept the existing NumPy shape arithmetic unchanged and introduced only a local implementation `Any` view at the `Tensor.view` boundary. No casts, tensor copies, reshapes, validation, or numerical behavior were added for typing.
+
+## 2026-08-25: v51 stable public boundary narrowing
+
+- Continued the post-v50 typing audit with three stable caller-facing clusters rather than narrowing dynamic coercion/metadata internals.
+- `imread`, `imwrite`, and `load_image_shape` now expose literal backend selectors matching their implemented dispatch branches. The private default-backend helper now publishes its exact `cv2 | skimage` result so those literal contracts remain checker-clean. Backend-specific `**kwargs` remain the intentional extension point.
+- Heatmap visualization/warp APIs now expose concrete channel, colormap, interpolation, and warp-matrix forms. `Heatmap.draw` mirrors the actual `draw_on` arguments instead of leaking arbitrary `**kwargs`; the polymorphic warp-matrix normalization remains behind a local implementation-only `Any` view.
+- `Coords.fill` now exposes the scalar/NumPy value and interpolation modes accepted by its NumPy subpixel setter path.
+- Deliberately left Mask mixin `self: Any` annotations alone: those are implementation-only boundaries used to isolate representation correlations, not caller-visible holes.
+- No runtime validation, array conversion, copy, or backend-selection behavior was added for typing.
+
+
+## 2026-08-25: v52 Coords draw interpolation cleanup
+
+- Propagated the existing `CoordsFillInterp` literal contract from `Coords.fill` to `Coords.draw_on`, which forwards the value unchanged.
+- This fixes the single v51 `ty` diagnostic without widening `Coords.fill` or changing runtime behavior.

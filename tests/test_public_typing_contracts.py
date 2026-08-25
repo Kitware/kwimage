@@ -49,11 +49,15 @@ if TYPE_CHECKING:
     )
     from kwimage.structs.single_box import BoxDType, BoxScalar
     from kwimage.structs.heatmap import (
-        HeatmapImageDims, HeatmapShape, HeatmapSpatialData, HeatmapTransform,
+        HeatmapColorMap, HeatmapImageDims, HeatmapInterpolation, HeatmapShape,
+        HeatmapSpatialData, HeatmapTransform, HeatmapWarpMatrix,
     )
     from kwimage.structs.polygon import (
         CocoPolygon, CocoPolygonDict, CocoPolygonStyle, MultiPolygonGeoJSON,
         PolygonData, PolygonGeoJSON,
+    )
+    from kwimage.im_io import (
+        ImageReadBackend, ImageShapeBackend, ImageWriteBackend,
     )
     from kwimage.im_core import (
         PaddedSliceInfo, PaddedSlicePadKw, RobustNormalizerInfo,
@@ -135,6 +139,20 @@ if TYPE_CHECKING:
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
+
+    read_backend: ImageReadBackend = 'pil'
+    write_backend: ImageWriteBackend = 'cv2'
+    assert_type(kwimage.imread('demo.png', backend=read_backend), np.ndarray)
+    assert_type(
+        kwimage.imwrite('demo.png', image, backend=write_backend), str
+    )
+    shape_backend: ImageShapeBackend = 'pil'
+    assert_type(
+        kwimage.load_image_shape(
+            'demo.png', backend=shape_backend, include_channels=False
+        ),
+        tuple[int, int],
+    )
 
     float_image = image.astype(np.float32) / 255.0
     fourier_mask_data = np.ones((16, 20), dtype=np.float32)
@@ -839,4 +857,32 @@ if TYPE_CHECKING:
     )
     assert_type(
         dets.non_max_supression(device_id=0), DetectionIndices
+    )
+
+    coords_fill = kwimage.Coords(np.array([[1.0, 2.0]], dtype=np.float32))
+    assert_type(coords_fill.fill(image.copy(), 1.0), np.ndarray)
+    assert_type(
+        coords_fill.fill(image.copy(), [1.0, 0.5, 0.25], interp='nearest'),
+        np.ndarray,
+    )
+
+    heatmap_interp: HeatmapInterpolation = 'bilinear'
+    heatmap_cmap: HeatmapColorMap = 'plasma'
+    heatmap_warp_matrix: HeatmapWarpMatrix = np.eye(3)
+    heatmap_for_types = kwimage.Heatmap.random(rng=0, dims=(8, 8))
+    assert_type(
+        heatmap_for_types.colorize(0, cmap=heatmap_cmap), np.ndarray
+    )
+    assert_type(
+        heatmap_for_types.upscale(0, interpolation=heatmap_interp), np.ndarray
+    )
+    assert_type(
+        heatmap_for_types.warp(heatmap_warp_matrix, version='new'),
+        kwimage.Heatmap,
+    )
+    assert_type(
+        heatmap_for_types.draw(
+            channel=np.int64(0), interpolation='nearest', kpts=True
+        ),
+        None,
     )

@@ -43,6 +43,11 @@ if _t.TYPE_CHECKING:
         'qoi',
         'svg',
     ]
+    ImageReadBackend: TypeAlias = BackendName
+    ImageWriteBackend: TypeAlias = Literal[
+        'auto', 'gdal', 'skimage', 'itk', 'pil', 'cv2', 'turbojpeg'
+    ]
+    ImageShapeBackend: TypeAlias = Literal['auto', 'pil', 'gdal', 'imagesize']
     ColorSpace: TypeAlias = str | None
 
 __all__ = [
@@ -111,7 +116,7 @@ IMAGE_EXTENSIONS: tuple[str, ...] = (
 def imread(
     fpath: os.PathLike[str] | str,
     space: str | None = 'auto',
-    backend: str = 'auto',
+    backend: ImageReadBackend = 'auto',
     **kw: Any,
 ) -> np.ndarray:
     r"""
@@ -1036,7 +1041,7 @@ def imwrite(
     fpath: os.PathLike[str] | str,
     image: np.ndarray,
     space: str | None = 'auto',
-    backend: str = 'auto',
+    backend: ImageWriteBackend = 'auto',
     **kwargs: Any,
 ) -> str:
     """
@@ -1552,28 +1557,28 @@ if _t.TYPE_CHECKING:
     @overload
     def load_image_shape(
         fpath: PathLike,
-        backend: str | list[str] = 'auto',
+        backend: ImageShapeBackend | list[ImageShapeBackend] = 'auto',
         include_channels: Literal[True] = True,
     ) -> tuple[int, int, int]: ...
 
     @overload
     def load_image_shape(
         fpath: PathLike,
-        backend: str | list[str] = 'auto',
+        backend: ImageShapeBackend | list[ImageShapeBackend] = 'auto',
         include_channels: Literal[False] = False,
     ) -> tuple[int, int]: ...
 
     @overload
     def load_image_shape(
         fpath: PathLike,
-        backend: str | list[str] = 'auto',
+        backend: ImageShapeBackend | list[ImageShapeBackend] = 'auto',
         include_channels: bool = True,
     ) -> tuple[int, int] | tuple[int, int, int]: ...
 
 
 def load_image_shape(
     fpath: os.PathLike[str] | str,
-    backend: str | list[str] = 'auto',
+    backend: ImageShapeBackend | list[ImageShapeBackend] = 'auto',
     include_channels: bool = True,
 ) -> tuple[int, int] | tuple[int, int, int]:
     """
