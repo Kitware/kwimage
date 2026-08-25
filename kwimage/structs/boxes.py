@@ -727,7 +727,9 @@ class _BoxConversionMixins:
         return self
 
     @classmethod
-    def coerce(cls, data: Any, format: str | None = None, **kwargs: Any) -> Boxes:
+    def coerce(
+        cls, data: object, format: str | None = None, **kwargs: object
+    ) -> Boxes:
         """
         Args:
             data : can be :
@@ -746,6 +748,7 @@ class _BoxConversionMixins:
         from shapely.geometry import Polygon
 
         box_cls = cast('type[Boxes]', cls)
+        kwargs_impl: Any = kwargs
         if isinstance(data, box_cls):
             self = data
         elif isinstance(data, Polygon):
@@ -758,7 +761,7 @@ class _BoxConversionMixins:
                 _arr_data = np.array(data)
 
             if _arr_data is not None:
-                format = kwargs.get('format', format)
+                format = kwargs_impl.get('format', format)
                 if format is None:
                     raise Exception('ambiguous, specify Box format')
                 self = box_cls(_arr_data, format=format)

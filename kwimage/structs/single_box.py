@@ -187,7 +187,7 @@ class Box:
     @classmethod
     @profile
     def coerce(
-        cls, data: Any, format: str | None = None, **kwargs: Any
+        cls, data: object, format: str | None = None, **kwargs: object
     ) -> Box:
         """
         Create an instance of a box from data.
@@ -204,32 +204,36 @@ class Box:
         if isinstance(data, Box):
             return data
         else:
+            data_impl: Any = data
             import numbers
             import sys
 
             torch = sys.modules.get('torch', None)
-            if isinstance(data, list):
-                if data and isinstance(data[0], numbers.Number):
-                    data = np.array(data)[None, :]
-            if isinstance(data, np.ndarray) or torch and torch.is_tensor(data):
-                if len(data.shape) == 1:
-                    data = data[None, :]
+            if isinstance(data_impl, list):
+                if data_impl and isinstance(data_impl[0], numbers.Number):
+                    data_impl = np.array(data_impl)[None, :]
+            if (
+                isinstance(data_impl, np.ndarray)
+                or torch and torch.is_tensor(data_impl)
+            ):
+                if len(data_impl.shape) == 1:
+                    data_impl = data_impl[None, :]
             # return cls(kwimage.Boxes.coerce(data, **kwargs))
             # inline new coerce code until new version lands
             from shapely.geometry import Polygon
 
             from kwimage import Boxes
 
-            if isinstance(data, Boxes):
-                self = data
-            elif isinstance(data, Polygon):
-                self = Boxes.from_shapely(data)
+            if isinstance(data_impl, Boxes):
+                self = data_impl
+            elif isinstance(data_impl, Polygon):
+                self = Boxes.from_shapely(data_impl)
             else:
                 _arr_data = None
-                if isinstance(data, np.ndarray):
-                    _arr_data = np.array(data)
-                elif isinstance(data, list):
-                    _arr_data = np.array(data)
+                if isinstance(data_impl, np.ndarray):
+                    _arr_data = np.array(data_impl)
+                elif isinstance(data_impl, list):
+                    _arr_data = np.array(data_impl)
 
                 if _arr_data is not None:
                     if format is None:

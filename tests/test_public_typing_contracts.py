@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from kwimage.structs.detections import (
         CocoAnnotsDatasetLike, CocoDatasetLike, CocoDetection,
         DetectionDemoImageInfo, DetectionDemoSamplerLike,
-        DetectionArray,
+        DetectionsCoerceKwargs, DetectionArray,
         DetectionClasses,
         DetectionDType,
         DetectionIndices,
@@ -68,12 +68,15 @@ if TYPE_CHECKING:
     )
     from kwimage.im_transform import ResizeInfo, WarpInfo
     from kwimage.algo.algo_nms import NMSIndex, NMSIndices
-    from kwimage.im_draw import TextDrawInfo
+    from kwimage.im_draw import (
+        CV2LineKwargs, HeaderTextKwargs, TextDrawInfo, TextDrawKwargs,
+    )
     from kwimage.im_runlen import RunLengthEncoding
     from kwimage.im_stack import StackTransform
     from kwimage.transform import (
-        AffineConcise, AffineDecomposition, AffineRandomParams,
-        ProjectiveDecomposition, TransformScalar,
+        AffineConcise, AffineDecomposition, AffineRandomKwargs,
+        AffineRandomParams, MatrixIndexResult, ProjectiveDecomposition,
+        TransformScalar,
     )
 
 
@@ -105,14 +108,34 @@ if TYPE_CHECKING:
     assert_type(kwimage.Detections.random(rng=rng_input), kwimage.Detections)
 
     matrix = kwimage.Matrix.eye(3)
+    assert_type(kwimage.Matrix.random(3, rng=0), kwimage.Matrix)
     assert_type(matrix.det(), TransformScalar)
+    assert_type(matrix[0, 0], MatrixIndexResult)
+    assert_type(matrix[0], MatrixIndexResult)
 
     affine_tf = kwimage.Affine(None)
     assert_type(affine_tf.det(), TransformScalar)
     assert_type(affine_tf.decompose(), AffineDecomposition)
     assert_type(affine_tf.concise(), AffineConcise)
     assert_type(kwimage.Affine.random_params(rng=0), AffineRandomParams)
+    affine_random_kw: AffineRandomKwargs = {
+        'scale': (0.5, 1.5),
+        'offset': 0.0,
+        'theta': (-0.2, 0.2),
+    }
+    assert_type(
+        kwimage.Affine.random_params(rng=0, **affine_random_kw),
+        AffineRandomParams,
+    )
+    assert_type(
+        kwimage.Affine.random(rng=0, **affine_random_kw), kwimage.Affine
+    )
     assert_type(affine_tf.to_affine(), affine.Affine)
+
+    assert_type(
+        kwimage.Projective.random(rng=0, **affine_random_kw),
+        kwimage.Projective,
+    )
 
     projective_tf = kwimage.Projective(None)
     assert_type(projective_tf.decompose(), ProjectiveDecomposition)
@@ -135,6 +158,14 @@ if TYPE_CHECKING:
     assert_type(
         kwimage.Box.from_data([0.0, 1.0, 2.0, 3.0], 'xywh'),
         kwimage.Box,
+    )
+
+    opaque_box_data: object = [0.0, 1.0, 2.0, 3.0]
+    assert_type(
+        kwimage.Boxes.coerce(opaque_box_data, format='xywh'), kwimage.Boxes
+    )
+    assert_type(
+        kwimage.Box.coerce(opaque_box_data, format='xywh'), kwimage.Box
     )
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
@@ -325,6 +356,17 @@ if TYPE_CHECKING:
         list[NMSIndex],
     )
 
+    text_draw_kw: TextDrawKwargs = {
+        'color': 'red',
+        'fontScale': 1.0,
+        'halign': 'center',
+        'valign': 'top',
+        'border': {'color': 'black', 'thickness': 1},
+    }
+    assert_type(
+        kwimage.draw_text_on_image(image, 'text', **text_draw_kw),
+        np.ndarray,
+    )
     assert_type(kwimage.draw_text_on_image(image, 'text'), np.ndarray)
     assert_type(
         kwimage.draw_text_on_image(image, 'text', return_info=True),
@@ -344,6 +386,13 @@ if TYPE_CHECKING:
         kwimage.draw_line_segments_on_image(image, draw_pts, draw_pts),
         np.ndarray,
     )
+    line_draw_kw: CV2LineKwargs = {'lineType': 8, 'shift': 0}
+    assert_type(
+        kwimage.draw_line_segments_on_image(
+            image, draw_pts, draw_pts, **line_draw_kw
+        ),
+        np.ndarray,
+    )
     draw_field = np.zeros((16, 20), dtype=np.float32)
     assert_type(kwimage.make_heatmask(draw_field), np.ndarray)
     assert_type(kwimage.make_orimask(draw_field), np.ndarray)
@@ -359,6 +408,17 @@ if TYPE_CHECKING:
     )
     assert_type(
         kwimage.draw_header_text(image, 'header'), np.ndarray
+    )
+    header_kw: HeaderTextKwargs = {
+        'fontScale': 1.0,
+        'thickness': 1,
+        'bg_value': 'black',
+    }
+    assert_type(
+        kwimage.draw_header_text(
+            image, 'header', fit='shrink', stack='auto', **header_kw
+        ),
+        np.ndarray,
     )
     assert_type(kwimage.fill_nans_with_checkers(draw_field), np.ndarray)
     assert_type(kwimage.nodata_checkerboard(draw_field), np.ndarray)
@@ -484,6 +544,29 @@ if TYPE_CHECKING:
     assert_type(box.to_cxywh(copy=False), kwimage.Box)
     assert_type(box.toformat('ltrb', copy=False), kwimage.Box)
     assert_type(box.astype(np.float32), kwimage.Box)
+
+    det_coerce_kw: DetectionsCoerceKwargs = {
+        'boxes': boxes,
+        'cnames': ['a', 'b'],
+    }
+    opaque_det_data: object = {}
+    assert_type(
+        kwimage.Detections.coerce(opaque_det_data, **det_coerce_kw),
+        kwimage.Detections,
+    )
+
+    opaque_segmentation: object = None
+    assert_type(
+        kwimage.Segmentation.coerce(opaque_segmentation),
+        kwimage.Segmentation | None,
+    )
+    opaque_mask: object = binary
+    assert_type(kwimage.Mask.coerce(opaque_mask), kwimage.Mask)
+    segmentation_items: list[object] = [None]
+    assert_type(
+        kwimage.SegmentationList.coerce(segmentation_items),
+        kwimage.SegmentationList | None | float,
+    )
 
     heatmap = kwimage.Heatmap(
         class_probs=np.empty((2, 8, 8), dtype=np.float32),

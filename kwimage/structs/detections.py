@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Iterator, Mapping, Sequence
     from types import EllipsisType
     from typing import Any, Dict, List, Literal, Protocol, Tuple, TypedDict, TypeAlias, overload
+    from typing_extensions import Unpack
 
     from numpy import ndarray
     import torch
@@ -105,6 +106,12 @@ if TYPE_CHECKING:
             DetectionDemoImageInfo,
             Sequence[Mapping[str, object]],
         ]: ...
+
+    class DetectionsCoerceKwargs(TypedDict, total=False):
+        boxes: kwimage.Boxes
+        cnames: Sequence[str]
+        class_names: Sequence[str]
+        catnames: Sequence[str]
     DetectionKeypoints = Points | PointsList
     DetectionSegmentations = SegmentationList | PolygonList | MaskList
 
@@ -1029,7 +1036,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     @classmethod
     def coerce(
-        cls, data: Any | None = None, **kwargs: Any
+        cls,
+        data: object | None = None,
+        **kwargs: Unpack[DetectionsCoerceKwargs],
     ) -> Detections:
         """
         The "try-anything to get what I want" constructor
@@ -1048,23 +1057,26 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             >>> data = {}
             >>> self = kwimage.Detections.coerce(data, **kwargs)
         """
-        if data is None:
-            data = {}
-        if 'boxes' in kwargs:
-            data['boxes'] = kwargs['boxes']
+        data_impl: Any = {} if data is None else data
+        kwargs_impl: Any = kwargs
+        if 'boxes' in kwargs_impl:
+            data_impl['boxes'] = kwargs_impl['boxes']
 
-        cnames = kwargs.get(
-            'cnames', kwargs.get('class_names', kwargs.get('catnames', None))
+        cnames = kwargs_impl.get(
+            'cnames',
+            kwargs_impl.get(
+                'class_names', kwargs_impl.get('catnames', None)
+            ),
         )
         if cnames is not None:
             if len(cnames) and isinstance(ub.peek(cnames), str):
-                if 'classes' not in data:
-                    data['classes'] = sorted(set(cnames))
-                if 'class_idxs' not in data:
-                    classes = data['classes']
-                    data['class_idxs'] = list(map(classes.index, cnames))
+                if 'classes' not in data_impl:
+                    data_impl['classes'] = sorted(set(cnames))
+                if 'class_idxs' not in data_impl:
+                    classes = data_impl['classes']
+                    data_impl['class_idxs'] = list(map(classes.index, cnames))
 
-        self = cls(**data)
+        self = cls(**data_impl)
         return self
 
     @classmethod

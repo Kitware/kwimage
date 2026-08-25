@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         TypedDict,
         overload,
     )
+    from typing_extensions import Unpack
 
     from numpy import ndarray
 
@@ -28,6 +29,32 @@ if TYPE_CHECKING:
 
     ColorLike: TypeAlias = Color | str | Iterable[int | float]
     PointLike: TypeAlias = Sequence[int] | ndarray
+    TextHAlign: TypeAlias = Literal['left', 'center', 'right'] | None
+    TextVAlign: TypeAlias = Literal['top', 'center', 'bottom'] | None
+
+    class TextBorderSpec(TypedDict, total=False):
+        color: ColorLike
+        thickness: int
+
+    class TextDrawKwargs(TypedDict, total=False):
+        color: ColorLike
+        thickness: int
+        fontFace: int
+        fontScale: float
+        lineType: int
+        valign: TextVAlign
+        halign: TextHAlign
+        border: int | TextBorderSpec | None
+
+    class CV2LineKwargs(TypedDict, total=False):
+        lineType: int
+        shift: int
+
+    class HeaderTextKwargs(TypedDict, total=False):
+        fontScale: float
+        fontFace: int
+        thickness: int
+        bg_value: ColorLike
 
     class TextCanvasSpec(TypedDict, total=False):
         width: int | None
@@ -39,7 +66,7 @@ if TYPE_CHECKING:
         line_sizes: ndarray
 
     class ClassNameLookup(Protocol):
-        def __getitem__(self, index: int) -> Any: ...
+        def __getitem__(self, index: int) -> object: ...
 
 
 def _draw_text_on_image_pil(
@@ -120,7 +147,7 @@ if TYPE_CHECKING:
         text: str,
         org: PointLike | None = None,
         return_info: Literal[False] = False,
-        **kwargs: Any,
+        **kwargs: Unpack[TextDrawKwargs],
     ) -> ndarray: ...
 
     @overload
@@ -130,7 +157,7 @@ if TYPE_CHECKING:
         org: PointLike | None = None,
         *,
         return_info: Literal[True],
-        **kwargs: Any,
+        **kwargs: Unpack[TextDrawKwargs],
     ) -> tuple[ndarray, TextDrawInfo]: ...
 
     @overload
@@ -139,7 +166,7 @@ if TYPE_CHECKING:
         text: str,
         org: PointLike | None = None,
         return_info: bool = False,
-        **kwargs: Any,
+        **kwargs: Unpack[TextDrawKwargs],
     ) -> ndarray | tuple[ndarray, TextDrawInfo]: ...
 
 
@@ -325,45 +352,47 @@ def draw_text_on_image(
 
     import kwimage
 
-    if 'color' not in kwargs:
-        # kwargs['color'] = 'red'
-        kwargs['color'] = 'strawberry'
+    kwargs_impl: Any = kwargs
+
+    if 'color' not in kwargs_impl:
+        # kwargs_impl['color'] = 'red'
+        kwargs_impl['color'] = 'strawberry'
 
     # Get the color that is compatible with the input image encoding
     if img is None or isinstance(img, dict):
-        kwargs['color'] = kwimage.Color(kwargs['color']).as255()
+        kwargs_impl['color'] = kwimage.Color(kwargs_impl['color']).as255()
     else:
-        kwargs['color'] = kwimage.Color(kwargs['color']).forimage(img)
+        kwargs_impl['color'] = kwimage.Color(kwargs_impl['color']).forimage(img)
 
-    if 'thickness' not in kwargs:
-        kwargs['thickness'] = 2
+    if 'thickness' not in kwargs_impl:
+        kwargs_impl['thickness'] = 2
 
-    if 'fontFace' not in kwargs:
-        kwargs['fontFace'] = cv2.FONT_HERSHEY_SIMPLEX
+    if 'fontFace' not in kwargs_impl:
+        kwargs_impl['fontFace'] = cv2.FONT_HERSHEY_SIMPLEX
 
-    if 'fontScale' not in kwargs:
-        kwargs['fontScale'] = 1.0
+    if 'fontScale' not in kwargs_impl:
+        kwargs_impl['fontScale'] = 1.0
 
-    if 'lineType' not in kwargs:
-        kwargs['lineType'] = cv2.LINE_AA
+    if 'lineType' not in kwargs_impl:
+        kwargs_impl['lineType'] = cv2.LINE_AA
 
-    if 'bottomLeftOrigin' in kwargs:
+    if 'bottomLeftOrigin' in kwargs_impl:
         raise ValueError('Do not use bottomLeftOrigin, use valign instead')
 
-    border: Any = kwargs.pop('border', None)
+    border: Any = kwargs_impl.pop('border', None)
     if border is not None:
         if isinstance(border, int):
             border = {'color': 'black', 'thickness': border}
         border_impl: Any = border
-        subkw = kwargs.copy()
+        subkw = kwargs_impl.copy()
         subkw['color'] = border_impl.get('color', 'black')
         subkw.pop('return_info', None)
         border_thickness: int = border_impl.get('thickness', 1)
     else:
         border_thickness = 0
 
-    valign = kwargs.pop('valign', None)
-    halign = kwargs.pop('halign', None)
+    valign = kwargs_impl.pop('valign', None)
+    halign = kwargs_impl.pop('halign', None)
     if halign is None:
         halign = 'left'
     if valign is None:
@@ -393,7 +422,7 @@ def draw_text_on_image(
         # an origin we need to do a bit of extra computation to figure out what
         # the width / height need to be
         text_w, text_h = _text_sizes(
-            text, (1, 1), border_thickness, kwargs, None, halign='left'
+            text, (1, 1), border_thickness, kwargs_impl, None, halign='left'
         )[0:2]
         if given_w is None:
             given_w = text_w
@@ -436,7 +465,7 @@ def draw_text_on_image(
         line_sizes,
         line_org,
     ) = _text_sizes(
-        text, org_impl, border_thickness, kwargs, valign, halign
+        text, org_impl, border_thickness, kwargs_impl, valign, halign
     )
 
     if isinstance(img, dict):
@@ -451,7 +480,7 @@ def draw_text_on_image(
             alloc_h = text_h
         img = np.zeros((alloc_h, alloc_w, len(bg_color)), dtype=np.uint8)
         img[...] = np.array(bg_color)[None, None, :]
-        kwargs['color'] = kwimage.Color(kwargs['color']).forimage(img)
+        kwargs_impl['color'] = kwimage.Color(kwargs_impl['color']).forimage(img)
 
     if border_thickness > 0:
         # recursive call
@@ -466,7 +495,7 @@ def draw_text_on_image(
 
     for i, line in enumerate(lines):
         xy = tuple(line_org[i])
-        img = _cv2_put_text_compat(img, line, xy, kwargs)
+        img = _cv2_put_text_compat(img, line, xy, kwargs_impl)
 
     result_img: Any = img
     if return_info:
@@ -822,7 +851,7 @@ def draw_line_segments_on_image(
     color: ColorLike | Sequence[ColorLike] = 'blue',
     colorspace: str = 'rgb',
     thickness: int = 1,
-    **kwargs: Any,
+    **kwargs: Unpack[CV2LineKwargs],
 ) -> ndarray:
     """
     Draw line segments between pts1 and pts2 on an image.
@@ -892,7 +921,7 @@ def draw_polyline_on_image(
     xy_pts: ndarray,
     edgecolor: ColorLike | Sequence[ColorLike] = 'blue',
     thickness: int = 1,
-    **kwargs: Any,
+    **kwargs: Unpack[CV2LineKwargs],
 ) -> ndarray:
     """
     Draw a path (i.e. polyline / linestring) on an image.
@@ -1411,12 +1440,12 @@ def draw_vector_field(
 def draw_header_text(
     image: ndarray | TextCanvasSpec | None = None,
     text: str | None = None,
-    fit: bool | str = False,
+    fit: bool | Literal['shrink'] = False,
     color: ColorLike = 'strawberry',
-    halign: str = 'center',
-    stack: bool | str = 'auto',
+    halign: Literal['left', 'center', 'right'] = 'center',
+    stack: bool | Literal['auto'] = 'auto',
     bg_color: ColorLike = 'black',
-    **kwargs: Any,
+    **kwargs: Unpack[HeaderTextKwargs],
 ) -> ndarray:
     """
     Places a black bar on top of an image and writes text in it

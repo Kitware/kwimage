@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from kwimage._typing import ArrayData, TorchDeviceLike
 
     class _DrawableObject(Protocol):
-        def to_coco(self, style: str = 'orig') -> Any: ...
-        def draw(self, **kwargs: Any) -> Any: ...
+        def to_coco(self, style: str = 'orig') -> object: ...
+        def draw(self, **kwargs: Any) -> object: ...
         def draw_on(self, image: ndarray, **kwargs: Any) -> ndarray: ...
 
 T = TypeVar('T')
@@ -213,7 +213,7 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
     # __slots__ = ('data', 'meta',)
 
     def __init__(
-        self, data: MutableSequence[T], meta: Any | None = None
+        self, data: MutableSequence[T], meta: object | None = None
     ) -> None:
         if meta is None:
             meta = {}
@@ -228,14 +228,14 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
         return (len(self),)
 
     @property
-    def dtype(self) -> Any:
+    def dtype(self) -> object:
         try:
             return getattr(self.data, 'dtype')
         except Exception:
             print('kwimage._generic: no dtype for ' + str(type(self.data)))
             raise
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         return 'n={}'.format(len(self))
 
     def translate(
@@ -305,12 +305,13 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
         newdata = [None if item is None else func(item) for item in self.data]
         return self.__class__(newdata, self.meta)
 
-    def to_coco(self: Any, style: str = 'orig') -> Iterable[Any]:
+    def to_coco(self, style: str = 'orig') -> Iterable[object]:
         for item in self.data:
             if item is None:
                 yield None
             else:
-                yield item.to_coco(style=style)
+                item_impl: Any = item
+                yield item_impl.to_coco(style=style)
 
     def compress(
         self: ObjectListT, flags: Iterable[bool], axis: int = 0
@@ -326,7 +327,7 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
         newdata = list(ub.take(self.data, indices))
         return self.__class__(newdata, self.meta)
 
-    def draw(self: ObjectList[_DrawableObject], **kwargs: Any) -> list[Any]:
+    def draw(self, **kwargs: Any) -> Sequence[object]:
         """
         Generic draw method for list of spatial annotations
         """
@@ -339,7 +340,8 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
         patches = []
         for item in self.data:
             if item is not None:
-                patch = item.draw(**kwargs)
+                item_impl: Any = item
+                patch = item_impl.draw(**kwargs)
                 patches.append(patch)
         return patches
 

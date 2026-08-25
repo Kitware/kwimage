@@ -17,7 +17,7 @@ from . import _generic
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
     from numbers import Number
-    from typing import Literal, overload
+    from typing import Literal, TypeVar, overload
 
     from matplotlib.patches import PathPatch
     from numpy import ndarray
@@ -32,6 +32,12 @@ if TYPE_CHECKING:
     SegmentationFormat = Literal['mask', 'polygon', 'multipolygon']
     SegmentationCoco = CocoMaskRLE | CocoPolygon | list[CocoPolygon]
     SegmentationCocoStyle = CocoPolygonStyle
+    SegmentationTranslateScalar = int | float | Number
+    SegmentationTranslateOffset = (
+        SegmentationTranslateScalar
+        | tuple[SegmentationTranslateScalar, SegmentationTranslateScalar]
+    )
+    SegmentationListItemT = TypeVar('SegmentationListItemT')
 
 
 class _WrapperObject(ub.NiceRepr):
@@ -52,7 +58,7 @@ class _WrapperObject(ub.NiceRepr):
 
         def translate(
             self,
-            offset: Number | tuple[Number, Number],
+            offset: SegmentationTranslateOffset,
             output_dims: tuple[int, int] | None = None,
             inplace: bool = False,
         ) -> SegmentationBackend: ...
@@ -188,17 +194,19 @@ class Segmentation(_WrapperObject):
         @classmethod
         @overload
         def coerce(
-            cls, data: Any, dims: tuple[int, int] | None = None
+            cls, data: object, dims: tuple[int, int] | None = None
         ) -> Segmentation | None: ...
 
     @classmethod
     def coerce(
-        cls, data: Any, dims: tuple[int, int] | None = None
+        cls, data: object, dims: tuple[int, int] | None = None
     ) -> Segmentation | None:
         import kwimage
 
+        self: Segmentation
         if _generic._isinstance2(data, kwimage.Segmentation):
-            self = data
+            data_impl: Any = data
+            self = data_impl
         elif _generic._isinstance2(data, kwimage.Mask):
             self = Segmentation(data, 'mask')
         elif _generic._isinstance2(data, kwimage.Polygon):
@@ -206,10 +214,10 @@ class Segmentation(_WrapperObject):
         elif _generic._isinstance2(data, kwimage.MultiPolygon):
             self = Segmentation(data, 'multipolygon')
         else:
-            data: Any = _coerce_coco_segmentation(data, dims=dims)
-            if data is None:
+            data_impl: Any = _coerce_coco_segmentation(data, dims=dims)
+            if data_impl is None:
                 return None
-            self = cls.coerce(data, dims=dims)
+            self = cls.coerce(data_impl, dims=dims)
         return self
 
 
@@ -232,7 +240,7 @@ class SegmentationList(_generic.ObjectList[Segmentation | None]):
 
         def translate(
             self,
-            offset: Number | tuple[Number, Number],
+            offset: SegmentationTranslateOffset,
             output_dims: tuple[int, int] | None = None,
             inplace: bool = False,
         ) -> SegmentationList: ...
@@ -285,7 +293,11 @@ class SegmentationList(_generic.ObjectList[Segmentation | None]):
     @classmethod
     def coerce(
         cls,
-        data: list[Any] | _generic.ObjectList[Any] | None,
+        data: (
+            list[object]
+            | _generic.ObjectList[SegmentationListItemT]
+            | None
+        ),
         none_policy: Literal['return-None', 'return-nan', 'raise'] = 'raise',
     ) -> SegmentationList | None | float:
         """
@@ -297,7 +309,7 @@ class SegmentationList(_generic.ObjectList[Segmentation | None]):
                 Can be: 'return-None', or 'raise'.
         """
         if isinstance(data, (list, _generic.ObjectList)):
-            data = [
+            data_impl: Any = [
                 None if item is None else Segmentation.coerce(item)
                 for item in data
             ]
@@ -306,7 +318,7 @@ class SegmentationList(_generic.ObjectList[Segmentation | None]):
                 return _handle_null_policy(none_policy)
             else:
                 raise TypeError(data)
-        self = cls(data)
+        self = cls(data_impl)
         return self
 
 

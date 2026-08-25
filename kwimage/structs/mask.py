@@ -81,6 +81,11 @@ if TYPE_CHECKING:
     MaskData = ArrayData | MaskRLEData | None
     CocoMaskRLE = CocoBytesRLE | CocoArrayRLE
     MaskArea = Number | Tensor
+    MaskTranslateScalar = int | float | Number
+    MaskTranslateOffset = (
+        MaskTranslateScalar
+        | tuple[MaskTranslateScalar, MaskTranslateScalar]
+    )
     MaskFormatName = Literal['bytes_rle', 'array_rle', 'c_mask', 'f_mask']
     MaskFromMaskMethod = Literal['faster', 'naive']
     MaskWarpOutputDims = Sequence[int] | ndarray | Literal['same'] | None
@@ -513,7 +518,9 @@ class _MaskConstructorMixin(object):
 
     @classmethod
     def from_polygons(
-        Mask: Any, polygons: ndarray | list[ndarray], dims: tuple[int, int]
+        Mask: type[Mask],
+        polygons: ndarray | list[ndarray],
+        dims: tuple[int, int],
     ) -> Mask:
         """
         DEPRICATE: use kwimage.Polygon.to_mask? or kwimage.Mask.coerce?
@@ -558,7 +565,7 @@ class _MaskConstructorMixin(object):
 
     @classmethod
     def from_mask(
-        Mask: Any,
+        Mask: type[Mask],
         mask: ndarray,
         offset: tuple[int, int] | None = None,
         shape: tuple[int, int] | None = None,
@@ -806,7 +813,7 @@ class _MaskTransformMixin(object):
 
     def translate(
         self,
-        offset: tuple[Number, Number] | Number,
+        offset: MaskTranslateOffset,
         output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Mask:
@@ -1177,7 +1184,7 @@ class Mask(
 
     @classmethod
     def random(
-        Mask,
+        Mask: type[Mask],
         rng: int | RandomState | None = None,
         shape: tuple[int, int] = (32, 32),
     ) -> Mask:
@@ -2174,7 +2181,9 @@ class Mask(
         return iou
 
     @classmethod
-    def coerce(Mask, data: Any, dims: tuple[int, int] | None = None) -> Mask:
+    def coerce(
+        Mask: type[Mask], data: object, dims: tuple[int, int] | None = None
+    ) -> Mask:
         """
         Attempts to auto-inspect the format of the data and conver to Mask
 
@@ -2327,7 +2336,7 @@ class MaskList(_generic.ObjectList[Mask | None]):
 
         def translate(
             self,
-            offset: tuple[Number, Number] | Number,
+            offset: MaskTranslateOffset,
             output_dims: tuple[int, int] | None = None,
             inplace: bool = False,
         ) -> MaskList: ...

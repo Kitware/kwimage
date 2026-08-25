@@ -691,3 +691,22 @@ The primary risk is checker-specific overload behavior, especially NumPy scalar 
 - Narrowed the two kwconf CLI `main(argv=...)` entry points to the exact `kwconf.Config.load` argv domain: `bool | Sequence[str] | str`.
 - Removed the unsupported `None` alternative rather than adding a runtime normalization branch.
 - Runtime CLI behavior is unchanged.
+
+## 2026-08-25: v55 coercion, drawing, and transform Any narrowing
+
+- Replaced caller-facing `Any` inputs on broad coercion APIs with `object` for `Boxes`, `Box`, `Detections`, `Segmentation`, and `Mask`. These APIs still accept arbitrary runtime objects, but arbitrary input no longer propagates `Any` into callers; dynamic inspection is isolated behind local implementation views where needed.
+- Added a typed keyword schema for `Detections.coerce` covering its documented `boxes` and class-name aliases, while keeping the extensible Detections data dictionary dynamic internally.
+- Added structured drawing keyword schemas for text, OpenCV line/polyline, and header-text helpers. Literal alignment/fit/stack options now reflect the implemented branches; the runtime `draw_text_on_image` implementation remains the dynamic boundary behind its overloads.
+- Narrowed transform indexing and random construction: `Matrix.__getitem__` has an explicit result union, `Matrix`/`Affine`/`Projective` random APIs use the shared `RNGInput`, affine/projective random kwargs use a `TypedDict`, and `Affine.affine` uses `object` for optional custom constructor/math hooks with local dynamic views at the call boundary.
+- Narrowed generic container metadata/results from `Any` to `object` where the values are intentionally opaque, and typed Mask constructor classmethod receivers without changing their public return types.
+- Expanded static contract coverage for the new coercion, drawing, matrix-indexing, and random-transform surfaces.
+
+The remaining `Any` annotations in these areas are intentional implementation boundaries (extensible metadata/data dictionaries, backend dispatch, overloaded implementation bodies, and plotting/backend passthrough kwargs). No array conversion, copy, validation, numerical operation, or iteration behavior was added for typing.
+
+### v55 -> v56 diagnostic cleanup
+
+- Kept the v55 caller-facing narrowing while fixing six `ty` correlations.
+- Added builtin numeric scalars to mask/segmentation translate contracts because `ty` does not treat literal ints as `numbers.Number`.
+- Made generic `ObjectList.draw` return `Sequence[object]`, allowing concrete list subclasses to publish covariant element types.
+- Isolated dynamic segmentation coercion results with local `Any` views rather than weakening public `coerce` signatures.
+- Restored base-compatible `shape` parameter types on `Projective.random` / `Affine.random`; non-`None` shapes remain rejected at runtime by the existing implementation.

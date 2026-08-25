@@ -18,6 +18,7 @@ from kwimage import _internal
 if _t.TYPE_CHECKING:
     from numbers import Number
     from typing import Any, Literal, TypeAlias, TypedDict
+    from typing_extensions import Unpack
 
     import numpy.typing as npt
     from affine import Affine as ExternalAffine
@@ -28,12 +29,17 @@ if _t.TYPE_CHECKING:
 
     from sympy.matrices.matrixbase import MatrixBase
 
+    from kwimage._typing import RNGInput
+
     MatrixData = NDArray | None | MatrixBase
     DSize = tuple[int, int]
     XY = tuple[float, float] | tuple[int, int]
 
     TransformScalar: TypeAlias = (
         int | float | complex | np.generic | SympyExpr
+    )
+    MatrixIndexResult: TypeAlias = (
+        TransformScalar | NDArray | MatrixBase | list[TransformScalar]
     )
     TransformPair: TypeAlias = tuple[TransformScalar, TransformScalar]
     TransformComponent: TypeAlias = (
@@ -60,6 +66,20 @@ if _t.TYPE_CHECKING:
         theta: TransformScalar
         shearx: TransformScalar
         about: TransformPair
+
+    AffineRandomScalar: TypeAlias = (
+        int | float | Number | np.integer[Any] | np.floating[Any]
+    )
+    AffineRandomDistributionSpec: TypeAlias = (
+        AffineRandomScalar | tuple[AffineRandomScalar, AffineRandomScalar]
+    )
+
+    class AffineRandomKwargs(TypedDict, total=False):
+        scale: AffineRandomDistributionSpec
+        offset: AffineRandomScalar
+        about: AffineRandomScalar
+        theta: AffineRandomDistributionSpec
+        shearx: AffineRandomDistributionSpec
 
     class AffineConcise(TypedDict, total=False):
         type: Literal['affine']
@@ -311,7 +331,7 @@ class Matrix(Transform):
 
     @classmethod
     def eye(
-        cls, shape: int | tuple[int, int] | None = None, rng: object = None
+        cls, shape: int | tuple[int, int] | None = None, rng: RNGInput = None
     ) -> Matrix:
         """
         Construct an identity
@@ -326,7 +346,7 @@ class Matrix(Transform):
 
     @classmethod
     def random(
-        cls, shape: int | tuple[int, int] | None = None, rng: object = None
+        cls, shape: int | tuple[int, int] | None = None, rng: RNGInput = None
     ) -> Matrix:
         import kwarray
 
@@ -339,10 +359,13 @@ class Matrix(Transform):
         self.matrix = rng.rand(*shape)
         return self
 
-    def __getitem__(self, index: Any) -> Any:
+    def __getitem__(self, index: object) -> MatrixIndexResult:
+        index_impl: Any = index
         if self.matrix is None:
-            return np.asarray(self)[index]
-        return self.matrix[index]
+            result: Any = np.asarray(self)[index_impl]
+        else:
+            result = self.matrix[index_impl]
+        return result
 
     def rationalize(self) -> Matrix:
         """
@@ -924,7 +947,10 @@ class Projective(Linear):
 
     @classmethod
     def random(
-        cls, shape: object = None, rng: object = None, **kw: object
+        cls,
+        shape: int | tuple[int, int] | None = None,
+        rng: RNGInput = None,
+        **kw: Unpack[AffineRandomKwargs],
     ) -> Projective:
         """
         Example/
@@ -1658,7 +1684,10 @@ class Affine(Projective):
 
     @classmethod
     def random(
-        cls, shape: object = None, rng: object = None, **kw: object
+        cls,
+        shape: int | tuple[int, int] | None = None,
+        rng: RNGInput = None,
+        **kw: Unpack[AffineRandomKwargs],
     ) -> Affine:
         """
         Create a random Affine object
@@ -1680,7 +1709,7 @@ class Affine(Projective):
 
     @classmethod
     def random_params(
-        cls, rng: object = None, **kw: Any
+        cls, rng: RNGInput = None, **kw: Unpack[AffineRandomKwargs]
     ) -> AffineRandomParams:
         """
         Args:
@@ -1700,6 +1729,7 @@ class Affine(Projective):
 
         TN = distributions.TruncNormal
         rng = kwarray.ensure_rng(rng)
+        kw_impl: Any = kw
 
         def _coerce_distri(arg):
             if isinstance(arg, numbers.Number):
@@ -1711,48 +1741,49 @@ class Affine(Projective):
                 raise NotImplementedError
             return dist
 
-        if 'scale' in kw:
-            if ub.iterable(kw['scale']) and (
-                not isinstance(kw['scale'], tuple) and len(kw['scale']) == 2
+        if 'scale' in kw_impl:
+            if ub.iterable(kw_impl['scale']) and (
+                not isinstance(kw_impl['scale'], tuple)
+                and len(kw_impl['scale']) == 2
             ):
                 raise NotImplementedError
             else:
-                xscale_dist = _coerce_distri(kw['scale'])
+                xscale_dist = _coerce_distri(kw_impl['scale'])
                 yscale_dist = xscale_dist
         else:
             scale_kw = dict(mean=1, std=1, low=1, high=2)
             xscale_dist = TN(**scale_kw, rng=rng)
             yscale_dist = TN(**scale_kw, rng=rng)
 
-        if 'offset' in kw:
-            if ub.iterable(kw['offset']):
+        if 'offset' in kw_impl:
+            if ub.iterable(kw_impl['offset']):
                 raise NotImplementedError
             else:
-                xoffset_dist = _coerce_distri(kw['offset'])
+                xoffset_dist = _coerce_distri(kw_impl['offset'])
                 yoffset_dist = xoffset_dist
         else:
             offset_kw = dict(mean=0, std=1, low=-1, high=1)
             xoffset_dist = TN(**offset_kw, rng=rng)
             yoffset_dist = TN(**offset_kw, rng=rng)
 
-        if 'about' in kw:
-            if ub.iterable(kw['about']):
+        if 'about' in kw_impl:
+            if ub.iterable(kw_impl['about']):
                 raise NotImplementedError
             else:
-                xabout_dist = _coerce_distri(kw['about'])
+                xabout_dist = _coerce_distri(kw_impl['about'])
                 yabout_dist = xabout_dist
         else:
             xabout_dist = distributions.Constant(0, rng=rng)
             yabout_dist = distributions.Constant(0, rng=rng)
 
-        if 'theta' in kw:
-            theta_dist = _coerce_distri(kw['theta'])
+        if 'theta' in kw_impl:
+            theta_dist = _coerce_distri(kw_impl['theta'])
         else:
             theta_kw = dict(mean=0, std=1, low=-np.pi / 8, high=np.pi / 8)
             theta_dist = TN(**theta_kw, rng=rng)
 
-        if 'shearx' in kw:
-            shear_dist = _coerce_distri(kw['shearx'])
+        if 'shearx' in kw_impl:
+            shear_dist = _coerce_distri(kw_impl['shearx'])
         else:
             shear_dist = distributions.Constant(0, rng=rng)
 
@@ -1961,9 +1992,9 @@ class Affine(Projective):
         shear: TransformScalar | None = None,
         about: TransformComponent | None = None,
         shearx: TransformScalar | None = None,
-        array_cls: Any = None,
-        math_mod: Any = None,
-        **kwargs: Any,
+        array_cls: object = None,
+        math_mod: object = None,
+        **kwargs: object,
     ) -> Affine:
         """
         Create an affine matrix from high-level parameters
@@ -2096,12 +2127,8 @@ class Affine(Projective):
             shearx = shear
             shear = None
 
-        if array_cls is None:
-            array_cls = np.array
-
-        if math_mod is None:
-            math_mod = math
-        math_mod_impl: Any = math_mod
+        array_cls_impl: Any = np.array if array_cls is None else array_cls
+        math_mod_impl: Any = math if math_mod is None else math_mod
 
         scale_ = 1 if scale is None else scale
         offset_ = 0 if offset is None else offset
@@ -2130,7 +2157,7 @@ class Affine(Projective):
         tx_ = tx + x0 - (x0 * sx_cos_theta) - (y0 * a12)
         ty_ = ty + y0 - (x0 * sx_sin_theta) - (y0 * a22)
 
-        mat = array_cls(
+        mat = array_cls_impl(
             [sx_cos_theta, a12, tx_, sx_sin_theta, a22, ty_, 0, 0, 1]
         )
         mat = mat.reshape(3, 3)  # Faster to make a flat array and reshape
@@ -2628,8 +2655,9 @@ class _RationalNDArray(_RationalMatrixBase):
     def numpy(self) -> np.ndarray:
         return np.array(self.tolist()).astype(float)
 
-    def ravel(self) -> Any:
-        return self.flat()
+    def ravel(self) -> list[TransformScalar]:
+        result: Any = self.flat()
+        return result
 
 
 # Does not seem to be working out
