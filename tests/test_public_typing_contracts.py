@@ -29,7 +29,8 @@ if TYPE_CHECKING:
     )
 
     from kwimage.structs.detections import (
-        CocoDatasetLike, CocoDetection,
+        CocoAnnotsDatasetLike, CocoDatasetLike, CocoDetection,
+        DetectionDemoImageInfo, DetectionDemoSamplerLike,
         DetectionArray,
         DetectionClasses,
         DetectionDType,
@@ -662,7 +663,7 @@ if TYPE_CHECKING:
     assert_type(segmentation.to_multi_polygon(), kwimage.MultiPolygon)
     assert_type(segmentation.box(), kwimage.Box)
     assert_type(segmentation.area, Number | torch.Tensor)
-    assert_type(segmentation.meta, Mapping[str, Any])
+    assert_type(segmentation.meta, Mapping[str, object])
     assert_type(segmentation.warp(np.eye(3)), SegmentationBackend)
     assert_type(segmentation.scale(2.0), SegmentationBackend)
     assert_type(segmentation.translate((1.0, 2.0)), SegmentationBackend)
@@ -734,6 +735,34 @@ if TYPE_CHECKING:
     assert_type(dets.tensor('cpu'), kwimage.Detections)
     assert_type(dets.device, torch.device | None)
     assert_type(dets.dtype, DetectionDType)
+    coco_anns: Sequence[Mapping[str, object]] = [
+        {'category_id': 1, 'bbox': [0.0, 0.0, 4.0, 5.0]}
+    ]
+    coco_cats: Sequence[Mapping[str, object]] = [
+        {'id': 1, 'name': 'class1'}
+    ]
+    assert_type(
+        kwimage.Detections.from_coco_annots(
+            coco_anns,
+            coco_cats,
+            classes=['class1'],
+            shape=(16, 16),
+        ),
+        kwimage.Detections,
+    )
+    coco_ann_dset = cast(CocoAnnotsDatasetLike, object())
+    assert_type(
+        kwimage.Detections.from_coco_annots(coco_anns, dset=coco_ann_dset),
+        kwimage.Detections,
+    )
+    assert_type(
+        kwimage.Detections.demo(),
+        tuple[
+            kwimage.Detections,
+            DetectionDemoImageInfo,
+            DetectionDemoSamplerLike,
+        ],
+    )
     assert_type(dets.to_coco(), Generator[CocoDetection, None, None])
     assert_type(
         dets.to_coco(style='new'), Generator[CocoDetection, None, None]

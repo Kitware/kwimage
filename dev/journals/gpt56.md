@@ -630,3 +630,18 @@ comprehension counts match v45 exactly in every modified runtime module. Python
 3.10 parsing and compileall pass. The local pytest smoke attempt could not run
 because this environment lacks the pytest xdoctest plugin configured by the
 repository. The user's local `ty check kwimage tests/` remains the next gate.
+
+
+## 2026-08-25: v47 COCO Detections contract narrowing
+
+- Narrowed `Detections.from_coco_annots` from open `Any` class/dataset inputs to caller-facing sequence/mapping, class-container, image-shape, and structural dataset contracts.
+- Kept the heterogeneous COCO annotation/category payloads behind local implementation-only `Any` views; this avoids pretending the legacy dictionaries are closed schemas while preventing `Any` from leaking through the public constructor signature.
+- `Detections.demo` now exposes a typed image-info mapping and structural sampler result instead of returning `dict[str, Any]` / `Any`.
+- Narrowed `Segmentation.meta` from `Mapping[str, Any]` to `Mapping[str, object]`, preserving extensible metadata while requiring callers to narrow arbitrary values before use.
+- No numerical operations, array materialization, copies, or iteration structure changed.
+
+
+## 2026-08-25: v48 COCO keypoint cleanup
+
+- Fixed the single v47 `ty` follow-up in `Detections.from_coco_annots`: after the parent-category lookup loop proves `kpnames` is present at runtime, a local implementation-only `Any` view prevents `ty` from retaining the earlier optional heterogeneous COCO payload type.
+- Kept the narrowed public COCO constructor contracts unchanged; no runtime validation, conversion, materialization, or iteration changes were added.

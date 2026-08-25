@@ -172,7 +172,7 @@ class Segmentation(_WrapperObject):
         return self.data.area
 
     @property
-    def meta(self) -> Mapping[str, Any]:
+    def meta(self) -> Mapping[str, object]:
         data: Any = self.data
         return data.meta
 

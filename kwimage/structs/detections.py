@@ -42,7 +42,7 @@ from kwimage.structs import _generic
 from kwimage.structs import boxes as _boxes
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Mapping, Sequence
+    from collections.abc import Generator, Iterator, Mapping, Sequence
     from types import EllipsisType
     from typing import Any, Dict, List, Literal, Protocol, Tuple, TypedDict, TypeAlias, overload
 
@@ -75,15 +75,36 @@ if TYPE_CHECKING:
         def _resolve_to_cat(self, category: object) -> CocoResolvedCategory: ...
 
     class CategoryTreeLike(Protocol):
-        cats: Mapping[Any, Mapping[str, Any]]
-        idx_to_node: Sequence[Any]
-        id_to_node: Mapping[Any, Any]
+        cats: Mapping[object, Mapping[str, object]]
+        idx_to_node: Sequence[object]
+        id_to_node: Mapping[object, object]
 
         def __len__(self) -> int: ...
-        def __getitem__(self, index: int) -> Any: ...
-        def index(self, value: Any) -> int: ...
+        def __iter__(self) -> Iterator[object]: ...
+        def __getitem__(self, index: int) -> object: ...
+        def index(self, value: object) -> int: ...
 
-    DetectionClasses = Sequence[Any] | CategoryTreeLike
+    DetectionClasses = Sequence[object] | CategoryTreeLike
+
+    class CocoAnnotsDatasetLike(Protocol):
+        dataset: Mapping[str, object]
+
+        def object_categories(self) -> DetectionClasses: ...
+        def keypoint_categories(self) -> DetectionClasses: ...
+
+    class DetectionDemoImageInfo(TypedDict, total=False):
+        imdata: ndarray
+
+    class DetectionDemoSamplerLike(Protocol):
+        dset: CocoAnnotsDatasetLike
+        catgraph: DetectionClasses
+
+        def load_image_with_annots(
+            self, image_id: int
+        ) -> tuple[
+            DetectionDemoImageInfo,
+            Sequence[Mapping[str, object]],
+        ]: ...
     DetectionKeypoints = Points | PointsList
     DetectionSegmentations = SegmentationList | PolygonList | MaskList
 
@@ -1049,12 +1070,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     @classmethod
     def from_coco_annots(
         cls,
-        anns: List[Dict],
-        cats: List[Dict] | None = None,
-        classes: Any | None = None,
-        kp_classes: Any | None = None,
-        shape: tuple | None = None,
-        dset: Any | None = None,
+        anns: Sequence[Mapping[str, object]],
+        cats: Sequence[Mapping[str, object]] | None = None,
+        classes: DetectionClasses | None = None,
+        kp_classes: DetectionClasses | None = None,
+        shape: tuple[int, int] | None = None,
+        dset: CocoAnnotsDatasetLike | None = None,
     ) -> Detections:
         """
         Create a Detections object from a list of coco-like annotations.
@@ -1169,25 +1190,31 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         """
         import kwimage
 
+        # COCO annotations are intentionally open mappings.  Keep that
+        # dynamic representation local while publishing useful caller-facing
+        # container and dataset contracts.
+        anns_impl: Any = anns
         cnames = None
         if dset is not None:
+            dset_impl: Any = dset
             try:
-                classes = dset.object_categories()
+                classes = dset_impl.object_categories()
             except Exception:
                 pass
-            cats = dset.dataset[
+            cats_impl: Any = dset_impl.dataset[
                 'categories'
             ]  # redundant with classes, can simplify
             try:
-                kp_classes = dset.keypoint_categories()
+                kp_classes = dset_impl.keypoint_categories()
             except Exception:
                 pass
             if kp_classes is not None and len(kp_classes) == 0:
                 kp_classes = None
         else:
-            if cats is None:
+            cats_impl: Any = cats
+            if cats_impl is None:
                 cnames = []
-                for ann in anns:
+                for ann in anns_impl:
                     if 'category_name' in ann:
                         cnames.append(ann['category_name'])
                     else:
@@ -1199,22 +1226,22 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                 assert set(cnames).issubset(set(classes))
 
                 # make dummy cats
-                cats = [
+                cats_impl = [
                     {'name': name, 'id': cid}
                     for cid, name in enumerate(classes, start=1)
                 ]
 
         if classes is None:
-            classes = list(ub.oset([cat['name'] for cat in cats]))
+            classes = list(ub.oset([cat['name'] for cat in cats_impl]))
 
         if cnames is None:
-            cids = [ann['category_id'] for ann in anns]
-            cid_to_cat = {c['id']: c for c in cats}  # Hack
+            cids = [ann['category_id'] for ann in anns_impl]
+            cid_to_cat = {c['id']: c for c in cats_impl}  # Hack
             cnames = [
                 None if cid is None else cid_to_cat[cid]['name'] for cid in cids
             ]
 
-        xywh = np.array([ann['bbox'] for ann in anns], dtype=np.float32)
+        xywh = np.array([ann['bbox'] for ann in anns_impl], dtype=np.float32)
         boxes = kwimage.Boxes(xywh, 'xywh')
         try:
             class_idxs = [classes.index(cname) for cname in cnames]
@@ -1230,24 +1257,24 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             classes=classes,
         )
 
-        if len(anns):
-            if 'score' in anns[0]:
+        if len(anns_impl):
+            if 'score' in anns_impl[0]:
                 dets.data['scores'] = np.array(
-                    [ann.get('score', np.nan) for ann in anns]
+                    [ann.get('score', np.nan) for ann in anns_impl]
                 )
 
-            if 'prob' in anns[0]:
+            if 'prob' in anns_impl[0]:
                 dets.data['probs'] = np.array(
-                    [ann.get('prob', np.nan) for ann in anns]
+                    [ann.get('prob', np.nan) for ann in anns_impl]
                 )
 
-            if 'weight' in anns[0]:
+            if 'weight' in anns_impl[0]:
                 dets.data['weights'] = np.array(
-                    [ann.get('weight', np.nan) for ann in anns]
+                    [ann.get('weight', np.nan) for ann in anns_impl]
                 )
 
         if True:
-            ss = [ann.get('segmentation', None) for ann in anns]
+            ss = [ann.get('segmentation', None) for ann in anns_impl]
             masks = [
                 None
                 if s is None
@@ -1260,7 +1287,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         if HANDLE_KEYPOINTS:
             # TODO: loop a skeleton for the Points object.
 
-            name_to_cat = {c['name']: c for c in cats}
+            name_to_cat = {c['name']: c for c in cats_impl}
 
             def _lookup_kp_class_idxs(cid):
                 assert kp_classes is not None
@@ -1274,11 +1301,12 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
                         cid = name_to_cat[cat['supercategory']]['id']
                     else:
                         raise KeyError(cid)
-                kpcidxs = [kp_classes.index(n) for n in kpnames]
+                kpnames_impl: Any = kpnames
+                kpcidxs = [kp_classes.index(n) for n in kpnames_impl]
                 return kpcidxs
 
             kpts = []
-            for ann in anns:
+            for ann in anns_impl:
                 k = ann.get('keypoints', None)
                 if k is None:
                     kpts.append(k)
@@ -1874,7 +1902,9 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     # --- Non-core methods ----
 
     @classmethod
-    def demo(cls) -> tuple[Detections, dict[str, Any], Any]:
+    def demo(
+        cls,
+    ) -> tuple[Detections, DetectionDemoImageInfo, DetectionDemoSamplerLike]:
         import ndsampler
 
         sampler = ndsampler.CocoSampler.demo('photos')
