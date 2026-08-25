@@ -605,3 +605,28 @@ follow-up rather than another repo-wide speculative Any pass.
 - Corrected `Heatmap.upscale(channel=...)` to use integer class-channel selectors.
 - Narrowed `Heatmap.draw_on(kpts=...)` to the sized sequence forms its implementation supports, with `True` as the all-keypoints sentinel.
 - Kept keypoint selector normalization behind a local implementation-only `Any` view so runtime behavior is unchanged while `ty` does not retain the public union through mutation.
+
+
+## 2026-08-25 13:19:52 -0400
+
+The user asked for the next staged push after v45 passed locally. I focused on
+caller-visible `Any` inherited from generic `ObjectList` rather than expanding
+into another repo-wide pass. `PointsList`, `PolygonList`, `MaskList`, and
+`SegmentationList` now publish transform/scale/translation contracts that
+match their concrete element types, while the generic container remains
+permissive internally.
+
+I also narrowed the generic drawable boundary to ndarray-in/ndarray-out. That
+matches the implementation, which immediately relies on image shape, copying,
+NumPy allocation, and alpha blending. I deliberately left generic transform
+parameters and arbitrary drawing kwargs dynamic: forcing a single shared
+transform type onto heterogeneous/private ObjectList uses would either reject
+valid Polygon/Points transforms or over-promise what Mask-backed lists accept.
+
+The main risk is checker-specific override handling for the TYPE_CHECKING-only
+concrete list declarations; `ty` has been restrictive around generic overrides
+before. I am confident the runtime behavior is unchanged: AST call, loop, and
+comprehension counts match v45 exactly in every modified runtime module. Python
+3.10 parsing and compileall pass. The local pytest smoke attempt could not run
+because this environment lacks the pytest xdoctest plugin configured by the
+repository. The user's local `ty check kwimage tests/` remains the next gate.

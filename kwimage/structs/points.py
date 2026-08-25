@@ -1398,6 +1398,33 @@ class Points(_generic.Spatial, _PointsWarpMixin):
 
 
 class PointsList(_generic.ObjectList[Points]):
+    if TYPE_CHECKING:
+        def warp(
+            self,
+            transform: TransformLike,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> PointsList: ...
+
+        def scale(
+            self,
+            factor: float | ArrayLike | torch.Tensor,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> PointsList: ...
+
+        def translate(
+            self,
+            offset: float | ArrayLike | torch.Tensor,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> PointsList: ...
+
+        def draw_on(
+            self, image: ndarray, **kwargs: Any
+        ) -> ndarray: ...
+
     """
     Stores a list of Points, each item usually corresponds to a different object.
 

@@ -215,6 +215,32 @@ class Segmentation(_WrapperObject):
 
 class SegmentationList(_generic.ObjectList[Segmentation | None]):
     if TYPE_CHECKING:
+        def warp(
+            self,
+            transform: ndarray | kwimage.Affine | None,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationList: ...
+
+        def scale(
+            self,
+            factor: float | tuple[float, float],
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationList: ...
+
+        def translate(
+            self,
+            offset: Number | tuple[Number, Number],
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationList: ...
+
+        def draw_on(
+            self, image: ndarray, **kwargs: Any
+        ) -> ndarray: ...
+
         def to_coco(
             self, style: str = 'orig'
         ) -> Iterator[SegmentationCoco | None]: ...

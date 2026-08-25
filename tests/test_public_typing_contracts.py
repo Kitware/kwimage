@@ -503,6 +503,13 @@ if TYPE_CHECKING:
 
     point_list = kwimage.PointsList([points])
     assert_type(point_list[0], kwimage.Points)
+    assert_type(point_list.scale(2.0), kwimage.PointsList)
+    assert_type(point_list.translate((1.0, 2.0)), kwimage.PointsList)
+    assert_type(point_list.warp(np.eye(3)), kwimage.PointsList)
+    assert_type(
+        point_list.draw_on(np.zeros((16, 16, 3), dtype=np.uint8)),
+        np.ndarray,
+    )
     assert_type(point_list.to_coco(), Iterator[CocoKeypoints])
 
 
@@ -580,8 +587,13 @@ if TYPE_CHECKING:
         polygon_list[0], kwimage.Polygon | kwimage.MultiPolygon | None
     )
     assert_type(polygon_list.scale(2.0), kwimage.PolygonList)
+    assert_type(polygon_list.scale(np.array([2.0, 3.0])), kwimage.PolygonList)
     assert_type(polygon_list.translate((1.0, 2.0)), kwimage.PolygonList)
     assert_type(polygon_list.warp(np.eye(3)), kwimage.PolygonList)
+    assert_type(
+        polygon_list.draw_on(np.zeros((16, 16, 3), dtype=np.uint8)),
+        np.ndarray,
+    )
     assert_type(polygon_list.numpy(), kwimage.PolygonList)
     assert_type(polygon_list.tensor(), kwimage.PolygonList)
     assert_type(polygon_list.tensor('cpu'), kwimage.PolygonList)
@@ -631,6 +643,14 @@ if TYPE_CHECKING:
     assert_type(mask_list.to_mask_list(), kwimage.MaskList)
     assert_type(mask_list.to_polygon_list(), kwimage.PolygonList)
     assert_type(mask_list.to_segmentation_list(), kwimage.SegmentationList)
+    assert_type(mask_list.scale(2.0), kwimage.MaskList)
+    assert_type(mask_list.translate((1.0, 2.0)), kwimage.MaskList)
+    assert_type(mask_list.warp(np.eye(3)), kwimage.MaskList)
+    assert_type(mask_list.warp(np.eye(3), output_dims='same'), kwimage.MaskList)
+    assert_type(
+        mask_list.draw_on(np.zeros((16, 16, 3), dtype=np.uint8)),
+        np.ndarray,
+    )
     assert_type(mask_list.numpy(), kwimage.MaskList)
     assert_type(mask_list.tensor(), kwimage.MaskList)
     assert_type(mask_list.tensor('cpu'), kwimage.MaskList)
@@ -661,6 +681,15 @@ if TYPE_CHECKING:
     )
     assert_type(segmentation_list.to_mask_list(), kwimage.MaskList)
     assert_type(segmentation_list.to_polygon_list(), kwimage.PolygonList)
+    assert_type(segmentation_list.scale(2.0), kwimage.SegmentationList)
+    assert_type(
+        segmentation_list.translate((1.0, 2.0)), kwimage.SegmentationList
+    )
+    assert_type(segmentation_list.warp(np.eye(3)), kwimage.SegmentationList)
+    assert_type(
+        segmentation_list.draw_on(np.zeros((16, 16, 3), dtype=np.uint8)),
+        np.ndarray,
+    )
     assert_type(segmentation_list.numpy(), kwimage.SegmentationList)
     assert_type(segmentation_list.tensor(), kwimage.SegmentationList)
     assert_type(segmentation_list.tensor('cpu'), kwimage.SegmentationList)

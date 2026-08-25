@@ -12,12 +12,14 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from typing import Any, MutableSequence, Protocol, Sequence
 
+    from numpy import ndarray
+
     from kwimage._typing import ArrayData, TorchDeviceLike
 
     class _DrawableObject(Protocol):
         def to_coco(self, style: str = 'orig') -> Any: ...
         def draw(self, **kwargs: Any) -> Any: ...
-        def draw_on(self, image: Any, **kwargs: Any) -> Any: ...
+        def draw_on(self, image: ndarray, **kwargs: Any) -> ndarray: ...
 
 T = TypeVar('T')
 ObjectListT = TypeVar('ObjectListT', bound='ObjectList[Any]')
@@ -342,8 +344,8 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
         return patches
 
     def draw_on(
-        self: ObjectList[_DrawableObject], image: Any, **kwargs: Any
-    ) -> Any:
+        self: ObjectList[_DrawableObject], image: ndarray, **kwargs: Any
+    ) -> ndarray:
         """
         TODO:
             document fastdraw - it flattens all subobjects into the same layer

@@ -2310,6 +2310,32 @@ class Mask(
 
 class MaskList(_generic.ObjectList[Mask | None]):
     if TYPE_CHECKING:
+        def warp(
+            self,
+            transform: ndarray | kwimage.Affine | None,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: MaskWarpOutputDims = None,
+            inplace: bool = False,
+        ) -> MaskList: ...
+
+        def scale(
+            self,
+            factor: float | tuple[float, float],
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> MaskList: ...
+
+        def translate(
+            self,
+            offset: tuple[Number, Number] | Number,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> MaskList: ...
+
+        def draw_on(
+            self, image: ndarray, **kwargs: Any
+        ) -> ndarray: ...
+
         def to_coco(
             self, style: str = 'orig'
         ) -> Iterator[CocoMaskRLE | None]: ...

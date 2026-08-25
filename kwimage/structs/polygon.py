@@ -3856,6 +3856,29 @@ class MultiPolygon(_generic.ObjectList[Polygon], _ShapelyMixin, _PolyMixin):
 
 
 class PolygonList(_generic.ObjectList[Polygon | MultiPolygon | None]):
+    if TYPE_CHECKING:
+        def warp(
+            self,
+            transform: TransformLike,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> PolygonList: ...
+
+        def scale(
+            self,
+            factor: float | ArrayLike | torch.Tensor,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> PolygonList: ...
+
+        def translate(
+            self,
+            offset: float | ArrayLike | torch.Tensor,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> PolygonList: ...
+
     """
     Stores and allows manipluation of multiple polygons, usually within the
     same image.
