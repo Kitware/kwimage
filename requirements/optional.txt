@@ -53,6 +53,7 @@ kwimage_ext >= 0.2.1 ; python_version < '3.11'
 PyTurboJPEG  # also requires ``apt install libturbojpeg``
 colormath>=3.0.0
 
+kwconf>=0.11.0
 
 # Other transitive dependencies that might need pinning in the future
 # typing-extensions
