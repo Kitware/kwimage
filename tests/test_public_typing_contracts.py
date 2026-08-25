@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     )
 
     from kwimage.structs.detections import (
-        CocoDetection,
+        CocoDatasetLike, CocoDetection,
         DetectionArray,
         DetectionClasses,
         DetectionDType,
@@ -39,7 +39,9 @@ if TYPE_CHECKING:
     from kwimage.structs.mask import (
         CocoMaskRLE, MaskArea, MaskData,
     )
-    from kwimage.structs.points import CocoKeypoints
+    from kwimage.structs.points import (
+        CocoKeypointColumns, CocoKeypointDict, CocoKeypoints, PointClasses,
+    )
     from kwimage.structs.segmentation import (
         SegmentationBackend, SegmentationCoco,
     )
@@ -65,6 +67,20 @@ if TYPE_CHECKING:
         ProjectiveDecomposition, TransformScalar,
     )
 
+
+    color = kwimage.Color.coerce('red', alpha=0.5, space='rgb')
+    assert_type(color, kwimage.Color)
+    distinct_colors = kwimage.Color.distinct(3)
+    assert_type(
+        distinct_colors, list[list[float] | tuple[float, ...]]
+    )
+    assert_type(
+        kwimage.Color.distinct(2, existing=distinct_colors),
+        list[list[float] | tuple[float, ...]],
+    )
+    assert_type(
+        kwimage.Color.random(pool='rgb-uniform', rng=0), kwimage.Color
+    )
 
     matrix = kwimage.Matrix.eye(3)
     assert_type(matrix.det(), TransformScalar)
@@ -432,9 +448,25 @@ if TYPE_CHECKING:
     assert_type(points.to_imgaug((10, 10)), ImgAugKeypointsOnImage)
     assert_type(kwimage.Points.from_imgaug(kpoi), kwimage.Points)
     assert_type(points.to_coco(), CocoKeypoints)
+    assert_type(points.to_coco(style='new-v2'), CocoKeypoints)
+    coco_kpoint: CocoKeypointDict = {'xy': [1.0, 2.0], 'visible': 2}
+    coco_kpoint_columns: CocoKeypointColumns = {
+        'x': [1.0], 'y': [2.0], 'visible': [2]
+    }
+    point_classes: PointClasses = ['nose', 'tail']
+    assert_type(
+        kwimage.Points.from_coco([coco_kpoint], classes=point_classes),
+        kwimage.Points,
+    )
+    assert_type(
+        kwimage.Points.from_coco(coco_kpoint_columns), kwimage.Points
+    )
     assert_type(kwimage.Points.from_coco([0.0, 0.0, 2.0]), kwimage.Points)
     assert_type(kwimage.Points.from_coco(None), None)
     assert_type(kwimage.Points.coerce(np.empty((3, 2))), kwimage.Points)
+    assert_type(
+        kwimage.Points.random(classes=point_classes, rng=0), kwimage.Points
+    )
 
     point_list = kwimage.PointsList([points])
     assert_type(point_list[0], kwimage.Points)
@@ -609,4 +641,28 @@ if TYPE_CHECKING:
     assert_type(dets.device, torch.device | None)
     assert_type(dets.dtype, DetectionDType)
     assert_type(dets.to_coco(), Generator[CocoDetection, None, None])
+    assert_type(
+        dets.to_coco(style='new'), Generator[CocoDetection, None, None]
+    )
+    coco_dset = cast(CocoDatasetLike, object())
+    assert_type(
+        dets.to_coco(dset=coco_dset),
+        Generator[CocoDetection, None, None],
+    )
+    assert_type(
+        dets.draw_on(image, color=['red', 'green', 'blue']), np.ndarray
+    )
+    assert_type(
+        kwimage.Detections.random(classes=['a', 'b'], rng=0),
+        kwimage.Detections,
+    )
     assert_type(dets.rasterize((8, 8), (16, 16)), kwimage.Heatmap)
+    assert_type(
+        dets.rasterize(
+            (8, 8), (16, 16), tf_data_to_img=np.eye(3), img_dims=(16, 16)
+        ),
+        kwimage.Heatmap,
+    )
+    assert_type(
+        dets.non_max_supression(device_id=0), DetectionIndices
+    )

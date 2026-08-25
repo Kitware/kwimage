@@ -44,14 +44,16 @@ from kwimage.structs import boxes as _boxes
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence
     from types import EllipsisType
-    from typing import Any, Dict, List, Protocol, Tuple, overload
+    from typing import Any, Dict, List, Literal, Protocol, Tuple, TypedDict, TypeAlias, overload
 
     from numpy import ndarray
     import torch
     from torch import Tensor
+    from matplotlib.axes import Axes
 
     import kwimage
     from kwimage._typing import ArrayData, TorchDeviceLike, TransformLike
+    from kwimage.im_color import Color
     from kwimage.structs.mask import MaskList
     from kwimage.structs.points import Points, PointsList
     from kwimage.structs.polygon import PolygonList
@@ -63,6 +65,14 @@ if TYPE_CHECKING:
     DetectionTakeIndices = Sequence[int] | DetectionArray
     DetectionDType = np.dtype[Any] | torch.dtype | str | set[object]
     CocoDetection = dict[str, object]
+    DetectionColor = Color | str | Sequence[int | float]
+    DetectionCocoStyle: TypeAlias = Literal['orig', 'new']
+
+    class CocoResolvedCategory(TypedDict):
+        id: int
+
+    class CocoDatasetLike(Protocol):
+        def _resolve_to_cat(self, category: object) -> CocoResolvedCategory: ...
 
     class CategoryTreeLike(Protocol):
         cats: Mapping[Any, Mapping[str, Any]]
@@ -100,13 +110,13 @@ class _DetDrawMixin:
 
     def draw(
         self,
-        color: str = 'blue',
+        color: DetectionColor = 'blue',
         alpha: float | Sequence[float] | str | None = None,
         labels: bool = True,
         centers: bool = False,
         lw: int = 2,
         fill: bool = False,
-        ax: Any | None = None,
+        ax: Axes | None = None,
         radius: int = 5,
         kpts: bool = True,
         sseg: bool = True,
@@ -169,14 +179,14 @@ class _DetDrawMixin:
     def draw_on(
         self,
         image: ndarray | None = None,
-        color: str | Any | List[Any] = 'blue',
+        color: DetectionColor | Sequence[DetectionColor] = 'blue',
         alpha: float | Sequence[float] | None = None,
-        labels: bool | str | List[str] = True,
+        labels: bool | str | Sequence[str] = True,
         radius: float = 5,
         kpts: bool = True,
         sseg: bool = True,
         boxes: bool = True,
-        ssegkw: dict | None = None,
+        ssegkw: dict[str, object] | None = None,
         label_loc: str = 'top_left',
         thickness: int = 2,
     ) -> ndarray:
@@ -516,8 +526,8 @@ class _DetAlgoMixin:
         thresh: float = 0.0,
         perclass: bool = False,
         impl: str = 'auto',
-        daq: bool | Dict = False,
-        device_id: Any | None = None,
+        daq: bool | dict[str, object] = False,
+        device_id: int | None = None,
     ) -> DetectionIndices:
         """
         Find high scoring minimally overlapping detections
@@ -576,7 +586,7 @@ class _DetAlgoMixin:
         if scores is None:
             scores = np.ones(len(self), dtype=np.float32)
         if daq:
-            daqkw = {} if daq is True else daq.copy()
+            daqkw: Any = {} if daq is True else daq.copy()
             daqkw['impl'] = daqkw.get('impl', impl)
             daqkw['stop_size'] = daqkw.get('stop_size', 2048)
             daqkw['max_depth'] = daqkw.get('max_depth', 12)
@@ -625,8 +635,8 @@ class _DetAlgoMixin:
         bg_size: Sequence[int],
         input_dims: Sequence[int],
         soften: int = 1,
-        tf_data_to_img: Any | None = None,
-        img_dims: Any | None = None,
+        tf_data_to_img: TransformLike = None,
+        img_dims: Sequence[int] | ndarray | None = None,
         exclude: Sequence[str] = [],
     ) -> kwimage.Heatmap:
         """
@@ -717,7 +727,7 @@ class _DetAlgoMixin:
 
         dims = tuple(class_idx.shape)
 
-        kw_heat = {
+        kw_heat: dict[str, Any] = {
             'class_idx': class_idx,
             'classes': classes,
             'img_dims': img_dims,
@@ -1314,10 +1324,10 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
 
     def to_coco(
         self,
-        cname_to_cat: Any | None = None,
-        style: str = 'orig',
+        cname_to_cat: Mapping[str, Mapping[str, object]] | None = None,
+        style: DetectionCocoStyle = 'orig',
         image_id: int | None = None,
-        dset: Any | None = None,
+        dset: CocoDatasetLike | None = None,
     ) -> Generator[CocoDetection, None, None]:
         """
         Converts this set of detections into coco-like annotation dictionaries.
@@ -1885,7 +1895,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
         cls,
         num: int = 10,
         scale: float | tuple[float, float] = 1.0,
-        classes: int | Sequence[Any] = 3,
+        classes: int | Sequence[object] = 3,
         keypoints: bool | str = False,
         segmentations: bool = False,
         tensor: bool = False,

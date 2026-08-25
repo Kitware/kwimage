@@ -15,8 +15,8 @@ import ubelt as ub
 from kwimage.structs import _generic
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
-    from typing import Any, List, Protocol, Tuple
+    from collections.abc import Iterator, Mapping, Sequence
+    from typing import Any, List, Literal, Protocol, Tuple, TypedDict, TypeAlias
 
     from matplotlib.axes import Axes
     import matplotlib.collections
@@ -29,16 +29,38 @@ if TYPE_CHECKING:
         ArrayData, ImgAugKeypointsOnImage, TorchDeviceLike, TransformLike)
     from kwimage.im_color import Color
 
-    CocoKeypointDict = dict[str, Any]
-    CocoKeypoints = (
-        list[float]
-        | list[CocoKeypointDict]
-        | dict[str, list[Any]]
+    class CocoKeypointDict(TypedDict, total=False):
+        xy: Sequence[int | float]
+        visible: int | float
+        keypoint_category_id: int
+        keypoint_category: object
+        category_name: object
+        category_id: int
+        category: object
+
+    class CocoKeypointColumns(TypedDict, total=False):
+        x: Sequence[int | float]
+        y: Sequence[int | float]
+        visible: Sequence[int | float]
+        keypoint_category_id: Sequence[int]
+        keypoint_category_name: Sequence[object]
+
+    CocoKeypoints: TypeAlias = (
+        list[float] | list[CocoKeypointDict] | CocoKeypointColumns
     )
+    CocoKeypointStyle: TypeAlias = Literal[
+        'orig', 'new', 'new-id', 'new-name', 'new-v2'
+    ]
     ColorLike = Color | str | Sequence[int | float]
 
-    class _CategoryTreeLike(Protocol):
-        id_to_idx: dict[Any, int]
+    class PointCategoryTreeLike(Protocol):
+        id_to_idx: Mapping[int, int]
+
+        def __len__(self) -> int: ...
+        def __getitem__(self, index: int) -> object: ...
+        def index(self, value: object) -> int: ...
+
+    PointClasses: TypeAlias = Sequence[object] | PointCategoryTreeLike
 
 
 class _PointsWarpMixin:
@@ -117,7 +139,7 @@ class _PointsWarpMixin:
 
     @classmethod
     def from_imgaug(
-        cls: Any, kpoi: ImgAugKeypointsOnImage
+        cls: type[Points], kpoi: ImgAugKeypointsOnImage
     ) -> Points:
         import kwimage
 
@@ -384,7 +406,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     def random(
         cls,
         num: int | tuple[int, ...] = 1,
-        classes: Any | None = None,
+        classes: PointClasses | None = None,
         rng: Any | None = None,
     ) -> Points:
         """
@@ -871,7 +893,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         new = cls({'xy': newxy}, first.meta)
         return new
 
-    def to_coco(self, style: str = 'orig') -> CocoKeypoints:
+    def to_coco(self, style: CocoKeypointStyle = 'orig') -> CocoKeypoints:
         """
         Converts to an mscoco-like representation
 
@@ -908,7 +930,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
         else:
             raise NotImplementedError('dim > 2, dense case todo')
 
-    def _to_coco(self, style: str = 'orig') -> CocoKeypoints:
+    def _to_coco(self, style: CocoKeypointStyle = 'orig') -> CocoKeypoints:
         """
         See to_coco
         """
@@ -924,7 +946,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             flat_pts = np.hstack([self.xy, visible]).reshape(-1)
             return flat_pts.tolist()
         elif style.startswith('new-v2'):
-            new_kpts_v2 = {}
+            new_kpts_v2: CocoKeypointColumns = {}
             x, y = self.data['xy'].data.T.tolist()
             new_kpts_v2['x'] = x
             new_kpts_v2['y'] = y
@@ -956,11 +978,11 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             else:
                 raise KeyError(style)
 
-            new_kpts = []
+            new_kpts: list[CocoKeypointDict] = []
             _visible = self.data.get('visible', None)
             _class_idxs = self.data.get('class_idxs', None)
             for i, xy in enumerate(self.data['xy'].data.tolist()):
-                kpdict = {'xy': xy}
+                kpdict: CocoKeypointDict = {'xy': xy}
                 if _visible is not None:
                     kpdict['visible'] = int(_visible[i])
                 if _class_idxs is not None:
@@ -1039,8 +1061,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     @classmethod
     def coerce(
         cls,
-        data: Points | ArrayData | list[Any] | dict[str, Any],
-        classes: Any | None = None,
+        data: Points | ArrayData | CocoKeypoints,
+        classes: PointClasses | None = None,
     ) -> Points:
         """
         Attempt to coerce data into a Points object
@@ -1060,7 +1082,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
             return data
         elif isinstance(data, (list, dict)):
             # TODO: determine if coco or geojson
-            return cls.from_coco(data, classes=classes)
+            coco_data: Any = data
+            return cls.from_coco(coco_data, classes=classes)
         elif _generic.isinstance_arraytypes(data):
             return cls(xy=data)
         # TODO: check if a shapely object
@@ -1070,9 +1093,9 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     @classmethod
     def _from_coco(
         cls,
-        coco_kpts: list[Any] | dict[str, Any] | None,
-        class_idxs: list[int] | None = None,
-        classes: Any | None = None,
+        coco_kpts: CocoKeypoints | None,
+        class_idxs: Sequence[int] | None = None,
+        classes: PointClasses | None = None,
     ) -> Points | None:
         # backwards compatibility
         return cls.from_coco(coco_kpts, class_idxs=class_idxs, classes=classes)
@@ -1082,8 +1105,8 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     def from_coco(
         cls,
         coco_kpts: None,
-        class_idxs: list[int] | None = None,
-        classes: Any | None = None,
+        class_idxs: Sequence[int] | None = None,
+        classes: PointClasses | None = None,
         warn: bool = False,
     ) -> None: ...
 
@@ -1091,18 +1114,18 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     @overload
     def from_coco(
         cls,
-        coco_kpts: list[Any] | dict[str, Any],
-        class_idxs: list[int] | None = None,
-        classes: Any | None = None,
+        coco_kpts: CocoKeypoints,
+        class_idxs: Sequence[int] | None = None,
+        classes: PointClasses | None = None,
         warn: bool = False,
     ) -> Points: ...
 
     @classmethod
     def from_coco(
         cls,
-        coco_kpts: list[Any] | dict[str, Any] | None,
-        class_idxs: list[int] | None = None,
-        classes: Any | None = None,
+        coco_kpts: CocoKeypoints | None,
+        class_idxs: Sequence[int] | None = None,
+        classes: PointClasses | None = None,
         warn: bool = False,
     ) -> Points | None:
         """
@@ -1206,9 +1229,10 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     class_idxs_data = None
                     # raise Exception('classes should be specified for new-style-v2')
                 else:
+                    classes_tree: Any = classes
                     try:
                         class_idxs_data = [
-                            classes.id_to_idx[cid]
+                            classes_tree.id_to_idx[cid]
                             for cid in keypoint_category_id
                         ]
                     except AttributeError:
@@ -1259,20 +1283,21 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                     )
                     for kpdict in coco_dicts
                 ]
-                if all(inferred_classes):
+                inferred_classes_impl: Any = inferred_classes
+                if all(inferred_classes_impl):
                     if warn:
                         warnings.warn(
                             'Inferring keypoint classes in Points.from_coco. '
                             'It would be better to specify them explicitly'
                         )
-                    classes = sorted(set(inferred_classes))
+                    classes = sorted(set(inferred_classes_impl))
 
             for kpdict in coco_dicts:
                 if classes is not None:
                     cidx: Any = None
                     if 'keypoint_category_id' in kpdict:
                         cid = kpdict['keypoint_category_id']
-                        classes_tree = cast('_CategoryTreeLike', classes)
+                        classes_tree = cast('PointCategoryTreeLike', classes)
                         try:
                             cidx = classes_tree.id_to_idx[cid]
                         except AttributeError:
@@ -1294,7 +1319,7 @@ class Points(_generic.Spatial, _PointsWarpMixin):
                                 'Keypoints got category_id, but we would prefer keypoint_category_id'
                             )
                         cid = kpdict['category_id']
-                        classes_tree = cast('_CategoryTreeLike', classes)
+                        classes_tree = cast('PointCategoryTreeLike', classes)
                         try:
                             cidx = classes_tree.id_to_idx[cid]
                         except AttributeError:

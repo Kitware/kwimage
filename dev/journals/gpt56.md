@@ -550,3 +550,18 @@ No vectorized computation, loop/comprehension count, NumPy materialization, or c
 - Removed dead reassignment of `Heatmap.random`'s `classes` input from the optional `Detections.classes` property; the detections object is authoritative after construction and the local value was unused.
 - Kept broad historical `img_dims` runtime compatibility local when forwarding into the more narrowly typed `Detections.warp` API.
 - Aligned `Box.draw(alpha=...)` with the concrete `Boxes.draw` scalar-or-list alpha contract while leaving `Box.draw_on`'s broader sequence contract intact.
+
+## 2026-08-24: v39 narrow Color, Points COCO, and Detections public Any surfaces
+
+- Replaced the open-ended `Color.coerce(**kwargs: Any)` public signature with the actual constructor options (`alpha`, `space`, and `coerce`), and narrowed `Color.distinct(existing=...)` plus the `Color.random(pool=...)` selector.
+- Replaced the `Points` COCO `dict[str, Any]`/`list[Any]` aliases with explicit typed keypoint-record and columnar forms, added a structural point-class container contract, and propagated those types through `random`, `coerce`, `from_coco`, and `to_coco`.
+- Narrowed caller-facing `Detections` drawing colors/axes, NMS `device_id` and DAQ mapping, rasterization transform/image dimensions, COCO style/dataset resolver, and random class sequences.
+- Kept RNG inputs, arbitrary plotting kwargs, extensible detection data/meta dictionaries, and dynamic backend boundaries permissive; those remain genuine dynamic surfaces rather than targets for annotation-only coercion.
+
+No numerical operations, array materialization, copies, loops, or comprehensions were added or removed in the modified runtime modules.
+
+## 2026-08-24: v40 Points COCO contract cleanup
+
+- Kept the new structured `Points.from_coco` overloads while isolating the legacy ambiguous `Points.coerce` list/dict dispatch behind a local dynamic view.
+- Narrowed `id_to_idx` access to the structural category-tree protocol only in the code paths that require category IDs; ordinary sequence class containers remain supported for name-based lookup.
+- No runtime conversion, validation, copying, or iteration changes were introduced.

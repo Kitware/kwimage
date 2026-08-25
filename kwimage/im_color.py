@@ -12,7 +12,7 @@ import ubelt as ub
 from . import _im_color_data, im_core
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, List, Sequence, Tuple, TypeAlias
+    from typing import Any, Iterable, List, Literal, Sequence, Tuple, TypeAlias
 
     from numpy import ndarray
 
@@ -207,9 +207,12 @@ class Color(ub.NiceRepr):
     def coerce(
         cls,
         data: Color | Iterable[int | float] | str,
-        **kwargs: Any,
+        *,
+        alpha: float | None = None,
+        space: str | None = None,
+        coerce: bool = True,
     ) -> Color:
-        return cls(data, **kwargs)
+        return cls(data, alpha=alpha, space=space, coerce=coerce)
 
     def __nice__(self) -> str:
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
@@ -501,9 +504,9 @@ class Color(ub.NiceRepr):
     def distinct(
         Color,
         num: int,
-        existing: Any | None = None,
+        existing: list[list[float] | tuple[float, ...]] | None = None,
         space: str = 'rgb',
-        legacy: bool | str = 'auto',
+        legacy: bool | Literal['auto'] = 'auto',
         exclude_black: bool = True,
         exclude_white: bool = True,
     ) -> list[list[float] | tuple[float, ...]]:
@@ -580,7 +583,7 @@ class Color(ub.NiceRepr):
 
             if space != 'rgb':
                 raise NotImplementedError
-            exclude_colors = existing
+            exclude_colors: Any = existing
             if exclude_colors is None:
                 exclude_colors = []
             if exclude_black:
@@ -607,7 +610,10 @@ class Color(ub.NiceRepr):
 
     @classmethod
     def random(
-        Color, pool: str = 'named', with_alpha: int = 0, rng: Any | None = None
+        Color,
+        pool: Literal['named', 'rgb-uniform'] = 'named',
+        with_alpha: int = 0,
+        rng: Any | None = None,
     ) -> Color:
         """
         Returns:
@@ -917,7 +923,8 @@ class Color(ub.NiceRepr):
 
 
 def _draw_color_swatch(
-    colors: Sequence[Any], cellshape: int | tuple[int, int] = 9
+    colors: Sequence[Color | str | Sequence[int | float]],
+    cellshape: int | tuple[int, int] = 9,
 ) -> ndarray:
     """
     Draw colors in a grid
