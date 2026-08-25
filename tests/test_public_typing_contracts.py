@@ -55,7 +55,10 @@ if TYPE_CHECKING:
         CocoPolygon, CocoPolygonDict, CocoPolygonStyle, MultiPolygonGeoJSON,
         PolygonData, PolygonGeoJSON,
     )
-    from kwimage.im_core import PaddedSliceInfo, RobustNormalizerInfo
+    from kwimage.im_core import (
+        PaddedSliceInfo, PaddedSlicePadKw, RobustNormalizerInfo,
+        RobustNormalizerParams, RobustNormalizerScalar,
+    )
     from kwimage.im_cv2 import (
         ConnectedComponentsInfo, ConnectedComponentsStatsInfo,
     )
@@ -181,15 +184,29 @@ if TYPE_CHECKING:
     warp_pts_np = np.zeros((3, 2), dtype=np.float32)
     warp_mat_np = np.eye(3, dtype=np.float32)
     assert_type(kwimage.warp_points(warp_mat_np, warp_pts_np), np.ndarray)
+    assert_type(
+        kwimage.warp_points(warp_mat_np, warp_pts_np, homog_mode='keep'),
+        np.ndarray,
+    )
     assert_type(kwimage.add_homog(warp_pts_np), np.ndarray)
     assert_type(
         kwimage.remove_homog(np.zeros((3, 3), dtype=np.float32)),
+        np.ndarray,
+    )
+    assert_type(
+        kwimage.remove_homog(
+            np.zeros((3, 3), dtype=np.float32), mode='drop'
+        ),
         np.ndarray,
     )
 
     subpixel_np = np.zeros((5, 5), dtype=np.float32)
     subpixel_src_np = np.ones((2, 2), dtype=np.float32)
     subpixel_index = (slice(1, 3), slice(1, 3))
+    assert_type(
+        kwimage.subpixel_align(subpixel_np, 1.0, subpixel_index),
+        tuple[np.ndarray, tuple[slice, ...]],
+    )
     assert_type(
         kwimage.subpixel_align(subpixel_np, subpixel_src_np, subpixel_index),
         tuple[np.ndarray, tuple[slice, ...]],
@@ -220,9 +237,21 @@ if TYPE_CHECKING:
     assert_type(
         kwimage.subpixel_translate(subpixel_np, (0.5, -0.25)), np.ndarray
     )
+    assert_type(
+        kwimage.subpixel_translate(
+            subpixel_np, np.array([0.5, -0.25]), interp_axes=(0, 1)
+        ),
+        np.ndarray,
+    )
     sample_pts_np = np.array([[1.0, 1.0]], dtype=np.float32)
     assert_type(
         kwimage.subpixel_getvalue(subpixel_np, sample_pts_np), np.ndarray
+    )
+    assert_type(
+        kwimage.subpixel_getvalue(
+            subpixel_np, sample_pts_np, interp='nearest', bordermode='edge'
+        ),
+        np.ndarray,
     )
     assert_type(
         kwimage.subpixel_setvalue(subpixel_np, sample_pts_np, 0.0),
@@ -346,6 +375,13 @@ if TYPE_CHECKING:
     )
     assert_type(kwimage.atleast_3channels(binary), np.ndarray)
     assert_type(kwimage.exactly_1channel(binary), np.ndarray)
+    padkw: PaddedSlicePadKw = {'mode': 'constant'}
+    assert_type(
+        kwimage.padded_slice(
+            binary, (slice(0, 4),), pad=1, padkw=padkw
+        ),
+        np.ndarray,
+    )
     assert_type(kwimage.padded_slice(binary, (slice(0, 4),)), np.ndarray)
     assert_type(
         kwimage.padded_slice(
@@ -353,13 +389,28 @@ if TYPE_CHECKING:
         ),
         tuple[np.ndarray, PaddedSliceInfo],
     )
-    assert_type(
-        kwimage.find_robust_normalizers(binary), RobustNormalizerInfo
+    robust_params: RobustNormalizerParams = {
+        'low': 0.01,
+        'mid': 0.5,
+        'high': 0.9,
+        'scaling': 'linear',
+    }
+    robust_info = kwimage.find_robust_normalizers(
+        binary, params=robust_params
     )
+    assert_type(robust_info, RobustNormalizerInfo)
+    assert_type(robust_info['type'], Literal['normalize'] | None)
+    assert_type(robust_info['min_val'], RobustNormalizerScalar)
     assert_type(kwimage.normalize_intensity(binary), np.ndarray)
     assert_type(
         kwimage.normalize_intensity(binary, return_info=True),
         tuple[np.ndarray, RobustNormalizerInfo],
+    )
+    assert_type(
+        kwimage.normalize_intensity(
+            binary, return_info=True, axis=0, params=robust_params
+        ),
+        tuple[np.ndarray, list[RobustNormalizerInfo]],
     )
     assert_type(kwimage.crop_border_by_color(image), np.ndarray)
 

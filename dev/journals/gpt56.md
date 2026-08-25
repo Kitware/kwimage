@@ -645,3 +645,19 @@ repository. The user's local `ty check kwimage tests/` remains the next gate.
 
 - Fixed the single v47 `ty` follow-up in `Detections.from_coco_annots`: after the parent-category lookup loop proves `kpnames` is present at runtime, a local implementation-only `Any` view prevents `ty` from retaining the earlier optional heterogeneous COCO payload type.
 - Kept the narrowed public COCO constructor contracts unchanged; no runtime validation, conversion, materialization, or iteration changes were added.
+
+## 2026-08-25 13:20:00 -0400
+
+Continued the post-green public typing audit after the v48 Detections COCO cleanup. The user asked for another larger push rather than another one-diagnostic patch. I chose two root-facing clusters where `Any` was still obscuring real, stable behavior: `im_core` robust normalization / padded slicing and `util_warp` subpixel helpers.
+
+For `im_core`, the old `dict[str, Any]` normalization contracts hid both the accepted configuration keys and the structure of the returned normalizer. I introduced type-only `TypedDict`/mapping aliases for normalization parameters and results. One important correction is that `normalize_intensity(..., return_info=True, axis=<int>)` returns a list of per-axis normalizer dictionaries, while the no-axis case returns one dictionary. The new overloads model that distinction. The boundary to `kwarray.robust_normalize` remains locally dynamic because kwarray's installed/public typing is outside this package and historically loose. `padded_slice` now accepts a `Mapping[str, object]` for NumPy pad keywords and uses a local dynamic view only at `np.pad(**...)`.
+
+For `util_warp`, I narrowed the caller-facing overloads without changing the ArrayAPI implementation bodies. NumPy destinations now pair with NumPy sources, Torch destinations with Torch sources, while scalar sources remain accepted because the implementation intentionally broadcasts them. Subpixel point/value arguments are backend-matched, interpolation/border/homogeneous modes use literals, subpixel shifts/axes/output shapes have explicit scalar/sequence/ndarray forms, and `warp_tensor` is explicitly a Torch API. I deliberately left the overloaded implementation signatures as local `Any` boundaries where they are hidden from callers; tightening those would mostly make the internal generic ArrayAPI code harder for the checker without improving downstream inference.
+
+The primary risk is checker-specific overload behavior, especially NumPy scalar unions and the robust-normalization axis overloads. Runtime-sensitive operations should be unchanged; validation for this stage therefore emphasizes AST operation-count invariance, Python 3.10 parsing, patch/overlay reproduction, and the maintainer's local `ty check kwimage tests/`.
+
+
+## 2026-08-25: v50 warp_tensor shape-scalar cleanup
+
+- Fixed the single v49 `ty` follow-up in `warp_tensor`: `np.prod(prefix_dims[:-1])` produces a NumPy integer scalar, while Torch stubs require builtin `int | SymInt` for `Tensor.view`.
+- Kept the existing NumPy shape arithmetic unchanged and introduced only a local implementation `Any` view at the `Tensor.view` boundary. No casts, tensor copies, reshapes, validation, or numerical behavior were added for typing.

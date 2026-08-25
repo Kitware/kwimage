@@ -10,16 +10,44 @@ import numpy as np
 import ubelt as ub
 
 if _t.TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Any, Literal, TypedDict, overload
+    from collections.abc import Mapping, Sequence
+    from typing import Any, Literal, TypeAlias, TypedDict, overload
 
     from numpy.typing import DTypeLike
+
+    PaddedSlicePadKw: TypeAlias = Mapping[str, object]
 
     class PaddedSliceInfo(TypedDict):
         st_dims: list[tuple[int, int]]
         st_offset: list[int]
 
-    RobustNormalizerInfo = dict[str, Any]
+    class RobustNormalizerParams(TypedDict, total=False):
+        extrema: str
+        scaling: str
+        mode: str
+        low: float
+        mid: float
+        high: float
+        center: float
+
+    RobustNormalizerParamsLike: TypeAlias = (
+        str | RobustNormalizerParams | Mapping[str, object]
+    )
+
+    RobustNormalizerScalar: TypeAlias = float | np.floating[Any]
+
+    class _RobustNormalizerInfoRequired(TypedDict):
+        type: Literal['normalize'] | None
+        min_val: RobustNormalizerScalar
+        max_val: RobustNormalizerScalar
+
+    class RobustNormalizerInfo(
+        _RobustNormalizerInfoRequired, total=False
+    ):
+        mode: str
+        mid_val: RobustNormalizerScalar
+        beta: RobustNormalizerScalar
+        alpha: RobustNormalizerScalar
 
 
 def num_channels(img: np.ndarray) -> int:
@@ -369,7 +397,7 @@ if _t.TYPE_CHECKING:
         data: np.ndarray,
         in_slice: slice | tuple[slice, ...] | list[slice],
         pad: int | Sequence[int | tuple[int, int]] | None = None,
-        padkw: dict[str, Any] | None = None,
+        padkw: PaddedSlicePadKw | None = None,
         return_info: Literal[False] = False,
     ) -> np.ndarray: ...
 
@@ -378,7 +406,7 @@ if _t.TYPE_CHECKING:
         data: np.ndarray,
         in_slice: slice | tuple[slice, ...] | list[slice],
         pad: int | Sequence[int | tuple[int, int]] | None = None,
-        padkw: dict[str, Any] | None = None,
+        padkw: PaddedSlicePadKw | None = None,
         *,
         return_info: Literal[True],
     ) -> tuple[np.ndarray, PaddedSliceInfo]: ...
@@ -388,7 +416,7 @@ if _t.TYPE_CHECKING:
         data: np.ndarray,
         in_slice: slice | tuple[slice, ...] | list[slice],
         pad: int | Sequence[int | tuple[int, int]] | None = None,
-        padkw: dict[str, Any] | None = None,
+        padkw: PaddedSlicePadKw | None = None,
         return_info: bool = False,
     ) -> np.ndarray | tuple[np.ndarray, PaddedSliceInfo]: ...
 
@@ -397,7 +425,7 @@ def padded_slice(
     data: np.ndarray,
     in_slice: slice | tuple[slice, ...] | list[slice],
     pad: int | Sequence[int | tuple[int, int]] | None = None,
-    padkw: dict[str, Any] | None = None,
+    padkw: PaddedSlicePadKw | None = None,
     return_info: bool = False,
 ) -> np.ndarray | tuple[np.ndarray, PaddedSliceInfo]:
     """
@@ -470,7 +498,7 @@ def _padded_slice_apply(
     data_clipped: np.ndarray,
     data_slice: tuple[slice, ...],
     extra_padding: list[tuple[int, int]],
-    padkw: dict[str, Any] | None = None,
+    padkw: PaddedSlicePadKw | None = None,
 ) -> tuple[np.ndarray, PaddedSliceInfo]:
     """
     Applies requested padding to an extracted data slice.
@@ -487,7 +515,8 @@ def _padded_slice_apply(
         trailing_dims = len(data_clipped.shape) - len(extra_padding)
         if trailing_dims > 0:
             extra_padding = extra_padding + ([(0, 0)] * trailing_dims)
-        data_sliced = np.pad(data_clipped, extra_padding, **padkw)
+        padkw_impl: Any = padkw
+        data_sliced = np.pad(data_clipped, extra_padding, **padkw_impl)
 
     data_slice_dynamic: Any = data_slice
     st_dims = [
@@ -646,7 +675,7 @@ def normalize(
 
 
 def find_robust_normalizers(
-    data: np.ndarray, params: str | dict[str, Any] = 'auto'
+    data: np.ndarray, params: RobustNormalizerParamsLike = 'auto'
 ) -> RobustNormalizerInfo:
     """
     Finds robust normalization statistics for a single observation
@@ -678,7 +707,10 @@ def find_robust_normalizers(
             'high': 0.9,
             'mode': 'sigmoid',
         }
-    normalizer = kwarray.find_robust_normalizers(data, params=params)
+    params_impl: Any = params
+    normalizer: Any = kwarray.find_robust_normalizers(
+        data, params=params_impl
+    )
     return normalizer
 
 
@@ -690,7 +722,7 @@ if _t.TYPE_CHECKING:
         nodata: int | None = None,
         axis: int | None = None,
         dtype: DTypeLike = np.float32,
-        params: str | dict[str, Any] = 'auto',
+        params: RobustNormalizerParamsLike = 'auto',
         mask: np.ndarray | None = None,
     ) -> np.ndarray: ...
 
@@ -700,11 +732,23 @@ if _t.TYPE_CHECKING:
         *,
         return_info: Literal[True],
         nodata: int | None = None,
-        axis: int | None = None,
+        axis: None = None,
         dtype: DTypeLike = np.float32,
-        params: str | dict[str, Any] = 'auto',
+        params: RobustNormalizerParamsLike = 'auto',
         mask: np.ndarray | None = None,
     ) -> tuple[np.ndarray, RobustNormalizerInfo]: ...
+
+    @overload
+    def normalize_intensity(
+        imdata: np.ndarray,
+        *,
+        return_info: Literal[True],
+        nodata: int | None = None,
+        axis: int,
+        dtype: DTypeLike = np.float32,
+        params: RobustNormalizerParamsLike = 'auto',
+        mask: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, list[RobustNormalizerInfo]]: ...
 
     @overload
     def normalize_intensity(
@@ -713,9 +757,13 @@ if _t.TYPE_CHECKING:
         nodata: int | None = None,
         axis: int | None = None,
         dtype: DTypeLike = np.float32,
-        params: str | dict[str, Any] = 'auto',
+        params: RobustNormalizerParamsLike = 'auto',
         mask: np.ndarray | None = None,
-    ) -> np.ndarray | tuple[np.ndarray, RobustNormalizerInfo]: ...
+    ) -> (
+        np.ndarray
+        | tuple[np.ndarray, RobustNormalizerInfo]
+        | tuple[np.ndarray, list[RobustNormalizerInfo]]
+    ): ...
 
 
 def normalize_intensity(
@@ -724,9 +772,13 @@ def normalize_intensity(
     nodata: int | None = None,
     axis: int | None = None,
     dtype: DTypeLike = np.float32,
-    params: str | dict[str, Any] = 'auto',
+    params: RobustNormalizerParamsLike = 'auto',
     mask: np.ndarray | None = None,
-) -> np.ndarray | tuple[np.ndarray, RobustNormalizerInfo]:
+) -> (
+    np.ndarray
+    | tuple[np.ndarray, RobustNormalizerInfo]
+    | tuple[np.ndarray, list[RobustNormalizerInfo]]
+):
     """
     Normalize data intensities using heuristics to help put sensor data with
     extremely high or low contrast into a visible range.
@@ -835,15 +887,17 @@ def normalize_intensity(
             'high': 0.9,
             'mode': 'sigmoid',
         }
-    return kwarray.robust_normalize(
+    params_impl: Any = params
+    result: Any = kwarray.robust_normalize(
         imdata,
         return_info=return_info,
         nodata=nodata,
         axis=axis,
         dtype=dtype,
-        params=params,
+        params=params_impl,
         mask=mask,
     )
+    return result
 
 
 def crop_border_by_color(
