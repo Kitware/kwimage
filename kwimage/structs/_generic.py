@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from typing import Any, MutableSequence, Protocol, Sequence
 
-    from kwimage._typing import ArrayData
+    from kwimage._typing import ArrayData, TorchDeviceLike
 
     class _DrawableObject(Protocol):
         def to_coco(self, style: str = 'orig') -> Any: ...
@@ -399,6 +399,15 @@ class ObjectList(Spatial, _ExperimentalListProxy[T]):
             pass
 
         return image
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self: ObjectListT) -> ObjectListT: ...
+
+        @overload
+        def tensor(
+            self: ObjectListT, device: TorchDeviceLike
+        ) -> ObjectListT: ...
 
     def tensor(
         self: ObjectListT, device: Any = ub.NoParam

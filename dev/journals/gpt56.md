@@ -533,3 +533,20 @@ materialization, or control-flow change is added.
 - `Boxes.draw_on(edgecolor=...)` now reflects the existing runtime support for either one color or a per-box color sequence; the historical `True` sentinel remains accepted.
 - `Affine.affine` keeps the narrowed numeric/symbolic parameter contracts, while the polymorphic `math_mod` backend is viewed dynamically only at the private `sin`/`cos` call boundary. This avoids weakening `theta` merely because builtin `math` and symbolic math backends have incompatible static signatures.
 - No numerical operations, array materialization, copies, validation, or iteration behavior changed.
+
+## 2026-08-24: v37 narrow device and Box wrapper Any surfaces
+
+- Added a caller-facing `TorchDeviceLike` alias and overloads for `.tensor(device=...)` across Coords, Points, Boxes, Heatmap, Mask, Polygon/MultiPolygon, Detections, generic ObjectList containers, and Segmentation wrappers. The internal `ub.NoParam` sentinel remains confined to implementation signatures.
+- Replaced the `Box` convenience wrapper's broad `*args: Any, **kwargs: Any` forwarding signatures with the concrete contracts already exposed by the corresponding `Boxes` methods for translate/warp/scale/clip/resize/pad/round/quantize/copy/format conversion/astype/corners.
+- Narrowed `Box` drawing color/axes parameters to the existing Boxes color and Matplotlib axes contracts.
+- Narrowed Detections scale/translate output dimensions and Heatmap warp/scale/translate dimensions; Heatmap's legacy `version` selector is now the actual `'old' | 'new'` literal union, and `Heatmap.random(dets=...)` reflects its Detections-or-`'coco'` sentinel behavior.
+- Added static contracts for explicit tensor devices and the Box forwarding surface.
+
+No vectorized computation, loop/comprehension count, NumPy materialization, or copy count changed in the modified runtime modules.
+
+
+## v37 -> v38 cleanup
+
+- Removed dead reassignment of `Heatmap.random`'s `classes` input from the optional `Detections.classes` property; the detections object is authoritative after construction and the local value was unused.
+- Kept broad historical `img_dims` runtime compatibility local when forwarding into the more narrowly typed `Detections.warp` API.
+- Aligned `Box.draw(alpha=...)` with the concrete `Boxes.draw` scalar-or-list alpha contract while leaving `Box.draw_on`'s broader sequence contract intact.

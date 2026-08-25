@@ -87,6 +87,7 @@ if TYPE_CHECKING:
     assert_type(boxes.astype('float32'), kwimage.Boxes)
     assert_type(boxes.take([0]), kwimage.Boxes)
     assert_type(boxes.draw(), None)
+    assert_type(boxes.tensor('cpu'), kwimage.Boxes)
 
     image = np.zeros((16, 20, 3), dtype=np.uint8)
     binary = np.zeros((16, 20), dtype=np.uint8)
@@ -359,6 +360,20 @@ if TYPE_CHECKING:
     assert_type(box.to_coco(), list[float])
     assert_type(box.draw_on(np.zeros((8, 8, 3), dtype=np.uint8)), np.ndarray)
     assert_type(box.draw(), None)
+    assert_type(box.translate((1.0, 2.0)), kwimage.Box)
+    assert_type(box.scale(2.0), kwimage.Box)
+    assert_type(box.warp(np.eye(3)), kwimage.Box)
+    assert_type(box.clip(0, 0, 10, 10), kwimage.Box)
+    assert_type(box.pad(1, 2, 3, 4), kwimage.Box)
+    assert_type(box.resize(width=4, height=5), kwimage.Box)
+    assert_type(box.round(), kwimage.Box)
+    assert_type(box.quantize(), kwimage.Box)
+    assert_type(box.copy(), kwimage.Box)
+    assert_type(box.to_ltrb(copy=False), kwimage.Box)
+    assert_type(box.to_xywh(copy=False), kwimage.Box)
+    assert_type(box.to_cxywh(copy=False), kwimage.Box)
+    assert_type(box.toformat('ltrb', copy=False), kwimage.Box)
+    assert_type(box.astype(np.float32), kwimage.Box)
 
     heatmap = kwimage.Heatmap(
         class_probs=np.empty((2, 8, 8), dtype=np.float32),
@@ -377,6 +392,7 @@ if TYPE_CHECKING:
     assert_type(heatmap.classes, DetectionClasses | None)
     assert_type(heatmap.numpy(), kwimage.Heatmap)
     assert_type(heatmap.tensor(), kwimage.Heatmap)
+    assert_type(heatmap.tensor('cpu'), kwimage.Heatmap)
     assert_type(heatmap.warp(np.eye(3)), kwimage.Heatmap)
     assert_type(heatmap.scale(2.0), kwimage.Heatmap)
     assert_type(heatmap.translate((1.0, 2.0)), kwimage.Heatmap)
@@ -393,6 +409,7 @@ if TYPE_CHECKING:
     assert_type(coords.warp(np.eye(3)), kwimage.Coords)
     assert_type(coords.numpy(), kwimage.Coords)
     assert_type(coords.tensor(), kwimage.Coords)
+    assert_type(coords.tensor('cpu'), kwimage.Coords)
     assert_type(coords.to_wkt(), str)
     assert_type(coords.to_shapely(), MultiPoint)
     assert_type(coords.to_imgaug((10, 10)), ImgAugKeypointsOnImage)
@@ -409,6 +426,7 @@ if TYPE_CHECKING:
     assert_type(points.take([0, 2]), kwimage.Points)
     assert_type(points.numpy(), kwimage.Points)
     assert_type(points.tensor(), kwimage.Points)
+    assert_type(points.tensor('cpu'), kwimage.Points)
     assert_type(points.to_wkt(), str)
     assert_type(points.to_shapely(), MultiPoint)
     assert_type(points.to_imgaug((10, 10)), ImgAugKeypointsOnImage)
@@ -436,6 +454,7 @@ if TYPE_CHECKING:
     assert_type(poly.astype(np.float32), kwimage.Polygon)
     assert_type(poly.numpy(), kwimage.Polygon)
     assert_type(poly.tensor(), kwimage.Polygon)
+    assert_type(poly.tensor('cpu'), kwimage.Polygon)
     assert_type(poly.to_shapely(), ShapelyPolygon)
     assert_type(poly.to_geojson(), PolygonGeoJSON)
     assert_type(poly.to_coco(), list[int | float])
@@ -462,6 +481,7 @@ if TYPE_CHECKING:
     assert_type(mpoly.warp(np.eye(3)), kwimage.MultiPolygon)
     assert_type(mpoly.numpy(), kwimage.MultiPolygon)
     assert_type(mpoly.tensor(), kwimage.MultiPolygon)
+    assert_type(mpoly.tensor('cpu'), kwimage.MultiPolygon)
     assert_type(mpoly.swap_axes(), kwimage.MultiPolygon)
     assert_type(mpoly.to_shapely(), ShapelyMultiPolygon)
     assert_type(mpoly.to_geojson(), MultiPolygonGeoJSON)
@@ -481,6 +501,7 @@ if TYPE_CHECKING:
     assert_type(polygon_list.warp(np.eye(3)), kwimage.PolygonList)
     assert_type(polygon_list.numpy(), kwimage.PolygonList)
     assert_type(polygon_list.tensor(), kwimage.PolygonList)
+    assert_type(polygon_list.tensor('cpu'), kwimage.PolygonList)
     assert_type(polygon_list.to_boxes(), kwimage.Boxes)
     assert_type(
         polygon_list.to_coco(),
@@ -499,6 +520,7 @@ if TYPE_CHECKING:
     assert_type(mask.to_bytes_rle(), kwimage.Mask)
     assert_type(mask.numpy(), kwimage.Mask)
     assert_type(mask.tensor(), kwimage.Mask)
+    assert_type(mask.tensor('cpu'), kwimage.Mask)
     assert_type(mask.scale(2.0), kwimage.Mask)
     assert_type(mask.translate((1.0, 2.0)), kwimage.Mask)
     assert_type(mask.warp(np.eye(3)), kwimage.Mask)
@@ -518,6 +540,7 @@ if TYPE_CHECKING:
     assert_type(mask_list.to_segmentation_list(), kwimage.SegmentationList)
     assert_type(mask_list.numpy(), kwimage.MaskList)
     assert_type(mask_list.tensor(), kwimage.MaskList)
+    assert_type(mask_list.tensor('cpu'), kwimage.MaskList)
     assert_type(mask_list.to_coco(), Iterator[CocoMaskRLE | None])
 
     segmentation = kwimage.Segmentation(mask, 'mask')
@@ -532,6 +555,7 @@ if TYPE_CHECKING:
     assert_type(segmentation.translate((1.0, 2.0)), SegmentationBackend)
     assert_type(segmentation.numpy(), SegmentationBackend)
     assert_type(segmentation.tensor(), SegmentationBackend)
+    assert_type(segmentation.tensor('cpu'), SegmentationBackend)
     assert_type(segmentation.to_coco(), SegmentationCoco)
     assert_type(kwimage.Segmentation.coerce(mask), kwimage.Segmentation)
 
@@ -546,6 +570,7 @@ if TYPE_CHECKING:
     assert_type(segmentation_list.to_polygon_list(), kwimage.PolygonList)
     assert_type(segmentation_list.numpy(), kwimage.SegmentationList)
     assert_type(segmentation_list.tensor(), kwimage.SegmentationList)
+    assert_type(segmentation_list.tensor('cpu'), kwimage.SegmentationList)
     assert_type(
         segmentation_list.to_coco(), Iterator[SegmentationCoco | None]
     )
@@ -580,6 +605,7 @@ if TYPE_CHECKING:
     assert_type(dets[[0, 2]], kwimage.Detections)
     assert_type(dets.numpy(), kwimage.Detections)
     assert_type(dets.tensor(), kwimage.Detections)
+    assert_type(dets.tensor('cpu'), kwimage.Detections)
     assert_type(dets.device, torch.device | None)
     assert_type(dets.dtype, DetectionDType)
     assert_type(dets.to_coco(), Generator[CocoDetection, None, None])

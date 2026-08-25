@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     import torch
 
     import kwimage
-    from kwimage._typing import TransformLike
+    from kwimage._typing import TorchDeviceLike, TransformLike
     from kwimage.im_color import Color
 
     ColorLike = Color | str | Sequence[int | float]
@@ -485,6 +485,15 @@ class _PolyArrayBackend:
 
     def is_tensor(self) -> bool:
         return cast(bool, self._impl.is_tensor)
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self: _PolyArrayT) -> _PolyArrayT: ...
+
+        @overload
+        def tensor(
+            self: _PolyArrayT, device: TorchDeviceLike
+        ) -> _PolyArrayT: ...
 
     def tensor(self: _PolyArrayT, device: Any = ub.NoParam) -> _PolyArrayT:
         """

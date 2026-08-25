@@ -91,7 +91,7 @@ from kwimage.structs import _generic  # NOQA
 if TYPE_CHECKING:
     from collections.abc import Generator
     from numbers import Number
-    from typing import Any, Callable, List, Optional, Tuple
+    from typing import Any, Callable, List, Optional, Tuple, overload
 
     from matplotlib.axes import Axes
     import shapely
@@ -100,7 +100,8 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike, DTypeLike
     from torch import Tensor
 
-    from kwimage._typing import ImgAugBoundingBoxesOnImage, TransformLike
+    from kwimage._typing import (
+        ImgAugBoundingBoxesOnImage, TorchDeviceLike, TransformLike)
     from kwimage.im_color import Color
     from kwimage.structs.points import Points
     from kwimage.structs.polygon import PolygonList
@@ -3381,6 +3382,13 @@ class Boxes(
             # data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format, canonical=True)
         return newself
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Boxes: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Boxes: ...
 
     def tensor(self, device: Any = ub.NoParam) -> Boxes:
         """

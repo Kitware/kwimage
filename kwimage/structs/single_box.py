@@ -7,15 +7,19 @@ import ubelt as ub
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from numbers import Number
     from typing import Any
 
+    from matplotlib.axes import Axes
     import torch
     from numpy import ndarray
+    from numpy.typing import ArrayLike
     from shapely.geometry import Polygon as ShapelyPolygon
     from torch import Tensor
 
-    from kwimage._typing import ArrayData
-    from kwimage.structs.boxes import BoxPointsLike, Boxes
+    from kwimage._typing import ArrayData, TransformLike
+    from kwimage.structs.boxes import (
+        BoxDTypeLike, BoxPointsLike, Boxes, ColorLike)
     from kwimage.structs.polygon import Polygon
 
     BoxScalar = int | float | np.integer[Any] | np.floating[Any] | Tensor
@@ -225,48 +229,100 @@ class Box:
         width, height = xywh.data[..., 2:4].ravel()
         return (int(width), int(height))
 
-    def translate(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.translate(*args, **kwargs)
+    def translate(
+        self,
+        amount: float | tuple[float, float] | ArrayLike,
+        output_dims: tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Box:
+        new_boxes = self.boxes.translate(
+            amount, output_dims=output_dims, inplace=inplace
+        )
         new = self.__class__(new_boxes)
         return new
 
-    def warp(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.warp(*args, **kwargs)
+    def warp(
+        self,
+        transform: TransformLike,
+        input_dims: tuple[int, int] | None = None,
+        output_dims: tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Box:
+        new_boxes = self.boxes.warp(
+            transform, input_dims=input_dims, output_dims=output_dims,
+            inplace=inplace
+        )
         new = self.__class__(new_boxes)
         return new
 
-    def scale(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.scale(*args, **kwargs)
+    def scale(
+        self,
+        factor: float | tuple[float, float] | ArrayLike,
+        about: str | ArrayLike = 'origin',
+        output_dims: tuple[int, int] | None = None,
+        inplace: bool = False,
+    ) -> Box:
+        new_boxes = self.boxes.scale(
+            factor, about=about, output_dims=output_dims, inplace=inplace
+        )
         new = self.__class__(new_boxes)
         return new
 
-    def clip(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.clip(*args, **kwargs)
+    def clip(
+        self,
+        x_min: int,
+        y_min: int,
+        x_max: int,
+        y_max: int,
+        inplace: bool = False,
+    ) -> Box:
+        new_boxes = self.boxes.clip(
+            x_min, y_min, x_max, y_max, inplace=inplace
+        )
         new = self.__class__(new_boxes)
         return new
 
-    def quantize(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.quantize(*args, **kwargs)
+    def quantize(
+        self, inplace: bool = False, dtype: type = np.int32
+    ) -> Box:
+        new_boxes = self.boxes.quantize(inplace=inplace, dtype=dtype)
         new = self.__class__(new_boxes)
         return new
 
-    def copy(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.copy(*args, **kwargs)
+    def copy(self) -> Box:
+        new_boxes = self.boxes.copy()
         new = self.__class__(new_boxes)
         return new
 
-    def round(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.round(*args, **kwargs)
+    def round(self, inplace: bool = False) -> Box:
+        new_boxes = self.boxes.round(inplace=inplace)
         new = self.__class__(new_boxes)
         return new
 
-    def pad(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.pad(*args, **kwargs)
+    def pad(
+        self,
+        x_left: int | float,
+        y_top: int | float,
+        x_right: int | float,
+        y_bot: int | float,
+        inplace: bool = False,
+    ) -> Box:
+        new_boxes = self.boxes.pad(
+            x_left, y_top, x_right, y_bot, inplace=inplace
+        )
         new = self.__class__(new_boxes)
         return new
 
-    def resize(self, *args: Any, **kwargs: Any) -> Box:
-        new_boxes = self.boxes.resize(*args, **kwargs)
+    def resize(
+        self,
+        width: Number | ndarray | None = None,
+        height: Number | ndarray | None = None,
+        inplace: bool = False,
+        about: str = 'xy',
+    ) -> Box:
+        new_boxes = self.boxes.resize(
+            width=width, height=height, inplace=inplace, about=about
+        )
         new = self.__class__(new_boxes)
         return new
 
@@ -309,46 +365,46 @@ class Box:
         flags: Any = self.boxes.contains(other)[0]
         return flags
 
-    def to_ltrb(self, *args: Any, **kwargs: Any) -> Box:
+    def to_ltrb(self, copy: bool = True) -> Box:
         """
         Example:
             >>> import kwimage
             >>> self = kwimage.Box.random().to_ltrb()
             >>> assert self.format == 'ltrb'
         """
-        return self.__class__(self.boxes.to_ltrb(*args, **kwargs))
+        return self.__class__(self.boxes.to_ltrb(copy=copy))
 
-    def to_xywh(self, *args: Any, **kwargs: Any) -> Box:
+    def to_xywh(self, copy: bool = True) -> Box:
         """
         Example:
             >>> import kwimage
             >>> self = kwimage.Box.random().to_xywh()
             >>> assert self.format == 'xywh'
         """
-        return self.__class__(self.boxes.to_xywh(*args, **kwargs))
+        return self.__class__(self.boxes.to_xywh(copy=copy))
 
-    def to_cxywh(self, *args: Any, **kwargs: Any) -> Box:
+    def to_cxywh(self, copy: bool = True) -> Box:
         """
         Example:
             >>> import kwimage
             >>> self = kwimage.Box.random().to_cxywh()
             >>> assert self.format == 'cxywh'
         """
-        return self.__class__(self.boxes.to_cxywh(*args, **kwargs))
+        return self.__class__(self.boxes.to_cxywh(copy=copy))
 
-    def toformat(self, *args: Any, **kwargs: Any) -> Box:
-        return self.__class__(self.boxes.toformat(*args, **kwargs))
+    def toformat(self, format: str, copy: bool = True) -> Box:
+        return self.__class__(self.boxes.toformat(format, copy=copy))
 
-    def astype(self, *args: Any, **kwargs: Any) -> Box:
-        return self.__class__(self.boxes.astype(*args, **kwargs))
+    def astype(self, dtype: BoxDTypeLike) -> Box:
+        return self.__class__(self.boxes.astype(dtype))
 
-    def corners(self, *args: Any, **kwargs: Any) -> ndarray:
+    def corners(self) -> ndarray:
         """
         Example:
             >>> import kwimage
             >>> assert kwimage.Box.random().corners().shape == (4, 2)
         """
-        return self.boxes.corners(*args, **kwargs)
+        return self.boxes.corners()
 
     def to_boxes(self) -> Boxes:
         """
@@ -494,7 +550,7 @@ class Box:
     def draw_on(
         self,
         image: ndarray | None = None,
-        color: str = 'blue',
+        color: ColorLike = 'blue',
         alpha: float | Sequence[float] | None = None,
         label: str | None = None,
         copy: bool = False,
@@ -530,13 +586,13 @@ class Box:
 
     def draw(
         self,
-        color: str = 'blue',
-        alpha: float | None = None,
+        color: ColorLike = 'blue',
+        alpha: float | list[float] | None = None,
         label: str | None = None,
         centers: bool = False,
         fill: bool = False,
-        lw: int = 2,
-        ax: Any | None = None,
+        lw: float = 2,
+        ax: Axes | None = None,
         setlim: bool = False,
         **kwargs: Any,
     ) -> None:

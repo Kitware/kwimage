@@ -93,13 +93,13 @@ import ubelt as ub
 from . import _generic
 
 if TYPE_CHECKING:
-    from typing import Sequence, Tuple
+    from typing import Literal, overload, Sequence, Tuple
 
     from numpy import ndarray
     from skimage.transform._geometric import _GeometricTransform
     import torch
 
-    from kwimage._typing import ArrayData
+    from kwimage._typing import ArrayData, TorchDeviceLike
     from kwimage.structs.detections import DetectionClasses, Detections
 
     HeatmapShape = tuple[int, ...] | torch.Size
@@ -883,13 +883,13 @@ class _HeatmapWarpMixin(object):
     def warp(
         self,
         mat: Any | None = None,
-        input_dims: tuple | None = None,
-        output_dims: tuple | None = None,
+        input_dims: tuple[int, int] | None = None,
+        output_dims: tuple[int, int] | None = None,
         interpolation: str = 'linear',
         modify_spatial_coords: bool = True,
         int_interpolation: str = 'nearest',
         mat_is_xy: bool = True,
-        version: Any | None = None,
+        version: Literal['old', 'new'] | None = None,
     ) -> Heatmap:
         """
         Warp all spatial maps. If the map contains spatial data, that data is
@@ -1088,7 +1088,7 @@ class _HeatmapWarpMixin(object):
     def scale(
         self,
         factor: float | Sequence[float],
-        output_dims: Any | None = None,
+        output_dims: tuple[int, int] | None = None,
         interpolation: str = 'linear',
     ) -> Heatmap:
         """
@@ -1115,7 +1115,7 @@ class _HeatmapWarpMixin(object):
     def translate(
         self,
         offset: float | Sequence[float],
-        output_dims: Any | None = None,
+        output_dims: tuple[int, int] | None = None,
         interpolation: str = 'linear',
     ) -> Heatmap:
         if not ub.iterable(offset):
@@ -1612,7 +1612,7 @@ class Heatmap(
         offset: bool = True,
         keypoints: bool = False,
         img_dims: HeatmapImageDims | None = None,
-        dets: Any | None = None,
+        dets: Detections | Literal['coco'] | None = None,
         nblips: int = 10,
         noise: float = 0.0,
         smooth_k: int = 3,
@@ -1747,16 +1747,14 @@ class Heatmap(
                 if 'background' not in dets.classes:
                     dets.classes.append('background')
 
-            classes = dets.classes
-        else:
-            classes = dets.classes
         # assume we have background
         # bg_idx = dets.classes.index('background')
 
         # Warp detections into heatmap space
         transform = np.linalg.inv(tf_data_to_img.params)
+        img_dims_for_warp: Any = img_dims
         warped_dets = dets.warp(
-            transform, input_dims=img_dims, output_dims=dims
+            transform, input_dims=img_dims_for_warp, output_dims=dims
         )
 
         tf_notrans = _remove_translation(tf_data_to_img)
@@ -1842,6 +1840,13 @@ class Heatmap(
             newdata[key] = newval
         newself = self.__class__(newdata, self.meta)
         return newself
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Heatmap: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Heatmap: ...
 
     def tensor(self, device: Any = ub.NoParam) -> Heatmap:
         """

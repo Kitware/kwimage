@@ -44,14 +44,14 @@ from kwimage.structs import boxes as _boxes
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence
     from types import EllipsisType
-    from typing import Any, Dict, List, Protocol, Tuple
+    from typing import Any, Dict, List, Protocol, Tuple, overload
 
     from numpy import ndarray
     import torch
     from torch import Tensor
 
     import kwimage
-    from kwimage._typing import ArrayData, TransformLike
+    from kwimage._typing import ArrayData, TorchDeviceLike, TransformLike
     from kwimage.structs.mask import MaskList
     from kwimage.structs.points import Points, PointsList
     from kwimage.structs.polygon import PolygonList
@@ -1523,7 +1523,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     def scale(
         self,
         factor: float | Sequence[float],
-        output_dims: Any | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Detections:
         """
@@ -1552,7 +1552,7 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
     def translate(
         self,
         offset: float | Sequence[float],
-        output_dims: Any | None = None,
+        output_dims: tuple[int, int] | None = None,
         inplace: bool = False,
     ) -> Detections:
         """
@@ -1817,6 +1817,13 @@ class Detections(ub.NiceRepr, _DetAlgoMixin, _DetDrawMixin):
             return ub.peek(dtypes)
         else:
             return dtypes
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Detections: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Detections: ...
 
     def tensor(self, device: Any = ub.NoParam) -> Detections:
         """

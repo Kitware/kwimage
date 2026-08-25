@@ -17,7 +17,7 @@ from kwimage.structs import _generic
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Any, Tuple
+    from typing import Any, Tuple, overload
 
     from matplotlib.axes import Axes
     import matplotlib.collections
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from shapely.geometry import MultiPoint
 
     from kwimage._typing import (
-        ArrayData, ImgAugKeypointsOnImage, TransformLike)
+        ArrayData, ImgAugKeypointsOnImage, TorchDeviceLike, TransformLike)
     from kwimage.im_color import Color
 
     ColorLike = Color | str | Sequence[int | float]
@@ -378,6 +378,13 @@ class Coords(_generic.Spatial, ub.NiceRepr):
         Returns the internal tensor/numpy ArrayAPI implementation
         """
         return kwarray.ArrayAPI.coerce(self.data)
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Coords: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Coords: ...
 
     def tensor(self, device: Any = ub.NoParam) -> Coords:
         """

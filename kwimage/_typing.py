@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from numpy import ndarray
     from numpy.typing import ArrayLike
+    import torch
     from torch import Tensor
     from skimage.transform._geometric import _GeometricTransform
 
@@ -26,6 +27,7 @@ if SKImageGeometricTransform is None:
 
 if TYPE_CHECKING:
     ArrayData = ndarray | Tensor
+    TorchDeviceLike = str | int | torch.device | None
 
     class ImgAugKeypoint(Protocol):
         x: float

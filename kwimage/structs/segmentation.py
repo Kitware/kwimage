@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     import kwimage
+    from kwimage._typing import TorchDeviceLike
     from kwimage.structs.mask import CocoMaskRLE
     from kwimage.structs.polygon import CocoPolygon
 
@@ -64,7 +65,14 @@ class _WrapperObject(ub.NiceRepr):
 
         def to_coco(self, style: str = 'orig') -> SegmentationCoco: ...
         def numpy(self) -> SegmentationBackend: ...
-        def tensor(self, device: Any = ub.NoParam) -> SegmentationBackend: ...
+
+        @overload
+        def tensor(self) -> SegmentationBackend: ...
+
+        @overload
+        def tensor(
+            self, device: TorchDeviceLike
+        ) -> SegmentationBackend: ...
 
     def __nice__(self) -> str:
         data: Any = self.data

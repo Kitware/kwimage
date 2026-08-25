@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from shapely.geometry import MultiPoint
 
     from kwimage._typing import (
-        ArrayData, ImgAugKeypointsOnImage, TransformLike)
+        ArrayData, ImgAugKeypointsOnImage, TorchDeviceLike, TransformLike)
     from kwimage.im_color import Color
 
     CocoKeypointDict = dict[str, Any]
@@ -418,6 +418,13 @@ class Points(_generic.Spatial, _PointsWarpMixin):
     @ub.memoize_property
     def _impl(self) -> Any:
         return self.data['xy']._impl
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Points: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Points: ...
 
     def tensor(self, device: Any = ub.NoParam) -> Points:
         """

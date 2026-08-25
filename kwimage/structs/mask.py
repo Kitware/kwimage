@@ -49,7 +49,7 @@ from . import _generic
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
     from numbers import Number
-    from typing import TypedDict
+    from typing import TypedDict, overload
 
     from numpy import ndarray
     from numpy.random import RandomState
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     import kwimage
-    from kwimage._typing import ArrayData
+    from kwimage._typing import ArrayData, TorchDeviceLike
 
     class MaskRLEData(TypedDict, total=False):
         counts: str | bytes | list[int] | ndarray
@@ -462,6 +462,13 @@ class _MaskConversionMixin(object):
         constructor: Any = self.__class__
         newself = constructor(data, self.format)
         return newself
+
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Mask: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Mask: ...
 
     def tensor(self, device: Any = ub.NoParam) -> Mask:
         """
