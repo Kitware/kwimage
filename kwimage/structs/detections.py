@@ -571,8 +571,8 @@ class _DetAlgoMixin:
 
             perclass (bool): if True, works on a per-class basis
 
-            impl (str): implementation can be "auto", "python", "cython_cpu",
-                "gpu", "torch", or "torchvision". Not all backends may be
+            impl (str): implementation can be "auto", "numpy", "rust_cpu",
+                "cython_cpu", "cython_gpu", "torch", or "torchvision". Not all backends may be
                 available, see :func:`kwimage.algo.algo_nms.available_nms_impls`
                 for what is supported on your system.
 
@@ -580,7 +580,7 @@ class _DetAlgoMixin:
                 divide and conquer algorithm. If `daq` is a Dict, then
                 it is used as the kwargs to `kwimage.daq_spatial_nms`
 
-            device_id : try not to use. only used if impl is gpu
+            device_id : try not to use. only used for explicit legacy GPU NMS
 
         Returns:
             ndarray[Shape['*'], Integer]: indices of boxes to keep

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-import kwconf
+kwconf = pytest.importorskip('kwconf', reason='kwconf is an optional dependency')
 
 from kwimage.cli.__main__ import KwimageCLI
 from kwimage.cli.crop_border import CropBorderCLI
