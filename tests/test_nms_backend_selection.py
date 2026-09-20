@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.machinery
 import types
 
+import numpy as np
 import pytest
 
 from kwimage.algo import algo_nms
@@ -63,3 +64,26 @@ def test_kwimage_ext_rust_shim_is_not_mistaken_for_gpu_backend():
     gpu_nms = pytest.importorskip('kwimage_ext.algo._nms_backend.gpu_nms')
     assert algo_nms._cpu_nms_backend_name(cpu_nms) == 'rust_cpu'
     assert not algo_nms._is_compiled_extension_module(gpu_nms)
+
+
+def test_equal_score_tie_order_is_not_backend_contract():
+    """CPU NMS backends may break equal-score ties differently."""
+    ltrb = np.array([
+        [0, 0, 100, 100],
+        [100, 100, 10, 10],
+        [10, 10, 100, 100],
+        [50, 50, 100, 100],
+    ], dtype=np.float32)
+    scores = np.array([0.1, 0.5, 0.9, 0.1], dtype=np.float32)
+    expected = {0, 1, 2, 3}
+    available = set(algo_nms.available_nms_impls())
+    checked = []
+    for impl in ['numpy', 'rust_cpu', 'cython_cpu']:
+        if impl in available:
+            keep = algo_nms.non_max_supression(
+                ltrb, scores, thresh=1.0, impl=impl
+            )
+            keep = [int(idx) for idx in keep]
+            assert set(keep) == expected
+            checked.append(impl)
+    assert 'numpy' in checked

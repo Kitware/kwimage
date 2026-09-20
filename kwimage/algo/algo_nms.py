@@ -537,6 +537,12 @@ def non_max_supression(
         device_id (int): used if impl is gpu, device id to work on. If not
             specified `torch.cuda.current_device()` is used.
 
+    Returns:
+        NMSIndices:
+            Indices of boxes that survive suppression. Ordering is
+            backend-specific and should not be relied upon; equal-score ties
+            in particular may be broken differently by different backends.
+
     Note:
         Using impl='cython_gpu' may result in an CUDA memory error that is not exposed
         to the python processes. In other words your program will hard crash if
@@ -577,6 +583,9 @@ def non_max_supression(
         >>> if 'numpy' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='numpy')
         >>>     assert list(keep) == [2, 1]
+        >>> if 'rust_cpu' in available_nms_impls():
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='rust_cpu')
+        >>>     assert list(keep) == [2, 1]
         >>> if 'cython_cpu' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_cpu')
         >>>     assert list(keep) == [2, 1]
@@ -590,21 +599,25 @@ def non_max_supression(
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torchvision')  # note torchvision has no bias
         >>>     assert list(keep) == [2]
         >>> thresh = 1.0
+        >>> expected = {0, 1, 2, 3}
         >>> if 'numpy' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='numpy')
-        >>>     assert list(keep) == [2, 1, 3, 0]
+        >>>     assert set(keep) == expected
+        >>> if 'rust_cpu' in available_nms_impls():
+        >>>     keep = non_max_supression(ltrb, scores, thresh, impl='rust_cpu')
+        >>>     assert set(keep) == expected
         >>> if 'cython_cpu' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_cpu')
-        >>>     assert list(keep) == [2, 1, 3, 0]
+        >>>     assert set(keep) == expected
         >>> if 'cython_gpu' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='cython_gpu')
-        >>>     assert list(keep) == [2, 1, 3, 0]
+        >>>     assert set(keep) == expected
         >>> if 'torch' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torch')
-        >>>     assert set(keep.tolist()) == {2, 1, 3, 0}
+        >>>     assert set(keep.tolist()) == expected
         >>> if 'torchvision' in available_nms_impls():
         >>>     keep = non_max_supression(ltrb, scores, thresh, impl='torchvision')  # note torchvision has no bias
-        >>>     assert set(kwarray.ArrayAPI.tolist(keep)) == {2, 1, 3, 0}
+        >>>     assert set(kwarray.ArrayAPI.tolist(keep)) == expected
 
     Example:
         >>> import ubelt as ub
