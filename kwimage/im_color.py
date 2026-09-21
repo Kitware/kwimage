@@ -12,9 +12,10 @@ import ubelt as ub
 from . import _im_color_data, im_core
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, List, Tuple, TypeAlias
+    from typing import Any, Iterable, List, Literal, Sequence, Tuple, TypeAlias
 
     from numpy import ndarray
+    from kwimage._typing import RNGInput
 
     ColorTuple: TypeAlias = tuple[float, ...]
     ByteColorTuple: TypeAlias = tuple[int, ...]
@@ -47,7 +48,7 @@ CSS4_COLORS: Any = _im_color_data.CSS4_COLORS
 KITWARE_COLORS: Any = _im_color_data.KITWARE_COLORS
 
 
-def _lookup_colorspace_object(space):
+def _lookup_colorspace_object(space: str) -> type[Any]:
     from colormath import color_objects
 
     if space == 'rgb':
@@ -69,7 +70,9 @@ def _lookup_colorspace_object(space):
     return cls
 
 
-def _colormath_convert(src_color, src_space, dst_space):
+def _colormath_convert(
+    src_color: Iterable[float], src_space: str, dst_space: str
+) -> tuple[float, ...]:
     """
     Uses colormath to convert colors
 
@@ -173,7 +176,7 @@ class Color(ub.NiceRepr):
                 # explicitly as a workaround.
                 color = self._ensure_color01(color)
                 if alpha is not None:
-                    alpha = self._ensure_color01([alpha])[0]
+                    alpha = list(self._ensure_color01([alpha]))[0]
 
             if space is None:
                 space = 'rgb'
@@ -192,20 +195,27 @@ class Color(ub.NiceRepr):
                     space += 'a'
         else:
             assert space is not None
-            color01 = color  # type: ignore
+            color01 = cast(list[float] | tuple[float, ...], color)
             space = space
 
         # FIXME: color01 is not a good name because the data wont be between 0
         # and 1 for non-rgb spaces. We should differentiate between rgb01 and
         # rgb255.
-        self.color01 = color01   # type: ignore
+        self.color01 = color01
         self.space = space
 
     @classmethod
-    def coerce(cls, data, **kwargs):
-        return cls(data, **kwargs)
+    def coerce(
+        cls,
+        data: Color | Iterable[int | float] | str,
+        *,
+        alpha: float | None = None,
+        space: str | None = None,
+        coerce: bool = True,
+    ) -> Color:
+        return cls(data, alpha=alpha, space=space, coerce=coerce)
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         colorpart = ', '.join(['{:.2f}'.format(c) for c in self.color01])
         return self.space + ': ' + colorpart
 
@@ -268,7 +278,9 @@ class Color(ub.NiceRepr):
             color = self.as255(space)
         return color
 
-    def _forimage(self, image, space='rgb'):
+    def _forimage(
+        self, image: ndarray, space: str = 'rgb'
+    ) -> tuple[int | float, ...]:
         """backwards compat, deprecate"""
         ub.schedule_deprecation(
             'kwimage',
@@ -362,10 +374,12 @@ class Color(ub.NiceRepr):
         return color
 
     @classmethod
-    def _is_base01(cls, channels):
+    def _is_base01(
+        cls, channels: Iterable[int | float] | str
+    ) -> bool:
         """check if a color is in base 01"""
 
-        def _test_base01(channels):
+        def _test_base01(channels: Iterable[int | float]) -> dict[str, bool]:
             tests01 = {
                 'is_float': all(
                     [isinstance(c, (float, np.float64)) for c in channels]
@@ -379,7 +393,9 @@ class Color(ub.NiceRepr):
         return all(_test_base01(channels).values())
 
     @classmethod
-    def _is_base255(Color, channels):
+    def _is_base255(
+        Color, channels: Iterable[int | float]
+    ) -> bool:
         """there is a one corner case where all pixels are 1 or less"""
         if all(c > 0.0 and c <= 255.0 for c in channels) and any(
             c > 1.0 for c in channels
@@ -391,7 +407,7 @@ class Color(ub.NiceRepr):
             return all(isinstance(c, int) for c in channels)
 
     @classmethod
-    def _hex_to_01(Color, hex_color):
+    def _hex_to_01(Color, hex_color: str) -> list[float]:
         """
         hex_color = '#6A5AFFAF'
         """
@@ -403,7 +419,9 @@ class Color(ub.NiceRepr):
         assert len(color255) in [3, 4], 'must be length 3 or 4'
         return Color._255_to_01(color255)
 
-    def _ensure_color01(Color, color):
+    def _ensure_color01(
+        Color, color: Iterable[int | float] | str
+    ) -> Iterable[int | float]:
         """Infer what type color is and normalize to 01"""
         if isinstance(color, str):
             color = Color._string_to_01(color)
@@ -412,12 +430,14 @@ class Color(ub.NiceRepr):
         return color
 
     @classmethod
-    def _255_to_01(Color, color255):
+    def _255_to_01(
+        Color, color255: Iterable[int | float]
+    ) -> list[float]:
         """converts base 255 color to base 01 color"""
         return [channel / 255.0 for channel in color255]
 
     @classmethod
-    def _string_to_01(Color, color):
+    def _string_to_01(Color, color: str) -> Iterable[float]:
         """
         Ignore:
             mplutil.Color._string_to_01('green')
@@ -454,7 +474,7 @@ class Color(ub.NiceRepr):
         return color01
 
     @classmethod
-    def named_colors(cls) -> List[str]:
+    def named_colors(cls) -> list[str]:
         """
         Returns:
             List[str]: names of colors that Color accepts
@@ -484,13 +504,13 @@ class Color(ub.NiceRepr):
     @classmethod
     def distinct(
         Color,
-        num,
-        existing: Any | None = None,
+        num: int,
+        existing: list[list[float] | tuple[float, ...]] | None = None,
         space: str = 'rgb',
-        legacy: bool | str = 'auto',
+        legacy: bool | Literal['auto'] = 'auto',
         exclude_black: bool = True,
         exclude_white: bool = True,
-    ) -> List[Tuple]:
+    ) -> list[list[float] | tuple[float, ...]]:
         """
         Make multiple distinct colors.
 
@@ -564,7 +584,7 @@ class Color(ub.NiceRepr):
 
             if space != 'rgb':
                 raise NotImplementedError
-            exclude_colors = existing
+            exclude_colors: Any = existing
             if exclude_colors is None:
                 exclude_colors = []
             if exclude_black:
@@ -572,12 +592,15 @@ class Color(ub.NiceRepr):
             if exclude_white:
                 exclude_colors = exclude_colors + [(1.0, 1.0, 1.0)]
             # convert string to int for seed
-            seed = int(ub.hash_data(exclude_colors, base=10)) + num  # type: ignore
+            seed_text = ub.hash_data(exclude_colors, base=10)
+            seed = int(seed_text) + num
             distinct_colors = distinctipy.get_colors(
                 num, exclude_colors=exclude_colors, rng=seed
             )
-            distinct_colors = [tuple(map(float, c)) for c in distinct_colors]
-            return distinct_colors
+            distinct_colors_typed: list[
+                list[float] | tuple[float, ...]
+            ] = [tuple(map(float, c)) for c in distinct_colors]
+            return distinct_colors_typed
 
         if space == 'rgb':
             return distinct_colors
@@ -588,7 +611,10 @@ class Color(ub.NiceRepr):
 
     @classmethod
     def random(
-        Color, pool: str = 'named', with_alpha: int = 0, rng: Any | None = None
+        Color,
+        pool: Literal['named', 'rgb-uniform'] = 'named',
+        with_alpha: int = 0,
+        rng: RNGInput = None,
     ) -> Color:
         """
         Returns:
@@ -601,16 +627,16 @@ class Color(ub.NiceRepr):
         """
         import kwarray
 
-        rng = kwarray.ensure_rng(rng, api='python')
+        rng_impl = kwarray.ensure_rng(rng, api='python')
         if pool == 'named':
-            color_name = rng.choice(Color.named_colors())
-            color = Color._string_to_01(color_name)
+            color_name = rng_impl.choice(Color.named_colors())
+            color = list(Color._string_to_01(color_name))
         elif pool == 'rgb-uniform':
-            color = [rng.random() for _ in range(3)]
+            color = [rng_impl.random() for _ in range(3)]
         else:
             raise NotImplementedError
         if with_alpha:
-            color = color + [rng.random()]
+            color = color + [rng_impl.random()]
         return Color(color)
 
     def distance(self, other: Color, space: str = 'lab') -> float:
@@ -666,7 +692,9 @@ class Color(ub.NiceRepr):
         vec2 = np.array(other.as01(space))
         return float(np.linalg.norm(vec1 - vec2))
 
-    def nearest_named(self, with_delta=0, space='lab'):
+    def nearest_named(
+        self, with_delta: bool | int = False, space: str = 'lab'
+    ) -> str | tuple[str, ndarray]:
         """
         Find the distance to the nearest named color.
 
@@ -697,10 +725,10 @@ class Color(ub.NiceRepr):
     def interpolate(
         self,
         other: Color,
-        alpha: float | List[float] = 0.5,
+        alpha: float | Iterable[float] = 0.5,
         ispace: str | None = None,
         ospace: str | None = None,
-    ) -> Color | List[Color]:
+    ) -> Color | list[Color]:
         """
         Interpolate between colors
 
@@ -761,7 +789,9 @@ class Color(ub.NiceRepr):
             )
         return new
 
-    def to_image(self, dsize: Tuple[int, int] = (8, 8)):
+    def to_image(
+        self, dsize: tuple[int, int] = (8, 8)
+    ) -> ndarray:
         """
         Create an solid-color image with this color
 
@@ -775,7 +805,12 @@ class Color(ub.NiceRepr):
         cell = np.tile(cell_pixel, (h, w, 1))
         return cell
 
-    def adjust(self, saturate: float = 0, lighten: float = 0, opacity=0):
+    def adjust(
+        self,
+        saturate: float = 0,
+        lighten: float = 0,
+        opacity: float = 0,
+    ) -> Color:
         """
         Adjust the saturation or value of a color.
 
@@ -888,7 +923,10 @@ class Color(ub.NiceRepr):
         return new_color
 
 
-def _draw_color_swatch(colors, cellshape=9):
+def _draw_color_swatch(
+    colors: Sequence[Color | str | Sequence[int | float]],
+    cellshape: int | tuple[int, int] = 9,
+) -> ndarray:
     """
     Draw colors in a grid
 
@@ -907,10 +945,10 @@ def _draw_color_swatch(colors, cellshape=9):
 
     import kwimage
 
-    if not ub.iterable(cellshape):
+    if isinstance(cellshape, int):
         cellshape_ = (cellshape, cellshape)
     else:
-        cellshape_ = cast(tuple[int, int], tuple(cast(Any, cellshape)))
+        cellshape_ = (int(cellshape[0]), int(cellshape[1]))
     cell_h = cellshape_[0]
     cell_w = cellshape_[1]
     cells = []

@@ -112,3 +112,5 @@ mb_work
 #
 docs/source/_static/
 docs/source/images/
+*.tar.gz
+git-of-theseus/

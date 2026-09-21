@@ -2,10 +2,17 @@
 Helpers that may be required across different backends.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 
 def _coerce_warp_dsize_inputs(
-    dsize, input_dsize, transform, require_warped_info=False
-):
+    dsize: tuple[int, int] | str | None,
+    input_dsize: tuple[int, int],
+    transform: Any,
+    require_warped_info: bool = False,
+) -> dict[str, Any]:
     """
     Given a warp operation, we will often need to preallocate size for the
     destination canvas. This may be specified by the user, but it is helpful to
@@ -57,9 +64,8 @@ def _coerce_warp_dsize_inputs(
         # calculate dimensions needed for auto/max/try_large_warp
         input_box = kwimage.Boxes(np.array([[0, 0, w, h]]), 'xywh')
         warped_box = input_box.warp(transform)
-        max_dsize = tuple(
-            map(int, warped_box.to_xywh().quantize().data[0, 2:4])
-        )
+        max_extent = warped_box.to_xywh().quantize().data[0, 2:4]
+        max_dsize = (int(max_extent[0]), int(max_extent[1]))
         new_origin = warped_box.to_ltrb().data[0, 0:2]
         if 0:
             # import rich
@@ -77,7 +83,8 @@ def _coerce_warp_dsize_inputs(
             # rich.print(f'warped_box={warped_box}')
             warped_box = warped_box.to_xywh().quantize()
             # rich.print(f'warped_box={warped_box}')
-            max_dsize = tuple(map(int, warped_box.data[0, 2:4]))
+            max_extent = warped_box.data[0, 2:4]
+            max_dsize = (int(max_extent[0]), int(max_extent[1]))
             # print('warped_box = {}'.format(ub.urepr(warped_box, nl=1)))
             # print('max_dsize = {}'.format(ub.urepr(max_dsize, nl=1)))
     else:
@@ -93,7 +100,8 @@ def _coerce_warp_dsize_inputs(
         # Handle special "auto-compute" dsize keys
         if dsize in {'positive', 'auto'}:
             quantized_warped_box = warped_box.to_ltrb().quantize()
-            dsize = tuple(map(int, quantized_warped_box.data[0, 2:4]))
+            quantized_extent = quantized_warped_box.data[0, 2:4]
+            dsize = (int(quantized_extent[0]), int(quantized_extent[1]))
             if 0:
                 affine_params = None
                 # rich.print('affine_params = {}'.format(ub.urepr(affine_params, nl=1)))
@@ -107,6 +115,7 @@ def _coerce_warp_dsize_inputs(
                     new_h += 1
                 dsize = (new_w, new_h)
         elif dsize in {'content', 'max'}:
+            assert max_dsize is not None
             dsize = max_dsize
             assert new_origin is not None
             transform_ = kwimage.Affine.translate(-new_origin) @ transform

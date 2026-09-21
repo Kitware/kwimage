@@ -20,10 +20,28 @@ from kwimage import im_core
 
 if _t.TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, TypeAlias
+    from typing import Any, Literal, TypedDict, TypeAlias, overload
+
+    from numpy.typing import DTypeLike as NumpyDTypeLike
+
+    from kwimage.im_transform import ResizeInfo, WarpInfo
+    from kwimage.structs.boxes import Boxes
+    from kwimage.structs.points import Points
 
     NDArray: TypeAlias = np.ndarray
-    DTypeLike: TypeAlias = Any
+    DTypeLike: TypeAlias = NumpyDTypeLike
+    ComponentDType: TypeAlias = DTypeLike | int
+    CropAbout: TypeAlias = (
+        str | tuple[int | float | str, int | float | str]
+    )
+
+    class ConnectedComponentsInfo(TypedDict):
+        num_labels: int
+
+    class ConnectedComponentsStatsInfo(ConnectedComponentsInfo):
+        label_boxes: Boxes
+        label_areas: NDArray
+        label_centroids: Points
 
 
 __all__ = [
@@ -82,14 +100,14 @@ def _cv2_has_warp_affine_float64_nearest_bug() -> bool:
 
 
 def _cv2_warp_affine_impl(
-    image: NDArray,
-    matrix: NDArray,
-    dsize,
-    flags,
-    borderMode,
-    borderValue,
-    workaround_opencv_413_nearest_float64: bool = False,
-):
+    image: Any,
+    matrix: Any,
+    dsize: Any,
+    flags: Any,
+    borderMode: Any,
+    borderValue: Any,
+    workaround_opencv_413_nearest_float64: Any = False,
+) -> Any:
     matrix = np.asarray(matrix)
     if workaround_opencv_413_nearest_float64:
         if matrix.shape == (2, 3):
@@ -256,7 +274,7 @@ def _coerce_border_value(
     border_value: int | float | str | 'Iterable[int | float]' | None,
     default: int | float | str | 'Iterable[int | float]' = 0,
     image: NDArray | None = None,
-) -> object:
+) -> Any:
     """
     Handles cv2 border values
 
@@ -279,36 +297,41 @@ def _coerce_border_value(
     Returns:
         ...
     """
-    borderValue = border_value
+    borderValue: Any = border_value
     if borderValue is None:
         borderValue = default
 
+    # This helper is the boundary between kwimage's permissive border-value
+    # API and OpenCV's narrower Scalar stubs. All internal callers provide an
+    # image, but keep the historical optional private-helper signature.
+    image_dynamic: Any = image
     if isinstance(borderValue, str):
         from kwimage import im_color
 
-        borderValue = im_color.Color(borderValue).forimage(image)
+        borderValue = im_color.Color(borderValue).forimage(image_dynamic)
     elif not ub.iterable(borderValue):
         # convert scalar border value to a tuple to ensure the user always
         # fully defines the output. (and to have conciseness)
-        num_chan = im_core.num_channels(image)
+        num_chan = im_core.num_channels(image_dynamic)
         # More than 4 channels will start to wrap around, so this is fine.
         borderValue = (borderValue,) * min(4, num_chan)
 
-    if len(borderValue) > 4:
+    borderValue_dynamic: Any = borderValue
+    if len(borderValue_dynamic) > 4:
         # FIXME; opencv bug
         # https://github.com/opencv/opencv/issues/22283
         raise ValueError(
             'borderValue cannot have more than 4 components. '
             'OpenCV #22283 describes why'
         )
-    return borderValue
+    return borderValue_dynamic
 
 
 def _coerce_border_mode_value(
     border_mode: int | str | None,
     border_value: int | float | str | 'Iterable[int | float]' | None,
     image: NDArray,
-) -> tuple[int, object]:
+) -> tuple[int, Any]:
     """
     Common code for warp_affine and warp_persepctive
     """
@@ -348,7 +371,7 @@ def imscale(
 def imcrop(
     img: NDArray,
     dsize: tuple[int | None, int | None],
-    about: tuple[object, object] | None = None,
+    about: CropAbout | None = None,
     origin: tuple[int, int] | None = None,
     border_value: int | float | str | 'Iterable[int | float]' | None = None,
     interpolation: str = 'nearest',
@@ -528,12 +551,26 @@ def imcrop(
         cen_h = new_h // 2
 
     if interpolation == 'linear':
-        # OpenCV expects the center in (x, y) order.
-        new_img = cv2.getRectSubPix(img, dsize, (cen_w, cen_h))
+        # OpenCV expects the center in (x, y) order. The branch logic above
+        # establishes concrete values, but ty does not preserve that
+        # correlation through the flexible ``about`` / ``dsize`` inputs.
+        dsize_cv2: Any = dsize
+        center_cv2: Any = (cen_w, cen_h)
+        new_img = cv2.getRectSubPix(img, dsize_cv2, center_cv2)
     elif interpolation == 'nearest':
+        # This path rejects real-valued centers above, so the existing bounds
+        # arithmetic is integral even though ty cannot correlate the branches.
+        cen_w_nearest: Any = cen_w
+        cen_h_nearest: Any = cen_h
         # build a patch that may go outside the image bounds
-        ymin, ymax = cen_w - new_w // 2, cen_w + (new_w - new_w // 2)
-        xmin, xmax = cen_h - new_h // 2, cen_h + (new_h - new_h // 2)
+        ymin, ymax = (
+            cen_w_nearest - new_w // 2,
+            cen_w_nearest + (new_w - new_w // 2),
+        )
+        xmin, xmax = (
+            cen_h_nearest - new_h // 2,
+            cen_h_nearest + (new_h - new_h // 2),
+        )
 
         # subtract out portions that leave the image bounds
         lft, ymin = -min(0, ymin), max(0, ymin)
@@ -542,6 +579,7 @@ def imcrop(
         bot, xmax = max(0, xmax - old_h), min(old_h, xmax)
 
         # slice the image using the corrected bounds and append the rest as a border
+        border_value_cv2: Any = border_value
         new_img = cv2.copyMakeBorder(
             img[xmin:xmax, ymin:ymax],
             top,
@@ -549,7 +587,7 @@ def imcrop(
             lft,
             rgt,
             borderType=cv2.BORDER_CONSTANT,
-            value=border_value,
+            value=border_value_cv2,
         )
     else:
         raise KeyError(interpolation)
@@ -562,7 +600,7 @@ def imcrop(
     return new_img
 
 
-def _cv2_input_fixer(img: NDArray) -> tuple[NDArray, np.dtype | None]:
+def _cv2_input_fixer(img: NDArray) -> tuple[NDArray, np.dtype[Any] | None]:
     """
     OpenCV is very particular about its inputs, we would like to loosen those
     requirements by seemlessly detecting and fixing dtypes when possible
@@ -617,14 +655,13 @@ _HAS_FLOAT128 = hasattr(np, 'float128')
 if _HAS_FLOAT128:
     DTYPE_KEY_TO_DTYPE[('f', 16)] = np.float128
 
-DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = ub.invert_dict(
-    DTYPE_KEY_TO_DTYPE
+_DTYPE_TO_DTYPE_KEY_DYNAMIC: Any = ub.invert_dict(DTYPE_KEY_TO_DTYPE)
+DTYPE_TO_DTYPE_KEY: dict[object, tuple[str, int]] = (
+    _DTYPE_TO_DTYPE_KEY_DYNAMIC
 )
 
 
-def __build_cv2_allowed_dtypes() -> dict[
-    str, 'ub.udict[tuple[str, int], np.dtype]'
-]:
+def __build_cv2_allowed_dtypes() -> Any:
     default = ub.udict(
         {
             DTYPE_TO_DTYPE_KEY[bool]: np.uint8,
@@ -695,9 +732,7 @@ def __build_cv2_allowed_dtypes() -> dict[
     return CV2_ALLOWED_DTYPE_MAPPINGS
 
 
-CV2_ALLOWED_DTYPE_MAPPINGS: dict[str, 'ub.udict[tuple[str, int], np.dtype]'] = (
-    __build_cv2_allowed_dtypes()
-)
+CV2_ALLOWED_DTYPE_MAPPINGS: Any = __build_cv2_allowed_dtypes()
 
 
 def _cv2_input_fixer_v2(
@@ -705,7 +740,7 @@ def _cv2_input_fixer_v2(
     allowed_types: str = 'uint8,int16,int32,float32,float64',
     contiguous: bool = True,
     owndata: bool = False,
-) -> tuple[NDArray, np.dtype | None]:
+) -> tuple[NDArray, np.dtype[Any] | None]:
     """
     OpenCV is very particular about its inputs, we would like to loosen those
     requirements by seemlessly detecting and fixing dtypes when possible
@@ -742,18 +777,18 @@ def _cv2_input_fixer_v2(
 
 
 def _cv2_imresize(
-    img: NDArray,
-    scale: float | tuple[float, float] | None = None,
-    dsize: tuple[int | None, int | None] | None = None,
-    max_dim: int | None = None,
-    min_dim: int | None = None,
-    interpolation: int | str | None = None,
-    grow_interpolation: int | str | None = None,
-    letterbox: bool = False,
-    return_info: bool = False,
-    antialias: bool = False,
-    border_value: int | float | str | 'Iterable[int | float]' = 0,
-) -> NDArray | tuple[NDArray, dict[str, object]]:
+    img: Any,
+    scale: Any = None,
+    dsize: Any = None,
+    max_dim: Any = None,
+    min_dim: Any = None,
+    interpolation: Any = None,
+    grow_interpolation: Any = None,
+    letterbox: Any = False,
+    return_info: Any = False,
+    antialias: Any = False,
+    border_value: Any = 0,
+) -> Any:
     """
     Resize an image via a scale factor, final size, or size and aspect ratio.
 
@@ -1075,10 +1110,10 @@ def _cv2_imresize(
         borderValue = _coerce_border_value(border_value, image=embed_img)
         new_img = cv2.copyMakeBorder(
             embed_img,
-            top,
-            bot,
-            left,
-            right,
+            int(top),
+            int(bot),
+            int(left),
+            int(right),
             borderType=cv2.BORDER_CONSTANT,
             value=borderValue,
         )
@@ -1476,20 +1511,22 @@ def _auto_kernel_sigma(
         kernel = 3
 
     if kernel is not None:
-        if isinstance(kernel, numbers.Integral):
-            k_x = k_y = kernel
+        kernel_dynamic: Any = kernel
+        if isinstance(kernel_dynamic, numbers.Integral):
+            k_x = k_y = kernel_dynamic
         else:
-            k_x, k_y = kernel
+            k_x, k_y = kernel_dynamic
 
     if sigma is None:
         # https://github.com/egonSchiele/OpenCV/blob/09bab41/modules/imgproc/src/smooth.cpp#L344
         sigma_x = 0.3 * ((k_x - 1) * 0.5 - 1) + 0.8
         sigma_y = 0.3 * ((k_y - 1) * 0.5 - 1) + 0.8
     else:
-        if isinstance(sigma, numbers.Number):
-            sigma_x = sigma_y = sigma
+        sigma_dynamic: Any = sigma
+        if isinstance(sigma_dynamic, numbers.Number):
+            sigma_x = sigma_y = sigma_dynamic
         else:
-            sigma_x, sigma_y = sigma
+            sigma_x, sigma_y = sigma_dynamic
 
     if kernel is None:
         if autokernel_mode == 'zero':
@@ -1515,9 +1552,9 @@ def _auto_kernel_sigma(
             k_y = max(3, round(20 * sigma_y / 3 - 7 / 3)) | 1
         else:
             raise KeyError(autokernel_mode)
-    sigma = (sigma_x, sigma_y)
-    kernel = (k_x, k_y)
-    return kernel, sigma
+    sigma_pair: tuple[float, float] = (sigma_x, sigma_y)
+    kernel_pair: tuple[int, int] = (k_x, k_y)
+    return kernel_pair, sigma_pair
 
 
 def gaussian_blur(
@@ -1611,17 +1648,17 @@ def gaussian_blur(
 
 
 def _cv2_warp_affine(
-    image,
-    transform,
-    dsize=None,
-    antialias=False,
-    interpolation='linear',
-    border_mode=None,
-    border_value=0,
-    large_warp_dim=None,
-    return_info=False,
-    origin_convention='center',
-):
+    image: Any,
+    transform: Any,
+    dsize: Any = None,
+    antialias: Any = False,
+    interpolation: Any = 'linear',
+    border_mode: Any = None,
+    border_value: Any = 0,
+    large_warp_dim: Any = None,
+    return_info: Any = False,
+    origin_convention: Any = 'center',
+) -> Any:
     """
     Applies an affine transformation to an image with optional antialiasing.
 
@@ -1927,17 +1964,17 @@ def _cv2_warp_affine(
 
 
 def _cv2_try_warp_affine(
-    image,
-    transform_,
-    large_warp_dim,
-    dsize,
-    max_dsize,
-    new_origin,
-    flags,
-    borderMode,
-    borderValue,
-    workaround_opencv_413_nearest_float64=False,
-):
+    image: Any,
+    transform_: Any,
+    large_warp_dim: Any,
+    dsize: Any,
+    max_dsize: Any,
+    new_origin: Any,
+    flags: Any,
+    borderMode: Any,
+    borderValue: Any,
+    workaround_opencv_413_nearest_float64: Any = False,
+) -> Any:
     """
     Helper for warp_affine
     """
@@ -2001,17 +2038,17 @@ def _cv2_imputation(image: NDArray) -> NDArray:
 
 
 def _cv2_large_warp_affine(
-    image,
-    transform_,
-    dsize,
-    max_dsize,
-    new_origin,
-    flags,
-    borderMode,
-    borderValue,
-    pieces_per_dim,
-    workaround_opencv_413_nearest_float64=False,
-):
+    image: Any,
+    transform_: Any,
+    dsize: Any,
+    max_dsize: Any,
+    new_origin: Any,
+    flags: Any,
+    borderMode: Any,
+    borderValue: Any,
+    pieces_per_dim: Any,
+    workaround_opencv_413_nearest_float64: Any = False,
+) -> Any:
     """
     Split an image into pieces smaller than cv2's limit, perform cv2.warpAffine on each piece,
     and stitch them back together with minimal artifacts.
@@ -2157,7 +2194,7 @@ def _cv2_large_warp_affine(
     return result
 
 
-def _prepare_scale_residual(sx, sy, fudge=0):
+def _prepare_scale_residual(sx: Any, sy: Any, fudge: Any = 0) -> Any:
     """
     Helper to decompose a scale factor into pyramid downscales plus a residual
     scale factor.
@@ -2171,7 +2208,7 @@ def _prepare_scale_residual(sx, sy, fudge=0):
     return num_downs, residual_sx, residual_sy
 
 
-def _cv2_prepare_downscale(image, sx, sy):
+def _cv2_prepare_downscale(image: Any, sx: Any, sy: Any) -> Any:
     """
     Does a partial downscale with antialiasing and prepares for a final
     downsampling. Only downscales by factors of 2, any residual scaling to
@@ -2254,7 +2291,9 @@ def _cv2_prepare_downscale(image, sx, sy):
     return downscaled, residual_sx, residual_sy
 
 
-def _gauss_params(scale, k0=5, sigma0=1, fractional=True):
+def _gauss_params(
+    scale: Any, k0: Any = 5, sigma0: Any = 1, fractional: Any = True
+) -> Any:
     """
     Compute a gaussian to mitigate aliasing for a requested downsample
 
@@ -2279,7 +2318,7 @@ def _gauss_params(scale, k0=5, sigma0=1, fractional=True):
     return k, sigma
 
 
-def _pyrDownK(a, k=1):
+def _pyrDownK(a: Any, k: Any = 1) -> Any:
     """
     Downsamples by (2 ** k)x with antialiasing
     """
@@ -2318,7 +2357,7 @@ _CV2_MORPH_MODES: dict[str, int] = {
 
 
 @lru_cache(128)
-def _morph_kernel_core(w, h, element):
+def _morph_kernel_core(w: Any, h: Any, element: Any) -> Any:
     if w == 0 or h == 0:
         return np.empty((0, 0), dtype=np.uint8)
     struct_shape = _CV2_STRUCT_ELEMENTS.get(element, element)
@@ -2327,7 +2366,7 @@ def _morph_kernel_core(w, h, element):
     return element
 
 
-def _morph_kernel(kernel, element='rect'):
+def _morph_kernel(kernel: Any, element: Any = 'rect') -> Any:
     """
     Example:
         >>> # xdoctest: +REQUIRES(module:cv2)
@@ -2498,13 +2537,45 @@ def morphology(
     return new
 
 
+if _t.TYPE_CHECKING:
+    @overload
+    def connected_components(
+        image: NDArray,
+        connectivity: int = 8,
+        ltype: ComponentDType = np.int32,
+        with_stats: Literal[True] = True,
+        algo: str = 'default',
+    ) -> tuple[NDArray, ConnectedComponentsStatsInfo]: ...
+
+    @overload
+    def connected_components(
+        image: NDArray,
+        connectivity: int = 8,
+        ltype: ComponentDType = np.int32,
+        *,
+        with_stats: Literal[False],
+        algo: str = 'default',
+    ) -> tuple[NDArray, ConnectedComponentsInfo]: ...
+
+    @overload
+    def connected_components(
+        image: NDArray,
+        connectivity: int = 8,
+        ltype: ComponentDType = np.int32,
+        with_stats: bool = True,
+        algo: str = 'default',
+    ) -> tuple[
+        NDArray, ConnectedComponentsInfo | ConnectedComponentsStatsInfo
+    ]: ...
+
+
 def connected_components(
     image: NDArray,
     connectivity: int = 8,
-    ltype: DTypeLike = np.int32,
+    ltype: ComponentDType = np.int32,
     with_stats: bool = True,
     algo: str = 'default',
-) -> tuple[NDArray, dict[str, object]]:
+) -> tuple[NDArray, ConnectedComponentsInfo]:
     """
     Find connected components in a binary image.
 
@@ -2591,7 +2662,8 @@ def connected_components(
 
     if not isinstance(ltype, numbers.Integral):
         try:
-            dtype = np.dtype(ltype)
+            ltype_dtype: Any = ltype
+            dtype = np.dtype(ltype_dtype)
         except TypeError:
             raise TypeError('type(ltype) = {}'.format(type(ltype)))
         if dtype == np.dtype(np.int32):
@@ -2600,6 +2672,8 @@ def connected_components(
             ltype = cv2.CV_16U
     if not isinstance(ltype, numbers.Integral):
         raise TypeError('type(ltype) = {}'.format(type(ltype)))
+
+    ltype_cv2: Any = ltype
 
     # It seems very easy for a segfault to happen here.
     image = np.ascontiguousarray(image)
@@ -2622,26 +2696,29 @@ def connected_components(
                     image,
                     connectivity=connectivity,
                     ccltype=ccltype,
-                    ltype=ltype,
+                    ltype=ltype_cv2,
                 )
             )
         else:
             num_labels, labels = cv2.connectedComponentsWithAlgorithm(
-                image, connectivity=connectivity, ccltype=ccltype, ltype=ltype
+                image,
+                connectivity=connectivity,
+                ccltype=ccltype,
+                ltype=ltype_cv2,
             )
     else:
         if with_stats:
             num_labels, labels, stats, centroids = (
                 cv2.connectedComponentsWithStats(
-                    image, connectivity=connectivity, ltype=ltype
+                    image, connectivity=connectivity, ltype=ltype_cv2
                 )
             )
         else:
             num_labels, labels = cv2.connectedComponents(
-                image, connectivity=connectivity, ltype=ltype
+                image, connectivity=connectivity, ltype=ltype_cv2
             )
 
-    info = {
+    info: Any = {
         'num_labels': num_labels,
     }
 
@@ -2668,17 +2745,17 @@ def connected_components(
 
 
 def _cv2_warp_projective(
-    image,
-    transform,
-    dsize=None,
-    antialias=False,
-    interpolation='linear',
-    border_mode=None,
-    border_value=0,
-    large_warp_dim=None,
-    origin_convention='center',
-    return_info=False,
-):
+    image: Any,
+    transform: Any,
+    dsize: Any = None,
+    antialias: Any = False,
+    interpolation: Any = 'linear',
+    border_mode: Any = None,
+    border_value: Any = 0,
+    large_warp_dim: Any = None,
+    origin_convention: Any = 'center',
+    return_info: Any = False,
+) -> Any:
     """
     Applies an projective transformation to an image with optional antialiasing.
 
@@ -2863,16 +2940,16 @@ def _cv2_warp_projective(
 
 
 def _cv2_try_warp_projective(
-    image,
-    transform_,
-    large_warp_dim,
-    dsize,
-    max_dsize,
-    new_origin,
-    flags,
-    borderMode,
-    borderValue,
-):
+    image: Any,
+    transform_: Any,
+    large_warp_dim: Any,
+    dsize: Any,
+    max_dsize: Any,
+    new_origin: Any,
+    flags: Any,
+    borderMode: Any,
+    borderValue: Any,
+) -> Any:
     """
     Helper for warp_projective
     """

@@ -8,11 +8,20 @@ Written by Ross Girshick
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-def py_nms(np_ltrb, np_scores, thresh, bias: int = 1):
+
+def py_nms(
+    np_ltrb: NDArray[Any],
+    np_scores: NDArray[Any],
+    thresh: float,
+    bias: float = 1.0,
+) -> list[np.integer[Any]]:
     """
     Pure Python NMS baseline.
 

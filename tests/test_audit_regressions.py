@@ -160,12 +160,8 @@ def test_numexpr1_alpha_blend_returns_result():
     rgb2 = np.ones((2, 3, 3), dtype=np.float32)
     alpha1 = np.full((2, 3), 0.25, dtype=np.float32)
     alpha2 = np.full((2, 3), 0.75, dtype=np.float32)
-    got_rgb, got_alpha = _alpha_blend_numexpr1(
-        rgb1, alpha1, rgb2, alpha2
-    )
-    want_rgb, want_alpha = _alpha_blend_numexpr2(
-        rgb1, alpha1, rgb2, alpha2
-    )
+    got_rgb, got_alpha = _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2)
+    want_rgb, want_alpha = _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2)
     assert np.allclose(got_rgb, want_rgb)
     assert np.allclose(got_alpha, want_alpha)
 
@@ -190,7 +186,9 @@ def test_make_orimask_default_magnitude():
 def test_polygon_fill_more_than_four_channels():
     import kwimage
 
-    polygon = kwimage.Polygon(exterior=np.array([[1, 1], [4, 1], [4, 4], [1, 4], [1, 1]]))
+    polygon = kwimage.Polygon(
+        exterior=np.array([[1, 1], [4, 1], [4, 4], [1, 4], [1, 1]])
+    )
     image = np.zeros((6, 6, 5), dtype=np.uint8)
     result = polygon.fill(image, value=(1, 2, 3, 4, 5))
     assert result[2, 2].tolist() == [1, 2, 3, 4, 5]
@@ -302,10 +300,13 @@ def test_dense_detection_targets_order_by_box_area():
     # Larger objects are rasterized first, so the smaller square must own the
     # overlap regardless of aspect ratio.
     boxes = kwimage.Boxes(
-        np.array([
-            [20, 5, 2, 50],
-            [18, 25, 6, 6],
-        ], dtype=float),
+        np.array(
+            [
+                [20, 5, 2, 50],
+                [18, 25, 6, 6],
+            ],
+            dtype=float,
+        ),
         'xywh',
     )
     detections = kwimage.Detections(
@@ -322,3 +323,180 @@ def test_dense_detection_targets_order_by_box_area():
         exclude=['diameter', 'offset'],
     )
     assert target['cidx'][28, 21] == 2
+
+
+def test_remove_translation_euclidean_transform():
+    import skimage.transform
+
+    from kwimage.structs.heatmap import _remove_translation
+
+    transform = skimage.transform.EuclideanTransform(
+        rotation=0.37, translation=(11, -4)
+    )
+    result = _remove_translation(transform)
+    assert isinstance(result, skimage.transform.EuclideanTransform)
+    assert np.isclose(result.rotation, transform.rotation)
+    assert np.allclose(result.translation, (0, 0))
+
+
+def test_boxes_union_hull_invalid_integer_numpy_uses_float_nan():
+    import kwimage
+
+    # Invalid negative extents are represented as NaN by union_hull. Integer
+    # NumPy data must be promoted with ndarray.astype, not Tensor.to.
+    data = np.array([[10, 0, 0, 1]], dtype=np.int64)
+    boxes = kwimage.Boxes(data, 'ltrb')
+    result = boxes.union_hull(boxes)
+    assert result.data.dtype.kind == 'f'
+    assert np.isnan(result.data).all()
+
+
+def test_affine_identity_helpers_use_materialized_matrix():
+    import kwimage
+
+    transform = kwimage.Affine(None)
+    array = np.asarray(transform, dtype=np.float32)
+    assert array.dtype == np.float32
+    assert np.array_equal(array, np.eye(3, dtype=np.float32))
+    assert transform.eccentricity() == 0.0
+    assert transform.to_shapely() == (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+
+
+def test_transform_classmethods_preserve_subclasses():
+    import kwimage
+
+    class DerivedProjective(kwimage.Projective):
+        pass
+
+    class DerivedAffine(kwimage.Affine):
+        pass
+
+    projective = DerivedProjective.projective()
+    affine = DerivedAffine.fit(np.empty((0, 2)), np.empty((0, 2)))
+    assert isinstance(projective, DerivedProjective)
+    assert isinstance(affine, DerivedAffine)
+
+
+def test_boxes_mixin_classmethods_preserve_subclass():
+    """Construction helpers defined on mixins should construct ``cls``."""
+    import kwimage
+
+    class MyBoxes(kwimage.Boxes):
+        pass
+
+    box = MyBoxes.from_slice((slice(1, 3), slice(2, 5)))
+    assert isinstance(box, MyBoxes)
+    assert box.format == 'ltrb'
+
+    coerced = MyBoxes.coerce([[1, 2, 3, 4]], format='xywh')
+    assert isinstance(coerced, MyBoxes)
+
+
+def test_boxes_ensure_nonnegative_extent_backends():
+    """Boolean-mask repair should stay within the selected array backend."""
+    import numpy as np
+    import kwimage
+
+    data = np.array([[3, 5, -2, -4]], dtype=np.float32)
+    fixed = kwimage.Boxes(data, 'xywh')._ensure_nonnegative_extent()
+    assert np.all(fixed.data == [[1, 1, 2, 4]])
+
+    try:
+        import torch
+    except ImportError:
+        return
+    tensor = torch.tensor([[3.0, 5.0, -2.0, -4.0]])
+    fixed_t = kwimage.Boxes(tensor, 'xywh')._ensure_nonnegative_extent()
+    assert torch.equal(fixed_t.data, torch.tensor([[1.0, 1.0, 2.0, 4.0]]))
+
+
+def test_affine_fliprot_requires_canvas_when_needed():
+    """Flip/rotation helpers should reject missing canvas dimensions clearly."""
+    import pytest
+    import kwimage
+
+    with pytest.raises(ValueError, match='canvas_dsize'):
+        kwimage.Affine.fliprot(rot_k=1)
+    with pytest.raises(ValueError, match='canvas_dsize'):
+        kwimage.Affine.fliprot(flip_axis=(0,))
+    assert isinstance(kwimage.Affine.fliprot(), kwimage.Affine)
+
+
+def test_points_to_wkt_returns_text():
+    import kwimage
+
+    points = kwimage.Points(xy=np.array([[1.0, 2.0], [3.0, 4.0]]))
+    wkt = points.to_wkt()
+    assert isinstance(wkt, str)
+    assert wkt.startswith('MULTIPOINT')
+
+
+def test_points_dtype_delegates_to_coords():
+    import kwimage
+
+    points = kwimage.Points(xy=np.array([[1.0, 2.0]], dtype=np.float32))
+    assert points.dtype == np.dtype(np.float32)
+
+
+def test_polygon_coco_laziness_contract():
+    """Keep PolygonList COCO export lazy without changing MultiPolygon."""
+    import kwimage
+
+    poly = kwimage.Polygon.random(4, rng=0)
+    mpoly = kwimage.MultiPolygon([poly])
+    assert isinstance(mpoly.to_coco(), list)
+
+    poly_list = kwimage.PolygonList([poly, mpoly, None])
+    coco_iter = poly_list.to_coco()
+    assert iter(coco_iter) is coco_iter
+
+
+def test_detections_public_accessors_are_zero_copy():
+    """Typed convenience accessors must not normalize or copy storage."""
+    import kwimage
+
+    boxes = kwimage.Boxes(np.empty((2, 4), dtype=np.float32), 'xywh')
+    scores = np.array([0.25, 0.75], dtype=np.float32)
+    class_idxs = np.array([0, 1], dtype=np.int64)
+    keypoints = kwimage.PointsList([
+        kwimage.Points(xy=np.empty((0, 2), dtype=np.float32)),
+        kwimage.Points(xy=np.empty((0, 2), dtype=np.float32)),
+    ])
+    segmentations = kwimage.SegmentationList([None, None])
+    data = {
+        'boxes': boxes,
+        'scores': scores,
+        'class_idxs': class_idxs,
+        'keypoints': keypoints,
+        'segmentations': segmentations,
+    }
+    dets = kwimage.Detections(data=data, meta={'classes': ['a', 'b']})
+
+    assert dets.boxes is boxes
+    assert dets.scores is scores
+    assert dets.class_idxs is class_idxs
+    assert dets.keypoints is keypoints
+    assert dets.segmentations is segmentations
+    assert dets.classes is dets.meta['classes']
+
+
+def test_detections_optional_data_properties_allow_missing_keys():
+    import kwimage
+
+    dets = kwimage.Detections(
+        boxes=kwimage.Boxes(np.empty((0, 4)), 'xywh')
+    )
+    assert dets.class_idxs is None
+    assert dets.scores is None
+    assert dets.probs is None
+    assert dets.weights is None
+
+
+def test_heatmap_optional_spatial_properties_allow_missing_keys():
+    import kwimage
+
+    heatmap = kwimage.Heatmap(
+        class_probs=np.zeros((2, 4, 4), dtype=np.float32)
+    )
+    assert heatmap.offset is None
+    assert heatmap.diameter is None

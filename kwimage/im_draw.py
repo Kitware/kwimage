@@ -7,14 +7,75 @@ import numpy as np
 
 if TYPE_CHECKING:
     from numbers import Number
-    from typing import Any, List, Sequence, Tuple
+    from typing import (
+        Any,
+        Iterable,
+        List,
+        Literal,
+        Protocol,
+        Sequence,
+        Tuple,
+        TypeAlias,
+        TypedDict,
+        overload,
+    )
+    from typing_extensions import Unpack
 
     from numpy import ndarray
 
     import kwimage
+    from kwimage._typing import ArrayData
+    from kwimage.im_color import Color
+
+    ColorLike: TypeAlias = Color | str | Iterable[int | float]
+    PointLike: TypeAlias = Sequence[int] | ndarray
+    TextHAlign: TypeAlias = Literal['left', 'center', 'right'] | None
+    TextVAlign: TypeAlias = Literal['top', 'center', 'bottom'] | None
+
+    class TextBorderSpec(TypedDict, total=False):
+        color: ColorLike
+        thickness: int
+
+    class TextDrawKwargs(TypedDict, total=False):
+        color: ColorLike
+        thickness: int
+        fontFace: int
+        fontScale: float
+        lineType: int
+        valign: TextVAlign
+        halign: TextHAlign
+        border: int | TextBorderSpec | None
+
+    class CV2LineKwargs(TypedDict, total=False):
+        lineType: int
+        shift: int
+
+    class HeaderTextKwargs(TypedDict, total=False):
+        fontScale: float
+        fontFace: int
+        thickness: int
+        bg_value: ColorLike
+
+    class TextCanvasSpec(TypedDict, total=False):
+        width: int | None
+        height: int | None
+        color: ColorLike
+
+    class TextDrawInfo(TypedDict):
+        line_org: ndarray
+        line_sizes: ndarray
+
+    class ClassNameLookup(Protocol):
+        def __getitem__(self, index: int) -> object: ...
 
 
-def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
+def _draw_text_on_image_pil(
+    img: np.ndarray | None,
+    text: str,
+    org: PointLike | None = None,
+    fontpath: str | None = None,
+    fontsize: int = 32,
+) -> np.ndarray:
     r"""
     PIL backend.
 
@@ -52,15 +113,17 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
 
     if org is None:
         org = (1, 1)
+    pil_org: Any = org
 
     if img is None:
         dummy_img = np.empty((8, 8, 4), dtype=np.uint8)
         dummy_img_pil = Image.fromarray(dummy_img)
         dummy_draw = ImageDraw.Draw(dummy_img_pil)
-        bbox = dummy_draw.textbbox(org, text, font=font)
+        bbox: Any = dummy_draw.textbbox(pil_org, text, font=font)
         rb_x = bbox[2]
         rb_y = bbox[3]
-        img = np.full((rb_y + 1, rb_x + 1, 4), fill_value=0, dtype=np.uint8)
+        alloc_shape: Any = (rb_y + 1, rb_x + 1, 4)
+        img = np.full(alloc_shape, fill_value=0, dtype=np.uint8)
     # size = draw.textlength(text, font=font)
     # print(f'bbox={bbox}')
     # print(f'size={size}')
@@ -72,18 +135,48 @@ def _draw_text_on_image_pil(img, text, org=None, fontpath=None, fontsize=32):
     color = Color.coerce('black').as255()
 
     # anchor - https://pillow.readthedocs.io/en/stable/handbook/text-anchors.html#text-anchors
-    draw.text(org, text, font=font, fill=color)
+    draw.text(pil_org, text, font=font, fill=color)
     new_img = np.array(img_pil)
     return new_img
 
 
+if TYPE_CHECKING:
+    @overload
+    def draw_text_on_image(
+        img: ndarray | TextCanvasSpec | None,
+        text: str,
+        org: PointLike | None = None,
+        return_info: Literal[False] = False,
+        **kwargs: Unpack[TextDrawKwargs],
+    ) -> ndarray: ...
+
+    @overload
+    def draw_text_on_image(
+        img: ndarray | TextCanvasSpec | None,
+        text: str,
+        org: PointLike | None = None,
+        *,
+        return_info: Literal[True],
+        **kwargs: Unpack[TextDrawKwargs],
+    ) -> tuple[ndarray, TextDrawInfo]: ...
+
+    @overload
+    def draw_text_on_image(
+        img: ndarray | TextCanvasSpec | None,
+        text: str,
+        org: PointLike | None = None,
+        return_info: bool = False,
+        **kwargs: Unpack[TextDrawKwargs],
+    ) -> ndarray | tuple[ndarray, TextDrawInfo]: ...
+
+
 def draw_text_on_image(
-    img: ndarray | None | dict,
+    img: ndarray | TextCanvasSpec | None,
     text: str,
-    org: Tuple[int, int] | None = None,
+    org: PointLike | None = None,
     return_info: bool = False,
-    **kwargs,
-) -> ndarray | Tuple[ndarray, dict]:
+    **kwargs: Any,
+) -> ndarray | tuple[ndarray, TextDrawInfo]:
     r"""
     Draws multiline text on an image using opencv
 
@@ -259,44 +352,47 @@ def draw_text_on_image(
 
     import kwimage
 
-    if 'color' not in kwargs:
-        # kwargs['color'] = 'red'
-        kwargs['color'] = 'strawberry'
+    kwargs_impl: Any = kwargs
+
+    if 'color' not in kwargs_impl:
+        # kwargs_impl['color'] = 'red'
+        kwargs_impl['color'] = 'strawberry'
 
     # Get the color that is compatible with the input image encoding
     if img is None or isinstance(img, dict):
-        kwargs['color'] = kwimage.Color(kwargs['color']).as255()
+        kwargs_impl['color'] = kwimage.Color(kwargs_impl['color']).as255()
     else:
-        kwargs['color'] = kwimage.Color(kwargs['color']).forimage(img)
+        kwargs_impl['color'] = kwimage.Color(kwargs_impl['color']).forimage(img)
 
-    if 'thickness' not in kwargs:
-        kwargs['thickness'] = 2
+    if 'thickness' not in kwargs_impl:
+        kwargs_impl['thickness'] = 2
 
-    if 'fontFace' not in kwargs:
-        kwargs['fontFace'] = cv2.FONT_HERSHEY_SIMPLEX
+    if 'fontFace' not in kwargs_impl:
+        kwargs_impl['fontFace'] = cv2.FONT_HERSHEY_SIMPLEX
 
-    if 'fontScale' not in kwargs:
-        kwargs['fontScale'] = 1.0
+    if 'fontScale' not in kwargs_impl:
+        kwargs_impl['fontScale'] = 1.0
 
-    if 'lineType' not in kwargs:
-        kwargs['lineType'] = cv2.LINE_AA
+    if 'lineType' not in kwargs_impl:
+        kwargs_impl['lineType'] = cv2.LINE_AA
 
-    if 'bottomLeftOrigin' in kwargs:
+    if 'bottomLeftOrigin' in kwargs_impl:
         raise ValueError('Do not use bottomLeftOrigin, use valign instead')
 
-    border = kwargs.pop('border', None)
+    border: Any = kwargs_impl.pop('border', None)
     if border is not None:
         if isinstance(border, int):
             border = {'color': 'black', 'thickness': border}
-        subkw = kwargs.copy()
-        subkw['color'] = border.get('color', 'black')
+        border_impl: Any = border
+        subkw = kwargs_impl.copy()
+        subkw['color'] = border_impl.get('color', 'black')
         subkw.pop('return_info', None)
-        border_thickness = border.get('thickness', 1)
+        border_thickness: int = border_impl.get('thickness', 1)
     else:
         border_thickness = 0
 
-    valign = kwargs.pop('valign', None)
-    halign = kwargs.pop('halign', None)
+    valign = kwargs_impl.pop('valign', None)
+    halign = kwargs_impl.pop('halign', None)
     if halign is None:
         halign = 'left'
     if valign is None:
@@ -305,16 +401,18 @@ def draw_text_on_image(
     if img is None:
         img = {'width': None, 'height': None}
 
-    if org is None:
-        org = (None, None)
+    org_impl: Any = org
+    if org_impl is None:
+        org_impl = (None, None)
 
-    x0, y0 = org
+    x0, y0 = org_impl
 
     if isinstance(img, dict):
         given_w = img.get('width', None)
         given_h = img.get('height', None)
     else:
-        given_h, given_w = img.shape[0:2]
+        img_array: Any = img
+        given_h, given_w = img_array.shape[0:2]
 
     needs_x0 = x0 is None and halign != 'left'
     needs_y0 = y0 is None and valign != 'top'
@@ -324,7 +422,7 @@ def draw_text_on_image(
         # an origin we need to do a bit of extra computation to figure out what
         # the width / height need to be
         text_w, text_h = _text_sizes(
-            text, (1, 1), border_thickness, kwargs, None, halign='left'
+            text, (1, 1), border_thickness, kwargs_impl, None, halign='left'
         )[0:2]
         if given_w is None:
             given_w = text_w
@@ -332,26 +430,28 @@ def draw_text_on_image(
             given_h = text_h
 
     if x0 is None:
+        given_w_impl: Any = given_w
         if halign == 'left':
             x0 = 1
         elif halign == 'center':
-            x0 = given_w // 2
+            x0 = given_w_impl // 2
         elif halign == 'right':
-            x0 = given_w - 1
+            x0 = given_w_impl - 1
         else:
             raise KeyError(halign)
 
     if y0 is None:
+        given_h_impl: Any = given_h
         if valign == 'top':
             y0 = 1
         elif valign == 'center':
-            y0 = given_h // 2
+            y0 = given_h_impl // 2
         elif valign == 'bottom':
-            y0 = given_h - 1
+            y0 = given_h_impl - 1
         else:
             raise KeyError(valign)
 
-    org = (x0, y0)
+    org_impl = (x0, y0)
     (
         text_w,
         text_h,
@@ -364,7 +464,9 @@ def draw_text_on_image(
         final_baseline,
         line_sizes,
         line_org,
-    ) = _text_sizes(text, org, border_thickness, kwargs, valign, halign)
+    ) = _text_sizes(
+        text, org_impl, border_thickness, kwargs_impl, valign, halign
+    )
 
     if isinstance(img, dict):
         # if image is unspecified allocate just enough space for text
@@ -378,40 +480,45 @@ def draw_text_on_image(
             alloc_h = text_h
         img = np.zeros((alloc_h, alloc_w, len(bg_color)), dtype=np.uint8)
         img[...] = np.array(bg_color)[None, None, :]
-        kwargs['color'] = kwimage.Color(kwargs['color']).forimage(img)
+        kwargs_impl['color'] = kwimage.Color(kwargs_impl['color']).forimage(img)
 
     if border_thickness > 0:
         # recursive call
         basis = list(range(-border_thickness, border_thickness + 1))
-        org = np.array(org)
+        org_impl = np.array(org_impl)
         for i, j in it.product(basis, basis):
             if i == 0 and j == 0:
                 continue
-            img = draw_text_on_image(img, text, org=org + [i, j], **subkw)
+            img = draw_text_on_image(
+                img, text, org=org_impl + [i, j], **subkw
+            )
 
     for i, line in enumerate(lines):
         xy = tuple(line_org[i])
-        img = _cv2_put_text_compat(img, line, xy, kwargs)
+        img = _cv2_put_text_compat(img, line, xy, kwargs_impl)
 
+    result_img: Any = img
     if return_info:
-        info = {
+        info: TextDrawInfo = {
             'line_org': line_org,
             'line_sizes': line_sizes,
         }
-        return img, info
+        return result_img, info
     else:
-        return img
+        return result_img
 
 
-def _cv2_put_text_compat(img, text, xy, kwargs):
+def _cv2_put_text_compat(
+    img: Any, text: str, xy: Any, kwargs: dict[str, Any]
+) -> Any:
     """Call ``cv2.putText`` across OpenCV 3.x through 5.x.
 
     OpenCV 5's replacement text renderer only accepts uint8 destination
-    images.  Older OpenCV versions accepted other image dtypes, but silently
-    disabled antialiasing for them.  Preserve that behavior by first trying
-    the native call and, only when it rejects a non-uint8 image, rasterizing a
-    binary uint8 text mask and assigning the requested color into the original
-    image.
+    images with 1, 3, or 4 channels.  Older OpenCV versions accepted other
+    dtypes and two-channel images, but silently disabled antialiasing for
+    those cases. Preserve that behavior by using the native call when it is
+    supported and otherwise rasterizing a binary uint8 text mask before
+    assigning the requested color into the original image.
 
     The mask fallback avoids quantizing the input image and preserves masked
     array masks, NaNs outside the text pixels, the input dtype, and inplace
@@ -419,22 +526,27 @@ def _cv2_put_text_compat(img, text, xy, kwargs):
     """
     import cv2
 
-    try:
-        return cv2.putText(img, text, xy, **kwargs)
-    except cv2.error as ex:
-        image_data = np.asarray(img)
-        is_uint8_depth_error = 'img.depth() == CV_8U' in str(ex)
-        if image_data.dtype == np.uint8 or not is_uint8_depth_error:
-            raise
+    image_data = np.asarray(img)
+    needs_channel_fallback = image_data.ndim == 3 and image_data.shape[2] == 2
+    if not needs_channel_fallback:
+        try:
+            return cv2.putText(img, text, xy, **kwargs)
+        except cv2.error as ex:
+            is_uint8_depth_error = (
+                image_data.dtype != np.uint8
+                and 'img.depth() == CV_8U' in str(ex)
+            )
+            if not is_uint8_depth_error:
+                raise
 
     mask = np.zeros(image_data.shape[0:2], dtype=np.uint8)
     mask_kwargs = kwargs.copy()
     mask_kwargs['color'] = 255
     if mask_kwargs.get('lineType', None) == cv2.LINE_AA:
-        # OpenCV 4 used non-antialiased drawing for non-uint8 destinations.
-        # Keeping a binary mask also avoids introducing extra intermediate
-        # values into float images that historically only contained the
-        # background and requested drawing colors.
+        # OpenCV 4 used non-antialiased drawing for non-uint8 and
+        # two-channel destinations. Keeping a binary mask also avoids
+        # introducing intermediate values into float images that
+        # historically only contained the background and draw colors.
         mask_kwargs['lineType'] = cv2.LINE_8
     cv2.putText(mask, text, xy, **mask_kwargs)
 
@@ -456,7 +568,14 @@ def _cv2_put_text_compat(img, text, xy, kwargs):
     return img
 
 
-def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
+def _text_sizes(
+    text: str,
+    org: Any,
+    border_thickness: int,
+    kwargs: dict[str, Any],
+    valign: str | None,
+    halign: str,
+) -> tuple[Any, ...]:
     import cv2
 
     getsize_kw = {
@@ -553,12 +672,12 @@ def _text_sizes(text, org, border_thickness, kwargs, valign, halign):
 
 def draw_clf_on_image(
     im: ndarray,
-    classes: Sequence[str] | Any,
+    classes: ClassNameLookup,
     tcx: int | None = None,
-    probs: ndarray | None = None,
+    probs: ArrayData | None = None,
     pcx: int | None = None,
     border: int = 1,
-):
+) -> ndarray:
     """
     Draws classification label on an image.
 
@@ -600,15 +719,17 @@ def draw_clf_on_image(
 
     im_ = kwimage.atleast_3channels(im)
     w, h = im.shape[0:2][::-1]
+    pcx_impl: Any = pcx
 
-    if pcx is None and probs is not None:
+    if pcx_impl is None and probs is not None:
         import kwarray
 
         probs = kwarray.ArrayAPI.numpy(probs)
-        pcx = probs.argmax()
+        probs_data: Any = probs
+        pcx_impl = int(probs_data.argmax())
 
     if probs is not None:
-        pred_score = None if pcx is None else probs[pcx]
+        pred_score = None if pcx_impl is None else probs[pcx_impl]
         true_score = None if tcx is None else probs[tcx]
 
     org1 = np.array((2, h - 5))
@@ -617,7 +738,7 @@ def draw_clf_on_image(
     true_label = None
     if tcx is not None:
         true_name = classes[tcx]
-        if pcx == tcx:
+        if pcx_impl == tcx:
             true_label = 't:{tcx}:{true_name}'.format(**locals())
         elif probs is None:
             true_label = 't:{tcx}:\n{true_name}'.format(**locals())
@@ -627,8 +748,9 @@ def draw_clf_on_image(
             )
 
     pred_label = None
-    if pcx is not None:
-        pred_name = classes[pcx]
+    if pcx_impl is not None:
+        pcx = pcx_impl
+        pred_name = classes[pcx_impl]
         if probs is None:
             pred_label = 'p:{pcx}:\n{pred_name}'.format(**locals())
         else:
@@ -636,8 +758,8 @@ def draw_clf_on_image(
                 **locals()
             )
 
-    fontkw = {'fontScale': 1.0, 'thickness': 2}
-    color = 'dodgerblue' if pcx == tcx else 'orangered'
+    fontkw: Any = {'fontScale': 1.0, 'thickness': 2}
+    color = 'dodgerblue' if pcx_impl == tcx else 'orangered'
 
     # im_ = draw_text_on_image(im_, pred_label, org=org1 - 2,
     #                          color='white', valign='bottom', **fontkw)
@@ -670,11 +792,11 @@ def draw_clf_on_image(
 def draw_boxes_on_image(
     img: ndarray,
     boxes: kwimage.Boxes | ndarray,
-    color: str = 'blue',
+    color: ColorLike = 'blue',
     thickness: int = 1,
-    box_format: Any | None = None,
+    box_format: str | None = None,
     colorspace: str = 'rgb',
-):
+) -> ndarray:
     """
     Draws boxes on an image.
 
@@ -708,8 +830,8 @@ def draw_boxes_on_image(
             raise ValueError('specify box_format')
         boxes = kwimage.Boxes(boxes, box_format)
 
-    color = kwimage.Color(color).forimage(img, colorspace)
-    ltrb = boxes.to_ltrb().data
+    cv2_color: Any = kwimage.Color(color).forimage(img, colorspace)
+    ltrb: Any = boxes.to_ltrb().data
     img2 = img.copy()
     for x1, y1, x2, y2 in ltrb:
         # pt1 = (int(round(x1)), int(round(y1)))
@@ -717,18 +839,20 @@ def draw_boxes_on_image(
         pt1 = (int(x1), int(y1))
         pt2 = (int(x2), int(y2))
         # Note cv2.rectangle does work inplace
-        img2 = cv2.rectangle(img2, pt1, pt2, color, thickness=thickness)
+        img2 = cv2.rectangle(
+            img2, pt1, pt2, cv2_color, thickness=thickness
+        )
     return img2
 
 
 def draw_line_segments_on_image(
-    img,
+    img: ndarray,
     pts1: ndarray,
     pts2: ndarray,
-    color: str | List = 'blue',
+    color: ColorLike | Sequence[ColorLike] = 'blue',
     colorspace: str = 'rgb',
     thickness: int = 1,
-    **kwargs,
+    **kwargs: Unpack[CV2LineKwargs],
 ) -> ndarray:
     """
     Draw line segments between pts1 and pts2 on an image.
@@ -794,8 +918,12 @@ def draw_line_segments_on_image(
 
 
 def draw_polyline_on_image(
-    image, xy_pts, edgecolor='blue', thickness=1, **kwargs
-):
+    image: ndarray,
+    xy_pts: ndarray,
+    edgecolor: ColorLike | Sequence[ColorLike] = 'blue',
+    thickness: int = 1,
+    **kwargs: Unpack[CV2LineKwargs],
+) -> ndarray:
     """
     Draw a path (i.e. polyline / linestring) on an image.
 
@@ -835,7 +963,9 @@ def draw_polyline_on_image(
     return image
 
 
-def _broadcast_colors(color, num, img, colorspace):
+def _broadcast_colors(
+    color: Any, num: int, img: ndarray, colorspace: str
+) -> list[Any]:
     """
     Determine if color applies a single color to all ``num`` items, or if it is
     a list of colors for each item. Return as a list of colors for each item.
@@ -888,10 +1018,10 @@ def _broadcast_colors(color, num, img, colorspace):
 def make_heatmask(
     probs: ndarray,
     cmap: str = 'plasma',
-    with_alpha: float = 1.0,
+    with_alpha: float | bool | None = 1.0,
     space: str = 'rgb',
-    dsize: tuple | None = None,
-):
+    dsize: tuple[int, int] | None = None,
+) -> ndarray:
     """
     Colorizes a single-channel intensity mask (with an alpha channel)
 
@@ -946,7 +1076,9 @@ def make_heatmask(
 
 
 def make_orimask(
-    radians: ndarray, mag: ndarray | None = None, alpha: float | ndarray = 1.0
+    radians: ndarray,
+    mag: ndarray | None = None,
+    alpha: float | ndarray | bool | None = 1.0,
 ) -> ndarray:
     """
     Makes a colormap in HSV space where the orientation changes color and mag
@@ -1001,8 +1133,9 @@ def make_orimask(
         color_hsv = kwimage.convert_colorspace(color_rgb, 'rgb', 'hsv')
         color_hsv[..., 1:3] = mag[..., None]
         color_rgb = kwimage.convert_colorspace(color_hsv, 'hsv', 'rgb')
+        alpha_mag: ndarray | float = mag
     else:
-        mag = 1
+        alpha_mag = 1.0
     orimask = np.array(color_rgb, dtype=np.float32)
 
     if isinstance(alpha, np.ndarray):
@@ -1011,7 +1144,7 @@ def make_orimask(
         orimask[:, :, 3] = alpha
     elif alpha is not False and alpha is not None:
         orimask = kwimage.ensure_alpha_channel(orimask)
-        orimask[:, :, 3] = mag * alpha
+        orimask[:, :, 3] = alpha_mag * alpha
     return orimask
 
 
@@ -1021,8 +1154,8 @@ def make_vector_field(
     stride: int | float = 0.02,
     thresh: float = 0.0,
     scale: float = 1.0,
-    alpha: float = 1.0,
-    color: str | tuple | kwimage.Color = 'strawberry',
+    alpha: float | ndarray | bool | None = 1.0,
+    color: ColorLike = 'strawberry',
     thickness: int = 1,
     tipLength: float = 0.1,
     line_type: int | str = 'aa',
@@ -1098,7 +1231,7 @@ def make_vector_field(
     vecmask = np.zeros(dx.shape + (3,), dtype=np.uint8)
 
     line_type_lookup = {'aa': cv2.LINE_AA}
-    line_type = line_type_lookup.get(line_type, line_type)
+    cv2_line_type: Any = line_type_lookup.get(line_type, line_type)
 
     width = dx.shape[1]
     height = dy.shape[0]
@@ -1109,7 +1242,7 @@ def make_vector_field(
     X, Y = np.meshgrid(x_grid, y_grid)
     U, V = dx, dy
 
-    XYUV = [X, Y, U, V]
+    XYUV: Any = [X, Y, U, V]
 
     if isinstance(stride, float):
         if stride < 0 or stride > 1:
@@ -1145,7 +1278,7 @@ def make_vector_field(
             color=color,
             thickness=thickness,
             tipLength=tipLength,
-            line_type=line_type,
+            line_type=cv2_line_type,
         )
 
     vecmask = kwimage.ensure_float01(vecmask)
@@ -1162,14 +1295,14 @@ def make_vector_field(
 
 
 def draw_vector_field(
-    image: ndarray,
+    image: ndarray | None,
     dx: ndarray,
     dy: ndarray,
     stride: int | float = 0.02,
     thresh: float = 0.0,
     scale: float = 1.0,
-    alpha: float = 1.0,
-    color: str | tuple | kwimage.Color = 'strawberry',
+    alpha: float | bool | None = 1.0,
+    color: ColorLike = 'strawberry',
     thickness: int = 1,
     tipLength: float = 0.1,
     line_type: int | str = 'aa',
@@ -1235,10 +1368,11 @@ def draw_vector_field(
         image = np.zeros(dx.shape + (3,), dtype=np.uint8)
         # image = kwimage.atleast_3channels(image)
 
+    alpha_impl: Any = alpha
     color = kwimage.Color(color).forimage(image)
 
     line_type_lookup = {'aa': cv2.LINE_AA}
-    line_type = line_type_lookup.get(line_type, line_type)
+    cv2_line_type: Any = line_type_lookup.get(line_type, line_type)
 
     height, width = dx.shape[0:2]
 
@@ -1248,7 +1382,7 @@ def draw_vector_field(
     X, Y = np.meshgrid(x_grid, y_grid)
     U, V = dx, dy
 
-    XYUV = [X, Y, U, V]
+    XYUV: Any = [X, Y, U, V]
 
     if isinstance(stride, float):
         if stride < 0 or stride > 1:
@@ -1274,7 +1408,7 @@ def draw_vector_field(
         XYUV[2] *= scale
         XYUV[3] *= scale
 
-    if alpha is not None and alpha is not False and alpha != 1:
+    if alpha_impl is not None and alpha_impl is not False and alpha_impl != 1:
         raise NotImplementedError
 
     for x, y, u, v in zip(*XYUV):
@@ -1287,32 +1421,32 @@ def draw_vector_field(
             color=color,
             thickness=thickness,
             tipLength=tipLength,
-            line_type=line_type,
+            line_type=cv2_line_type,
         )
 
-    if isinstance(alpha, np.ndarray):
+    if isinstance(alpha_impl, np.ndarray):
         # Alpha specified as explicit numpy array
         image = kwimage.ensure_float01(image)
         image = kwimage.ensure_alpha_channel(image)
-        image[:, :, 3] = alpha
-    elif alpha is not False and alpha is not None:
+        image[:, :, 3] = alpha_impl
+    elif alpha_impl is not False and alpha_impl is not None:
         # Alpha specified as a scale factor
         image = kwimage.ensure_float01(image)
         image = kwimage.ensure_alpha_channel(image)
         # image[:, :, 3] = (image[:, :, 0:3].sum(axis=2) > 0) * alpha
-        image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha
+        image[:, :, 3] = image[:, :, 0:3].sum(axis=2) * alpha_impl
     return image
 
 
 def draw_header_text(
-    image: ndarray | dict | None = None,
+    image: ndarray | TextCanvasSpec | None = None,
     text: str | None = None,
-    fit: bool | str = False,
-    color: str | Tuple = 'strawberry',
-    halign: str = 'center',
-    stack: bool | str = 'auto',
-    bg_color: str = 'black',
-    **kwargs,
+    fit: bool | Literal['shrink'] = False,
+    color: ColorLike = 'strawberry',
+    halign: Literal['left', 'center', 'right'] = 'center',
+    stack: bool | Literal['auto'] = 'auto',
+    bg_color: ColorLike = 'black',
+    **kwargs: Unpack[HeaderTextKwargs],
 ) -> ndarray:
     """
     Places a black bar on top of an image and writes text in it
@@ -1414,20 +1548,22 @@ def draw_header_text(
 
     if image is None:
         width = None
-    elif isinstance(image, dict):
+    elif isinstance(image, np.ndarray):
+        width = image.shape[1]
+    else:
         width = image['width']
         if stack:
             raise ValueError('Must pass in the actual image if stack is True')
-    else:
-        width = image.shape[1]
 
-    if stack and image is not None:
+    if stack and isinstance(image, np.ndarray):
         # Handle very small image case
-        h, w = image.shape[0:2]
+        image_array = image
+        h, w = image_array.shape[0:2]
         min_pixels = 32
         if w < min_pixels or h < min_pixels:
-            image = kwimage.imresize(image, min_dim=min_pixels)
-        width = image.shape[1]
+            image_array = kwimage.imresize(image_array, min_dim=min_pixels)
+            image = image_array
+        width = image_array.shape[1]
 
     if 'bg_value' in kwargs:
         bg_color = kwargs.pop('bg_value')
@@ -1437,7 +1573,7 @@ def draw_header_text(
         'fontFace',
         'thickness',
     ]
-    kwargs = ub.udict(kwargs)
+    kwargs_impl: Any = ub.udict(kwargs)
     default_draw_kw = ub.udict(
         {
             'valign': 'top',
@@ -1446,13 +1582,13 @@ def draw_header_text(
             'color': color,
         }
     )
-    draw_kw = default_draw_kw | (ub.udict(kwargs) & draw_keys)
-    kwargs -= draw_keys
+    draw_kw = default_draw_kw | (kwargs_impl & draw_keys)
+    kwargs_impl -= draw_keys
 
-    if kwargs:
-        raise ValueError('Unexpected kwargs = {}'.format(kwargs))
+    if kwargs_impl:
+        raise ValueError('Unexpected kwargs = {}'.format(kwargs_impl))
 
-    bginfo = {'color': bg_color}
+    bginfo: TextCanvasSpec = {'color': bg_color}
 
     if fit:
         # TODO: allow a shrink-to-fit only option
@@ -1495,7 +1631,10 @@ def draw_header_text(
         header = kwimage.draw_text_on_image(bginfo, text, **draw_kw)
 
     if stack:
-        stacked = kwimage.stack_images([header, image], axis=0, overlap=-1)
+        image_impl: Any = image
+        stacked = kwimage.stack_images(
+            [header, image_impl], axis=0, overlap=-1
+        )
         return stacked
     else:
         return header
@@ -1603,8 +1742,12 @@ def fill_nans_with_checkers(
 
 
 def _masked_checkerboard(
-    canvas, invalid_mask, square_shape, on_value, off_value
-):
+    canvas: Any,
+    invalid_mask: Any,
+    square_shape: Any,
+    on_value: Any,
+    off_value: Any,
+) -> ndarray:
     import kwarray
 
     import kwimage
@@ -1758,7 +1901,8 @@ def nodata_checkerboard(
         masks.append(np.isnan(out_canvas))
 
     if masks:
-        invalid_mask = np.logical_or.reduce(masks)
+        logical_or_impl: Any = np.logical_or
+        invalid_mask = logical_or_impl.reduce(masks)
     else:
         invalid_mask = None
 
@@ -1768,6 +1912,9 @@ def nodata_checkerboard(
         )
 
     if is_masked:
-        out_canvas = np.ma.MaskedArray(data=out_canvas, mask=invalid_mask)
+        invalid_mask_impl: Any = invalid_mask
+        out_canvas = np.ma.MaskedArray(
+            data=out_canvas, mask=invalid_mask_impl
+        )
 
     return out_canvas

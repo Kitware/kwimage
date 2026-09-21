@@ -20,15 +20,17 @@ import numpy as np
 from . import im_core
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from collections.abc import Iterable
+    from typing import Literal
 
     from numpy import ndarray
+    from numpy.typing import DTypeLike
 
 
 def overlay_alpha_layers(
-    layers: Sequence[ndarray],
+    layers: Iterable[ndarray],
     keepalpha: bool = True,
-    dtype: np.dtype = np.float32,
+    dtype: DTypeLike = np.float32,
 ) -> ndarray:
     """
     Stacks a sequences of layers on top of one another. The first item is the
@@ -73,8 +75,8 @@ def overlay_alpha_images(
     img1: ndarray,
     img2: ndarray,
     keepalpha: bool = True,
-    dtype: np.dtype = np.float32,
-    impl: str = 'inplace',
+    dtype: DTypeLike = np.float32,
+    impl: Literal['simple', 'inplace', 'numexpr1', 'numexpr2'] = 'inplace',
 ) -> ndarray:
     """
     Places img1 on top of img2 respecting alpha channels.
@@ -154,7 +156,9 @@ def overlay_alpha_images(
     return raster
 
 
-def _prep_rgb_alpha(img, dtype=np.float32):
+def _prep_rgb_alpha(
+    img: ndarray, dtype: DTypeLike = np.float32
+) -> tuple[ndarray, ndarray]:
     img = im_core.ensure_float01(img, dtype=dtype, copy=False)
     img = im_core.atleast_3channels(img, copy=False)
     c = im_core.num_channels(img)
@@ -170,7 +174,9 @@ def _prep_rgb_alpha(img, dtype=np.float32):
     return rgb, alpha
 
 
-def _alpha_blend_simple(rgb1, alpha1, rgb2, alpha2):
+def _alpha_blend_simple(
+    rgb1: ndarray, alpha1: ndarray, rgb2: ndarray, alpha2: ndarray
+) -> tuple[ndarray, ndarray]:
     """
     Core alpha blending algorithm
 
@@ -188,7 +194,9 @@ def _alpha_blend_simple(rgb1, alpha1, rgb2, alpha2):
     return rgb3, alpha3
 
 
-def _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2):
+def _alpha_blend_inplace(
+    rgb1: ndarray, alpha1: ndarray, rgb2: ndarray, alpha2: ndarray
+) -> tuple[ndarray, ndarray]:
     """
     Uglier but faster(? maybe not) version of the core alpha blending algorithm
     using preallocation and in-place computation where possible.
@@ -239,7 +247,9 @@ def _alpha_blend_inplace(rgb1, alpha1, rgb2, alpha2):
     return rgb3, alpha3
 
 
-def _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2):
+def _alpha_blend_numexpr1(
+    rgb1: ndarray, alpha1: ndarray, rgb2: ndarray, alpha2: ndarray
+) -> tuple[ndarray, ndarray]:
     """Alternative. Not well optimized"""
     import numexpr
 
@@ -254,7 +264,9 @@ def _alpha_blend_numexpr1(rgb1, alpha1, rgb2, alpha2):
     return rgb3, alpha3
 
 
-def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
+def _alpha_blend_numexpr2(
+    rgb1: ndarray, alpha1: ndarray, rgb2: ndarray, alpha2: ndarray
+) -> tuple[ndarray, ndarray]:
     """Alternative. Not well optimized"""
     import numexpr
 
@@ -277,7 +289,7 @@ def _alpha_blend_numexpr2(rgb1, alpha1, rgb2, alpha2):
 def ensure_alpha_channel(
     img: ndarray,
     alpha: float | ndarray = 1.0,
-    dtype: type = np.float32,
+    dtype: DTypeLike = np.float32,
     copy: bool = False,
 ) -> ndarray:
     """

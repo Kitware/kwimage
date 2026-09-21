@@ -6,7 +6,7 @@ backend.
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 # from kwimage.structs import _generic
 import numpy as np
@@ -15,39 +15,106 @@ import ubelt as ub
 from . import _generic
 
 if TYPE_CHECKING:
-    from typing import Any
+    from collections.abc import Iterator, Mapping
+    from numbers import Number
+    from typing import Literal, TypeVar, overload
+
+    from matplotlib.patches import PathPatch
+    from numpy import ndarray
+    from torch import Tensor
+
+    import kwimage
+    from kwimage._typing import RNGInput, TorchDeviceLike
+    from kwimage.structs.mask import CocoMaskRLE
+    from kwimage.structs.polygon import CocoPolygon, CocoPolygonStyle
+
+    SegmentationBackend = kwimage.Mask | kwimage.Polygon | kwimage.MultiPolygon
+    SegmentationFormat = Literal['mask', 'polygon', 'multipolygon']
+    SegmentationCoco = CocoMaskRLE | CocoPolygon | list[CocoPolygon]
+    SegmentationCocoStyle = CocoPolygonStyle
+    SegmentationTranslateScalar = int | float | Number
+    SegmentationTranslateOffset = (
+        SegmentationTranslateScalar
+        | tuple[SegmentationTranslateScalar, SegmentationTranslateScalar]
+    )
+    SegmentationListItemT = TypeVar('SegmentationListItemT')
 
 
 class _WrapperObject(ub.NiceRepr):
-    def __nice__(self):
-        return self.data.__nice__()
+    if TYPE_CHECKING:
+        data: SegmentationBackend
 
-    def draw(self, *args, **kw):
-        return self.data.draw(*args, **kw)
+        def draw_on(
+            self, image: ndarray | None = None, **kw: Any
+        ) -> ndarray: ...
 
-    def draw_on(self, *args, **kw):
-        """
-        See help(self.data.draw_on)
-        """
-        return self.data.draw_on(*args, **kw)
+        def warp(
+            self,
+            transform: ndarray | kwimage.Affine | None,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationBackend: ...
 
-    def warp(self, *args, **kw):
-        return self.data.warp(*args, **kw)
+        def translate(
+            self,
+            offset: SegmentationTranslateOffset,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationBackend: ...
 
-    def translate(self, *args, **kw):
-        return self.data.translate(*args, **kw)
+        def scale(
+            self,
+            factor: float | tuple[float, float],
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationBackend: ...
 
-    def scale(self, *args, **kw):
-        return self.data.scale(*args, **kw)
+        def to_coco(
+            self, style: SegmentationCocoStyle = 'orig'
+        ) -> SegmentationCoco: ...
+        def numpy(self) -> SegmentationBackend: ...
 
-    def to_coco(self, *args, **kw):
-        return self.data.to_coco(*args, **kw)
+        @overload
+        def tensor(self) -> SegmentationBackend: ...
 
-    def numpy(self, *args, **kw):
-        return self.data.numpy(*args, **kw)
+        @overload
+        def tensor(
+            self, device: TorchDeviceLike
+        ) -> SegmentationBackend: ...
 
-    def tensor(self, *args, **kw):
-        return self.data.tensor(*args, **kw)
+    def __nice__(self) -> str:
+        data: Any = self.data
+        return data.__nice__()
+
+    def draw(
+        self, *args: Any, **kw: Any
+    ) -> PathPatch | list[PathPatch | None] | None:
+        data: Any = self.data
+        return data.draw(*args, **kw)
+
+    if not TYPE_CHECKING:
+        def draw_on(self, *args: Any, **kw: Any) -> ndarray:
+            """See help(self.data.draw_on)"""
+            return self.data.draw_on(*args, **kw)
+
+        def warp(self, *args: Any, **kw: Any) -> SegmentationBackend:
+            return self.data.warp(*args, **kw)
+
+        def translate(self, *args: Any, **kw: Any) -> SegmentationBackend:
+            return self.data.translate(*args, **kw)
+
+        def scale(self, *args: Any, **kw: Any) -> SegmentationBackend:
+            return self.data.scale(*args, **kw)
+
+        def to_coco(self, *args: Any, **kw: Any) -> SegmentationCoco:
+            return self.data.to_coco(*args, **kw)
+
+        def numpy(self, *args: Any, **kw: Any) -> SegmentationBackend:
+            return self.data.numpy(*args, **kw)
+
+        def tensor(self, *args: Any, **kw: Any) -> SegmentationBackend:
+            return self.data.tensor(*args, **kw)
 
 
 class Segmentation(_WrapperObject):
@@ -59,12 +126,17 @@ class Segmentation(_WrapperObject):
         format (str): either 'mask', 'polygon', or 'multipolygon'
     """
 
-    def __init__(self, data, format: Any | None = None) -> None:
+    data: SegmentationBackend
+    format: SegmentationFormat | None
+
+    def __init__(
+        self, data: SegmentationBackend, format: SegmentationFormat | None = None
+    ) -> None:
         self.data = data
         self.format = format
 
     @classmethod
-    def random(cls, rng: Any | None = None):
+    def random(cls, rng: RNGInput = None) -> Segmentation:
         """
         Example:
             >>> # xdoctest: +REQUIRES(module:cv2)
@@ -87,31 +159,54 @@ class Segmentation(_WrapperObject):
             data: Any = kwimage.Polygon.random()
         else:
             data: Any = kwimage.Mask.random()
-        return cls.coerce(data)
+        result: Any = cls.coerce(data)
+        return result
 
-    def to_multi_polygon(self):
+    def to_multi_polygon(self) -> kwimage.MultiPolygon:
         return self.data.to_multi_polygon()
 
-    def to_mask(self, dims: Any | None = None, pixels_are: str = 'points'):
+    def to_mask(
+        self, dims: tuple[int, int] | None = None, pixels_are: str = 'points'
+    ) -> kwimage.Mask:
         return self.data.to_mask(dims=dims, pixels_are=pixels_are)
 
-    def box(self):
+    def box(self) -> kwimage.Box:
         return self.data.box()
 
     @property
-    def area(self):
+    def area(self) -> Number | Tensor:
         return self.data.area
 
     @property
-    def meta(self):
-        return self.data.meta
+    def meta(self) -> Mapping[str, object]:
+        data: Any = self.data
+        return data.meta
+
+    if TYPE_CHECKING:
+        @classmethod
+        @overload
+        def coerce(
+            cls,
+            data: Segmentation | SegmentationBackend,
+            dims: tuple[int, int] | None = None,
+        ) -> Segmentation: ...
+
+        @classmethod
+        @overload
+        def coerce(
+            cls, data: object, dims: tuple[int, int] | None = None
+        ) -> Segmentation | None: ...
 
     @classmethod
-    def coerce(cls, data, dims: Any | None = None):
+    def coerce(
+        cls, data: object, dims: tuple[int, int] | None = None
+    ) -> Segmentation | None:
         import kwimage
 
+        self: Segmentation
         if _generic._isinstance2(data, kwimage.Segmentation):
-            self = data
+            data_impl: Any = data
+            self = data_impl
         elif _generic._isinstance2(data, kwimage.Mask):
             self = Segmentation(data, 'mask')
         elif _generic._isinstance2(data, kwimage.Polygon):
@@ -119,20 +214,51 @@ class Segmentation(_WrapperObject):
         elif _generic._isinstance2(data, kwimage.MultiPolygon):
             self = Segmentation(data, 'multipolygon')
         else:
-            data: Any = _coerce_coco_segmentation(data, dims=dims)
-            if data is None:
+            data_impl: Any = _coerce_coco_segmentation(data, dims=dims)
+            if data_impl is None:
                 return None
-            self = cls.coerce(data, dims=dims)
+            self = cls.coerce(data_impl, dims=dims)
         return self
 
 
-class SegmentationList(_generic.ObjectList):
+class SegmentationList(_generic.ObjectList[Segmentation | None]):
+    if TYPE_CHECKING:
+        def warp(
+            self,
+            transform: ndarray | kwimage.Affine | None,
+            input_dims: tuple[int, int] | None = None,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationList: ...
+
+        def scale(
+            self,
+            factor: float | tuple[float, float],
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationList: ...
+
+        def translate(
+            self,
+            offset: SegmentationTranslateOffset,
+            output_dims: tuple[int, int] | None = None,
+            inplace: bool = False,
+        ) -> SegmentationList: ...
+
+        def draw_on(
+            self, image: ndarray, **kwargs: Any
+        ) -> ndarray: ...
+
+        def to_coco(
+            self, style: str = 'orig'
+        ) -> Iterator[SegmentationCoco | None]: ...
+
     """
     Store and manipulate multiple segmentations (masks or polygons), usually
     within the same image
     """
 
-    def to_polygon_list(self):
+    def to_polygon_list(self) -> kwimage.PolygonList:
         """
         Converts all mask objects to multi-polygon objects
         """
@@ -143,7 +269,9 @@ class SegmentationList(_generic.ObjectList):
         )
         return new
 
-    def to_mask_list(self, dims: Any | None = None, pixels_are: str = 'points'):
+    def to_mask_list(
+        self, dims: tuple[int, int] | None = None, pixels_are: str = 'points'
+    ) -> kwimage.MaskList:
         """
         Converts all mask objects to multi-polygon objects
         """
@@ -159,11 +287,19 @@ class SegmentationList(_generic.ObjectList):
         )
         return new
 
-    def to_segmentation_list(self):
+    def to_segmentation_list(self) -> SegmentationList:
         return self
 
     @classmethod
-    def coerce(cls, data, none_policy='raise'):
+    def coerce(
+        cls,
+        data: (
+            list[object]
+            | _generic.ObjectList[SegmentationListItemT]
+            | None
+        ),
+        none_policy: Literal['return-None', 'return-nan', 'raise'] = 'raise',
+    ) -> SegmentationList | None | float:
         """
         Interpret data as a list of Segmentations
 
@@ -173,7 +309,7 @@ class SegmentationList(_generic.ObjectList):
                 Can be: 'return-None', or 'raise'.
         """
         if isinstance(data, (list, _generic.ObjectList)):
-            data = [
+            data_impl: Any = [
                 None if item is None else Segmentation.coerce(item)
                 for item in data
             ]
@@ -182,13 +318,15 @@ class SegmentationList(_generic.ObjectList):
                 return _handle_null_policy(none_policy)
             else:
                 raise TypeError(data)
-        self = cls(data)
+        self = cls(data_impl)
         return self
 
 
 def _handle_null_policy(
-    policy, ex_type=TypeError, ex_msg='cannot accept null input'
-):
+    policy: Literal['return-None', 'return-nan', 'raise'],
+    ex_type: type[Exception] = TypeError,
+    ex_msg: str = 'cannot accept null input',
+) -> None | float:
     """
     For handling a nan or None policy.
 
@@ -222,7 +360,9 @@ def _handle_null_policy(
         )
 
 
-def _coerce_coco_segmentation(data, dims=None):
+def _coerce_coco_segmentation(
+    data: Any, dims: tuple[int, int] | None = None
+) -> SegmentationBackend | Segmentation | None:
     """
     Attempts to auto-inspect the format of segmentation data
 
@@ -272,6 +412,7 @@ def _coerce_coco_segmentation(data, dims=None):
     import kwimage
     from kwimage.structs.mask import MaskFormat
 
+    self: Any
     if isinstance(data, np.ndarray):
         # INPUT TYPE: RAW MASK
         if dims is not None:

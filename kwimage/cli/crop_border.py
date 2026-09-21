@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-import scriptconfig as scfg
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import kwconf
 import ubelt as ub
 
 
-class CropBorderCLI(scfg.DataConfig):
+class CropBorderCLI(kwconf.Config):
     """
     Crop uniform borders from an image.
 
@@ -13,8 +17,12 @@ class CropBorderCLI(scfg.DataConfig):
     """
 
     __command__ = 'crop_border'
-    src = scfg.Value(None, position=1, help='Path to the input image.')
-    dst = scfg.Value(
+    src: str = kwconf.Value(
+        required=True,
+        position=1,
+        help='Path to the input image.',
+    )
+    dst: str | None = kwconf.Value(
         None,
         position=2,
         help=ub.paragraph(
@@ -26,16 +34,16 @@ class CropBorderCLI(scfg.DataConfig):
     )
 
     @classmethod
-    def main(cls, argv=1, **kwargs):
+    def main(
+        cls: type[CropBorderCLI],
+        argv: bool | Sequence[str] | str = True,
+        **kwargs: object,
+    ) -> None:
         """
         Example:
             >>> # xdoctest: +SKIP
-            >>> from kwimage.cli.crop_border import *  # NOQA
-            >>> argv = 0
-            >>> kwargs = dict()
-            >>> cls = CropBorderCLI
-            >>> config = cls(**kwargs)
-            >>> cls.main(argv=argv, **config)
+            >>> from kwimage.cli.crop_border import CropBorderCLI
+            >>> CropBorderCLI.main(argv=False, src='input.png')
         """
         import rich
         from rich.markup import escape
@@ -43,7 +51,8 @@ class CropBorderCLI(scfg.DataConfig):
         import kwimage
         from kwimage.im_core import crop_border_by_color
 
-        config = cls.cli(argv=argv, data=kwargs, strict=True)
+        config = cls()
+        config.load(data=kwargs, argv=argv, strict=True)
         rich.print('config = ' + escape(ub.urepr(config, nl=1)))
 
         src_fpath = ub.Path(config.src)
@@ -60,7 +69,6 @@ __cli__ = CropBorderCLI
 
 if __name__ == '__main__':
     """
-
     CommandLine:
         python ~/code/kwimage/kwimage/cli/crop_border.py
         python -m kwimage.cli.crop_border

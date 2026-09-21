@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 
 
-def _boolean_environ(key, default=False):
+def _boolean_environ(key: str, default: bool = False) -> bool:
     value = os.environ.get(key, '').lower()
     TRUTHY_ENVIRONS = {'true', 'on', 'yes', '1'}
     FALSY_ENVIRONS = {'false', 'off', 'no', '0'}

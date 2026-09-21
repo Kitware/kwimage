@@ -79,7 +79,7 @@ from __future__ import annotations
 import numbers  # NOQA
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 import kwarray
 import numpy as np
@@ -91,17 +91,28 @@ from kwimage.structs import _generic  # NOQA
 if TYPE_CHECKING:
     from collections.abc import Generator
     from numbers import Number
-    from typing import Any, Callable, List, Optional, Sequence, Tuple
+    from typing import Any, Callable, List, Optional, Tuple, overload
 
-    import matplotlib
+    from matplotlib.axes import Axes
     import shapely
     import torch
     from numpy import ndarray
-    from numpy.typing import ArrayLike
+    from numpy.typing import ArrayLike, DTypeLike
     from torch import Tensor
 
-    import kwimage
-    from kwimage._typing import TransformLike
+    from kwimage._typing import (
+        ImgAugBoundingBoxesOnImage, RNGInput, TorchDeviceLike, TransformLike,
+    )
+    from kwimage.im_color import Color
+    from kwimage.structs.points import Points
+    from kwimage.structs.polygon import PolygonList
+
+    BoxArray = ndarray | Tensor
+    BoxDType = np.dtype[Any] | torch.dtype
+    BoxDTypeLike = DTypeLike | torch.dtype
+    BoxIndices = Sequence[int | np.integer[Any]] | ndarray | Tensor
+    BoxPointsLike = Points | ndarray | Tensor
+    ColorLike = Color | str | Sequence[int | float]
 
 
 __all__ = ['Boxes']
@@ -219,8 +230,11 @@ class BoxFormat:
 
 
 def box_ious(
-    ltrb1: ndarray, ltrb2: ndarray, bias: int = 0, impl: str | None = None
-):
+    ltrb1: BoxArray,
+    ltrb2: BoxArray,
+    bias: int = 0,
+    impl: str | None = None,
+) -> BoxArray:
     """
     Args:
         ltrb1 (ndarray): (N, 4) ltrb format
@@ -257,31 +271,33 @@ def box_ious(
         >>>     ious_py = box_ious(ltrb1, ltrb2, bias=1, impl='py')
         >>>     assert np.all(np.isclose(ious_c, ious_py))
     """
-    torch = sys.modules.get('torch', None)
+    ltrb1_dyn = cast(Any, ltrb1)
+    ltrb2_dyn = cast(Any, ltrb2)
+    torch = cast(Any, sys.modules.get('torch', None))
     if impl is None or impl == 'auto':
-        if torch is not None and torch.is_tensor(ltrb1):
+        if torch is not None and torch.is_tensor(ltrb1_dyn):
             impl = 'torch'
         else:
             impl = 'py' if _bbox_ious_c is None else 'c'
 
-    if impl == 'torch' or (torch is not None and torch.is_tensor(ltrb1)):
+    if impl == 'torch' or (torch is not None and torch.is_tensor(ltrb1_dyn)):
         # TODO: add tests for equality with other methods or show why it should
         # be different.
         # NOTE: this is done in boxes.ious
-        return _box_ious_torch(ltrb1, ltrb2, bias)
+        return _box_ious_torch(ltrb1_dyn, ltrb2_dyn, bias)
     elif impl == 'c':
         if _bbox_ious_c is None:
             raise Exception('The Boxes C module is not available')
         return _bbox_ious_c(
-            ltrb1.astype(np.float32), ltrb2.astype(np.float32), bias
+            ltrb1_dyn.astype(np.float32), ltrb2_dyn.astype(np.float32), bias
         )
     elif impl == 'py':
-        return _box_ious_py(ltrb1, ltrb2, bias)
+        return _box_ious_py(ltrb1_dyn, ltrb2_dyn, bias)
     else:
         raise KeyError(impl)
 
 
-def _box_ious_torch(ltrb1, ltrb2, bias=0):
+def _box_ious_torch(ltrb1: Tensor, ltrb2: Tensor, bias: int = 0) -> Tensor:
     """
     Example:
         >>> # xdoctest: +REQUIRES(module:torch)
@@ -295,7 +311,8 @@ def _box_ious_torch(ltrb1, ltrb2, bias=0):
     """
     # ltrb1 = ltrb1.view(-1, 4)
     # ltrb2 = ltrb2.view(-1, 4)
-    torch = sys.modules.get('torch', None)
+    import torch
+
     w1 = ltrb1[..., 2] - ltrb1[..., 0] + bias
     h1 = ltrb1[..., 3] - ltrb1[..., 1] + bias
     w2 = ltrb2[..., 2] - ltrb2[..., 0] + bias
@@ -322,7 +339,7 @@ def _box_ious_torch(ltrb1, ltrb2, bias=0):
     return ious
 
 
-def _box_ious_py(ltrb1, ltrb2, bias=0):
+def _box_ious_py(ltrb1: ndarray, ltrb2: ndarray, bias: int = 0) -> ndarray:
     """
     This is the fastest python implementation of bbox_ious I found
     """
@@ -354,7 +371,7 @@ def _box_ious_py(ltrb1, ltrb2, bias=0):
     return ious
 
 
-def _isect_areas(ltrb1, ltrb2, bias=0, _impl=None):
+def _isect_areas(ltrb1: Any, ltrb2: Any, bias: int = 0, _impl: Any = None) -> Any:
     """
     Returns only the area of the intersection
     """
@@ -385,12 +402,21 @@ class _BoxConversionMixins:
     if _USE_SLOTS:
         __slots__ = tuple()
 
-    convert_funcs: dict[str, Callable] = {}
+    if TYPE_CHECKING:
+        data: BoxArray
+        format: str
+        components: list[BoxArray]
+        br_x: BoxArray
+        br_y: BoxArray
+
+        def copy(self) -> Boxes: ...
+
+    convert_funcs: dict[str, Callable[..., Boxes]] = {}
 
     def _register_convertor(
         key: str, convert_funcs: dict[str, Any] = convert_funcs
-    ):
-        def _reg(func):
+    ) -> Callable[[Callable[..., Boxes]], Callable[..., Boxes]]:
+        def _reg(func: Callable[..., Boxes]) -> Callable[..., Boxes]:
             convert_funcs[key] = func
             return func
 
@@ -452,9 +478,9 @@ class _BoxConversionMixins:
             )
 
     @_register_convertor(BoxFormat.XXYY)
-    def to_xxyy(self, copy: bool = True):
+    def to_xxyy(self, copy: bool = True) -> Boxes:
         if self.format == BoxFormat.XXYY:
-            return self.copy() if copy else self
+            return self.copy() if copy else cast('Boxes', self)
         else:
             # Only difference between ltrb and extent=xxyy is the column order
             # xxyy: is x1, x2, y1, y2
@@ -465,27 +491,28 @@ class _BoxConversionMixins:
     to_extent = to_xxyy
 
     @_register_convertor(BoxFormat.XYWH)
-    def to_xywh(self, copy: bool = True):
+    def to_xywh(self, copy: bool = True) -> Boxes:
         if self.format == BoxFormat.XYWH:
-            return self.copy() if copy else self
-        elif self.format == BoxFormat.CXYWH:
-            cx, cy, w, h = self.components
+            return self.copy() if copy else cast('Boxes', self)
+        components = cast('list[Any]', self.components)
+        if self.format == BoxFormat.CXYWH:
+            cx, cy, w, h = components
             x1 = cx - w / 2
             y1 = cy - h / 2
         elif self.format == BoxFormat.LTRB:
-            x1, y1, x2, y2 = self.components
+            x1, y1, x2, y2 = components
             w = x2 - x1
             h = y2 - y1
         elif self.format == BoxFormat.XXYY:
-            x1, x2, y1, y2 = self.components
+            x1, x2, y1, y2 = components
             w = x2 - x1
             h = y2 - y1
         elif self.format == BoxFormat._YYXX:
-            y1, y2, x1, x2 = self.components
+            y1, y2, x1, x2 = components
             w = x2 - x1
             h = y2 - y1
         elif self.format == BoxFormat._RCHW:
-            y1, x1, h, w = self.components
+            y1, x1, h, w = components
             return self.to_ltrb(copy=copy).to_xywh(copy=copy)
         else:
             raise KeyError(
@@ -495,21 +522,22 @@ class _BoxConversionMixins:
         return Boxes(xywh, BoxFormat.XYWH, check=False)
 
     @_register_convertor(BoxFormat.CXYWH)
-    def to_cxywh(self, copy: bool = True):
+    def to_cxywh(self, copy: bool = True) -> Boxes:
         if self.format == BoxFormat.CXYWH:
-            return self.copy() if copy else self
-        elif self.format == BoxFormat.XYWH:
-            x1, y1, w, h = self.components
+            return self.copy() if copy else cast('Boxes', self)
+        components = cast('list[Any]', self.components)
+        if self.format == BoxFormat.XYWH:
+            x1, y1, w, h = components
             cx = x1 + (w / 2)
             cy = y1 + (h / 2)
         elif self.format == BoxFormat.LTRB:
-            x1, y1, x2, y2 = self.components
+            x1, y1, x2, y2 = components
             w = x2 - x1
             h = y2 - y1
             cx = (x1 + x2) / 2
             cy = (y1 + y2) / 2
         elif self.format == BoxFormat.XXYY:
-            x1, x2, y1, y2 = self.components
+            x1, x2, y1, y2 = components
             w = x2 - x1
             h = y2 - y1
             cx = (x1 + x2) / 2
@@ -526,13 +554,14 @@ class _BoxConversionMixins:
         return Boxes(cxywh, BoxFormat.CXYWH, check=False)
 
     @_register_convertor(BoxFormat.LTRB)
-    def to_ltrb(self, copy: bool = True):
+    def to_ltrb(self, copy: bool = True) -> Boxes:
         if self.format == BoxFormat.LTRB:
-            return self.copy() if copy else self
-        elif self.format == BoxFormat.XXYY:
-            x1, x2, y1, y2 = self.components
+            return self.copy() if copy else cast('Boxes', self)
+        components = cast('list[Any]', self.components)
+        if self.format == BoxFormat.XXYY:
+            x1, x2, y1, y2 = components
         elif self.format == BoxFormat.CXYWH:
-            cx, cy, w, h = self.components
+            cx, cy, w, h = components
             half_w = w / 2
             half_h = h / 2
             x1 = cx - half_w
@@ -540,13 +569,13 @@ class _BoxConversionMixins:
             y1 = cy - half_h
             y2 = cy + half_h
         elif self.format == BoxFormat.XYWH:
-            x1, y1, w, h = self.components
+            x1, y1, w, h = components
             x2 = x1 + w
             y2 = y1 + h
         elif self.format == BoxFormat._YYXX:
-            y1, y2, x1, x2 = self.components
+            y1, y2, x1, x2 = components
         elif self.format == BoxFormat._RCHW:
-            y1, x1, h, w = self.components
+            y1, x1, h, w = components
             x2 = x1 + w
             y2 = y1 + h
         else:
@@ -556,22 +585,25 @@ class _BoxConversionMixins:
         ltrb = _cat([x1, y1, x2, y2])
         return Boxes(ltrb, BoxFormat.LTRB, check=False)
 
-    def to_tlbr(self, **kwargs):
-        ub.schedule_deprecation(
-            'kwimage',
-            'Boxes.to_tlbr',
-            'method',
-            migration='Use Boxes.to_ltrb instead.',
-            deprecate='0.9.8',
-            error='0.11.0',
-            remove='0.12.0',
-        )
-        return self.to_ltrb(**kwargs)
+    if TYPE_CHECKING:
+        def to_tlbr(self, copy: bool = True) -> Boxes: ...
+    else:
+        def to_tlbr(self, **kwargs: Any) -> Boxes:
+            ub.schedule_deprecation(
+                'kwimage',
+                'Boxes.to_tlbr',
+                'method',
+                migration='Use Boxes.to_ltrb instead.',
+                deprecate='0.9.8',
+                error='0.11.0',
+                remove='0.12.0',
+            )
+            return self.to_ltrb(**kwargs)
 
     @_register_convertor(BoxFormat._RCHW)
-    def _to_rchw(self, copy=True):
+    def _to_rchw(self, copy: bool = True) -> Boxes:
         if self.format == BoxFormat._RCHW:
-            return self.copy() if copy else self
+            return self.copy() if copy else cast('Boxes', self)
         if self.format == BoxFormat.XYWH:
             _rchw = self.data[..., [1, 0, 3, 2]]
         else:
@@ -579,16 +611,18 @@ class _BoxConversionMixins:
         return Boxes(_rchw, BoxFormat._RCHW, check=False)
 
     @_register_convertor(BoxFormat._YYXX)
-    def _to_yyxx(self, copy=True):
+    def _to_yyxx(self, copy: bool = True) -> Boxes:
         if self.format == BoxFormat._YYXX:
-            return self.copy() if copy else self
+            return self.copy() if copy else cast('Boxes', self)
         if self.format == BoxFormat.LTRB:
             _yyxx = self.data[..., [1, 3, 0, 2]]
         else:
             _yyxx = self.to_ltrb(copy)._to_yyxx(copy)
         return Boxes(_yyxx, BoxFormat._YYXX, check=False)
 
-    def to_imgaug(self, shape: tuple):
+    def to_imgaug(
+        self, shape: Sequence[int] | None
+    ) -> ImgAugBoundingBoxesOnImage:
         """
         Args:
             shape (tuple): shape of image that boxes belong to
@@ -612,16 +646,14 @@ class _BoxConversionMixins:
             )
 
         if not isinstance(shape, tuple):
-            import kwarray
-
-            shape = tuple(kwarray.ArrayAPI.list(shape))
+            shape = tuple(shape)
 
         ltrb = self.to_ltrb(copy=False).data
         bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in ltrb]
         bboi = imgaug.BoundingBoxesOnImage(bbs, shape=shape)
         return bboi
 
-    def __json__(self):
+    def __json__(self) -> dict[str, object]:
         json_boxes = {
             'type': 'kwimage.Boxes',
             'properties': {
@@ -684,15 +716,18 @@ class _BoxConversionMixins:
         """
         from shapely.geometry import Polygon
 
+        box_cls = cast('type[Boxes]', cls)
         if isinstance(geom, Polygon):
             xmin, ymin, xmax, ymax = geom.bounds
-            self = Boxes(np.array([geom.bounds]), 'ltrb', canonical=True)
+            self = box_cls(np.array([geom.bounds]), 'ltrb', canonical=True)
         else:
             raise NotImplementedError
         return self
 
     @classmethod
-    def coerce(Boxes, data, format: str | None = None, **kwargs) -> Boxes:
+    def coerce(
+        cls, data: object, format: str | None = None, **kwargs: object
+    ) -> Boxes:
         """
         Args:
             data : can be :
@@ -710,10 +745,12 @@ class _BoxConversionMixins:
         """
         from shapely.geometry import Polygon
 
-        if isinstance(data, Boxes):
+        box_cls = cast('type[Boxes]', cls)
+        kwargs_impl: Any = kwargs
+        if isinstance(data, box_cls):
             self = data
         elif isinstance(data, Polygon):
-            self = Boxes.from_shapely(data)
+            self = box_cls.from_shapely(data)
         else:
             _arr_data = None
             if isinstance(data, np.ndarray):
@@ -722,16 +759,16 @@ class _BoxConversionMixins:
                 _arr_data = np.array(data)
 
             if _arr_data is not None:
-                format = kwargs.get('format', format)
+                format = kwargs_impl.get('format', format)
                 if format is None:
                     raise Exception('ambiguous, specify Box format')
-                self = Boxes(_arr_data, format=format)
+                self = box_cls(_arr_data, format=format)
             else:
                 raise NotImplementedError
         return self
 
     @classmethod
-    def from_imgaug(Boxes, bboi: Any) -> Boxes:
+    def from_imgaug(cls, bboi: ImgAugBoundingBoxesOnImage) -> Boxes:
         """
         Args:
             bboi (ia.BoundingBoxesOnImage):
@@ -750,17 +787,18 @@ class _BoxConversionMixins:
             [[bb.x1, bb.y1, bb.x2, bb.y2] for bb in bboi.bounding_boxes]
         )
         ltrb = ltrb.reshape(-1, 4)
-        return Boxes(ltrb, format=BoxFormat.LTRB, check=False)
+        box_cls = cast('type[Boxes]', cls)
+        return box_cls(ltrb, format=BoxFormat.LTRB, check=False)
 
     @classmethod
     def from_slice(
-        Boxes,
-        slices,
+        cls,
+        slices: slice | Sequence[slice] | None,
         shape: Tuple[int, int] | None = None,
         clip: bool = True,
         endpoint: bool = True,
         wrap: bool = False,
-    ):
+    ) -> Boxes:
         """
         Creates a box from a 2D slice
 
@@ -940,13 +978,15 @@ class _BoxConversionMixins:
                 raise ValueError(f'Invalid y slice tl_y={tl_y}, rb_y={rb_y}')
 
         if clip and shape is not None:
-            tl_x = max(min(tl_x, width), 0)
-            tl_y = max(min(tl_y, height), 0)
-            rb_x = max(min(rb_x, width), 0)
-            rb_y = max(min(rb_y, height), 0)
+            clip_height, clip_width = shape[0:2]
+            tl_x = max(min(tl_x, clip_width), 0)
+            tl_y = max(min(tl_y, clip_height), 0)
+            rb_x = max(min(rb_x, clip_width), 0)
+            rb_y = max(min(rb_y, clip_height), 0)
 
         ltrb = np.array([[tl_x, tl_y, rb_x, rb_y]])
-        box = Boxes(ltrb, 'ltrb', check=False, canonical=True)
+        box_cls = cast('type[Boxes]', cls)
+        box = box_cls(ltrb, 'ltrb', check=False, canonical=True)
         # Using box clip took 70% of the time, new logic does it in scalar
         # space
         # if clip:
@@ -1009,7 +1049,7 @@ class _BoxConversionMixins:
         for row in self.to_xywh(copy=False).data.tolist():
             yield [round(x, 4) for x in row]
 
-    def to_polygons(self) -> kwimage.PolygonList:
+    def to_polygons(self) -> PolygonList:
         """
         Convert each box to a polygon object
 
@@ -1052,8 +1092,15 @@ class _BoxPropertyMixins:
     if _USE_SLOTS:
         __slots__ = tuple()
 
+    if TYPE_CHECKING:
+        data: BoxArray
+
+        def to_cxywh(self, copy: bool = True) -> Boxes: ...
+        def to_ltrb(self, copy: bool = True) -> Boxes: ...
+        def to_xywh(self, copy: bool = True) -> Boxes: ...
+
     @property
-    def xy_center(self):
+    def xy_center(self) -> BoxArray:
         """
         Returns the xy coordinates of the box centers
 
@@ -1071,26 +1118,27 @@ class _BoxPropertyMixins:
         return xy
 
     @property
-    def components(self):
+    def components(self) -> list[BoxArray]:
         a = self.data[..., 0:1]
         b = self.data[..., 1:2]
         c = self.data[..., 2:3]
         d = self.data[..., 3:4]
         return [a, b, c, d]
 
-    def _component(self, idx):
+    def _component(self, idx: int) -> BoxArray:
         return self.data[..., idx : idx + 1]
 
     @property
-    def dtype(self):
-        return self.data.dtype
+    def dtype(self) -> BoxDType:
+        dtype_impl: Any = self.data.dtype
+        return dtype_impl
 
     @property
-    def shape(self):
-        return self.data.shape
+    def shape(self) -> tuple[int, ...]:
+        return tuple(self.data.shape)
 
     @property
-    def tl_x(self):
+    def tl_x(self) -> BoxArray:
         """
         Top left x coordinate
 
@@ -1101,7 +1149,7 @@ class _BoxPropertyMixins:
         return self.to_ltrb(copy=False)._component(0)
 
     @property
-    def tl_y(self):
+    def tl_y(self) -> BoxArray:
         """
         Top left y coordinate
 
@@ -1112,7 +1160,7 @@ class _BoxPropertyMixins:
         return self.to_ltrb(copy=False)._component(1)
 
     @property
-    def br_x(self):
+    def br_x(self) -> BoxArray:
         """
         Bottom right x coordinate
 
@@ -1123,7 +1171,7 @@ class _BoxPropertyMixins:
         return self.to_ltrb(copy=False)._component(2)
 
     @property
-    def br_y(self):
+    def br_y(self) -> BoxArray:
         """
         Bottom right y coordinate
 
@@ -1134,7 +1182,7 @@ class _BoxPropertyMixins:
         return self.to_ltrb(copy=False)._component(3)
 
     @property
-    def width(self):
+    def width(self) -> BoxArray:
         """
         Bounding box width
 
@@ -1148,7 +1196,7 @@ class _BoxPropertyMixins:
         return w
 
     @property
-    def height(self):
+    def height(self) -> BoxArray:
         """
         Bounding box height
 
@@ -1162,7 +1210,7 @@ class _BoxPropertyMixins:
         return h
 
     @property
-    def aspect_ratio(self):
+    def aspect_ratio(self) -> BoxArray:
         """
         Example:
             >>> Boxes([25, 30, 15, 10], 'xywh').aspect_ratio
@@ -1171,10 +1219,12 @@ class _BoxPropertyMixins:
             array([[nan]])
         """
         with np.errstate(divide='ignore', invalid='ignore'):
-            return self.width / self.height
+            width = cast(Any, self.width)
+            height = cast(Any, self.height)
+            return width / height
 
     @property
-    def area(self):
+    def area(self) -> BoxArray:
         """
         Example:
             >>> Boxes([25, 30, 15, 10], 'xywh').area
@@ -1182,11 +1232,11 @@ class _BoxPropertyMixins:
             >>> Boxes([[25, 30, 0, 0]], 'xywh').area
             array([[0]])
         """
-        w, h = self.to_xywh(copy=False).components[2:4]
+        w, h = cast('list[Any]', self.to_xywh(copy=False).components[2:4])
         return w * h
 
     @property
-    def center(self) -> Tuple[ndarray, ndarray]:
+    def center(self) -> tuple[BoxArray, BoxArray]:
         """
         The center xy-coordinates
 
@@ -1204,7 +1254,7 @@ class _BoxPropertyMixins:
         return cx, cy
 
     @property
-    def center_x(self) -> Tuple[ndarray, ndarray]:
+    def center_x(self) -> BoxArray:
         """
         The center xy-coordinates
 
@@ -1221,7 +1271,7 @@ class _BoxPropertyMixins:
         return self.to_cxywh(copy=False).components[0]
 
     @property
-    def center_y(self) -> Tuple[ndarray, ndarray]:
+    def center_y(self) -> BoxArray:
         """
         The center xy-coordinates
 
@@ -1246,7 +1296,24 @@ class _BoxTransformMixins:
     if _USE_SLOTS:
         __slots__ = tuple()
 
-    def _warp_imgaug(self, augmenter, input_dims, inplace: bool = False):
+    if TYPE_CHECKING:
+        data: BoxArray
+        format: str
+        _impl: Any
+
+        def to_cxywh(self, copy: bool = True) -> Boxes: ...
+        def to_imgaug(
+            self, shape: Sequence[int] | None
+        ) -> ImgAugBoundingBoxesOnImage: ...
+        def to_ltrb(self, copy: bool = True) -> Boxes: ...
+        def to_xywh(self, copy: bool = True) -> Boxes: ...
+
+    def _warp_imgaug(
+        self,
+        augmenter: Any,
+        input_dims: tuple[int, int] | None,
+        inplace: bool = False,
+    ) -> Boxes:
         """
         Args:
             augmenter (imgaug.augmenters.Augmenter):
@@ -1270,9 +1337,11 @@ class _BoxTransformMixins:
             >>> new = self._warp_imgaug(augmenter, input_dims)
         """
         new = (
-            self
+            cast('Boxes', self)
             if inplace
-            else self.__class__(self.data, self.format, canonical=True)
+            else cast('type[Boxes]', self.__class__)(
+                self.data, self.format, canonical=True
+            )
         )
         bboi = self.to_imgaug(shape=input_dims)
         bboi = augmenter.augment_bounding_boxes([bboi])[0]
@@ -1364,16 +1433,17 @@ class _BoxTransformMixins:
         import kwimage
         from kwimage._typing import SKImageGeometricTransform
 
-        torch = sys.modules.get('torch', None)
+        torch = cast(Any, sys.modules.get('torch', None))
+        data_dyn = cast(Any, self.data)
 
         if inplace:
-            new = self
-            new_data = self.data
+            new = cast('Boxes', self)
+            new_data = data_dyn
         else:
-            if torch is not None and torch.is_tensor(self.data):
-                new_data = self.data.float().clone()
+            if torch is not None and torch.is_tensor(data_dyn):
+                new_data = data_dyn.float().clone()
             else:
-                new_data = self.data.astype(float, copy=True)
+                new_data = data_dyn.astype(float, copy=True)
             new = Boxes(new_data, self.format, canonical=True)
 
         if transform is None:
@@ -1493,7 +1563,7 @@ class _BoxTransformMixins:
 
         return new
 
-    def corners(self) -> np.ndarray:
+    def corners(self) -> ndarray:
         """
         Return the corners of the boxes
 
@@ -1518,7 +1588,7 @@ class _BoxTransformMixins:
 
     def scale(
         self,
-        factor: float | Tuple[float, float],
+        factor: float | Tuple[float, float] | ArrayLike,
         about: str | ArrayLike = 'origin',
         output_dims: Tuple | None = None,
         inplace: bool = False,
@@ -1590,36 +1660,39 @@ class _BoxTransformMixins:
             >>> y2 = self.toformat('xxyy').scale(scale_xy, about='center').toformat('cxywh')
             >>> assert ub.allsame([y0.data, y1.data, y2.data], eq=np.allclose)
         """
-        if not ub.iterable(factor):
-            sx = sy = factor
-        elif isinstance(factor, (list, tuple)):
-            sx, sy = factor
+        factor_dyn = cast(Any, factor)
+        about_dyn = cast(Any, about)
+        if not ub.iterable(factor_dyn):
+            sx = sy = factor_dyn
+        elif isinstance(factor_dyn, (list, tuple)):
+            sx, sy = factor_dyn
         else:
-            sx = factor[..., 0]
-            sy = factor[..., 1]
+            sx = factor_dyn[..., 0]
+            sy = factor_dyn[..., 1]
 
+        data_dyn = cast(Any, self.data)
         if inplace:
-            new = self
-            new_data = self.data
+            new = cast('Boxes', self)
+            new_data = data_dyn
         else:
-            torch = sys.modules.get('torch', None)
-            if torch is not None and torch.is_tensor(self.data):
-                new_data = self.data.float().clone()
+            torch = cast(Any, sys.modules.get('torch', None))
+            if torch is not None and torch.is_tensor(data_dyn):
+                new_data = data_dyn.float().clone()
             else:
-                new_data = self.data.astype(float, copy=True)
+                new_data = data_dyn.astype(float, copy=True)
             new = Boxes(new_data, self.format, canonical=True)
 
         if _numel(new_data) > 0:
-            if isinstance(about, str):
-                if about == 'origin':
-                    about = None
-                elif about in {'center', 'centroid'}:
+            if isinstance(about_dyn, str):
+                if about_dyn == 'origin':
+                    about_dyn = None
+                elif about_dyn in {'center', 'centroid'}:
                     # about = self.xy_center
-                    about = self.to_cxywh(copy=False).data[..., 0:2]
+                    about_dyn = self.to_cxywh(copy=False).data[..., 0:2]
                 else:
-                    raise KeyError(about)
+                    raise KeyError(about_dyn)
 
-            if about is None:
+            if about_dyn is None:
                 # scale about the origin
                 if self.format in [
                     BoxFormat.XYWH,
@@ -1641,8 +1714,8 @@ class _BoxTransformMixins:
                     )
             else:
                 # scale about some point: translate, scale, untranslate
-                about_x = about[..., 0]
-                about_y = about[..., 1]
+                about_x = about_dyn[..., 0]
+                about_y = about_dyn[..., 1]
                 if self.format in [BoxFormat.XYWH, BoxFormat.CXYWH]:
                     new_data[..., 0] = (
                         new_data[..., 0] - about_x
@@ -1685,7 +1758,10 @@ class _BoxTransformMixins:
         return new
 
     def translate(
-        self, amount, output_dims: Tuple | None = None, inplace: bool = False
+        self,
+        amount: float | Tuple[float, float] | ArrayLike,
+        output_dims: Tuple | None = None,
+        inplace: bool = False,
     ) -> Boxes:
         """
         Shift the boxes up/down left/right
@@ -1732,23 +1808,25 @@ class _BoxTransformMixins:
             >>> y2 = boxes.toformat('xxyy').translate(dxdy).toformat('xywh')
             >>> assert ub.allsame([y0, y1, y2])
         """
-        if not ub.iterable(amount):
-            tx = ty = amount
-        elif isinstance(amount, (list, tuple)):
-            tx, ty = amount
+        amount_dyn = cast(Any, amount)
+        if not ub.iterable(amount_dyn):
+            tx = ty = amount_dyn
+        elif isinstance(amount_dyn, (list, tuple)):
+            tx, ty = amount_dyn
         else:
-            tx = amount[..., 0]
-            ty = amount[..., 1]
+            tx = amount_dyn[..., 0]
+            ty = amount_dyn[..., 1]
 
+        data_dyn = cast(Any, self.data)
         if inplace:
-            new = self
-            new_data = self.data
+            new = cast('Boxes', self)
+            new_data = data_dyn
         else:
-            torch = sys.modules.get('torch', None)
-            if torch is not None and torch.is_tensor(self.data):
-                new_data = self.data.float().clone()
+            torch = cast(Any, sys.modules.get('torch', None))
+            if torch is not None and torch.is_tensor(data_dyn):
+                new_data = data_dyn.float().clone()
             else:
-                new_data = self.data.astype(float, copy=True)
+                new_data = data_dyn.astype(float, copy=True)
             new = Boxes(new_data, self.format, canonical=True)
 
         if _numel(new_data) > 0:
@@ -1831,7 +1909,7 @@ class _BoxTransformMixins:
         if inplace:
             if self.format != BoxFormat.LTRB:
                 raise ValueError('Must be in ltrb format to operate inplace')
-            new = self
+            new = cast('Boxes', self)
         else:
             new = self.to_ltrb(copy=True)
         if len(new) == 0:
@@ -1953,7 +2031,7 @@ class _BoxTransformMixins:
                     raise ValueError(
                         'Must be in xywh format to operate inplace'
                     )
-                new = self
+                new = cast('Boxes', self)
             else:
                 new = self.to_xywh(copy=True)
         elif about == 'cxy':
@@ -1962,21 +2040,25 @@ class _BoxTransformMixins:
                     raise ValueError(
                         'Must be in cxywh format to operate inplace'
                     )
-                new = self
+                new = cast('Boxes', self)
             else:
                 new = self.to_cxywh(copy=True)
         else:
             raise ValueError(about)
 
         if _numel(new.data):
+            # The backend of the assigned values is correlated with new.data at
+            # runtime, but that relationship cannot be represented as two
+            # independent ndarray-or-Tensor unions.
+            new_data = cast(Any, new.data)
             if width is not None:
-                new.data[..., 2] = width
+                new_data[..., 2] = width
             if height is not None:
-                new.data[..., 3] = height
+                new_data[..., 3] = height
         new = new.toformat(self.format, copy=False)
         return new
 
-    def _set_axis(self, new_width):
+    def _set_axis(self, new_width: Any) -> None:
         pass
 
     def pad(
@@ -2036,7 +2118,7 @@ class _BoxTransformMixins:
         impl = self._impl
 
         if inplace:
-            new = self
+            new = cast('Boxes', self)
             new_data = self.data
         else:
             dtype = impl.result_type(self.data, x_left, y_top, x_right, y_bot)
@@ -2045,15 +2127,16 @@ class _BoxTransformMixins:
 
         if _numel(new_data) > 0:
             if self.format in [BoxFormat.LTRB]:
-                new_data[..., 0] -= x_left
-                new_data[..., 1] -= y_top
-                new_data[..., 2] += x_right
-                new_data[..., 3] += y_bot
+                mutable_data = cast(Any, new_data)
+                mutable_data[..., 0] -= x_left
+                mutable_data[..., 1] -= y_top
+                mutable_data[..., 2] += x_right
+                mutable_data[..., 3] += y_bot
             else:
                 raise NotImplementedError('Cannot pad: {}'.format(self.format))
         return new
 
-    def transpose(self):
+    def transpose(self) -> Boxes:
         """
         Reflects box coordinates about the line y=x.
 
@@ -2062,7 +2145,7 @@ class _BoxTransformMixins:
             <Boxes(ltrb, array([[1, 0, 4, 2]]))>
         """
         x, y, w, h = self.to_xywh().components
-        new = self.__class__(
+        new = cast('type[Boxes]', self.__class__)(
             _cat([y, x, h, w]), format=BoxFormat.XYWH, canonical=True
         )
         new = new.toformat(self.format)
@@ -2118,18 +2201,27 @@ class _BoxDrawMixins:
     if _USE_SLOTS:
         __slots__ = tuple()
 
+    if TYPE_CHECKING:
+        components: list[BoxArray]
+        shape: tuple[int, ...]
+
+        def __getitem__(self, index: Any) -> Boxes: ...
+        def bounding_box(self) -> Boxes: ...
+        def to_ltrb(self, copy: bool = True) -> Boxes: ...
+        def to_xywh(self, copy: bool = True) -> Boxes: ...
+
     def draw(
         self,
-        color: str | Any | List[Any] = 'blue',
+        color: ColorLike | Sequence[ColorLike] = 'blue',
         alpha: float | List[float] | None = None,
         labels: List[str] | None = None,
         centers: bool = False,
         fill: bool = False,
         lw: float = 2,
-        ax: Optional[matplotlib.axes.Axes] = None,
+        ax: Axes | None = None,
         setlim: bool = False,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Draws boxes using matplotlib. Wraps around kwplot.draw_boxes
 
@@ -2213,13 +2305,13 @@ class _BoxDrawMixins:
     def draw_on(
         self,
         image: ndarray | None = None,
-        color: str | Any | List[Any] = 'blue',
-        alpha: float | None = None,
-        labels: List[str] | None = None,
+        color: ColorLike | Sequence[ColorLike] = 'blue',
+        alpha: float | Sequence[float] | None = None,
+        labels: Sequence[str] | None = None,
         copy: bool = False,
         thickness: int = 2,
-        edgecolor: str | tuple | None = None,
-        facecolor: str | tuple | None = None,
+        edgecolor: ColorLike | Sequence[ColorLike] | bool | None = None,
+        facecolor: ColorLike | None = None,
         fill: bool = False,
         border: bool = True,
         label_loc: str = 'top_left',
@@ -2344,8 +2436,8 @@ class _BoxDrawMixins:
             # If image is not given, use the boxes to allocate enough
             # room to draw
             bounds = self.bounding_box().scale(1.1).quantize()
-            w = bounds.br_x.item() + thickness + 1
-            h = bounds.br_y.item() + thickness + 1
+            w = int(bounds.br_x.item()) + thickness + 1
+            h = int(bounds.br_y.item()) + thickness + 1
             image = np.zeros((h, w, 3), dtype=np.float32)
 
         dtype_fixer = _generic._consistent_dtype_fixer(image)
@@ -2396,12 +2488,18 @@ class _BoxDrawMixins:
         edge_colors = _generic._coerce_color_list_for(image, edgecolor, num)
 
         if alpha is None:
-            alpha = [1.0] * num
+            draw_alpha = [1.0] * num
         elif isinstance(alpha, (float, np.float32, np.float64)):
-            alpha = [alpha] * num
+            alpha_scalar = cast(float, alpha)
+            draw_alpha = [float(alpha_scalar)] * num
+        else:
+            alpha_sequence = cast(Sequence[float], alpha)
+            draw_alpha = list(alpha_sequence)
 
         if labels is None or labels is False:
-            labels = [None] * num
+            draw_labels: list[str | None] = [None] * num
+        else:
+            draw_labels = list(labels)
 
         if label_loc == 'top_left':
             # Create a relative origin for the text
@@ -2421,7 +2519,7 @@ class _BoxDrawMixins:
         rel_x, rel_y = text_relxy_org
 
         for ltrb, label, alpha_, edge_col in zip(
-            ltrb_list, labels, alpha, edge_colors
+            ltrb_list, draw_labels, draw_alpha, edge_colors
         ):
             x1, y1, x2, y2 = ltrb
             pt1 = _clamp_coords(x1, y1)
@@ -2702,9 +2800,14 @@ class Boxes(
     if _USE_SLOTS:
         __slots__ = ('data', 'format', '__impl')
 
+    if TYPE_CHECKING:
+        data: BoxArray
+        format: str
+        __impl: Any
+
     def __init__(
         self,
-        data: ndarray | Tensor | Boxes,
+        data: ArrayLike | Tensor | Boxes,
         format: str | None = None,
         check: bool = True,
         canonical: bool = False,
@@ -2730,8 +2833,10 @@ class Boxes(
         Raises:
             ValueError : if data is specified without a format
         """
-        raw = data
+        raw: Any = data
         if canonical:
+            if format is None:
+                raise ValueError('Canonical box data requires a format')
             self.data = raw
             self.format = format
             self.__impl = None
@@ -2756,7 +2861,7 @@ class Boxes(
             format = BoxFormat.aliases.get(format, format)
 
             if check:
-                raw_arr = cast(Any, raw)
+                raw_arr = raw
                 if _numel(raw_arr) > 0 and raw_arr.shape[-1] != 4:
                     got = raw_arr.shape[-1]
                     raise ValueError(
@@ -2768,12 +2873,12 @@ class Boxes(
             self.format = format
             self.__impl = None
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> Boxes:
         cls = self.__class__
         subset = cls(self.data[index], self.format, canonical=True)
         return subset
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         Tests equality of two Boxes objects
 
@@ -2787,6 +2892,8 @@ class Boxes(
             >>> assert not box2 == box3
             >>> assert box2 == box4
         """
+        if not isinstance(other, Boxes):
+            return False
         return (
             np.array_equal(self.data, other.data)
             and self.format == other.format
@@ -2810,7 +2917,7 @@ class Boxes(
         nice = '{}, {}'.format(self.format, data_repr)
         return nice
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns:
             str
@@ -2819,21 +2926,21 @@ class Boxes(
         nice = self.__nice__()
         return '<{0}({1})>'.format(classname, nice)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         classname = self.__class__.__name__
         nice = self.__nice__()
         return '<{0}({1})>'.format(classname, nice)
 
     @classmethod
     def random(
-        Boxes,
+        cls,
         num: int = 1,
         scale: float | Tuple[float, float] = 1.0,
         format: str = BoxFormat.XYWH,
         anchors: ndarray | None = None,
         anchor_std: float = 1.0 / 6,
         tensor: bool = False,
-        rng: Any | None = None,
+        rng: RNGInput = None,
     ) -> Boxes:
         """
         Makes random boxes; typically for testing purposes
@@ -2883,11 +2990,12 @@ class Boxes(
             >>> kwimage.Boxes.random(num=10).scale(128).draw()
         """
         rng = kwarray.ensure_rng(rng)
+        scale_dyn = cast(Any, scale)
 
-        if ub.iterable(scale):
-            as_integer = all(isinstance(s, int) for s in scale)
+        if ub.iterable(scale_dyn):
+            as_integer = all(isinstance(s, int) for s in scale_dyn)
         else:
-            as_integer = isinstance(scale, int)
+            as_integer = isinstance(scale_dyn, int)
 
         if anchors is None:
             ltrb = rng.rand(num, 4).astype(np.float32)
@@ -2917,15 +3025,15 @@ class Boxes(
             rand_cxwy = rel_cxy * (max_cxy - min_cxy) + min_cxy
             cxywh = np.hstack([rand_cxwy, rand_whs])
             ltrb = (
-                Boxes(cxywh, BoxFormat.CXYWH, check=False, canonical=True)
+                cls(cxywh, BoxFormat.CXYWH, check=False, canonical=True)
                 .to_ltrb()
                 .data
             )
 
-        boxes = Boxes(ltrb, format=BoxFormat.LTRB, check=False, canonical=True)
-        boxes = boxes.scale(scale, inplace=True)
+        boxes = cls(ltrb, format=BoxFormat.LTRB, check=False, canonical=True)
+        boxes = boxes.scale(scale_dyn, inplace=True)
         if as_integer:
-            boxes.data = boxes.data.astype(int)
+            boxes.data = cast(Any, boxes.data).astype(int)
         boxes = boxes.toformat(format, copy=False)
         if tensor:
             boxes = boxes.tensor()
@@ -3012,7 +3120,9 @@ class Boxes(
             new = self.__class__(newdata, self.format, canonical=True)
         return new
 
-    def take(self, idxs, axis: int = 0, inplace: bool = False) -> Boxes:
+    def take(
+        self, idxs: BoxIndices, axis: int = 0, inplace: bool = False
+    ) -> Boxes:
         """
         Takes a subset of items at specific indices
 
@@ -3052,7 +3162,7 @@ class Boxes(
         Returns:
             bool: True if the Boxes are torch tensors
         """
-        torch = sys.modules.get('torch', None)
+        torch = cast(Any, sys.modules.get('torch', None))
         return torch is not None and torch.is_tensor(self.data)
 
     def is_numpy(self) -> bool:
@@ -3066,7 +3176,7 @@ class Boxes(
 
     # @ub.memoize_property
     @property
-    def _impl(self):
+    def _impl(self) -> Any:
         """
         returns the kwarray.ArrayAPI implementation for the data
 
@@ -3084,16 +3194,14 @@ class Boxes(
         return _impl
 
     @property
-    def device(self):
+    def device(self) -> torch.device | None:
         """
         If the backend is torch returns the data device, otherwise None
         """
-        try:
-            return self.data.device
-        except AttributeError:
-            return None
+        device_impl: Any = getattr(self.data, 'device', None)
+        return device_impl
 
-    def astype(self, dtype) -> Boxes:
+    def astype(self, dtype: BoxDTypeLike) -> Boxes:
         """
         Changes the type of the internal array used to represent the boxes
 
@@ -3123,8 +3231,8 @@ class Boxes(
             >>> Boxes.random(3, 100, rng=0).tensor().astype('float32')
             >>> Boxes.random(3, 100, rng=0).numpy().astype('float32')
         """
-        data: ndarray | Tensor | Boxes = self.data
-        torch = sys.modules.get('torch', None)
+        data = cast(Any, self.data)
+        torch = cast(Any, sys.modules.get('torch', None))
         if torch is not None and torch.is_tensor(data):
             dtype = _rectify_torch_dtype(dtype)
             newself = self.__class__(
@@ -3272,15 +3380,22 @@ class Boxes(
             >>> self.data[0, 0] = 1
             >>> assert self.data[0, 0] == 1
         """
-        data: ndarray | Tensor | Boxes = self.data
-        torch = sys.modules.get('torch', None)
+        data = cast(Any, self.data)
+        torch = cast(Any, sys.modules.get('torch', None))
         if torch is not None and torch.is_tensor(data):
-            data: ndarray | Tensor | Boxes = self._impl.numpy(data.data)
+            data = self._impl.numpy(data.data)
             # data = data.data.cpu().numpy()
         newself = self.__class__(data, self.format, canonical=True)
         return newself
 
-    def tensor(self, device: int | None | torch.device = ub.NoParam) -> Boxes:
+    if TYPE_CHECKING:
+        @overload
+        def tensor(self) -> Boxes: ...
+
+        @overload
+        def tensor(self, device: TorchDeviceLike) -> Boxes: ...
+
+    def tensor(self, device: Any = ub.NoParam) -> Boxes:
         """
         Converts numpy to tensors. Does not change memory if possible.
 
@@ -3301,14 +3416,14 @@ class Boxes(
             >>> self.data[0, 0] = 1
             >>> assert self.data[0, 0] == 1
         """
-        torch = sys.modules.get('torch', None)
+        torch = cast(Any, sys.modules.get('torch', None))
         if torch is None:
             raise Exception('torch has not been imported or is not available')
-        data: ndarray | Tensor | Boxes = self.data
+        data = cast(Any, self.data)
         if not torch.is_tensor(data):
-            data: ndarray | Tensor | Boxes = torch.from_numpy(data)
+            data = torch.from_numpy(data)
         if device is not ub.NoParam:
-            data: ndarray | Tensor | Boxes = data.to(device)
+            data = data.to(device)
         newself = self.__class__(data, self.format, canonical=True)
         return newself
 
@@ -3318,7 +3433,7 @@ class Boxes(
         bias: int = 0,
         impl: str = 'auto',
         mode: str | None = None,
-    ) -> ndarray:
+    ) -> BoxArray:
         """
         Intersection over union.
 
@@ -3436,7 +3551,7 @@ class Boxes(
         #     self = self[None, :]
 
         if len(other) == 0 or len(self) == 0:
-            torch = sys.modules.get('torch', None)
+            torch = cast(Any, sys.modules.get('torch', None))
             if torch is not None and (
                 torch.is_tensor(self.data) or torch.is_tensor(other.data)
             ):
@@ -3470,7 +3585,7 @@ class Boxes(
         #     ious = ious[0, ...]
         return ious
 
-    def iooas(self, other: Boxes, bias: int = 0) -> ndarray:
+    def iooas(self, other: Boxes, bias: int = 0) -> BoxArray:
         """
         Intersection over other area.
 
@@ -3499,15 +3614,15 @@ class Boxes(
             >>> coverage = self.iooas(other, bias=0).round(2)
             >>> print('coverage = {!r}'.format(coverage))
         """
-        numer = self.isect_area(other, bias=bias)
-        denom = other.area.T
+        numer = cast(Any, self.isect_area(other, bias=bias))
+        denom = cast(Any, other.area.T)
         # If the denom is zero the numer must also be zero, and the overlap is
         # zero, so this is safe.
         denom[denom == 0] = 1
         iooas = numer / denom
         return iooas
 
-    def isect_area(self, other: Boxes, bias: int = 0) -> ndarray:
+    def isect_area(self, other: Boxes, bias: int = 0) -> BoxArray:
         """
         Intersection part of intersection over union computation
 
@@ -3535,7 +3650,7 @@ class Boxes(
             other = other[None, :]
 
         if len(other) == 0 or len(self) == 0:
-            torch = sys.modules.get('torch', None)
+            torch = cast(Any, sys.modules.get('torch', None))
             if torch is not None and (
                 torch.is_tensor(self.data) or torch.is_tensor(other.data)
             ):
@@ -3583,8 +3698,8 @@ class Boxes(
         if other_is_1d:
             other = other[None, :]
 
-        self_ltrb = self.to_ltrb(copy=False).data
-        other_ltrb = other.to_ltrb(copy=False).data
+        self_ltrb = cast(Any, self.to_ltrb(copy=False).data)
+        other_ltrb = cast(Any, other.to_ltrb(copy=False).data)
 
         tl = np.maximum(self_ltrb[..., :2], other_ltrb[..., :2])
         br = np.minimum(self_ltrb[..., 2:], other_ltrb[..., 2:])
@@ -3635,8 +3750,8 @@ class Boxes(
         if other_is_1d:
             other = other[None, :]
 
-        self_ltrb = self.to_ltrb(copy=False).data
-        other_ltrb = other.to_ltrb(copy=False).data
+        self_ltrb = cast(Any, self.to_ltrb(copy=False).data)
+        other_ltrb = cast(Any, other.to_ltrb(copy=False).data)
 
         tl = np.minimum(self_ltrb[..., :2], other_ltrb[..., :2])
         br = np.maximum(self_ltrb[..., 2:], other_ltrb[..., 2:])
@@ -3646,7 +3761,10 @@ class Boxes(
 
         if is_bad.any():
             if ltrb.dtype.kind != 'f':
-                ltrb = ltrb.to(float)
+                if isinstance(ltrb, np.ndarray):
+                    ltrb = ltrb.astype(float)
+                else:
+                    ltrb = ltrb.to(float)
             ltrb[is_bad] = np.nan
 
         isect = Boxes(ltrb, 'ltrb', canonical=True)
@@ -3677,7 +3795,7 @@ class Boxes(
         new = Boxes(new_ltrb, format='ltrb', canonical=True)
         return new
 
-    def contains(self, other: kwimage.Points) -> ArrayLike:
+    def contains(self, other: BoxPointsLike) -> BoxArray:
         """
         Determine of points are completely contained by these boxes
 
@@ -3700,23 +3818,28 @@ class Boxes(
         """
         ltrb = self.to_ltrb()
 
-        try:
-            # other = Points.coerce(other)?
-            # points
-            pt_x, pt_y = other.xy.T
-        except AttributeError:
-            # ndarray
-            pt_x, pt_y = other.T
+        # Points exposes its coordinates through ``xy`` whereas raw arrays
+        # and tensors are already coordinate data. Attribute-based dispatch is
+        # intentional here because Points is imported only for type checking.
+        if hasattr(other, 'xy'):
+            point_data = cast(Any, other).xy
+        else:
+            point_data = cast(Any, other)
+        pt_x, pt_y = point_data.T
 
+        tl_x = cast(Any, ltrb.tl_x)
+        tl_y = cast(Any, ltrb.tl_y)
+        br_x = cast(Any, ltrb.br_x)
+        br_y = cast(Any, ltrb.br_y)
         flags = (
-            (ltrb.tl_x <= pt_x)
-            & (ltrb.tl_y <= pt_y)
-            & (ltrb.br_x >= pt_x)
-            & (ltrb.br_y >= pt_y)
+            (tl_x <= pt_x)
+            & (tl_y <= pt_y)
+            & (br_x >= pt_x)
+            & (br_y >= pt_y)
         )
         return flags
 
-    def view(self, *shape: Tuple[int, ...]) -> Boxes:
+    def view(self, *shape: int | tuple[int, ...]) -> Boxes:
         """
         Passthrough method to view or reshape
 
@@ -3736,7 +3859,7 @@ class Boxes(
         data_ = _view(self.data, *shape)
         return self.__class__(data_, self.format, canonical=True)
 
-    def _ensure_nonnegative_extent(self, inplace=False):
+    def _ensure_nonnegative_extent(self, inplace: bool = False) -> Boxes:
         """
         Experimental. If the box has a negative width / height
         make them positive and adjust the tlxy point.
@@ -3789,9 +3912,11 @@ class Boxes(
                 _impl.copy(self.data), self.format, canonical=True
             )
         )
-        is_neg_w = new.data[..., 2] < 0
-        is_neg_h = new.data[..., 3] < 0
-        new_data = new.data
+        # Boolean indexing must stay within one backend. The concrete backend
+        # of data and its masks is correlated by construction.
+        new_data = cast(Any, new.data)
+        is_neg_w = new_data[..., 2] < 0
+        is_neg_h = new_data[..., 3] < 0
         new_data[..., 0][is_neg_w] += new_data[..., 2][is_neg_w]
         new_data[..., 1][is_neg_h] += new_data[..., 3][is_neg_h]
         new_data[..., 2][is_neg_w] *= -1
@@ -3799,16 +3924,16 @@ class Boxes(
         return new
 
 
-def _copy(data):
-    torch = sys.modules.get('torch', None)
+def _copy(data: Any) -> Any:
+    torch = cast(Any, sys.modules.get('torch', None))
     if torch is not None and torch.is_tensor(data):
         return data.clone()
     else:
         return data.copy()
 
 
-def _view(data, *shape):
-    torch = sys.modules.get('torch', None)
+def _view(data: Any, *shape: Any) -> Any:
+    torch = cast(Any, sys.modules.get('torch', None))
     if torch is not None and torch.is_tensor(data):
         data_ = data.view(*shape)
     else:
@@ -3816,15 +3941,15 @@ def _view(data, *shape):
     return data_
 
 
-def _cat(datas, axis=-1):
-    torch = sys.modules.get('torch', None)
+def _cat(datas: Sequence[Any], axis: int = -1) -> Any:
+    torch = cast(Any, sys.modules.get('torch', None))
     if torch is not None and torch.is_tensor(datas[0]):
         return torch.cat(datas, dim=axis)
     else:
         return np.concatenate(datas, axis=axis)
 
 
-def _take(data, indices, axis=None):
+def _take(data: Any, indices: Any, axis: int | None = None) -> Any:
     """
     compatable take-API between torch and numpy
 
@@ -3840,7 +3965,7 @@ def _take(data, indices, axis=None):
         >>> assert np.allclose(_take(np_data, idxs0, 0), _take(pt_data, idxs0, 0))
         >>> assert np.allclose(_take(np_data, idxs1, 1), _take(pt_data, idxs1, 1))
     """
-    torch = sys.modules.get('torch', None)
+    torch = cast(Any, sys.modules.get('torch', None))
     if isinstance(data, np.ndarray):
         return data.take(indices, axis=axis)
     elif torch is not None and torch.is_tensor(data):
@@ -3854,7 +3979,7 @@ def _take(data, indices, axis=None):
         raise TypeError(type(data))
 
 
-def _compress(data, flags, axis=None):
+def _compress(data: Any, flags: Any, axis: int | None = None) -> Any:
     """
     compatable take-API between torch and numpy
 
@@ -3870,7 +3995,7 @@ def _compress(data, flags, axis=None):
         >>> assert np.allclose(_compress(np_data, f0, 0), _compress(pt_data, f0, 0))
         >>> assert np.allclose(_compress(np_data, f1, 1), _compress(pt_data, f1, 1))
     """
-    torch = sys.modules.get('torch', None)
+    torch = cast(Any, sys.modules.get('torch', None))
     if isinstance(data, np.ndarray):
         return data.compress(flags, axis=axis)
     elif torch is not None and torch.is_tensor(data):
@@ -3893,7 +4018,7 @@ def _compress(data, flags, axis=None):
         raise TypeError(type(data))
 
 
-def _numel(data):
+def _numel(data: Any) -> int:
     """compatable numel-API between torch and numpy"""
     if isinstance(data, np.ndarray):
         return data.size
@@ -3902,8 +4027,8 @@ def _numel(data):
 
 
 @ub.memoize
-def _torch_dtype_lut():
-    torch = sys.modules.get('torch', None)
+def _torch_dtype_lut() -> dict[Any, Any]:
+    torch = cast(Any, sys.modules.get('torch', None))
     lut = {}
 
     # Handle nonstandard alias dtype names
@@ -3923,10 +4048,7 @@ def _torch_dtype_lut():
     else:
         raise AssertionError('dont think this can happen')
 
-    try:
-        float_ = np.float_
-    except AttributeError:
-        float_ = np.float64
+    float_ = getattr(np, 'float_', np.float64)
 
     if float_ == np.float32:
         lut[float] = torch.float32
@@ -3963,7 +4085,7 @@ def _torch_dtype_lut():
     return lut
 
 
-def _rectify_torch_dtype(dtype):
+def _rectify_torch_dtype(dtype: Any) -> Any:
     return _torch_dtype_lut().get(dtype, dtype)
 
 

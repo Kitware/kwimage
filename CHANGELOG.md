@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.12.0 - Unreleased
 
 ### Changed
+* Prefer the Rust CPU NMS backend from `kwimage_ext` during automatic backend selection; legacy GPU NMS is now explicit-only.
 * Normalized the way `oriented_bounding_box` returns coordinates.
 * Better error message in `load_image_shape`.
 * Improve `imwrite` error diagnostics for the cv2 backend.
@@ -14,6 +15,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Drop Python 3.9
 
 ### Fixed
+* Tighten static typing around RNG coercion, normalization overloads, drawing helpers, shape conversion, heatmap noise, mask translation, and subpixel alignment.
+* Treat equal-score NMS tie ordering as backend-specific in examples and regression tests instead of requiring NumPy/Cython tie order from the Rust backend.
+* Do not advertise the `kwimage_ext` GPU-NMS compatibility stub as a usable backend.
+* Skip kwconf-specific CLI tests in minimal test environments where the optional `kwconf` dependency is absent.
+* Worked around OpenCV 5 rejecting two-channel images in `draw_text_on_image`.
 * Worked around the OpenCV 4.13.x `warpAffine` regression for `float64` inputs with nearest-neighbor interpolation.
 
 

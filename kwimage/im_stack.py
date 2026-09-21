@@ -19,9 +19,62 @@ from . import im_core, im_cv2
 
 if TYPE_CHECKING:
     from numbers import Number
-    from typing import Iterable, List, Tuple
+    from typing import Any, Iterable, Literal, Protocol, overload
 
     from numpy import ndarray
+
+    class StackTransform(Protocol):
+        """Affine-like transform returned by the image stacking helpers."""
+
+        params: ndarray
+
+        @property
+        def scale(self) -> ndarray: ...
+
+        @property
+        def translation(self) -> ndarray: ...
+
+        def __add__(self, other: StackTransform) -> StackTransform: ...
+
+    @overload
+    def stack_images(
+        images: Iterable[ndarray],
+        axis: int = 0,
+        resize: int | str | None = None,
+        interpolation: int | str | None = None,
+        overlap: int = 0,
+        return_info: Literal[False] = False,
+        bg_value: Number | ndarray | str | None = None,
+        pad: int | None = None,
+        allow_casting: bool = True,
+    ) -> ndarray: ...
+
+    @overload
+    def stack_images(
+        images: Iterable[ndarray],
+        axis: int = 0,
+        resize: int | str | None = None,
+        interpolation: int | str | None = None,
+        overlap: int = 0,
+        *,
+        return_info: Literal[True],
+        bg_value: Number | ndarray | str | None = None,
+        pad: int | None = None,
+        allow_casting: bool = True,
+    ) -> tuple[ndarray, list[StackTransform]]: ...
+
+    @overload
+    def stack_images(
+        images: Iterable[ndarray],
+        axis: int = 0,
+        resize: int | str | None = None,
+        interpolation: int | str | None = None,
+        overlap: int = 0,
+        return_info: bool = False,
+        bg_value: Number | ndarray | str | None = None,
+        pad: int | None = None,
+        allow_casting: bool = True,
+    ) -> ndarray | tuple[ndarray, list[StackTransform]]: ...
 
 
 def stack_images(
@@ -34,7 +87,7 @@ def stack_images(
     bg_value: Number | ndarray | str | None = None,
     pad: int | None = None,
     allow_casting: bool = True,
-) -> Tuple[ndarray, List]:
+) -> ndarray | tuple[ndarray, list[StackTransform]]:
     """
     Make a new image with the input images side-by-side
 
@@ -128,7 +181,7 @@ def stack_images(
         overlap = -pad
 
     if return_info:
-        transforms_ = [
+        transforms_: list[StackTransform] = [
             skimage.transform.AffineTransform(
                 scale=[1.0, 1.0], translation=[0.0, 0.0]
             )
@@ -164,6 +217,48 @@ def stack_images(
         return img1
 
 
+
+if TYPE_CHECKING:
+    @overload
+    def stack_images_grid(
+        images: Iterable[ndarray],
+        chunksize: int | None = None,
+        axis: int = 0,
+        overlap: int = 0,
+        pad: int | None = None,
+        return_info: Literal[False] = False,
+        bg_value: Number | ndarray | str | None = None,
+        resize: int | str | None = None,
+        allow_casting: bool = True,
+    ) -> ndarray: ...
+
+    @overload
+    def stack_images_grid(
+        images: Iterable[ndarray],
+        chunksize: int | None = None,
+        axis: int = 0,
+        overlap: int = 0,
+        pad: int | None = None,
+        *,
+        return_info: Literal[True],
+        bg_value: Number | ndarray | str | None = None,
+        resize: int | str | None = None,
+        allow_casting: bool = True,
+    ) -> tuple[ndarray, list[StackTransform]]: ...
+
+    @overload
+    def stack_images_grid(
+        images: Iterable[ndarray],
+        chunksize: int | None = None,
+        axis: int = 0,
+        overlap: int = 0,
+        pad: int | None = None,
+        return_info: bool = False,
+        bg_value: Number | ndarray | str | None = None,
+        resize: int | str | None = None,
+        allow_casting: bool = True,
+    ) -> ndarray | tuple[ndarray, list[StackTransform]]: ...
+
 def stack_images_grid(
     images: Iterable[ndarray],
     chunksize: int | None = None,
@@ -174,7 +269,7 @@ def stack_images_grid(
     bg_value: Number | ndarray | str | None = None,
     resize: int | str | None = None,
     allow_casting: bool = True,
-) -> Tuple[ndarray, List]:
+) -> ndarray | tuple[ndarray, list[StackTransform]]:
     """
     Stacks images in a grid. Optionally return transforms of original image
     positions in the output image.
@@ -244,7 +339,8 @@ def stack_images_grid(
     import ubelt as ub
 
     if chunksize is None:
-        chunksize = int(len(images) ** 0.5)
+        images_sized: Any = images
+        chunksize = int(len(images_sized) ** 0.5)
     if pad is not None:
         overlap = -pad
 
@@ -289,15 +385,19 @@ def stack_images_grid(
 
 
 def _stack_two_images(
-    img1,
-    img2,
-    axis=0,
-    resize=None,
-    interpolation=None,
-    overlap=0,
-    bg_value=None,
-    allow_casting=True,
-):
+    img1: ndarray,
+    img2: ndarray,
+    axis: int | None = 0,
+    resize: int | str | None = None,
+    interpolation: int | str | None = None,
+    overlap: int = 0,
+    bg_value: Number | ndarray | str | None = None,
+    allow_casting: bool = True,
+) -> tuple[
+    ndarray,
+    tuple[tuple[int, int], tuple[int, int]],
+    tuple[tuple[float, float], tuple[float, float]],
+]:
     """
     Returns:
         Tuple[ndarray, Tuple, Tuple]: imgB, offset_tup, sf_tup
@@ -309,7 +409,9 @@ def _stack_two_images(
         overlap = -10
     """
 
-    def _rectify_axis(img1, img2, axis):
+    def _rectify_axis(
+        img1: ndarray, img2: ndarray, axis: int | None
+    ) -> tuple[int, int, int, int, int, int, int, int, int]:
         """determine if we are stacking in horzontally or vertically"""
         (h1, w1) = img1.shape[0:2]  # get chip dimensions
         (h2, w2) = img2.shape[0:2]
@@ -331,7 +433,9 @@ def _stack_two_images(
             raise ValueError('axis can only be 0 or 1')
         return axis, h1, h2, w1, w2, wB, hB, xoff2, yoff2
 
-    def _round_dsize(dsize, scale):
+    def _round_dsize(
+        dsize: tuple[int, int], scale: float | tuple[float, float]
+    ) -> tuple[tuple[int, int], tuple[float, float]]:
         """
         Returns an integer size and scale that best approximates
         the floating point scale on the original size
@@ -340,18 +444,21 @@ def _stack_two_images(
             dsize (tuple): original width height
             scale (float | tuple): desired floating point scale factor
         """
+        scale_impl: Any = scale
+        sx_impl: Any
+        sy_impl: Any
         try:
-            sx, sy = scale
+            sx_impl, sy_impl = scale_impl
         except TypeError:
-            sx = sy = scale
+            sx_impl = sy_impl = scale_impl
         w, h = dsize
-        new_w = int(round(w * sx))
-        new_h = int(round(h * sy))
+        new_w = int(round(w * sx_impl))
+        new_h = int(round(h * sy_impl))
         new_scale = new_w / w, new_h / h
         new_dsize = (new_w, new_h)
         return new_dsize, new_scale
 
-    def _ramp(shape, axis):
+    def _ramp(shape: tuple[int, ...], axis: int) -> ndarray:
         """nd ramp function"""
         newshape = [1] * len(shape)
         reps = list(shape)
@@ -361,7 +468,7 @@ def _stack_two_images(
         data = basis.reshape(newshape)
         return np.tile(data, reps)
 
-    def _blend(part1, part2, alpha):
+    def _blend(part1: ndarray, part2: ndarray, alpha: ndarray) -> ndarray:
         """blending based on an alpha mask"""
         part1, alpha = im_core.make_channels_comparable(part1, alpha)
         part2, alpha = im_core.make_channels_comparable(part2, alpha)
@@ -442,15 +549,16 @@ def _stack_two_images(
     imgB = np.zeros(newshape, dtype=img1.dtype)
 
     if bg_value is not None:
+        bg_value_impl: Any = bg_value
         if isinstance(bg_value, str):
             import kwimage
 
-            bg_value = kwimage.Color(bg_value).forimage(imgB)
+            bg_value_impl = kwimage.Color(bg_value).forimage(imgB)
         try:
-            imgB[:, :] = bg_value
+            imgB[:, :] = bg_value_impl
         except ValueError:
             imgB = im_core.atleast_3channels(imgB)
-            imgB[:, :] = bg_value
+            imgB[:, :] = bg_value_impl
 
     # Insert the images in the larger frame
 

@@ -15,14 +15,27 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from typing import Dict, Tuple
+    from typing import Any, Literal, TypeAlias, TypedDict
 
     from numpy import ndarray
+    from numpy.typing import DTypeLike
+
+    RLEOrder: TypeAlias = Literal['C', 'F']
+
+    class RunLengthEncoding(TypedDict):
+        shape: tuple[int, ...]
+        counts: ndarray
+        binary: bool
+        order: RLEOrder
+
+    class CocoRunLengthEncoding(TypedDict):
+        size: tuple[int, int] | list[int]
+        counts: ndarray | list[int]
 
 
 def encode_run_length(
-    img: ndarray, binary: bool = False, order: str = 'C'
-) -> Dict[str, object]:
+    img: ndarray, binary: bool = False, order: RLEOrder = 'C'
+) -> RunLengthEncoding:
     """
     Construct the run length encoding (RLE) of an image.
 
@@ -127,7 +140,7 @@ def encode_run_length(
     else:
         counts = np.hstack([values[:, None], lengths[:, None]]).ravel()
 
-    encoding = {
+    encoding: RunLengthEncoding = {
         'shape': img.shape,
         'counts': counts,
         'binary': binary,
@@ -138,10 +151,10 @@ def encode_run_length(
 
 def decode_run_length(
     counts: ndarray,
-    shape: Tuple[int, int],
+    shape: tuple[int, ...],
     binary: bool = False,
-    dtype: type = np.uint8,
-    order: str = 'C',
+    dtype: DTypeLike = np.uint8,
+    order: RLEOrder = 'C',
 ) -> ndarray:
     """
     Decode run length encoding back into an image.
@@ -208,10 +221,10 @@ def decode_run_length(
 
 
 def rle_translate(
-    rle: dict,
-    offset: Tuple[int, int],
-    output_shape: Tuple[int, int] | None = None,
-):
+    rle: RunLengthEncoding | CocoRunLengthEncoding,
+    offset: tuple[float, float],
+    output_shape: tuple[int, int] | None = None,
+) -> RunLengthEncoding:
     """
     Translates a run-length encoded image in RLE-space.
 
@@ -275,20 +288,21 @@ def rle_translate(
          [0 0 0]
          [0 1 0]]
     """
-    if set(rle.keys()) == {'size', 'counts'}:
+    rle_impl: Any = rle
+    if set(rle_impl.keys()) == {'size', 'counts'}:
         # Handle coco rle's
-        rle = rle.copy()
-        rle['shape'] = rle['size']
-        rle['order'] = 'F'
-        rle['binary'] = True
+        rle_impl = rle_impl.copy()
+        rle_impl['shape'] = rle_impl['size']
+        rle_impl['order'] = 'F'
+        rle_impl['binary'] = True
 
-    if not rle['binary']:
+    if not rle_impl['binary']:
         raise NotImplementedError('only binary rle translation is implemented')
 
     # Careful of residuals
     orig_offset = np.array(offset)
-    offset = np.round(orig_offset).astype(int)
-    residual = orig_offset - offset.astype(orig_offset.dtype)
+    offset_arr = np.round(orig_offset).astype(int)
+    residual = orig_offset - offset_arr.astype(orig_offset.dtype)
 
     if not np.all(np.abs(residual) < 1e-6):
         import warnings
@@ -299,9 +313,9 @@ def rle_translate(
     #  * even locs are stop-indices for zeros and start indices for ones
     #  * odd locs are stop-indices for ones and start indices for zeros
     try:
-        indices = rle['counts'].cumsum()
+        indices = rle_impl['counts'].cumsum()
     except AttributeError:
-        indices = np.array(rle['counts']).cumsum()
+        indices = np.array(rle_impl['counts']).cumsum()
 
     if len(indices) % 2 == 1:
         indices = indices[:-1]
@@ -310,14 +324,17 @@ def rle_translate(
     indices[1::2] -= 1
 
     # Find yx points where the binary mask changes value
-    old_shape = np.array(rle['shape'])
+    old_shape = np.array(rle_impl['shape'])
     if output_shape is None:
-        output_shape = old_shape
-    new_shape = np.array(output_shape)
-    rc_offset = np.array(offset[::-1])
+        output_shape_impl: Any = old_shape
+    else:
+        output_shape_impl = output_shape
+    new_shape = np.array(output_shape_impl)
+    rc_offset = np.array(offset_arr[::-1])
 
-    pts = np.unravel_index(indices, old_shape, order=rle['order'])
-    major_axis = 1 if rle['order'] == 'F' else 0
+    unravel_index_impl: Any = np.unravel_index
+    pts = unravel_index_impl(indices, old_shape, order=rle_impl['order'])
+    major_axis = 1 if rle_impl['order'] == 'F' else 0
     minor_axis = 1 - major_axis
 
     major_idxs = pts[major_axis]
@@ -395,7 +412,10 @@ def rle_translate(
     # </handle_out_of_bounds>
 
     # Now we have translated flat-indices in the new canvas shape
-    new_indices = np.ravel_multi_index(new_pts, new_shape, order=rle['order'])
+    ravel_multi_index_impl: Any = np.ravel_multi_index
+    new_indices = ravel_multi_index_impl(
+        new_pts, new_shape, order=rle_impl['order']
+    )
     new_indices[1::2] += 1
 
     count_dtype = int  # use in to eventually support non-binary RLE
@@ -412,16 +432,18 @@ def rle_translate(
     body_counts = np.diff(new_indices)
     new_counts = np.hstack([leading_counts, body_counts, trailing_counts])
 
-    new_rle = {
+    new_rle: RunLengthEncoding = {
         'shape': tuple(new_shape.tolist()),
-        'order': rle['order'],
+        'order': rle_impl['order'],
         'counts': new_counts,
-        'binary': rle['binary'],
+        'binary': rle_impl['binary'],
     }
     return new_rle
 
 
-def _rle_bytes_to_array(s, impl='auto'):
+def _rle_bytes_to_array(
+    s: bytes, impl: Literal['auto', 'python', 'cython'] = 'auto'
+) -> ndarray:
     """
     Uncompresses a coco-bytes RLE into an array representation.
 
@@ -453,6 +475,7 @@ def _rle_bytes_to_array(s, impl='auto'):
     from kwimage.structs.mask import _backends
 
     key, cython_mask = _backends.get_backend(['kwimage'])
+    cython_mask_impl: Any = cython_mask
 
     if impl == 'auto':
         if cython_mask is None:
@@ -485,10 +508,12 @@ def _rle_bytes_to_array(s, impl='auto'):
         cnts = cnts[:n]
         return cnts
     elif impl == 'cython':
-        return cython_mask._rle_bytes_to_array(s)
+        return cython_mask_impl._rle_bytes_to_array(s)
 
 
-def _rle_array_to_bytes(counts, impl='auto'):
+def _rle_array_to_bytes(
+    counts: ndarray, impl: Literal['auto', 'python', 'cython'] = 'auto'
+) -> bytes:
     """
     Compresses an array RLE into a coco-bytes RLE.
 
@@ -527,6 +552,7 @@ def _rle_array_to_bytes(counts, impl='auto'):
     from kwimage.structs.mask import _backends
 
     key, cython_mask = _backends.get_backend(['kwimage'])
+    cython_mask_impl: Any = cython_mask
     if impl == 'auto':
         if cython_mask is None:
             impl = 'python'
@@ -537,7 +563,7 @@ def _rle_array_to_bytes(counts, impl='auto'):
         raise NotImplementedError('pure python rle is not available')
     elif impl == 'cython':
         counts = counts.astype(np.uint32)
-        counts_str = cython_mask._rle_array_to_bytes(counts)
+        counts_str = cython_mask_impl._rle_array_to_bytes(counts)
         return counts_str
     else:
         raise KeyError(impl)

@@ -1,27 +1,25 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from os import PathLike
+from typing import Literal
 
-import scriptconfig as scfg
+import kwconf
 import ubelt as ub
 
-if TYPE_CHECKING:
-    pass
 
-
-class StackImagesCLI(scfg.DataConfig):
+class StackImagesCLI(kwconf.Config):
     """
     Stacks multiple images on disk into a single stacked image.
     """
 
     __command__ = 'stack_images'
 
-    input_fpaths = scfg.Value(
-        None,
+    input_fpaths: list[str] = kwconf.Value(
+        required=True,
         nargs='+',
         position=1,
-        type=str,
         help=ub.paragraph(
             """
         A list of input file paths, directories, or glob patterns. If a directory
@@ -30,7 +28,7 @@ class StackImagesCLI(scfg.DataConfig):
         """
         ),
     )
-    axis = scfg.Value(
+    axis: Literal['grid'] | int = kwconf.Value(
         'grid',
         help=ub.paragraph(
             """
@@ -39,7 +37,7 @@ class StackImagesCLI(scfg.DataConfig):
         """
         ),
     )
-    pad = scfg.Value(
+    pad: int | None = kwconf.Value(
         None,
         help=ub.paragraph(
             """
@@ -48,32 +46,36 @@ class StackImagesCLI(scfg.DataConfig):
         """
         ),
     )
-    out = scfg.Value(
+    out: str | None = kwconf.Value(
         None,
         help=ub.paragraph(
             """
-        Path to save the output stacked image. If unspecified, a uses a
-        hash-based filename (derived from the input image paths).
+        Path to save the output stacked image. If unspecified, uses a
+        hash-based filename derived from the input image paths.
         """
         ),
     )
 
     @classmethod
-    def main(StackImagesCLI, cmdline=1, **kwargs):
+    def main(
+        cls: type[StackImagesCLI],
+        argv: bool | Sequence[str] | str = True,
+        **kwargs: object,
+    ) -> None:
         """
         Example:
             >>> # xdoctest: +SKIP
-            >>> # xdoctest: +REQUIRES(module:scriptconfig)
-            >>> cmdline = 0
-            >>> kwargs = dict(
-            >>> )
-            >>> main(cmdline=cmdline, **kwargs)
+            >>> # xdoctest: +REQUIRES(module:kwconf)
+            >>> argv = False
+            >>> kwargs = {'input_fpaths': ['a.png', 'b.png']}
+            >>> StackImagesCLI.main(argv=argv, **kwargs)
         """
-        config = StackImagesCLI.cli(cmdline=cmdline, data=kwargs)
+        config = cls()
+        config.load(data=kwargs, argv=argv, strict=True)
         import kwimage
 
         print('config = ' + ub.urepr(dict(config), nl=1))
-        fpaths = config['input_fpaths']
+        fpaths: Sequence[str | PathLike[str]] = config.input_fpaths
 
         try:
             import kwutil
@@ -84,7 +86,6 @@ class StackImagesCLI(scfg.DataConfig):
                 'kwutil is not available; glob patterns and directory input may be limited.'
             )
         else:
-            # If available use kwutil to allow for a better
             from kwimage import im_io
 
             fpaths = kwutil.util_path.coerce_patterned_paths(
@@ -95,14 +96,12 @@ class StackImagesCLI(scfg.DataConfig):
             kwimage.imread(p) for p in ub.ProgIter(fpaths, desc='read images')
         ]
 
-        if config['axis'] == 'grid':
-            canvas = kwimage.stack_images_grid(images, pad=config['pad'])
+        if config.axis == 'grid':
+            canvas = kwimage.stack_images_grid(images, pad=config.pad)
         else:
-            canvas = kwimage.stack_images(
-                images, axis=config['axis'], pad=config['pad']
-            )
+            canvas = kwimage.stack_images(images, axis=config.axis, pad=config.pad)
 
-        out_fpath = config['out']
+        out_fpath = config.out
         if out_fpath is None:
             out_fpath = 'stack_' + ub.hash_data(fpaths)[0:16] + '.png'
         print(f'write to: {out_fpath}')
