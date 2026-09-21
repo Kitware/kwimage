@@ -686,8 +686,9 @@ def subpixel_align(
         )
     if True:
         # check that all non interp slices are integral
+        interp_axes_arr = np.asarray(interp_axes, dtype=int)
         noninterp_axes = np.where(
-            ~kwarray.boolmask(interp_axes, len(dst.shape))
+            ~kwarray.boolmask(interp_axes_arr, len(dst.shape))
         )[0]
         for i in noninterp_axes:
             assert raw_subpixel_starts[i] % 1 == 0

@@ -1821,8 +1821,8 @@ class Heatmap(
 
         class_probs = self.data['class_probs']
 
-        noise = rng.randn(*class_probs.shape) * noise
-        class_probs += noise
+        noise_data = rng.randn(*class_probs.shape) * noise
+        class_probs += noise_data
         np.clip(class_probs, 0, None, out=class_probs)
         # class_probs = class_probs / class_probs.sum(axis=0)
         class_probs = np.array(

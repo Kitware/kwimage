@@ -627,16 +627,16 @@ class Color(ub.NiceRepr):
         """
         import kwarray
 
-        rng = kwarray.ensure_rng(rng, api='python')
+        rng_impl = kwarray.ensure_rng(rng, api='python')
         if pool == 'named':
-            color_name = rng.choice(Color.named_colors())
+            color_name = rng_impl.choice(Color.named_colors())
             color = list(Color._string_to_01(color_name))
         elif pool == 'rgb-uniform':
-            color = [rng.random() for _ in range(3)]
+            color = [rng_impl.random() for _ in range(3)]
         else:
             raise NotImplementedError
         if with_alpha:
-            color = color + [rng.random()]
+            color = color + [rng_impl.random()]
         return Color(color)
 
     def distance(self, other: Color, space: str = 'lab') -> float:

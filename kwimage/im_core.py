@@ -888,15 +888,27 @@ def normalize_intensity(
             'mode': 'sigmoid',
         }
     params_impl: Any = params
-    result: Any = kwarray.robust_normalize(
-        imdata,
-        return_info=return_info,
-        nodata=nodata,
-        axis=axis,
-        dtype=dtype,
-        params=params_impl,
-        mask=mask,
-    )
+    dtype_impl: Any = dtype
+    if return_info:
+        result: Any = kwarray.robust_normalize(
+            imdata,
+            return_info=True,
+            nodata=nodata,
+            axis=axis,
+            dtype=dtype_impl,
+            params=params_impl,
+            mask=mask,
+        )
+    else:
+        result = kwarray.robust_normalize(
+            imdata,
+            return_info=False,
+            nodata=nodata,
+            axis=axis,
+            dtype=dtype_impl,
+            params=params_impl,
+            mask=mask,
+        )
     return result
 
 

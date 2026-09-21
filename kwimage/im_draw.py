@@ -725,7 +725,8 @@ def draw_clf_on_image(
         import kwarray
 
         probs = kwarray.ArrayAPI.numpy(probs)
-        pcx_impl = probs.argmax()
+        probs_data: Any = probs
+        pcx_impl = int(probs_data.argmax())
 
     if probs is not None:
         pred_score = None if pcx_impl is None else probs[pcx_impl]
@@ -1545,24 +1546,23 @@ def draw_header_text(
     if stack == 'auto':
         stack = isinstance(image, np.ndarray)
 
-    image_array: Any = image
     if image is None:
         width = None
-    elif isinstance(image, dict):
+    elif isinstance(image, np.ndarray):
+        width = image.shape[1]
+    else:
         width = image['width']
         if stack:
             raise ValueError('Must pass in the actual image if stack is True')
-    else:
-        width = image_array.shape[1]
 
-    if stack and image is not None:
+    if stack and isinstance(image, np.ndarray):
         # Handle very small image case
         image_array = image
         h, w = image_array.shape[0:2]
         min_pixels = 32
         if w < min_pixels or h < min_pixels:
-            image = kwimage.imresize(image_array, min_dim=min_pixels)
-            image_array = image
+            image_array = kwimage.imresize(image_array, min_dim=min_pixels)
+            image = image_array
         width = image_array.shape[1]
 
     if 'bg_value' in kwargs:

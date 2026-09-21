@@ -646,9 +646,7 @@ class _BoxConversionMixins:
             )
 
         if not isinstance(shape, tuple):
-            import kwarray
-
-            shape = tuple(kwarray.ArrayAPI.list(shape))
+            shape = tuple(shape)
 
         ltrb = self.to_ltrb(copy=False).data
         bbs = [imgaug.BoundingBox(x1, y1, x2, y2) for x1, y1, x2, y2 in ltrb]

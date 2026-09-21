@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Drop Python 3.9
 
 ### Fixed
+* Tighten static typing around RNG coercion, normalization overloads, drawing helpers, shape conversion, heatmap noise, mask translation, and subpixel alignment.
 * Treat equal-score NMS tie ordering as backend-specific in examples and regression tests instead of requiring NumPy/Cython tie order from the Rust backend.
 * Do not advertise the `kwimage_ext` GPU-NMS compatibility stub as a usable backend.
 * Skip kwconf-specific CLI tests in minimal test environments where the optional `kwconf` dependency is absent.

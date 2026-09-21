@@ -885,27 +885,18 @@ class _MaskTransformMixin(object):
         format_data: Any = self.format
         mask_format = format_data in {MaskFormat.C_MASK, MaskFormat.F_MASK}
         if mask_format or not integer_offset:
-            integer_offset = None  # hack
-            if integer_offset:
-                # TODO: be more efficient
-                offset_x, offset_y = offset_data
-                new_data = np.zeros_like(
-                    self.data, shape=resolved_output_dims_data
-                )
-                new_self = Mask(new_data, format_data)
-            else:
-                c_data: Any = self.toformat(
-                    MaskFormat.C_MASK, copy=False
-                ).data
-                if c_data.dtype.kind == 'b':
-                    c_data = c_data.astype(np.uint8)
-                transform = kwimage.Affine.affine(offset=offset_data)
-                dsize = resolved_output_dims_data[::-1]
-                new_c_data = kwimage.warp_affine(
-                    c_data, transform, dsize=dsize, interpolation='nearest'
-                )
-                new_c_self = Mask(new_c_data, MaskFormat.C_MASK)
-                new_self = new_c_self.toformat(format_data, copy=False)
+            c_data: Any = self.toformat(
+                MaskFormat.C_MASK, copy=False
+            ).data
+            if c_data.dtype.kind == 'b':
+                c_data = c_data.astype(np.uint8)
+            transform = kwimage.Affine.affine(offset=offset_data)
+            dsize = resolved_output_dims_data[::-1]
+            new_c_data = kwimage.warp_affine(
+                c_data, transform, dsize=dsize, interpolation='nearest'
+            )
+            new_c_self = Mask(new_c_data, MaskFormat.C_MASK)
+            new_self = new_c_self.toformat(format_data, copy=False)
         else:
             rle: Any = self.to_array_rle(copy=False).data
             new_rle = kwimage.rle_translate(
